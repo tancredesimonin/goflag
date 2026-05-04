@@ -54,6 +54,12 @@ format-check:
   script:
     - pnpm format:check
 
+rule-fixtures:
+  stage: verify
+  <<: *pnpm
+  script:
+    - pnpm verify:rule-fixtures
+
 test:unit:
   stage: test
   <<: *pnpm

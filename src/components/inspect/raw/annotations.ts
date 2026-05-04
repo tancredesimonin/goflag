@@ -1,4 +1,4 @@
-import type { Page, RawLinkTag, RawMetaTag, RawScriptTag } from "@/lib/core/types";
+import type { Page, RawLinkTag, RawMetaTag, RawScriptTag, TagOrigin } from "@/lib/core/types";
 
 /**
  * Human-readable annotations for raw `<head>` tags. Surfaces what each tag
@@ -341,6 +341,17 @@ export interface AnnotatedRawTag {
   /** Reconstructed HTML for display (always a single tag, never nested). */
   html: string;
   annotation: RawTagAnnotation;
+  /**
+   * Where this tag came from in `Page` terms — used by the Issues panel
+   * (Phase 5) to anchor a "jump to tag" link to the right row.
+   * `undefined` for synthetic rows (e.g. the `<html>` attribute summary,
+   * which has no canonical TagOrigin shape).
+   */
+  origin?: TagOrigin;
+}
+
+function metaOrigin(m: RawMetaTag): TagOrigin {
+  return { kind: "meta", name: m.name, property: m.property, httpEquiv: m.httpEquiv };
 }
 
 export function annotateRawHead(page: Page): AnnotatedRawTag[] {
@@ -357,6 +368,7 @@ export function annotateRawHead(page: Page): AnnotatedRawTag[] {
         description:
           "lang tells assistive tech and crawlers which language the document is in. dir handles RTL scripts.",
       },
+      origin: { kind: "html", attribute: page.raw.htmlLang ? "lang" : "dir" },
     });
   }
   if (page.raw.title !== undefined) {
@@ -369,6 +381,7 @@ export function annotateRawHead(page: Page): AnnotatedRawTag[] {
           "First line of every Google SERP result and every preview card. Aim for 50–60 chars before truncation.",
         consumers: ["Google SERP", "Browser tab", "Facebook", "X", "Slack"],
       },
+      origin: { kind: "title" },
     });
   }
   for (const m of page.raw.metas) {
@@ -376,6 +389,7 @@ export function annotateRawHead(page: Page): AnnotatedRawTag[] {
       kind: "meta",
       html: serializeMeta(m),
       annotation: annotateMeta(m),
+      origin: metaOrigin(m),
     });
   }
   for (const l of page.raw.links) {
@@ -383,6 +397,7 @@ export function annotateRawHead(page: Page): AnnotatedRawTag[] {
       kind: "link",
       html: serializeLink(l),
       annotation: annotateLink(l),
+      origin: { kind: "link", rel: l.rel },
     });
   }
   for (const s of page.raw.scripts) {
