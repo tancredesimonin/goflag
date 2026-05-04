@@ -1,9 +1,11 @@
 import { Command } from "commander";
+import open from "open";
 import { inspect } from "../core/inspect";
 import { FetchError } from "../core/fetch/static";
 import { HeadlessUnavailableError } from "../core/extract/headless";
 import { renderPageSummary } from "./render-page";
 import { HEADLINT_VERSION } from "../version";
+import { findFreePort, spawnNextDev } from "./dev-server";
 
 export interface CliIo {
   stdout: NodeJS.WritableStream;
@@ -95,6 +97,46 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
         }
       },
     );
+
+  program
+    .command("dev")
+    .description(
+      "Boot the local Headlint UI and open the browser straight to /inspect for the given URL",
+    )
+    .argument("<url>", "URL to inspect (http or https)")
+    .option("--port <port>", "Bind Next.js to this port (default: random free port)")
+    .option("--no-open", "Don't open the system browser; just print the URL")
+    .action(async (url: string, opts: { port?: string; open?: boolean }) => {
+      try {
+        const port = opts.port ? Number.parseInt(opts.port, 10) : await findFreePort();
+        if (!Number.isFinite(port) || port <= 0) {
+          io.stderr.write(`headlint: invalid --port "${String(opts.port)}"\n`);
+          process.exitCode = 2;
+          return;
+        }
+        io.stdout.write(`headlint: starting dev server on http://127.0.0.1:${port} …\n`);
+        const handle = await spawnNextDev({ port });
+        const inspectUrl = `${handle.url}/inspect?url=${encodeURIComponent(url)}`;
+        io.stdout.write(`headlint: ready — ${inspectUrl}\n`);
+        if (opts.open !== false) {
+          await open(inspectUrl).catch(() => {
+            io.stderr.write("headlint: could not open browser; copy the URL above.\n");
+          });
+        }
+        // Hand control to the child until the user kills it.
+        await new Promise<void>((resolve) => {
+          handle.child.on("exit", () => resolve());
+          const stop = () => {
+            handle.child.kill("SIGINT");
+          };
+          process.once("SIGINT", stop);
+          process.once("SIGTERM", stop);
+        });
+      } catch (err) {
+        io.stderr.write(`headlint: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exitCode = 1;
+      }
+    });
 
   return program;
 }

@@ -141,3 +141,15 @@ body {
     @apply font-sans;
   }
 }
+
+/* Shiki output sits inside the Raw tab. Strip its background so it inherits
+ * the muted card surface, and tighten margins so each line is one row. */
+.raw-tag-highlight pre.shiki {
+  background: transparent !important;
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+}
+.raw-tag-highlight pre.shiki code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
