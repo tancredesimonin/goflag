@@ -578,6 +578,9 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 > Tracked separately from the phased plan because these items are CI/operational gaps to close _before_ we cut v1.0 and run `release-to-main`. They don't block phase progression but they MUST all be ticked before tagging.
 
+- [ ] **PL.0** Restore branches coverage gate to 90% for `src/lib/suggestions/**`.
+  - Background: Phase 8 lowered branches to 60% in `vitest.config.ts` because the JSON-LD template builders (`templates/breadcrumb.ts`, `article.ts`, `organization.ts`, `person.ts`, `software.ts`, `website.ts`) chain optional/nullish operators (`page.links.canonical ?? page.fetch.finalUrl ?? page.fetch.requestedUrl` etc.) which v8 counts as a half-dozen branches per line. Lines/functions/statements are still gated at 90.
+  - Action: add per-template tests that exercise each fallback (canonical present / absent, finalUrl present / absent, missing URL → undefined; locale present / absent for organization & website) and bring the threshold back to 90.
 - [ ] **PL.1** Bake Linux baselines for the visual regression suite and re-enable it on CI.
   - Background: Phase 4.17 ships 33 baseline PNGs for the 11 preview components × 3 fixtures, but they were generated on macOS (Playwright suffixes snapshots with the OS, so the files are `*-chromium-darwin.png`). The CI runner is Linux and looks for `*-chromium-linux.png`, which would make every VR test fail. As a temporary workaround `test/e2e/preview-vr.spec.ts` calls `test.skip(Boolean(process.env.CI), …)` so the suite is skipped on CI and runs locally only.
   - Action: boot the official Playwright Docker image (matches the CI image exactly) and bake the Linux PNGs in one shot:
