@@ -40,6 +40,9 @@ export default defineConfig({
         "src/components/shadcn-studio/**",
         "src/hooks/**",
         "src/lib/utils.ts",
+        // Bin entrypoint is a 6-line shim covered by spawned CLI E2E tests
+        // (which v8 in-process coverage cannot observe).
+        "src/bin/**",
       ],
       thresholds: {
         "src/lib/core/**": { lines: 90, branches: 90, functions: 90, statements: 90 },
