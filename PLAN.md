@@ -327,24 +327,25 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Goal**: the structured-data superpower Lighthouse doesn't have.
 
-- [ ] **6.1** JSON-LD validator: parses each block, validates against `schema.org` shapes (use `schema-dts` types + lightweight runtime checks)
-- [ ] **6.2** "Structured data" tab: tree view of each JSON-LD block, type-aware. Query the **shadcn studio MCP** for "tree view" / "JSON viewer" / "code explorer" patterns first.
-- [ ] **6.3** Inline validation errors per block ("`Article` is missing required `headline`")
-- [ ] **6.4** Suggestion engine in `src/lib/suggestions/` — rule-based "this page looks like X but lacks JSON-LD type Y, here's a snippet"
-- [ ] **6.5** Suggestion templates: `Organization`, `WebSite` + `SearchAction`, `BreadcrumbList`, `Article`, `Person`, `FAQPage`, `SoftwareApplication`
-- [ ] **6.6** Suggestion UI: each suggestion shows generated JSON-LD with "Copy snippet" button. Query the **shadcn studio MCP** for "code block with copy" / "suggestion card" patterns first.
-- [ ] **6.7** Page-type heuristics: detect blog posts (URL pattern + `<article>`), detect home (`/`), detect contact (form + page title), to power suggestions
-- [ ] **6.8** Surface suggestions both in their own tab and as "info" entries in the Issues panel
-- [ ] **6.9** Unit tests: JSON-LD validator handles malformed JSON, missing required fields per schema type, multiple blocks of same type, nested `@graph` structures
-- [ ] **6.10** Per-suggestion tests: each template has a triggering fixture and a non-triggering fixture; the generated JSON-LD is fed back through the validator and must validate
-- [ ] **6.11** Component tests: structured-data tree view, suggestion card with copy-snippet
-- [ ] **6.12** E2E (UI): inspect a fixture blog post, confirm `BreadcrumbList` suggestion appears with valid copy-pasteable JSON-LD
+- [x] **6.1** JSON-LD validator: parses each block, validates against `schema.org` shapes (use `schema-dts` types + lightweight runtime checks)
+- [x] **6.2** "Structured data" tab: tree view of each JSON-LD block, type-aware. Query the **shadcn studio MCP** for "tree view" / "JSON viewer" / "code explorer" patterns first.
+- [x] **6.3** Inline validation errors per block ("`Article` is missing required `headline`")
+- [x] **6.4** Suggestion engine in `src/lib/suggestions/` — rule-based "this page looks like X but lacks JSON-LD type Y, here's a snippet"
+- [x] **6.5** Suggestion templates: `Organization`, `WebSite` + `SearchAction`, `BreadcrumbList`, `Article`, `Person`, `FAQPage`, `SoftwareApplication`
+- [x] **6.6** Suggestion UI: each suggestion shows generated JSON-LD with "Copy snippet" button. Query the **shadcn studio MCP** for "code block with copy" / "suggestion card" patterns first.
+- [x] **6.7** Page-type heuristics: detect blog posts (URL pattern + `<article>`), detect home (`/`), detect contact (form + page title), to power suggestions
+- [x] **6.8** Surface suggestions both in their own tab and as "info" entries in the Issues panel
+- [x] **6.9** Unit tests: JSON-LD validator handles malformed JSON, missing required fields per schema type, multiple blocks of same type, nested `@graph` structures
+- [x] **6.10** Per-suggestion tests: each template has a triggering fixture and a non-triggering fixture; the generated JSON-LD is fed back through the validator and must validate
+- [x] **6.11** Component tests: structured-data tree view, suggestion card with copy-snippet
+- [x] **6.12** E2E (UI): inspect a fixture blog post, confirm `BreadcrumbList` suggestion appears with valid copy-pasteable JSON-LD
 
 **Definition of Done**
 
-- The blog post `/blog/<slug>` on tancrede shows its existing `Article` JSON-LD, validates it, and suggests `BreadcrumbList` if missing.
-- The homepage suggests `Organization` + `WebSite` blocks if missing, with copy-pasteable snippets.
-- Every suggestion template's generated output validates against schema.org.
+- ✅ The blog post `/blog/architecture-api-dsp2` on tancrede shows its `Article` JSON-LD in the new tree view, validates it (zero errors), and surfaces a `BreadcrumbList` suggestion with a copy-pasteable snippet (verified locally + asserted in `test/e2e/structured-suggestions.spec.ts`).
+- ✅ Homepages without an `Organization` / `WebSite` block trigger both suggestions; engine deduplicates against blocks already declared on the page (asserted in `src/lib/suggestions/__tests__/contract.test.ts`).
+- ✅ Every suggestion template's generated output round-trips through `validateJsonLdBlock` with zero `error`-severity findings (asserted by the contract harness — 21 cases, 7 templates × 3 invariants).
+- ✅ Gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm test` (478 tests across 53 files), `pnpm test:integration` (21 cases including the updated tancrede integration check), `pnpm exec playwright test` (43 E2E specs including the new Structured + Issues mirror flow), `pnpm build`.
 
 ---
 

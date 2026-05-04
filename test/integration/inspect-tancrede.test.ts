@@ -63,9 +63,13 @@ describe("inspect — tancrede fixtures", () => {
     expect(page.fetch.status).toBe(200);
     expect(page.meta.title?.value).toBeTruthy();
     expect(page.openGraph.images.length).toBeGreaterThanOrEqual(1);
-    // Tancrede currently ships no JSON-LD on blog posts; this is itself a real
-    // lint finding we'll surface in Phase 5. The shape must still be present.
+    // The frozen fixture now embeds a single Article JSON-LD block so the
+    // Phase 6 structured-data tab + suggestion engine have something to
+    // exercise end-to-end. The contract here only checks shape and that
+    // the Article block is present — content is asserted by the
+    // validator's own unit tests.
     expect(Array.isArray(page.jsonLd)).toBe(true);
+    expect(page.jsonLd.flatMap((b) => b.types)).toContain("Article");
   });
 
   it("returns the full Page through the synthetic kitchen-sink fixture (JSON-LD path)", async () => {
