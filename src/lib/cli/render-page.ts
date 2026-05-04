@@ -7,7 +7,7 @@ import type { Page } from "../core/types";
  */
 export function renderPageSummary(page: Page): string {
   const lines: string[] = [];
-  const { fetch, meta, openGraph, twitter, links, jsonLd, probes } = page;
+  const { fetch, extractor, hydration, meta, openGraph, twitter, links, jsonLd, probes } = page;
 
   lines.push(`Headlint inspect`);
   lines.push(`  URL              ${fetch.requestedUrl}`);
@@ -19,6 +19,26 @@ export function renderPageSummary(page: Page): string {
       `(${fetch.durationMs}ms, ${formatBytes(fetch.bodyBytes)})`,
   );
   if (fetch.contentType) lines.push(`  Content-Type     ${fetch.contentType}`);
+  const extractorLine =
+    extractor.mode === "headless"
+      ? extractor.escalated
+        ? `headless (escalated: ${extractor.escalationReason ?? "client-rendered"})`
+        : "headless (forced)"
+      : extractor.escalationReason
+        ? `static (${extractor.escalationReason})`
+        : "static";
+  lines.push(`  Extractor        ${extractorLine}`);
+  if (hydration) {
+    const injected = hydration.clientInjectedMetas.length + hydration.clientInjectedLinks.length;
+    const removed = hydration.clientRemovedMetas.length + hydration.clientRemovedLinks.length;
+    lines.push(
+      `  Hydration        +${injected} / -${removed} tags` +
+        (hydration.titleChanged ? ", title changed" : "") +
+        (hydration.jsonLdBlocksAdded > 0
+          ? `, +${hydration.jsonLdBlocksAdded} JSON-LD block(s)`
+          : ""),
+    );
+  }
 
   lines.push("");
   lines.push("Meta");

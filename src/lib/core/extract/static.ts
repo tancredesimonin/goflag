@@ -34,7 +34,7 @@ export interface ExtractStaticOptions {
 export function extractStatic(
   html: string,
   options: ExtractStaticOptions,
-): Omit<Page, "fetch" | "fetchedAt" | "probes"> {
+): Omit<Page, "fetch" | "fetchedAt" | "probes" | "extractor" | "html" | "hydration"> {
   const $ = cheerio.load(html);
   const base = resolveBase($, options.baseUrl);
 

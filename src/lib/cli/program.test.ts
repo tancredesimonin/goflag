@@ -60,7 +60,7 @@ describe("runCli (in-process)", () => {
       schemaVersion: number;
       jsonLd: { types: string[] }[];
     };
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(payload.jsonLd.length).toBe(4);
   });
 

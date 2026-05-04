@@ -176,6 +176,40 @@ describe("extractStatic — links", () => {
     const page = extractStatic(html, { baseUrl: "::not a url::" });
     expect(page.meta.canonical?.value).toBe("http://invalid.local/foo");
   });
+
+  it("returns the raw href verbatim when both href and base fail to parse", () => {
+    // safeResolve catches the URL constructor throw and returns the raw
+    // href. We trigger this by combining an unparseable href with a base
+    // that itself becomes the synthetic invalid.local fallback.
+    const html = `<html><head><link rel="canonical" href="http://[::bad::"></head></html>`;
+    const page = extractStatic(html, { baseUrl: "https://x.com/" });
+    expect(page.meta.canonical?.value).toBe("http://[::bad::");
+  });
+
+  it("ignores an unparseable <base href> and falls back to the request URL", () => {
+    const html = `<html><head>
+      <base href="::not a url::">
+      <link rel="canonical" href="/foo">
+    </head></html>`;
+    const page = extractStatic(html, { baseUrl: "https://example.test/" });
+    expect(page.meta.canonical?.value).toBe("https://example.test/foo");
+  });
+
+  it("falls back to a meta with no name/property/httpEquiv (origin kind: 'meta' bare)", () => {
+    // A meta tag carrying only `content` is unusual but legal — sourcedMeta
+    // produces a bare `{ kind: "meta" }` origin. We exercise that branch by
+    // asserting the canonical-via-charset http-equiv path works without
+    // a `name` set.
+    const html = `<html><head>
+      <meta http-equiv="content-type" content="text/html; charset=utf-16">
+    </head></html>`;
+    const page = extractStatic(html, { baseUrl: "https://x.com/" });
+    expect(page.meta.charset?.value).toBe("utf-16");
+    expect(page.meta.charset?.origin).toMatchObject({
+      kind: "meta",
+      httpEquiv: "content-type",
+    });
+  });
 });
 
 describe("extractStatic — robustness", () => {
