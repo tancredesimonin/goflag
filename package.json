@@ -21,6 +21,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "verify:rule-fixtures": "node scripts/check-rule-fixtures.mjs",
+    "verify:i18n-fixture": "node scripts/verify-i18n-fixture.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
