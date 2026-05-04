@@ -1,0 +1,6 @@
+{
+  "name": "vanilla-html",
+  "dependencies": {
+    "lodash": "*"
+  }
+}

@@ -10,6 +10,8 @@ import { renderPageSummary } from "./render-page";
 import { renderIssuesReport } from "./render-issues";
 import { HEADLINT_VERSION } from "../version";
 import { findFreePort, spawnNextDev } from "./dev-server";
+import { applyFrameworkSnippets, applyRuleConfig, loadConfig } from "../config";
+import { runInit } from "./init";
 
 export interface CliIo {
   stdout: NodeJS.WritableStream;
@@ -195,6 +197,7 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
       "--max-warnings <n>",
       "Exit non-zero if warnings exceed this number (default: ignore warnings)",
     )
+    .option("--config <path>", "Explicit headlint.config.{ts,js,mjs} path")
     .action(
       async (
         url: string,
@@ -206,6 +209,7 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
           static?: boolean;
           headless?: boolean;
           maxWarnings?: string;
+          config?: string;
         },
       ) => {
         const timeoutMs = Number.parseInt(opts.timeout ?? "15000", 10);
@@ -220,13 +224,22 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
             ? "headless"
             : "auto";
         try {
+          const configResult = await loadConfig({ file: opts.config });
+          if (!configResult.ok) {
+            for (const line of configResult.errors) io.stderr.write(`headlint: ${line}\n`);
+            process.exitCode = 2;
+            return;
+          }
           const page = await inspect(url, {
             probes: opts.probes !== false,
             allowInsecureTls: opts.insecure === true,
             timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 15_000,
             mode,
           });
-          const issues = lint(page);
+          const issues = applyFrameworkSnippets(
+            applyRuleConfig(lint(page), configResult.config),
+            configResult.config.framework,
+          );
           if (opts.json) {
             const counts = summariseIssues(issues);
             io.stdout.write(
@@ -277,6 +290,41 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
         }
       },
     );
+
+  program
+    .command("init")
+    .description("Scaffold a starter `headlint.config.ts` in the current directory")
+    .option("--yes", "Skip prompts; use detected framework and the provided --base-url")
+    .option("--base-url <url>", "Default base URL when --yes is set", "https://example.com")
+    .option("--force", "Overwrite an existing `headlint.config.ts`")
+    .action(async (opts: { yes?: boolean; baseUrl?: string; force?: boolean }) => {
+      const result = await runInit({
+        cwd: process.cwd(),
+        yes: opts.yes === true,
+        baseUrl: opts.baseUrl,
+        force: opts.force === true,
+      });
+      if (!result.ok) {
+        if (result.reason === "exists") {
+          io.stderr.write(
+            `headlint: ${result.path} already exists. Re-run with --force to overwrite.\n`,
+          );
+          process.exitCode = 2;
+          return;
+        }
+        if (result.reason === "cancelled") {
+          io.stderr.write("headlint: init cancelled.\n");
+          process.exitCode = 1;
+          return;
+        }
+        io.stderr.write(
+          `headlint: failed to write ${result.path}: ${result.message ?? "unknown"}\n`,
+        );
+        process.exitCode = 1;
+        return;
+      }
+      io.stdout.write(`headlint: wrote ${result.path}\n`);
+    });
 
   program
     .command("dev")

@@ -1,5 +1,6 @@
 import type { Issue, Page } from "@/lib/core/types";
 import { lint } from "@/lib/core/lint";
+import { applyFrameworkSnippets, applyRuleConfig, loadConfig } from "@/lib/config";
 import { suggest } from "@/lib/suggestions";
 import { PageHeaderCard } from "./page-header-card";
 import { annotateRawHead } from "./raw/annotations";
@@ -40,7 +41,13 @@ export async function InspectView({ page }: InspectViewProps) {
   const tags = await Promise.all(
     annotated.map(async (t) => ({ ...t, highlighted: await highlightHtml(t.html) })),
   );
-  const baseIssues = lint(page);
+  // The UI applies the same `headlint.config.ts` the CLI uses, so
+  // the Issues panel and the lint command never disagree. Loader
+  // failures fall back to the empty default config — surfacing them
+  // in the UI is left to a future Settings panel (Phase 8 follow-up).
+  const configResult = await loadConfig();
+  const config = configResult.ok ? configResult.config : undefined;
+  const baseIssues = applyFrameworkSnippets(applyRuleConfig(lint(page), config), config?.framework);
   const suggestions = suggest(page);
   const suggestionIssues: Issue[] = suggestions.map(suggestionToIssue);
   const issues = [...baseIssues, ...suggestionIssues];
