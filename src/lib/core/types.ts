@@ -273,6 +273,98 @@ export interface FetchMeta {
 }
 
 // ---------------------------------------------------------------------------
+// Extractor mode + hydration delta
+// ---------------------------------------------------------------------------
+
+/**
+ * Which extraction strategy produced this `Page`.
+ *
+ *  - `"static"`: HTML was fetched once via `fetchStatic` and parsed as-is.
+ *    What we see is what a non-JS crawler sees (e.g. older social previewers,
+ *    historic Slackbot, plain `curl`).
+ *  - `"headless"`: HTML was rendered in Chromium and parsed after the
+ *    network went idle. What we see is what a JS-aware crawler sees
+ *    (modern Googlebot, X / Twitter, Discord).
+ *
+ * `escalated: true` means the orchestrator started in static mode, decided
+ * the `<head>` looked suspiciously empty (likely client-rendered SPA), and
+ * automatically re-ran the extractor in headless mode. `escalationReason`
+ * carries the human-readable trigger ("title missing, no og:*, no canonical")
+ * so rules and the UI can surface "we had to render JS to see this page".
+ */
+export type ExtractorMode = "static" | "headless";
+
+export interface ExtractorMeta {
+  mode: ExtractorMode;
+  /** True when we started in static mode and auto-fell-through to headless. */
+  escalated: boolean;
+  /** Human-readable trigger for the escalation (only set when `escalated`). */
+  escalationReason?: string;
+}
+
+/**
+ * Difference between what a non-JS fetch saw and what Chromium saw after the
+ * page hydrated.
+ *
+ * The lists are deliberately minimal subsets of `RawMetaTag` / `RawLinkTag` —
+ * just enough to identify a tag and let Phase 5 rules say "this `og:image`
+ * is client-injected, Slack's previewer won't see it". The full raw HTML for
+ * both passes lives on `Page.html` if richer diffing is needed later.
+ */
+export interface HydrationDelta {
+  /** Mode the static pass ran in (always "static" today; kept for symmetry). */
+  fromMode: "static";
+  /** Mode the rendered pass ran in (always "headless" today). */
+  toMode: "headless";
+  /** Did the document `<title>` text change after hydration? */
+  titleChanged: boolean;
+  /** Did the `<html lang>` attribute change after hydration? */
+  htmlLangChanged: boolean;
+  /** Metas present in the rendered HTML but not in the static HTML. */
+  clientInjectedMetas: Array<{
+    name?: string;
+    property?: string;
+    httpEquiv?: string;
+    content?: string;
+  }>;
+  /** Metas present in the static HTML but removed by client JS. */
+  clientRemovedMetas: Array<{
+    name?: string;
+    property?: string;
+    httpEquiv?: string;
+    content?: string;
+  }>;
+  /** Links present in the rendered HTML but not in the static HTML. */
+  clientInjectedLinks: Array<{
+    rel: string;
+    href?: string;
+    hreflang?: string;
+  }>;
+  /** Links present in the static HTML but removed by client JS. */
+  clientRemovedLinks: Array<{
+    rel: string;
+    href?: string;
+    hreflang?: string;
+  }>;
+  /** Number of new JSON-LD blocks introduced by client JS. */
+  jsonLdBlocksAdded: number;
+}
+
+export interface PageHtml {
+  /**
+   * Raw HTML returned by the static fetch, before any JS executed.
+   * Always present.
+   */
+  static: string;
+  /**
+   * Final HTML after Chromium rendered the page and the network went idle.
+   * Only present when the headless extractor ran (either by user request or
+   * by auto-escalation).
+   */
+  rendered?: string;
+}
+
+// ---------------------------------------------------------------------------
 // The Page
 // ---------------------------------------------------------------------------
 
@@ -280,7 +372,7 @@ export interface FetchMeta {
  * Engine-wide marker. Bumped manually whenever the `Page` shape changes in a
  * way that invalidates committed snapshots or `--json` consumers.
  */
-export const PAGE_SCHEMA_VERSION = 1 as const;
+export const PAGE_SCHEMA_VERSION = 2 as const;
 
 export interface Page {
   /** Constant marker for schema migrations. */
@@ -288,12 +380,26 @@ export interface Page {
   /** When this `Page` was produced (ISO string, UTC). */
   fetchedAt: string;
   fetch: FetchMeta;
+  /**
+   * Which extraction strategy produced the `raw`/`meta`/`openGraph`/etc.
+   * fields below. When `mode === "headless"`, the parsed views reflect the
+   * post-hydration DOM; `html.static` still carries the original non-JS
+   * markup so rules can compare the two.
+   */
+  extractor: ExtractorMeta;
+  /** Raw HTML for both passes. `rendered` is only set in headless mode. */
+  html: PageHtml;
   raw: RawHead;
   meta: GenericMeta;
   openGraph: OpenGraph;
   twitter: TwitterCard;
   links: ParsedLinks;
   jsonLd: JsonLdBlock[];
+  /**
+   * What changed between the static HTML and the rendered HTML. Only set
+   * when both passes ran (i.e. `extractor.mode === "headless"`).
+   */
+  hydration?: HydrationDelta;
   /** Side-channel probes; populated when the engine is asked to do so. */
   probes: {
     robots?: RobotsProbe;

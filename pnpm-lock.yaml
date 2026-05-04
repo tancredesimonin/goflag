@@ -111,6 +111,9 @@ importers:
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
+      playwright:
+        specifier: 1.59.1
+        version: 1.59.1
       postcss:
         specifier: ^8.5.0
         version: 8.5.13

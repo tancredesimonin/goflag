@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { inspect } from "../core/inspect";
 import { FetchError } from "../core/fetch/static";
+import { HeadlessUnavailableError } from "../core/extract/headless";
 import { renderPageSummary } from "./render-page";
 import { HEADLINT_VERSION } from "../version";
 
@@ -37,17 +38,37 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
     .option("--no-probes", "Skip robots.txt / sitemap.xml / manifest probes")
     .option("--insecure", "Allow self-signed TLS certificates (use with care)")
     .option("--timeout <ms>", "Per-request timeout in milliseconds", "15000")
+    .option("--static", "Disable Chromium rendering; only inspect what a non-JS fetch returns")
+    .option("--headless", "Force Chromium rendering even when the static <head> looks complete")
     .action(
       async (
         url: string,
-        opts: { json?: boolean; probes?: boolean; insecure?: boolean; timeout?: string },
+        opts: {
+          json?: boolean;
+          probes?: boolean;
+          insecure?: boolean;
+          timeout?: string;
+          static?: boolean;
+          headless?: boolean;
+        },
       ) => {
         const timeoutMs = Number.parseInt(opts.timeout ?? "15000", 10);
+        if (opts.static && opts.headless) {
+          io.stderr.write("headlint: --static and --headless are mutually exclusive\n");
+          process.exitCode = 2;
+          return;
+        }
+        const mode: "auto" | "static" | "headless" = opts.static
+          ? "static"
+          : opts.headless
+            ? "headless"
+            : "auto";
         try {
           const page = await inspect(url, {
             probes: opts.probes !== false,
             allowInsecureTls: opts.insecure === true,
             timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 15_000,
+            mode,
           });
           if (opts.json) {
             io.stdout.write(`${JSON.stringify(page, null, 2)}\n`);
@@ -55,6 +76,14 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
             io.stdout.write(`${renderPageSummary(page)}\n`);
           }
         } catch (err) {
+          if (err instanceof HeadlessUnavailableError) {
+            io.stderr.write(`headlint: ${err.message}\n`);
+            io.stderr.write(
+              "headlint: hint — re-run with --static to skip Chromium for this page.\n",
+            );
+            process.exitCode = 2;
+            return;
+          }
           if (err instanceof FetchError) {
             io.stderr.write(`headlint: ${err.message}\n`);
           } else {

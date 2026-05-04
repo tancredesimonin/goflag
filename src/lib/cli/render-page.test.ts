@@ -17,6 +17,8 @@ function basePage(overrides: Partial<Page> = {}): Page {
       bodyBytes: 256,
       contentType: "text/html",
     },
+    extractor: { mode: "static", escalated: false },
+    html: { static: "<!doctype html><html><head></head><body></body></html>" },
     raw: { metas: [], links: [], scripts: [] },
     meta: {},
     openGraph: { localeAlternates: [], images: [], unknown: [] },
@@ -49,6 +51,47 @@ describe("renderPageSummary", () => {
       }),
     );
     expect(out).toMatch(/Final URL.*after 2 redirect/);
+  });
+
+  it("renders the extractor mode line for a static page", () => {
+    const out = renderPageSummary(basePage());
+    expect(out).toContain("Extractor        static");
+  });
+
+  it("renders the headless escalation reason and hydration delta", () => {
+    const out = renderPageSummary(
+      basePage({
+        extractor: {
+          mode: "headless",
+          escalated: true,
+          escalationReason: "title missing, no og:*",
+        },
+        html: { static: "<html></html>", rendered: "<html><head><title>Hi</title></head></html>" },
+        hydration: {
+          fromMode: "static",
+          toMode: "headless",
+          titleChanged: true,
+          htmlLangChanged: false,
+          clientInjectedMetas: [{ property: "og:title", content: "Hi" }],
+          clientRemovedMetas: [],
+          clientInjectedLinks: [],
+          clientRemovedLinks: [],
+          jsonLdBlocksAdded: 1,
+        },
+      }),
+    );
+    expect(out).toContain("Extractor        headless (escalated: title missing, no og:*)");
+    expect(out).toContain("Hydration        +1 / -0 tags, title changed, +1 JSON-LD block(s)");
+  });
+
+  it("renders forced-headless without an escalation reason", () => {
+    const out = renderPageSummary(
+      basePage({
+        extractor: { mode: "headless", escalated: false },
+        html: { static: "", rendered: "<html></html>" },
+      }),
+    );
+    expect(out).toContain("Extractor        headless (forced)");
   });
 
   it("formats large bodies in KiB / MiB", () => {

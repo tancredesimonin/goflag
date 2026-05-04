@@ -19,8 +19,15 @@ async function runHeadlint(args: string[]): Promise<CliResult> {
 
   let stdout = "";
   let stderr = "";
-  child.stdout?.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
-  child.stderr?.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+  // setEncoding routes chunks through StringDecoder, which preserves
+  // multi-byte UTF-8 sequences split across chunk boundaries. With the
+  // post-Phase-2 Page now embedding the full static HTML, payloads cross
+  // the 64 KiB pipe-buffer threshold and naive `chunk.toString()` would
+  // occasionally truncate accented characters mid-byte.
+  child.stdout?.setEncoding("utf8");
+  child.stderr?.setEncoding("utf8");
+  child.stdout?.on("data", (chunk: string) => (stdout += chunk));
+  child.stderr?.on("data", (chunk: string) => (stderr += chunk));
 
   const code: number | null = await new Promise((resolveClose) => {
     child.on("close", (c) => resolveClose(c));
@@ -50,7 +57,7 @@ describe("headlint inspect (CLI E2E)", () => {
       schemaVersion: number;
       meta: { title?: { value: string } };
     };
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(payload.meta.title?.value).toContain("Tancrède Simonin");
   }, 30_000);
 

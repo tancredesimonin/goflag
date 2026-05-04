@@ -66,6 +66,15 @@ test:component:
   script:
     - pnpm test:component
 
+test:integration:
+  stage: test
+  # Same Playwright image as test:e2e so Chromium is preinstalled and the
+  # headless integration tests can run without a separate `playwright install`.
+  image: mcr.microsoft.com/playwright:v1.59.1-noble
+  <<: *pnpm
+  script:
+    - pnpm test:integration
+
 test:e2e:
   stage: test
   image: mcr.microsoft.com/playwright:v1.59.1-noble
