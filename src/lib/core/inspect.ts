@@ -1,4 +1,11 @@
 import type { ExtractorMode, FetchMeta, Page } from "./types";
+
+/**
+ * Inspection strategy passed to `inspect()`. Re-exported as a top-level
+ * type so callers (CLI, App Router routes, future SDK) can import it
+ * without reaching into individual extractor modules.
+ */
+export type InspectMode = "auto" | ExtractorMode;
 import { extractStatic } from "./extract/static";
 import { fetchStatic, type FetchStaticOptions } from "./fetch/static";
 import {

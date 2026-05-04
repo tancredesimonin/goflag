@@ -240,20 +240,20 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Goal**: replace `--json` output with a beautiful local UI. The "wow" demo.
 
-- [ ] **3.1** App shell with shadcn sidebar + topbar — **query the shadcn studio MCP** for dashboard/inspector shell candidates, pick the best, document the chosen block id in the MR description
-- [ ] **3.2** URL input on the home page (`/`) — submits to a Server Action that runs the extractor and stores the result in memory
-- [ ] **3.3** Inspect page (`/inspect`) with sidebar: list of crawled URLs (single for now), grouped by locale when applicable
-- [ ] **3.4** Top header card: page title, description, canonical, status code, fetch time, "Re-fetch" button — query the **shadcn studio MCP** for "page header" / "stats card" patterns first
-- [ ] **3.5** Tabs scaffold: `Previews`, `Issues`, `Raw`, `Structured data`, `i18n`, `Assets` (most empty stubs at this stage)
-- [ ] **3.6** "Raw" tab: syntax-highlighted `<head>` content (use `shiki`), each tag annotated with its parsed meaning on hover
-- [ ] **3.7** "Assets" tab v0: favicon grid (renders each `link rel=icon` at its declared size), manifest JSON viewer, robots.txt viewer
-- [ ] **3.8** Wire `headlint dev <url>` CLI command: spawns Next.js standalone server, opens browser to `/inspect?url=...`
-- [ ] **3.9** Dark mode by default with theme toggle
-- [ ] **3.10** Loading + error states (skeleton, toast on fetch failure)
-- [ ] **3.11** Component tests: every new shadcn-composed component (URL form, header card, raw viewer, favicon grid, manifest viewer) has a render test with realistic props
-- [ ] **3.12** Server Action test: the inspect action returns a valid `Page` for a fixture URL and a structured error for an unreachable URL
-- [ ] **3.13** E2E (UI) test: `headlint dev` boots Next.js, Playwright opens `/inspect`, submits a fixture-server URL, asserts that the header card, sidebar, and Raw tab all render with the expected content
-- [ ] **3.14** E2E (UI) test: error path — submitting an unreachable URL surfaces a toast and does not crash the page
+- [x] **3.1** App shell with shadcn sidebar + topbar — **query the shadcn studio MCP** for dashboard/inspector shell candidates, pick the best, document the chosen block id in the MR description
+- [x] **3.2** URL input on the home page (`/`) — submits to a Server Action that runs the extractor and stores the result in memory
+- [x] **3.3** Inspect page (`/inspect`) with sidebar: list of crawled URLs (single for now), grouped by locale when applicable
+- [x] **3.4** Top header card: page title, description, canonical, status code, fetch time, "Re-fetch" button — query the **shadcn studio MCP** for "page header" / "stats card" patterns first
+- [x] **3.5** Tabs scaffold: `Previews`, `Issues`, `Raw`, `Structured data`, `i18n`, `Assets` (most empty stubs at this stage)
+- [x] **3.6** "Raw" tab: syntax-highlighted `<head>` content (use `shiki`), each tag annotated with its parsed meaning on hover
+- [x] **3.7** "Assets" tab v0: favicon grid (renders each `link rel=icon` at its declared size), manifest JSON viewer, robots.txt viewer
+- [x] **3.8** Wire `headlint dev <url>` CLI command: spawns Next.js standalone server, opens browser to `/inspect?url=...`
+- [x] **3.9** Dark mode by default with theme toggle
+- [x] **3.10** Loading + error states (skeleton, toast on fetch failure)
+- [x] **3.11** Component tests: every new shadcn-composed component (URL form, header card, raw viewer, favicon grid, manifest viewer) has a render test with realistic props
+- [x] **3.12** Server Action test: the inspect action returns a valid `Page` for a fixture URL and a structured error for an unreachable URL
+- [x] **3.13** E2E (UI) test: `headlint dev` boots Next.js, Playwright opens `/inspect`, submits a fixture-server URL, asserts that the header card, sidebar, and Raw tab all render with the expected content
+- [x] **3.14** E2E (UI) test: error path — submitting an unreachable URL surfaces a toast and does not crash the page
 
 **Definition of Done**
 
