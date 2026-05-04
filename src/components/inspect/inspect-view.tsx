@@ -8,6 +8,7 @@ import { RawHeadViewer } from "./raw/raw-head-viewer";
 import { FaviconGrid } from "./assets/favicon-grid";
 import { ManifestViewer } from "./assets/manifest-viewer";
 import { RobotsViewer } from "./assets/robots-viewer";
+import { PreviewsTab } from "./previews/previews-tab";
 
 export interface InspectViewProps {
   page: Page;
@@ -17,11 +18,11 @@ export interface InspectViewProps {
  * Top-level inspect surface. Header card on top, six tabs below.
  *
  * Tab implementation status:
+ *  - Previews: live (Phase 4 — 11 platform unfurls + "What if?" toggle)
  *  - Raw: live (Phase 3.6 — shiki + hover annotations)
  *  - Assets: live (Phase 3.7 — favicons + manifest + robots.txt)
- *  - Previews / Issues / Structured data / i18n: stubs scaffolded for
- *    Phases 4–7. They render an explanatory placeholder so the UI never
- *    looks broken.
+ *  - Issues / Structured data / i18n: stubs scaffolded for Phases 5–7.
+ *    They render an explanatory placeholder so the UI never looks broken.
  */
 export async function InspectView({ page }: InspectViewProps) {
   const annotated = annotateRawHead(page);
@@ -58,10 +59,7 @@ export async function InspectView({ page }: InspectViewProps) {
         </TabsList>
 
         <TabsContent value="previews" className="mt-4">
-          <StubTab
-            title="Preview cards"
-            description="Pixel-faithful renderings of how this page will look on Google, X, Facebook, LinkedIn, Discord, Slack, WhatsApp, iMessage, and Pinterest. Lands in Phase 4."
-          />
+          <PreviewsTab page={page} />
         </TabsContent>
         <TabsContent value="issues" className="mt-4">
           <StubTab
