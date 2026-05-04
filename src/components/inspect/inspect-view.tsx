@@ -1,5 +1,4 @@
 import type { Issue, Page } from "@/lib/core/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lint } from "@/lib/core/lint";
 import { suggest } from "@/lib/suggestions";
 import { PageHeaderCard } from "./page-header-card";
@@ -15,6 +14,7 @@ import { InspectTabs } from "./inspect-tabs";
 import { StructuredTab } from "./structured/structured-tab";
 import { SuggestionCard } from "./structured/suggestion-card";
 import type { Suggestion } from "@/lib/structured/types";
+import { I18nTab } from "./i18n/i18n-tab";
 
 export interface InspectViewProps {
   page: Page;
@@ -93,17 +93,7 @@ export async function InspectView({ page }: InspectViewProps) {
               ) : null}
             </div>
           ),
-          i18n: (
-            <StubTab
-              title="Internationalisation matrix"
-              description={
-                page.links.alternates.length > 0
-                  ? `${page.links.alternates.length} hreflang alternates declared. The reciprocity matrix lands in Phase 7.`
-                  : "No hreflang alternates on this page. The matrix renders once the crawler ships in Phase 7."
-              }
-              counter={page.links.alternates.length}
-            />
-          ),
+          i18n: <I18nTab page={page} />,
           assets: (
             <>
               <section className="space-y-3" aria-labelledby="favicons-heading">
@@ -154,28 +144,4 @@ function suggestionToIssue(s: Suggestion): Issue {
     fix: { title: `Add a ${s.type} JSON-LD block`, snippet: s.example.snippet, language: "json" },
     docs: "/rules#suggestions",
   };
-}
-
-function StubTab({
-  title,
-  description,
-  counter,
-}: {
-  title: string;
-  description: string;
-  counter?: number;
-}) {
-  return (
-    <Card className="border-border/40 border-dashed">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
-          {title}
-          {counter !== undefined && counter > 0 ? (
-            <span className="text-muted-foreground ml-2 text-xs tabular-nums">({counter})</span>
-          ) : null}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="text-muted-foreground text-sm">{description}</CardContent>
-    </Card>
-  );
 }

@@ -34,5 +34,15 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      // Phase 7 fixture: 4 locales × 3 routes, used by the i18n
+      // matrix E2E test. Distinct port from the tancrede fixture so
+      // both can run concurrently under one Playwright invocation.
+      command: "pnpm exec tsx test/e2e/i18n-fixture-launcher.ts",
+      env: { HEADLINT_I18N_FIXTURE_PORT: "4323" },
+      url: "http://127.0.0.1:4323/_health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

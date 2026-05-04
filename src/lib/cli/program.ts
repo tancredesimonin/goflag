@@ -1,6 +1,8 @@
 import { Command } from "commander";
 import open from "open";
 import { inspect } from "../core/inspect";
+import { crawl } from "../core/crawl";
+import { buildI18nMatrix, reciprocityIssues } from "../core/i18n";
 import { FetchError } from "../core/fetch/static";
 import { HeadlessUnavailableError } from "../core/extract/headless";
 import { lint, summariseIssues } from "../core/lint";
@@ -44,6 +46,22 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
     .option("--timeout <ms>", "Per-request timeout in milliseconds", "15000")
     .option("--static", "Disable Chromium rendering; only inspect what a non-JS fetch returns")
     .option("--headless", "Force Chromium rendering even when the static <head> looks complete")
+    .option("--crawl", "BFS-walk same-origin links from the entry URL")
+    .option("--depth <n>", "Crawl depth (only with --crawl). 0 = entry only.", "1")
+    .option(
+      "--include <pattern>",
+      "Pathname glob to include while crawling (repeatable). Implies --crawl.",
+      collect,
+      [] as string[],
+    )
+    .option(
+      "--exclude <pattern>",
+      "Pathname glob to exclude while crawling (repeatable). Implies --crawl.",
+      collect,
+      [] as string[],
+    )
+    .option("--concurrency <n>", "Parallel inspections per crawl wave", "4")
+    .option("--max-pages <n>", "Hard cap on crawled pages", "200")
     .action(
       async (
         url: string,
@@ -54,6 +72,12 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
           timeout?: string;
           static?: boolean;
           headless?: boolean;
+          crawl?: boolean;
+          depth?: string;
+          include?: string[];
+          exclude?: string[];
+          concurrency?: string;
+          maxPages?: string;
         },
       ) => {
         const timeoutMs = Number.parseInt(opts.timeout ?? "15000", 10);
@@ -67,7 +91,62 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
           : opts.headless
             ? "headless"
             : "auto";
+        const wantsCrawl =
+          opts.crawl === true || (opts.include?.length ?? 0) > 0 || (opts.exclude?.length ?? 0) > 0;
         try {
+          if (wantsCrawl) {
+            const result = await crawl({
+              entryUrl: url,
+              depth: parseIntOr(opts.depth, 1),
+              include: opts.include,
+              exclude: opts.exclude,
+              concurrency: parseIntOr(opts.concurrency, 4),
+              maxPages: parseIntOr(opts.maxPages, 200),
+              inspectOptions: {
+                probes: opts.probes !== false,
+                allowInsecureTls: opts.insecure === true,
+                timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 15_000,
+                mode,
+              },
+            });
+            if (opts.json) {
+              const matrix = buildI18nMatrix(result.pages);
+              const reciprocity = reciprocityIssues(result.pages);
+              io.stdout.write(
+                `${JSON.stringify(
+                  {
+                    schemaVersion: 1,
+                    entryUrl: url,
+                    visited: result.visited,
+                    truncated: result.truncated,
+                    errors: result.errors,
+                    matrix,
+                    reciprocity,
+                    pages: result.pages,
+                  },
+                  null,
+                  2,
+                )}\n`,
+              );
+            } else {
+              io.stdout.write(
+                `headlint crawl\n  entry  : ${url}\n  visited: ${result.pages.length}/${result.visited.length}` +
+                  ` page(s)${result.truncated ? " (truncated)" : ""}\n` +
+                  `  errors : ${result.errors.length}\n`,
+              );
+              for (const page of result.pages) {
+                io.stdout.write(`  - [${page.fetch.status}] ${page.fetch.finalUrl}\n`);
+              }
+              for (const err of result.errors) {
+                io.stderr.write(`  ! ${err.url} — ${err.message}\n`);
+              }
+            }
+            if (result.errors.length > 0 && result.pages.length === 0) {
+              process.exitCode = 1;
+            }
+            return;
+          }
+
           const page = await inspect(url, {
             probes: opts.probes !== false,
             allowInsecureTls: opts.insecure === true,
@@ -240,6 +319,18 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
     });
 
   return program;
+}
+
+/** Commander variadic-collector: appends each `-x foo -x bar` into an array. */
+function collect(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
+
+/** Parse a string as an integer, falling back to a default when it's NaN. */
+function parseIntOr(raw: string | undefined, fallback: number): number {
+  if (raw === undefined) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 /**
