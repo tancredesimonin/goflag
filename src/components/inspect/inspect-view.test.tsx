@@ -20,6 +20,21 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
+// `loadConfig` walks the filesystem and (for `.ts` configs) boots
+// tsx + esbuild. Neither makes sense in a jsdom render test, and
+// esbuild's realm-aware Uint8Array invariant blows up under jsdom.
+// Stub it to the empty default config so the component renders.
+vi.mock("@/lib/config", () => ({
+  loadConfig: async () => ({
+    ok: true as const,
+    source: "default" as const,
+    config: { framework: "unknown" as const },
+    raw: {},
+  }),
+  applyRuleConfig: <T,>(issues: T) => issues,
+  applyFrameworkSnippets: <T,>(issues: T) => issues,
+}));
+
 import { InspectView } from "./inspect-view";
 
 function makePage(): Page {

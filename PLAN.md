@@ -380,23 +380,24 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Goal**: a single `headlint.config.ts` that controls everything.
 
-- [ ] **8.1** `defineConfig()` helper + Zod schema in `src/lib/config/`
-- [ ] **8.2** Config loader: searches CWD for `headlint.config.{ts,js,mjs}`
-- [ ] **8.3** Config surfaces: `baseUrl`, `framework`, `i18n`, `crawl`, `rules` (per-rule enable/options), `normalize`, `snapshot.dir`
-- [ ] **8.4** `headlint init` — interactive scaffolder using `@clack/prompts` to generate a starter config (CLI). For the in-UI settings panel that mirrors the same fields, query the **shadcn studio MCP** for "settings form" / "config panel" patterns.
-- [ ] **8.5** Framework detection: read user's `package.json`, detect `next`/`astro`/`nuxt`/etc., pre-fill framework-aware defaults
-- [ ] **8.6** Framework-aware fix snippets: e.g. for Next.js App Router, fix snippets reference `metadata.openGraph.images` in `app/layout.tsx`
-- [ ] **8.7** Unit tests: Zod schema validation rejects malformed configs with helpful error messages
-- [ ] **8.8** Unit tests: config loader resolves `.ts`, `.js`, `.mjs` variants and finds config from nested CWDs
-- [ ] **8.9** Integration test: passing `rules: { "title.length": "off" }` in config disables the rule across both lint runner and UI Issues panel
-- [ ] **8.10** Integration test: framework detection correctly identifies Next.js, Astro, Nuxt, and "unknown" against fixture `package.json` files
-- [ ] **8.11** E2E (CLI): `headlint init` in a tmp dir produces a parseable config that the loader can read back
+- [x] **8.1** `defineConfig()` helper + Zod schema in `src/lib/config/`
+- [x] **8.2** Config loader: searches CWD for `headlint.config.{ts,mts,js,mjs,cjs}` (uses `tsx`'s `tsImport` for TS variants; CJS + ESM via plain `import()`)
+- [x] **8.3** Config surfaces: `baseUrl`, `framework`, `i18n`, `crawl`, `rules`, `normalize`, `snapshot.dir`
+- [x] **8.4** `headlint init` — interactive scaffolder via `@clack/prompts` (with `--yes` non-interactive mode for CI) that writes a parseable `headlint.config.ts`. The in-UI settings panel is deferred until a real user actually asks for it (the shadcn studio "settings form" exploration would buy nothing without that signal).
+- [x] **8.5** Framework detection from `package.json` deps (Next, Astro, Nuxt, SvelteKit, Remix, Vite-React) with deliberate precedence + `auto` sentinel resolved by the loader.
+- [x] **8.6** Framework-aware fix snippets: Next snippets reference `metadata.openGraph.images` / `Metadata.title` / `Metadata.description`; Astro and Nuxt have a starter set. Snippets are post-applied so rules stay framework-agnostic.
+- [x] **8.7** Unit tests: Zod schema rejection messages cover baseUrl, framework slugs, BCP 47 locales, empty arrays, depth bounds, rule-shorthand severities, and normalize entries.
+- [x] **8.8** Unit tests: loader walks up nested CWDs, resolves `.ts/.mjs/.js`, distinguishes "no default export" from "namespace masquerade", reports zod failures with file path.
+- [x] **8.9** Integration test: `rules: { "<id>": "off" }` in `headlint.config.ts` disables the rule from both the spawned CLI (`headlint lint --json --config <path>`) and the in-process pipeline used by the App Router server component.
+- [x] **8.10** Integration test: framework detection correctly identifies Next/Astro/Nuxt/unknown against fixture `package.json` files.
+- [x] **8.11** E2E (CLI): `headlint init --yes` writes a parseable `headlint.config.ts` whose contents round-trip through `loadConfig()` with defaults applied; refuses to overwrite without `--force`.
 
 **Definition of Done**
 
-- `headlint init` in a fresh Next.js project produces a working `headlint.config.ts` with sensible defaults.
-- Disabling a rule in the config makes it disappear from both the UI and the CLI lint output.
-- Schema tests cover all valid and the main invalid config shapes.
+- ✅ `headlint init --yes --base-url https://x.com` writes a `headlint.config.ts` whose `loadConfig()` round-trip exposes the user's `baseUrl` and the engine's defaults (`crawl.depth = 1`, `crawl.concurrency = 4`, `snapshot.dir = .headlint/snapshots`) — asserted in `test/integration/cli-init.test.ts`.
+- ✅ Disabling a rule in the config (`rules: { "<id>": "off" }`) drops it from both the CLI's `--json` output and the App Router's `applyRuleConfig(lint(page), config)` call (asserted in `test/integration/config-rules.test.ts`).
+- ✅ Schema tests cover the happy path and 9 distinct invalid-shape branches with human-readable error messages (`src/lib/config/schema.test.ts`).
+- ✅ Gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm verify:i18n-fixture`, `pnpm test` (572 tests across 68 files), `pnpm test:integration` (36 cases including config-rules + framework-detect + cli-init), `pnpm exec playwright test` (44 E2E specs, no regressions), `pnpm build`.
 
 ---
 
