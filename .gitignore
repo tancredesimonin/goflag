@@ -28,3 +28,4 @@ playwright/.cache/
 
 # Headlint
 .headlint/
+tsconfig.tsbuildinfo

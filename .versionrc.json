@@ -1,0 +1,15 @@
+{
+  "types": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "refactor", "section": "Refactor" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "chore", "section": "Chore", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "style", "section": "Style", "hidden": true }
+  ],
+  "header": "# Headlint changelog\n\nAll notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.\n",
+  "tagPrefix": "v"
+}
