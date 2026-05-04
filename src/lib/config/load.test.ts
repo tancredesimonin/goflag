@@ -18,7 +18,7 @@ describe("loadConfig", () => {
 
   it("loads a `.ts` config and applies defaults", async () => {
     const result = await loadConfig({ cwd: resolve(FIXTURES, "ts") });
-    expect(result.ok).toBe(true);
+    expect(result.ok, !result.ok ? result.errors.join("\n") : "").toBe(true);
     if (result.ok) {
       expect(result.source).toBe("file");
       expect(result.filepath?.endsWith("headlint.config.ts")).toBe(true);
