@@ -49,6 +49,11 @@ export default defineConfig({
         "src/lib/rules/**": { lines: 90, branches: 90, functions: 90, statements: 90 },
         "src/lib/snapshots/**": { lines: 90, branches: 90, functions: 90, statements: 90 },
         "src/lib/suggestions/**": { lines: 90, branches: 90, functions: 90, statements: 90 },
+        // PLAN.md §"Coverage thresholds" requires every preview component
+        // to ship with at least one render test + one visual regression
+        // baseline. We enforce 90/80/90 here; the visual-regression suite
+        // is enforced separately by the Playwright config.
+        "src/lib/previews/**": { lines: 90, branches: 80, functions: 90, statements: 90 },
         "src/components/**": { lines: 70, branches: 70, functions: 70, statements: 70 },
       },
     },
