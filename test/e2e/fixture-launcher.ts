@@ -15,7 +15,7 @@ async function main(): Promise<void> {
     port,
   });
   // Print so anyone tailing logs can see the bound URL.
-   
+
   console.log(`[fixture-server] ready at ${server.url}`);
   // Keep the process alive — Playwright stops it via SIGTERM.
   const stop = async () => {
@@ -27,7 +27,6 @@ async function main(): Promise<void> {
 }
 
 void main().catch((err) => {
-   
   console.error("[fixture-server] failed to start:", err);
   process.exit(1);
 });
