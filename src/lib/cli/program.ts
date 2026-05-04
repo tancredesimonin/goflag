@@ -3,7 +3,9 @@ import open from "open";
 import { inspect } from "../core/inspect";
 import { FetchError } from "../core/fetch/static";
 import { HeadlessUnavailableError } from "../core/extract/headless";
+import { lint, summariseIssues } from "../core/lint";
 import { renderPageSummary } from "./render-page";
+import { renderIssuesReport } from "./render-issues";
 import { HEADLINT_VERSION } from "../version";
 import { findFreePort, spawnNextDev } from "./dev-server";
 
@@ -76,6 +78,105 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
             io.stdout.write(`${JSON.stringify(page, null, 2)}\n`);
           } else {
             io.stdout.write(`${renderPageSummary(page)}\n`);
+          }
+        } catch (err) {
+          if (err instanceof HeadlessUnavailableError) {
+            io.stderr.write(`headlint: ${err.message}\n`);
+            io.stderr.write(
+              "headlint: hint — re-run with --static to skip Chromium for this page.\n",
+            );
+            process.exitCode = 2;
+            return;
+          }
+          if (err instanceof FetchError) {
+            io.stderr.write(`headlint: ${err.message}\n`);
+          } else {
+            io.stderr.write(
+              `headlint: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
+            );
+          }
+          process.exitCode = 1;
+        }
+      },
+    );
+
+  program
+    .command("lint")
+    .description(
+      "Run Headlint's rule engine against a URL and print issues. Exits non-zero on errors.",
+    )
+    .argument("<url>", "URL to lint (http or https)")
+    .option("--json", "Print issues as JSON instead of a human-readable report")
+    .option("--no-probes", "Skip robots.txt / sitemap.xml / manifest probes")
+    .option("--insecure", "Allow self-signed TLS certificates (use with care)")
+    .option("--timeout <ms>", "Per-request timeout in milliseconds", "15000")
+    .option("--static", "Disable Chromium rendering; only lint what a non-JS fetch returns")
+    .option("--headless", "Force Chromium rendering even when the static <head> looks complete")
+    .option(
+      "--max-warnings <n>",
+      "Exit non-zero if warnings exceed this number (default: ignore warnings)",
+    )
+    .action(
+      async (
+        url: string,
+        opts: {
+          json?: boolean;
+          probes?: boolean;
+          insecure?: boolean;
+          timeout?: string;
+          static?: boolean;
+          headless?: boolean;
+          maxWarnings?: string;
+        },
+      ) => {
+        const timeoutMs = Number.parseInt(opts.timeout ?? "15000", 10);
+        if (opts.static && opts.headless) {
+          io.stderr.write("headlint: --static and --headless are mutually exclusive\n");
+          process.exitCode = 2;
+          return;
+        }
+        const mode: "auto" | "static" | "headless" = opts.static
+          ? "static"
+          : opts.headless
+            ? "headless"
+            : "auto";
+        try {
+          const page = await inspect(url, {
+            probes: opts.probes !== false,
+            allowInsecureTls: opts.insecure === true,
+            timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 15_000,
+            mode,
+          });
+          const issues = lint(page);
+          if (opts.json) {
+            const counts = summariseIssues(issues);
+            io.stdout.write(
+              `${JSON.stringify(
+                {
+                  schemaVersion: 1,
+                  url: page.fetch.requestedUrl,
+                  finalUrl: page.fetch.finalUrl,
+                  fetchedAt: page.fetchedAt,
+                  counts,
+                  issues,
+                },
+                null,
+                2,
+              )}\n`,
+            );
+          } else {
+            io.stdout.write(`${renderIssuesReport(issues)}\n`);
+          }
+
+          const counts = summariseIssues(issues);
+          const maxWarn = opts.maxWarnings ? Number.parseInt(opts.maxWarnings, 10) : undefined;
+          if (counts.error > 0) {
+            process.exitCode = 1;
+          } else if (typeof maxWarn === "number" && counts.warning > maxWarn) {
+            io.stderr.write(
+              `headlint: ${counts.warning} warning(s) exceed --max-warnings=${maxWarn}\n`,
+            );
+            process.exitCode = 1;
           }
         } catch (err) {
           if (err instanceof HeadlessUnavailableError) {
