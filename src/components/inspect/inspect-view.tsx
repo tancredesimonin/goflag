@@ -1,6 +1,7 @@
-import type { Page } from "@/lib/core/types";
+import type { Issue, Page } from "@/lib/core/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lint } from "@/lib/core/lint";
+import { suggest } from "@/lib/suggestions";
 import { PageHeaderCard } from "./page-header-card";
 import { annotateRawHead } from "./raw/annotations";
 import { highlightHtml } from "@/lib/highlight";
@@ -11,6 +12,9 @@ import { RobotsViewer } from "./assets/robots-viewer";
 import { PreviewsTab } from "./previews/previews-tab";
 import { IssuesTab } from "./issues/issues-tab";
 import { InspectTabs } from "./inspect-tabs";
+import { StructuredTab } from "./structured/structured-tab";
+import { SuggestionCard } from "./structured/suggestion-card";
+import type { Suggestion } from "@/lib/structured/types";
 
 export interface InspectViewProps {
   page: Page;
@@ -36,7 +40,19 @@ export async function InspectView({ page }: InspectViewProps) {
   const tags = await Promise.all(
     annotated.map(async (t) => ({ ...t, highlighted: await highlightHtml(t.html) })),
   );
-  const issues = lint(page);
+  const baseIssues = lint(page);
+  const suggestions = suggest(page);
+  const suggestionIssues: Issue[] = suggestions.map(suggestionToIssue);
+  const issues = [...baseIssues, ...suggestionIssues];
+
+  // Highlight suggestion snippets in parallel — same trick the Raw tab
+  // uses, keeps server time bounded by the slowest snippet.
+  const suggestionViews = await Promise.all(
+    suggestions.map(async (s) => ({
+      suggestion: s,
+      highlighted: await highlightHtml(s.example.snippet, { lang: s.example.language }),
+    })),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,7 +62,7 @@ export async function InspectView({ page }: InspectViewProps) {
         defaultTab="raw"
         counts={{
           issues: issues.length,
-          structured: page.jsonLd.length,
+          structured: page.jsonLd.length + suggestions.length,
           i18n: page.links.alternates.length,
         }}
         panels={{
@@ -54,15 +70,28 @@ export async function InspectView({ page }: InspectViewProps) {
           issues: <IssuesTab issues={issues} />,
           raw: <RawHeadViewer tags={tags} />,
           structured: (
-            <StubTab
-              title="Structured data"
-              description={
-                page.jsonLd.length > 0
-                  ? `${page.jsonLd.length} JSON-LD block(s) detected. The schema-aware tree view lands in Phase 6.`
-                  : "No JSON-LD blocks on this page. The suggestion engine in Phase 6 will recommend templates."
-              }
-              counter={page.jsonLd.length}
-            />
+            <div className="space-y-6">
+              <StructuredTab blocks={page.jsonLd} />
+              {suggestionViews.length > 0 ? (
+                <section className="space-y-3" aria-labelledby="suggestions-heading">
+                  <h3
+                    id="suggestions-heading"
+                    className="text-muted-foreground/80 text-xs font-medium tracking-wider uppercase"
+                  >
+                    Suggestions ({suggestionViews.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {suggestionViews.map(({ suggestion, highlighted }) => (
+                      <SuggestionCard
+                        key={suggestion.id}
+                        suggestion={suggestion}
+                        highlighted={highlighted}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </div>
           ),
           i18n: (
             <StubTab
@@ -110,6 +139,21 @@ export async function InspectView({ page }: InspectViewProps) {
       />
     </div>
   );
+}
+
+/**
+ * Mirror a Phase 6 `Suggestion` into the Phase 5 `Issue` shape so it
+ * appears as a low-noise "info" entry in the Issues panel without
+ * needing its own panel section.
+ */
+function suggestionToIssue(s: Suggestion): Issue {
+  return {
+    ruleId: `suggestion.${s.id}`,
+    severity: "info",
+    message: s.title,
+    fix: { title: `Add a ${s.type} JSON-LD block`, snippet: s.example.snippet, language: "json" },
+    docs: "/rules#suggestions",
+  };
 }
 
 function StubTab({
