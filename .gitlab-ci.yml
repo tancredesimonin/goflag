@@ -1,0 +1,102 @@
+default:
+  image: node:20.11
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+      - node_modules
+
+stages:
+  - install
+  - verify
+  - test
+  - coverage
+
+variables:
+  PNPM_VERSION: "9.15.0"
+  CI: "true"
+
+.pnpm: &pnpm
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir .pnpm-store
+    - pnpm install --frozen-lockfile
+
+install:
+  stage: install
+  <<: *pnpm
+  script:
+    - pnpm --version
+    - node --version
+  artifacts:
+    paths:
+      - node_modules
+    expire_in: 1 hour
+
+lint:
+  stage: verify
+  <<: *pnpm
+  script:
+    - pnpm lint
+
+typecheck:
+  stage: verify
+  <<: *pnpm
+  script:
+    - pnpm typecheck
+
+format-check:
+  stage: verify
+  <<: *pnpm
+  script:
+    - pnpm format:check
+
+test:unit:
+  stage: test
+  <<: *pnpm
+  script:
+    - pnpm test:unit
+
+test:component:
+  stage: test
+  <<: *pnpm
+  script:
+    - pnpm test:component
+
+test:e2e:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.59.1-noble
+  <<: *pnpm
+  script:
+    - pnpm test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - playwright-report
+      - test-results
+    expire_in: 1 week
+
+coverage:
+  stage: coverage
+  <<: *pnpm
+  script:
+    - pnpm test:coverage
+  coverage: '/Lines\s+:\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - coverage
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+    expire_in: 1 week
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
