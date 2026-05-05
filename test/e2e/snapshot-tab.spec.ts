@@ -25,7 +25,10 @@ test.describe("Snapshot tab", () => {
     const target = `${fixtureBase}/fr`;
     await page.goto(`/inspect?url=${encodeURIComponent(target)}&mode=static`);
 
-    await page.getByRole("tab", { name: /^Snapshot/ }).first().click();
+    await page
+      .getByRole("tab", { name: /^Snapshot/ })
+      .first()
+      .click();
 
     // Either empty state (no committed snapshot for /fr) or the
     // identical / diff state (someone committed one). All three are
