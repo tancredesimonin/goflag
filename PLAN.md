@@ -405,32 +405,40 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Goal**: ship the regression guard described in our CI design.
 
-- [ ] **9.1** Snapshot format definition in `src/lib/snapshots/types.ts` (route, sample URL, tags array, jsonld types, structuredFields, normalized values)
-- [ ] **9.2** Snapshot writer + reader: `.headlint/snapshots/<route>.json`
-- [ ] **9.3** Snapshot diff engine: compare two snapshots, classify as `regression` (shape lost) vs `addition` vs `content-drift`
-- [ ] **9.4** Normalizer: applies `config.normalize` rules to volatile fields before saving/comparing
-- [ ] **9.5** CLI: `headlint snapshot [--update]` — show diff vs committed, or update on disk
-- [ ] **9.6** "Snapshot" tab in UI: shows diff vs last committed snapshot, with "Accept changes" button (writes to disk so the dev can commit them). Query the **shadcn studio MCP** for "diff viewer" / "review changes" patterns first.
-- [ ] **9.7** Differential rule runner: `headlint ci <url> --base <ref>` runs against the current state and the merge-base, fails only on _new_ errors
-- [ ] **9.8** PR comment renderer: HTML output with the four-section format (regressions / new warnings / content diffs / pre-existing). **Renders preview cards as PNGs server-side via Playwright (already in the stack) and embeds them inline, Vercel-style** — this is the viral loop: every engineer who sees a preview-card screenshot in their PR becomes a user. When invoked from `headlint diff` (Phase 9.5), renders local vs prod cards side-by-side in the same comment.
-- [ ] **9.9** GitLab CI template (`templates/gitlab-ci.yml`) ready to copy-paste into any project
-- [ ] **9.10** GitHub Actions template (`templates/github-actions.yml`)
-- [ ] **9.11** `headlint ci` exit codes: `0` = clean, `1` = new errors, `2` = structural regression, `3` = both
-- [ ] **9.12** Unit tests: snapshot diff classifier — every transition (added tag, removed tag, content change, JSON-LD type added/removed, structured field added/removed, normalized-volatile change) produces the correct classification
-- [ ] **9.13** Unit tests: normalizer — regex replacement, full-field volatile, nested JSON-LD path normalization
-- [ ] **9.14** Integration tests: synthetic before/after fixture pairs for each lane:
-  - intentional title content edit → no failure
-  - accidental `og:image` drop → Lane 2 failure
-  - new rule violation introduced by PR → Lane 1 failure
-  - rule violation pre-existing on base → reported but no failure
-- [ ] **9.15** E2E (CLI): `headlint ci` against a git-backed fixture repo with two commits, asserts exit code matches the introduced lane(s)
-- [ ] **9.16** Snapshot test: PR comment renderer output matches a committed Markdown/HTML golden file for each of the four section combinations, **plus visual regression baselines for the rendered preview-card PNGs** and a snapshot for the `headlint diff` (Phase 9.5) localhost-vs-prod side-by-side mode
+> **Sub-MR cadence** (per the working agreements). Phase 9 ships in three sub-MRs into `develop`, each independently green:
+> - **MR 9a — foundations** (this MR): 9.1 → 9.6, 9.12, 9.13, lane-classification half of 9.14.
+> - **MR 9b — differential runner**: 9.7, 9.9, 9.10, 9.11, rest of 9.14, 9.15.
+> - **MR 9c — PR comments + screenshots**: 9.8, 9.16.
 
-**Definition of Done**
+- [x] **9.1** Snapshot format definition in `src/lib/snapshots/types.ts` (route, sample URL, tags array, jsonld types/fields, normalized values, rule outcomes, body digest). `SNAPSHOT_SCHEMA_VERSION = 1` is the migration handle. Tag projection is exhaustive and stable: every parsed `Page` field maps to a documented `key` (e.g. `meta:og:image[0]:width`, `link:alternate[hreflang=fr]`, `probe:robots:blocks-all`).
+- [x] **9.2** Snapshot writer + reader: `.headlint/snapshots/<route>.json`. Writes are atomic (temp file + `rename`) so a crash mid-write never leaves a half-written committed file. Schema mismatches throw `SnapshotSchemaError` so the CLI can print a friendly "run with --update" message; corrupted files in `listSnapshots` are silently skipped (don't poison the dev workflow).
+- [x] **9.3** Snapshot diff engine: compare two snapshots, classify as `regression` (shape lost / rule failed) / `addition` / `content-drift`. Coalesces repeated `@type` JSON-LD entries; severity downgrades count as regressions (warning → error).
+- [x] **9.4** Normalizer applies `config.normalize` rules to volatile fields before the digest is computed. Strategies: `hash` (sha256-12 in place), `redact` (`<redacted>` sentinel), `strip` (drop entry/field). Path syntax: `<tag-key>`, `meta:og:image[*]`, `jsonld:<Type>`, `jsonld:<Type>.<field>`. Last matching rule wins (CSS-cascade norm).
+- [x] **9.5** CLI: `headlint snapshot <url> [--update] [--json] [--config] [--no-probes] [--insecure] [--timeout] [--static] [--headless]`. Exit codes: 0 (clean / --update succeeded), 1 (regressions), 2 (no committed snapshot, schema mismatch, or fetch failure).
+- [x] **9.6** "Snapshot" tab in UI shows three states: empty (no committed snapshot — "Save snapshot" CTA), identical (no changes), or diff (regression / addition / content-drift groupings + "Accept changes" CTA). Server action `acceptSnapshot` always re-fetches before writing — never trusts a cached `Page`. _shadcn studio MCP queried for "diff viewer" / "review changes" patterns; nothing in the catalogue matches a developer-tool snapshot panel, so composed from `Card`/`Badge`/primitives the same way Issues was._
+- [ ] **9.7** Differential rule runner: `headlint ci <url> --base <ref>` runs against the current state and the merge-base, fails only on _new_ errors — **MR 9b**.
+- [ ] **9.8** PR comment renderer: HTML output with the four-section format (regressions / new warnings / content diffs / pre-existing). **Renders preview cards as PNGs server-side via Playwright (already in the stack) and embeds them inline, Vercel-style** — this is the viral loop: every engineer who sees a preview-card screenshot in their PR becomes a user. When invoked from `headlint diff` (Phase 9.5), renders local vs prod cards side-by-side in the same comment — **MR 9c**.
+- [ ] **9.9** GitLab CI template (`templates/gitlab-ci.yml`) ready to copy-paste into any project — **MR 9b**.
+- [ ] **9.10** GitHub Actions template (`templates/github-actions.yml`) — **MR 9b**.
+- [ ] **9.11** `headlint ci` exit codes: `0` = clean, `1` = new errors, `2` = structural regression, `3` = both — **MR 9b**.
+- [x] **9.12** Unit tests: snapshot diff classifier — every transition (added tag, removed tag, content change, JSON-LD type added/removed, JSON-LD field added/removed, rule pass→fail / fail→pass, severity worsening / improving) produces the correct classification. 17 test cases in `src/lib/snapshots/diff.test.ts`.
+- [x] **9.13** Unit tests: normalizer — every strategy on every path shape (literal, `[*]` array wildcard, JSON-LD entry-or-field). 10 test cases in `src/lib/snapshots/normalize.test.ts`.
+- [x] **9.14** _Lane-classification half (MR 9a)_: integration tests in `test/integration/cli-snapshot.test.ts` cover three scenarios (clean / structural regression via `og:image` drop / no committed snapshot). Per-lane fixture-repo pairs (rule-pass→fail, pre-existing debt) ship with the differential runner in **MR 9b**.
+- [ ] **9.15** E2E (CLI): `headlint ci` against a git-backed fixture repo with two commits, asserts exit code matches the introduced lane(s) — **MR 9b**.
+- [ ] **9.16** Snapshot test: PR comment renderer output matches a committed Markdown/HTML golden file for each of the four section combinations, **plus visual regression baselines for the rendered preview-card PNGs** and a snapshot for the `headlint diff` (Phase 9.5) localhost-vs-prod side-by-side mode — **MR 9c**.
 
-- A test repo with two commits (one safe, one regressing) produces the expected pass/fail from `headlint ci`.
-- The PR comment template renders correctly with mock data.
-- Tancrède can adopt the CI step on `develop` without breaking existing pipelines (Lane 1 differential mode covers pre-existing debt).
+**Definition of Done** _(closed when all three sub-MRs land)_
+
+- A test repo with two commits (one safe, one regressing) produces the expected pass/fail from `headlint ci`. ← **MR 9b**.
+- The PR comment template renders correctly with mock data. ← **MR 9c**.
+- Tancrède can adopt the CI step on `develop` without breaking existing pipelines (Lane 1 differential mode covers pre-existing debt). ← **MR 9b** + manual verification.
+
+**MR 9a Definition of Done** ✅
+
+- ✅ `pnpm headlint snapshot <url> --update` writes a `Snapshot` JSON to `.headlint/snapshots/<route>.json`; re-running without `--update` returns "no changes since the committed snapshot" (asserted in `test/integration/cli-snapshot.test.ts`).
+- ✅ Mutating the served HTML to drop `og:image`, then re-running `pnpm headlint snapshot <url>`, exits `1` and reports a `meta:og:image[0]` regression.
+- ✅ The in-UI Snapshot tab renders three states (empty / identical / diff) with an "Accept changes" CTA on the diff state; the `acceptSnapshot` server action writes the resolved snapshot to disk after re-fetching.
+- ✅ All gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm verify:i18n-fixture`, `pnpm test` (691 tests across 80 files), `pnpm test:integration` (41 cases including the 5 new `cli-snapshot` specs), `pnpm exec playwright test --project=chromium` (45 specs including the new Snapshot tab E2E), `pnpm build`. `src/lib/snapshots/**` coverage 100/90.8/100/100 (lines/branches/functions/statements).
 
 ---
 
