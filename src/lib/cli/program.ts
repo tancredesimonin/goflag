@@ -1,3 +1,5 @@
+import { resolve as resolvePath } from "node:path";
+
 import { Command } from "commander";
 import open from "open";
 import { inspect } from "../core/inspect";
@@ -8,9 +10,17 @@ import { HeadlessUnavailableError } from "../core/extract/headless";
 import { lint, summariseIssues } from "../core/lint";
 import { renderPageSummary } from "./render-page";
 import { renderIssuesReport } from "./render-issues";
+import { renderSnapshotDiff } from "./render-snapshot";
 import { HEADLINT_VERSION } from "../version";
 import { findFreePort, spawnNextDev } from "./dev-server";
 import { applyFrameworkSnippets, applyRuleConfig, loadConfig } from "../config";
+import {
+  buildSnapshot,
+  diffSnapshots,
+  readSnapshot,
+  SnapshotSchemaError,
+  writeSnapshot,
+} from "../snapshots";
 import { runInit } from "./init";
 
 export interface CliIo {
@@ -270,6 +280,143 @@ export function createProgram(io: CliIo = { stdout: process.stdout, stderr: proc
             );
             process.exitCode = 1;
           }
+        } catch (err) {
+          if (err instanceof HeadlessUnavailableError) {
+            io.stderr.write(`headlint: ${err.message}\n`);
+            io.stderr.write(
+              "headlint: hint — re-run with --static to skip Chromium for this page.\n",
+            );
+            process.exitCode = 2;
+            return;
+          }
+          if (err instanceof FetchError) {
+            io.stderr.write(`headlint: ${err.message}\n`);
+          } else {
+            io.stderr.write(
+              `headlint: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
+            );
+          }
+          process.exitCode = 1;
+        }
+      },
+    );
+
+  program
+    .command("snapshot")
+    .description(
+      "Compare a URL against its committed snapshot, or refresh the snapshot with --update.",
+    )
+    .argument("<url>", "URL to snapshot (http or https)")
+    .option("--update", "Write the new snapshot to disk instead of diffing")
+    .option("--json", "Print the diff (or write result) as JSON")
+    .option("--no-probes", "Skip robots.txt / sitemap.xml / manifest probes")
+    .option("--insecure", "Allow self-signed TLS certificates (use with care)")
+    .option("--timeout <ms>", "Per-request timeout in milliseconds", "15000")
+    .option("--static", "Disable Chromium rendering; only inspect what a non-JS fetch returns")
+    .option("--headless", "Force Chromium rendering even when the static <head> looks complete")
+    .option("--config <path>", "Explicit headlint.config.{ts,js,mjs} path")
+    .action(
+      async (
+        url: string,
+        opts: {
+          update?: boolean;
+          json?: boolean;
+          probes?: boolean;
+          insecure?: boolean;
+          timeout?: string;
+          static?: boolean;
+          headless?: boolean;
+          config?: string;
+        },
+      ) => {
+        const timeoutMs = Number.parseInt(opts.timeout ?? "15000", 10);
+        if (opts.static && opts.headless) {
+          io.stderr.write("headlint: --static and --headless are mutually exclusive\n");
+          process.exitCode = 2;
+          return;
+        }
+        const mode: "auto" | "static" | "headless" = opts.static
+          ? "static"
+          : opts.headless
+            ? "headless"
+            : "auto";
+        try {
+          const configResult = await loadConfig({ file: opts.config });
+          if (!configResult.ok) {
+            for (const line of configResult.errors) io.stderr.write(`headlint: ${line}\n`);
+            process.exitCode = 2;
+            return;
+          }
+          const { config } = configResult;
+          const snapshotDir = resolvePath(
+            process.cwd(),
+            config.snapshot?.dir ?? ".headlint/snapshots",
+          );
+          const page = await inspect(url, {
+            probes: opts.probes !== false,
+            allowInsecureTls: opts.insecure === true,
+            timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 15_000,
+            mode,
+          });
+          const issues = applyFrameworkSnippets(
+            applyRuleConfig(lint(page), config),
+            config.framework,
+          );
+          const next = buildSnapshot(page, {
+            issues,
+            normalize: config.normalize ?? [],
+          });
+
+          if (opts.update) {
+            const written = await writeSnapshot(next, snapshotDir);
+            if (opts.json) {
+              io.stdout.write(
+                `${JSON.stringify(
+                  { schemaVersion: 1, action: "update", route: next.route, written },
+                  null,
+                  2,
+                )}\n`,
+              );
+            } else {
+              io.stdout.write(
+                renderSnapshotDiff(
+                  { route: next.route, identical: true, entries: [] },
+                  { written },
+                ),
+              );
+            }
+            return;
+          }
+
+          let previous;
+          try {
+            previous = await readSnapshot(next.route, snapshotDir);
+          } catch (err) {
+            if (err instanceof SnapshotSchemaError) {
+              io.stderr.write(`headlint: ${err.message}\n`);
+              process.exitCode = 2;
+              return;
+            }
+            throw err;
+          }
+
+          if (!previous) {
+            io.stderr.write(
+              `headlint: no committed snapshot for route "${next.route}". ` +
+                `Run \`headlint snapshot ${url} --update\` to create one.\n`,
+            );
+            process.exitCode = 2;
+            return;
+          }
+
+          const diff = diffSnapshots(previous, next);
+          if (opts.json) {
+            io.stdout.write(`${JSON.stringify({ schemaVersion: 1, ...diff }, null, 2)}\n`);
+          } else {
+            io.stdout.write(renderSnapshotDiff(diff));
+          }
+          const hasRegression = diff.entries.some((e) => e.class === "regression");
+          if (hasRegression) process.exitCode = 1;
         } catch (err) {
           if (err instanceof HeadlessUnavailableError) {
             io.stderr.write(`headlint: ${err.message}\n`);
