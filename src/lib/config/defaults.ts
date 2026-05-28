@@ -5,7 +5,7 @@
  * file has been parsed. Keeping them out of the zod schema (no
  * `.default()`) means a saved or inspected config object always
  * reflects exactly what the user wrote — useful for the future
- * "Settings" UI panel and for snapshot diffs.
+ * "Settings" UI panel.
  */
 
 import type { HeadlintConfig } from "./types";
@@ -25,8 +25,4 @@ export const DEFAULT_CONFIG = {
     followHreflang: true,
   },
   rules: {} as HeadlintConfig["rules"],
-  normalize: [] as NonNullable<HeadlintConfig["normalize"]>,
-  snapshot: {
-    dir: ".headlint/snapshots",
-  },
 };

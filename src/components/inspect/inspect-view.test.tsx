@@ -86,14 +86,13 @@ function makePage(): Page {
 }
 
 describe("<InspectView /> (async server component)", () => {
-  it("renders the header card and the seven tabs (Phase 9 added Snapshot)", async () => {
+  it("renders the header card and the six tabs", async () => {
     const ui = await InspectView({ page: makePage() });
     render(ui);
     expect(screen.getByTestId("header-title")).toHaveTextContent("Hello");
     for (const tab of [
       "tab-previews",
       "tab-issues",
-      "tab-snapshot",
       "tab-raw",
       "tab-structured",
       "tab-i18n",
