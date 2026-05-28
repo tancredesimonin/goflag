@@ -16,7 +16,6 @@ export interface InspectTabsProps {
     structured: ReactNode;
     i18n: ReactNode;
     assets: ReactNode;
-    snapshot: ReactNode;
   };
   /** Counter pills shown on tab triggers — number of issues, JSON-LD blocks, etc. */
   counts?: {
@@ -24,10 +23,9 @@ export interface InspectTabsProps {
     structured?: number;
     i18n?: number;
     assets?: number;
-    snapshot?: number;
   };
   /** Initial active tab. Defaults to "raw" for parity with the Phase 3 UI. */
-  defaultTab?: "previews" | "issues" | "raw" | "structured" | "i18n" | "assets" | "snapshot";
+  defaultTab?: "previews" | "issues" | "raw" | "structured" | "i18n" | "assets";
 }
 
 /**
@@ -59,7 +57,7 @@ export function InspectTabs({ panels, counts = {}, defaultTab = "raw" }: Inspect
       onValueChange={(value) => setActive(value as InspectTabsProps["defaultTab"])}
       className="w-full"
     >
-      <TabsList className="bg-muted/40 grid w-full grid-cols-7">
+      <TabsList className="bg-muted/40 grid w-full grid-cols-6">
         <TabsTrigger value="previews" data-testid="tab-previews">
           Previews
         </TabsTrigger>
@@ -68,14 +66,6 @@ export function InspectTabs({ panels, counts = {}, defaultTab = "raw" }: Inspect
           {counts.issues ? (
             <span className="text-muted-foreground ml-1 text-[10px] tabular-nums">
               {counts.issues}
-            </span>
-          ) : null}
-        </TabsTrigger>
-        <TabsTrigger value="snapshot" data-testid="tab-snapshot">
-          Snapshot
-          {counts.snapshot ? (
-            <span className="text-muted-foreground ml-1 text-[10px] tabular-nums">
-              {counts.snapshot}
             </span>
           ) : null}
         </TabsTrigger>
@@ -110,9 +100,6 @@ export function InspectTabs({ panels, counts = {}, defaultTab = "raw" }: Inspect
       </TabsContent>
       <TabsContent value="assets" className="mt-4 space-y-6">
         {panels.assets}
-      </TabsContent>
-      <TabsContent value="snapshot" className="mt-4">
-        {panels.snapshot}
       </TabsContent>
     </Tabs>
   );

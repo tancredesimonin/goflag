@@ -15,8 +15,6 @@ describe("parseConfig (zod)", () => {
       i18n: { locales: ["en", "fr"], defaultLocale: "en", strictReciprocity: true },
       crawl: { enabled: true, depth: 2, include: ["/blog/**"], concurrency: 4, maxPages: 100 },
       rules: { "title.length": "off", "meta.description.present": { severity: "warn" } },
-      normalize: [{ path: "$.fetch.requestedUrl", strategy: "redact" }],
-      snapshot: { dir: ".headlint/snapshots" },
     });
     expect(result.ok).toBe(true);
   });
@@ -77,13 +75,5 @@ describe("parseConfig (zod)", () => {
   it("rejects unknown severity values for the rule shorthand", () => {
     const result = parseConfig({ rules: { "title.length": "loud" } });
     expect(result.ok).toBe(false);
-  });
-
-  it("rejects normalize entries missing a strategy", () => {
-    const result = parseConfig({ normalize: [{ path: "$.foo" }] });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.some((e) => e.includes("normalize.0.strategy"))).toBe(true);
-    }
   });
 });

@@ -4,7 +4,9 @@
 
 **Stack**: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui (via shadcn studio license) + Playwright + cheerio + pnpm.
 
-**Architecture recap**: a single Next.js app _is_ the product. Server Actions / Route Handlers expose the engine; the same app's pages render the UI. A small Node CLI (`bin/headlint.ts`) either boots the Next.js server (interactive mode) or runs the engine directly (CI mode). Engine code lives in `src/lib/core/` and is imported by both. ~85% code reuse between UI and CI.
+**Architecture recap**: a single Next.js app _is_ the product. Server Actions / Route Handlers expose the engine; the same app's pages render the UI. You run it with `pnpm dev`, open the home page, and paste a URL to inspect. Engine code lives in `src/lib/core/` and stays cleanly separable so a CLI / hosted layer / acquirer platform can reuse it later — but the current scope is the local web app only.
+
+> **Scope note (current focus)**: Headlint is intentionally trimmed to "an easy local tool to preview, lint with a fixed ruleset, and get suggestions". The CLI, snapshots, CI runner, and the localhost-vs-prod diff are **parked** — see _Out of scope for now_ at the bottom. The phases below retain the longer-term vision for context; anything CLI/snapshot/CI/diff-related is deferred, not active.
 
 ---
 
@@ -27,7 +29,7 @@ The existing market is split:
 Nobody owns _"the dev-grade linter for how a site appears in search and social, runnable on localhost and in CI, with rules + fixes + framework-aware suggestions"_. That's the gap.
 
 > **Positioning: "Lighthouse for the `<head>`."**
-> Lint how your site appears in search and social — locally, in CI, and as a diff between localhost and production.
+> Preview and lint how your site appears in search and social — locally, in your browser. _(CI and localhost-vs-prod diff are part of the longer-term vision but parked for now.)_
 
 **In scope** (the moat is depth, not breadth): OG / Twitter / Discord / Slack / iMessage previews, Google SERP rendering, JSON-LD validity, hreflang, robots, sitemap, manifest, favicons.
 **Deliberately out of scope**: performance metrics, accessibility audits, security headers, broken-link crawls. Specialization is the moat.
@@ -55,21 +57,9 @@ These three features exist not just for user value, but as moat, viral loop, and
 
 ---
 
-## CLI surface
+## CLI surface — PARKED
 
-A single flat command tree — every subcommand maps to one verb. No `meta` namespace; the whole product _is_ the head/meta linter.
-
-| Command | Purpose | Phase |
-|---|---|---|
-| `headlint inspect <url>` | Fetch, parse, and dump a `Page` | 1 |
-| `headlint dev <url>` | Boot the local UI for interactive inspection | 3 |
-| `headlint lint <url>` | Run rules, print issues, exit non-zero on errors | 5 |
-| `headlint init` | Interactive scaffolder for `headlint.config.ts` | 8 |
-| `headlint snapshot [--update]` | Diff or update committed snapshots | 9 |
-| `headlint ci <url> --base <ref>` | Differential lint for CI (three-lane runner) | 9 |
-| `headlint diff <local> <prod>` | Localhost-vs-production diff (the wedge) | 9.5 |
-
-Global flags available on every command where meaningful: `--json`, `--report <path.html>`, `--config <path>`.
+> The CLI (`headlint inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point have been **removed from the current scope**. The product runs as a local web app (`pnpm dev`). The engine in `src/lib/core/**` is kept cleanly separable so a CLI can be reintroduced later without an engine rewrite. The historical command tree is preserved in git history and in _Out of scope for now_ below.
 
 ---
 
@@ -85,16 +75,13 @@ Headlint's whole value proposition is "trust me to lint your site". That require
 | **Component** | Vitest + React Testing Library | Every React component in `src/components/**` and `src/lib/previews/**` | Same MR as the component |
 | **Integration** | Vitest | URL → `Page` → `Issue[]` end-to-end through the engine, crawler with multiple URLs, config + rule interactions | Per phase that adds a public engine surface |
 | **Visual regression** | Playwright | Every preview card rendered against fixture data, screenshot-diffed | Phase 4 onward, per preview |
-| **E2E (UI)** | Playwright | Full user flow: `headlint dev` boots, URL inspected, preview tabs render | Phase 3 onward |
-| **E2E (CLI)** | Vitest + child_process | Every CLI command run against a local fixture HTTP server, asserts stdout + exit code | Per CLI command added |
-| **Smoke / packaging** | Shell script in CI | `npm pack` → install in tmp dir → run real command against fixture site | Phase 11 + every release |
+| **E2E (UI)** | Playwright | Full user flow: `pnpm dev` boots, URL inspected, preview tabs render | Phase 3 onward |
 
 ### Coverage thresholds (enforced in CI)
 
-- `src/lib/core/**`, `src/lib/rules/**`, `src/lib/snapshots/**`, `src/lib/suggestions/**`: **≥ 90%** lines and branches
+- `src/lib/core/**`, `src/lib/rules/**`, `src/lib/suggestions/**`: **≥ 90%** lines and branches
 - `src/lib/previews/**`: **100%** of components must have at least one render test + one visual regression
 - `src/components/**`: **≥ 70%** lines
-- `src/lib/cli/**` and `bin/**`: **100%** of commands must have one E2E test
 
 ### Per-rule and per-suggestion contracts
 
@@ -401,9 +388,11 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ---
 
-## Phase 9 — Snapshots + CI (the three-lane runner)
+## Phase 9 — Snapshots + CI (the three-lane runner) — PARKED
 
-**Goal**: ship the regression guard described in our CI design.
+> **Parked / removed from current scope.** The snapshot engine (`src/lib/snapshots/**`), the `snapshot` CLI command, the Snapshot UI tab, and the CI/differential-runner work are not part of the trimmed product. The detail below is kept as a design reference for when this is revived. Nothing here is active.
+
+**Goal** _(deferred)_: ship the regression guard described in our CI design.
 
 > **Sub-MR cadence** (per the working agreements). Phase 9 ships in three sub-MRs into `develop`, each independently green:
 > - **MR 9a — foundations** (this MR): 9.1 → 9.6, 9.12, 9.13, lane-classification half of 9.14.
@@ -442,9 +431,11 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ---
 
-## Phase 9.5 — Localhost vs production diff (the wedge)
+## Phase 9.5 — Localhost vs production diff (the wedge) — PARKED
 
-**Goal**: ship the unique wedge feature no competitor can do — diff a developer's local meta/preview state against the live production state of the same route.
+> **Parked / removed from current scope.** The localhost-vs-prod diff depends on the CLI and the diff engine, both deferred. Kept below as a design reference for revival. Nothing here is active.
+
+**Goal** _(deferred)_: ship the unique wedge feature no competitor can do — diff a developer's local meta/preview state against the live production state of the same route.
 
 **Why this exists** (see _Strategy & business model_ above): every other tool inspects either localhost _or_ a deployed URL, never both. Diffing them is the answer to _"your refactor is about to break the OG tags currently live in production"_. Strategically this phase serves three goals at once:
 
@@ -606,7 +597,17 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ---
 
-## Out of scope for v1 (parked for later)
+## Out of scope for now (parked for later)
+
+**Trimmed from the current build** (the product is now an easy local web tool to preview, lint with a fixed ruleset, and get suggestions). These were removed from the codebase and may return later:
+
+- **CLI** (`headlint inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point. The app runs via `pnpm dev`. The engine stays separable so a CLI can return without a rewrite.
+- **Snapshots + regression guard** (`src/lib/snapshots/**`, the Snapshot UI tab, snapshot config). Was Phase 9.
+- **CI / differential runner + PR comment cards** (Phase 9.7–9.16).
+- **Localhost-vs-production diff** (Phase 9.5).
+- **Shareable HTML reports** (Phase 11.5) and **CLI packaging / `npx` distribution** (Phase 11).
+
+**Longer-term roadmap** (unchanged):
 
 - LLM-assisted suggestions (planned v1.2)
 - Auto-fix codemods (planned v1.3)

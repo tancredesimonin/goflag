@@ -3,7 +3,7 @@
  *
  * Given a resolved `HeadlintConfig` and a list of `Issue`s emitted by
  * the rule runner, produces the filtered/severity-overridden list
- * the CLI and UI actually display. Pure: no engine reach-in, no
+ * the UI actually displays. Pure: no engine reach-in, no
  * mutation of the input array.
  *
  * Rules can be configured in three ways via `config.rules[<id>]`:
@@ -16,8 +16,7 @@
  *     severity/disable).
  *
  * When the same ruleId is overridden but the user picks `"info"`,
- * we coerce to `info` (kept as a valid severity for forward-compat
- * with snapshot diffs).
+ * we coerce to `info`.
  */
 
 import type { Issue, Severity } from "@/lib/core/types";

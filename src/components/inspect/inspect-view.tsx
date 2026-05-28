@@ -1,16 +1,7 @@
-import { resolve as resolvePath } from "node:path";
-
 import type { Issue, Page } from "@/lib/core/types";
 import { lint } from "@/lib/core/lint";
 import { applyFrameworkSnippets, applyRuleConfig, loadConfig } from "@/lib/config";
 import { suggest } from "@/lib/suggestions";
-import {
-  buildSnapshot,
-  diffSnapshots,
-  readSnapshot,
-  SnapshotSchemaError,
-  type SnapshotDiff,
-} from "@/lib/snapshots";
 import { PageHeaderCard } from "./page-header-card";
 import { annotateRawHead } from "./raw/annotations";
 import { highlightHtml } from "@/lib/highlight";
@@ -25,7 +16,6 @@ import { StructuredTab } from "./structured/structured-tab";
 import { SuggestionCard } from "./structured/suggestion-card";
 import type { Suggestion } from "@/lib/structured/types";
 import { I18nTab } from "./i18n/i18n-tab";
-import { SnapshotPanel } from "./snapshot/snapshot-panel";
 
 export interface InspectViewProps {
   page: Page;
@@ -51,38 +41,15 @@ export async function InspectView({ page }: InspectViewProps) {
   const tags = await Promise.all(
     annotated.map(async (t) => ({ ...t, highlighted: await highlightHtml(t.html) })),
   );
-  // The UI applies the same `headlint.config.ts` the CLI uses, so
-  // the Issues panel and the lint command never disagree. Loader
+  // Apply the project's `headlint.config.ts` if one is present. Loader
   // failures fall back to the empty default config — surfacing them
-  // in the UI is left to a future Settings panel (Phase 8 follow-up).
+  // in the UI is left to a future Settings panel.
   const configResult = await loadConfig();
   const config = configResult.ok ? configResult.config : undefined;
   const baseIssues = applyFrameworkSnippets(applyRuleConfig(lint(page), config), config?.framework);
   const suggestions = suggest(page);
   const suggestionIssues: Issue[] = suggestions.map(suggestionToIssue);
   const issues = [...baseIssues, ...suggestionIssues];
-
-  // Project the live page to a snapshot and diff against the committed
-  // baseline (if one exists). Failures in the snapshots layer are
-  // intentionally swallowed here — a corrupted committed file should
-  // not crash the entire inspect view; the panel renders the empty
-  // state instead and the user can fix it from the CLI.
-  const currentSnapshot = buildSnapshot(page, {
-    issues: baseIssues,
-    normalize: config?.normalize ?? [],
-  });
-  let snapshotDiff: SnapshotDiff | null = null;
-  try {
-    const dir = resolvePath(process.cwd(), config?.snapshot?.dir ?? ".headlint/snapshots");
-    const previous = await readSnapshot(currentSnapshot.route, dir);
-    if (previous) snapshotDiff = diffSnapshots(previous, currentSnapshot);
-  } catch (err) {
-    if (!(err instanceof SnapshotSchemaError)) throw err;
-  }
-  const snapshotChangeCount =
-    snapshotDiff && !snapshotDiff.identical
-      ? snapshotDiff.entries.filter((e) => e.class === "regression").length
-      : 0;
 
   // Highlight suggestion snippets in parallel — same trick the Raw tab
   // uses, keeps server time bounded by the slowest snippet.
@@ -103,7 +70,6 @@ export async function InspectView({ page }: InspectViewProps) {
           issues: issues.length,
           structured: page.jsonLd.length + suggestions.length,
           i18n: page.links.alternates.length,
-          snapshot: snapshotChangeCount,
         }}
         panels={{
           previews: <PreviewsTab page={page} />,
@@ -134,13 +100,6 @@ export async function InspectView({ page }: InspectViewProps) {
             </div>
           ),
           i18n: <I18nTab page={page} />,
-          snapshot: (
-            <SnapshotPanel
-              route={currentSnapshot.route}
-              url={page.fetch.requestedUrl}
-              diff={snapshotDiff}
-            />
-          ),
           assets: (
             <>
               <section className="space-y-3" aria-labelledby="favicons-heading">

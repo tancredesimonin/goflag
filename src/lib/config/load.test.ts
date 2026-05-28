@@ -12,7 +12,6 @@ describe("loadConfig", () => {
     if (result.ok) {
       expect(result.source).toBe("default");
       expect(result.config.crawl?.depth).toBe(1);
-      expect(result.config.snapshot?.dir).toBe(".headlint/snapshots");
     }
   });
 

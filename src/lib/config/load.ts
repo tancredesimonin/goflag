@@ -218,8 +218,6 @@ export function applyDefaults(user: HeadlintConfig, cwd: string): HeadlintConfig
     i18n: { ...DEFAULT_CONFIG.i18n, ...user.i18n },
     crawl: { ...DEFAULT_CONFIG.crawl, ...user.crawl },
     rules: { ...DEFAULT_CONFIG.rules, ...user.rules },
-    normalize: user.normalize ?? DEFAULT_CONFIG.normalize,
-    snapshot: { ...DEFAULT_CONFIG.snapshot, ...user.snapshot },
   };
 }
 

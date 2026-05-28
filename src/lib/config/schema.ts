@@ -76,28 +76,13 @@ export const CrawlConfigSchema = z.object({
   followHreflang: z.boolean().optional(),
 });
 
-export const NormalizeRuleSchema = z.object({
-  /** Glob applied to the JSON path of the field to normalise. */
-  path: z.string().min(1),
-  /** Replacement strategy. `"hash"` → SHA-1 first 8 chars,
-   *  `"redact"` → empty string, `"strip"` → drop the field. */
-  strategy: z.enum(["hash", "redact", "strip"]),
-});
-
-export const SnapshotConfigSchema = z.object({
-  /** Directory (relative to CWD) for snapshot JSON files. */
-  dir: z.string().min(1).optional(),
-});
-
 export const ConfigSchema = z.object({
-  /** Base URL the CLI uses to resolve relative `inspect <path>` calls. */
+  /** Base URL used to resolve relative `inspect <path>` calls. */
   baseUrl: z.string().url({ message: "must be an absolute http(s) URL" }).optional(),
   framework: FrameworkEnum.optional(),
   i18n: I18nConfigSchema.optional(),
   crawl: CrawlConfigSchema.optional(),
   rules: z.record(z.string(), RuleSettingSchema).optional(),
-  normalize: z.array(NormalizeRuleSchema).optional(),
-  snapshot: SnapshotConfigSchema.optional(),
 });
 
 /**
