@@ -31,10 +31,12 @@ export interface InspectSidebarItem {
   locale: string;
   /** When the engine produced this entry, formatted for tooltips. */
   storedAt: number;
-  /** HTTP status code from the fetch. */
+  /** HTTP status code from the fetch. `0` for sitemap URLs not yet inspected. */
   status: number;
-  /** Which extractor produced the result. */
-  extractor: "static" | "headless";
+  /** Which extractor produced the result; undefined when not yet inspected. */
+  extractor?: "static" | "headless";
+  /** True when the page has actually been inspected (vs. listed from the sitemap). */
+  inspected: boolean;
 }
 
 export interface InspectSidebarProps {
@@ -102,12 +104,22 @@ export function InspectSidebar({ items, brand = "Headlint" }: InspectSidebarProp
                               </span>
                               <span className="text-muted-foreground/80 flex w-full items-center gap-1 truncate font-mono text-[10px]">
                                 <span className="truncate">{shortUrl(item.url)}</span>
-                                <Badge
-                                  variant={item.status >= 400 ? "destructive" : "secondary"}
-                                  className="ml-auto h-4 px-1 text-[9px] tabular-nums"
-                                >
-                                  {item.status}
-                                </Badge>
+                                {item.inspected ? (
+                                  <Badge
+                                    variant={item.status >= 400 ? "destructive" : "secondary"}
+                                    className="ml-auto h-4 px-1 text-[9px] tabular-nums"
+                                  >
+                                    {item.status}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-muted-foreground/60 ml-auto h-4 px-1 text-[9px] tracking-wide uppercase"
+                                    title="Listed from the sitemap — not inspected yet"
+                                  >
+                                    sitemap
+                                  </Badge>
+                                )}
                                 {item.extractor === "headless" ? (
                                   <Badge
                                     variant="outline"

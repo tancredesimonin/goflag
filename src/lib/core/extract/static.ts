@@ -64,8 +64,14 @@ function extractRaw($: cheerio.CheerioAPI): RawHead {
   const html = $("html").first();
   const baseEl = $("head base").first();
 
+  // React 19 / Next 15 streaming SSR emits hoistable metadata (`<title>`,
+  // `<meta>`, `<link>`, JSON-LD) inside `<body>`; the browser hoists them
+  // into `<head>` at parse time, and social scrapers read them wherever
+  // they appear. Scoping to `<head>` alone would miss every tag on these
+  // increasingly common pages, so we collect document-wide (the legacy
+  // head-only case is a strict subset).
   const head: RawHead = {
-    title: trim($("head title").first().text()) || undefined,
+    title: pickTitle($),
     htmlLang: attr(html, "lang"),
     htmlDir: attr(html, "dir"),
     baseHref: attr(baseEl, "href"),
@@ -74,17 +80,36 @@ function extractRaw($: cheerio.CheerioAPI): RawHead {
     scripts: [],
   };
 
-  $("head meta").each((_, el) => {
+  $("meta").each((_, el) => {
     head.metas.push(toRawMeta($, el));
   });
-  $("head link").each((_, el) => {
+  $("link").each((_, el) => {
     head.links.push(toRawLink($, el));
   });
-  $('head script[type="application/ld+json"]').each((_, el) => {
+  $('script[type="application/ld+json"]').each((_, el) => {
     head.scripts.push(toRawScript($, el));
   });
 
   return head;
+}
+
+/**
+ * Document title, preferring a real `<head><title>` but falling back to
+ * the first `<title>` rendered in the body (React 19 hoistables). SVG
+ * `<title>` elements are skipped — they're accessibility labels for
+ * inline icons, not the document title.
+ */
+function pickTitle($: cheerio.CheerioAPI): string | undefined {
+  const headTitle = trim($("head title").first().text());
+  if (headTitle) return headTitle;
+  let found: string | undefined;
+  $("title").each((_, el) => {
+    if (found) return;
+    if ($(el).parents("svg").length > 0) return;
+    const text = trim($(el).text());
+    if (text) found = text;
+  });
+  return found || undefined;
 }
 
 function toRawMeta($: cheerio.CheerioAPI, el: ReturnType<cheerio.CheerioAPI>[number]): RawMetaTag {
