@@ -35,11 +35,6 @@ export function I18nTab({ page, crawledPages }: I18nTabProps) {
   const brokenPairs = brokenPairKeys(matrix.routes, issues);
 
   const counts = countIssues(issues);
-  const totalAlternates = matrix.routes.reduce((acc, r) => {
-    return (
-      acc + matrix.locales.reduce((rowAcc, l) => rowAcc + (matrix.cells[r]?.[l]?.url ? 1 : 0), 0)
-    );
-  }, 0);
 
   return (
     <div className="space-y-4" data-testid="i18n-tab">
@@ -47,10 +42,6 @@ export function I18nTab({ page, crawledPages }: I18nTabProps) {
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="text-sm font-medium">Hreflang matrix</CardTitle>
-            <p className="text-muted-foreground text-xs">
-              {matrix.routes.length} route(s) × {matrix.locales.length} locale(s) —{" "}
-              {totalAlternates} cell(s) declared.
-            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {counts.error > 0 ? (
@@ -113,16 +104,6 @@ export function I18nTab({ page, crawledPages }: I18nTabProps) {
             </ul>
           </CardContent>
         </Card>
-      ) : null}
-
-      {!crawledPages || crawledPages.length === 0 ? (
-        <p className="text-muted-foreground/80 text-xs">
-          Tip: run{" "}
-          <code className="bg-muted rounded px-1">
-            headlint inspect &lt;url&gt; --crawl --depth 2
-          </code>{" "}
-          to populate every route × locale cell.
-        </p>
       ) : null}
     </div>
   );

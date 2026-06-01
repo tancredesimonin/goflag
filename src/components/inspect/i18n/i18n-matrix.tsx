@@ -71,7 +71,7 @@ export function I18nMatrixGrid({ matrix, brokenPairs }: I18nMatrixProps) {
         {matrix.routes.map((route) => (
           <div
             key={route}
-            className="divide-border/40 grid divide-x"
+            className="divide-border/40 col-span-full grid divide-x"
             style={{ gridTemplateColumns: gridTemplate }}
             data-testid="i18n-matrix-row"
             data-route={route}
