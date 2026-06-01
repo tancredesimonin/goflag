@@ -1,33 +1,28 @@
 "use client";
 
 /**
- * Previews tab — gallery of all platform unfurls, "What if?" toggle drawer
- * that lets the user suppress individual `<head>` tags and watch every
- * preview degrade in real time.
+ * Previews tab — a single scrolling column of every platform unfurl with a
+ * sticky, scroll-linked sidebar, plus a "What if?" toggle drawer that lets
+ * the user suppress individual `<head>` tags and watch every preview degrade
+ * in real time.
  *
  * Architecture:
  *
- *  - The tab is a single client component holding two pieces of state:
- *      1. `removed` — `Set<TagKey>` driving the resolver re-runs.
- *      2. `focus` — optional platform id; null means "show the gallery",
- *         non-null means "show one big preview centered, with the others
- *         as a strip on the side". Clicking a card from the gallery opens
- *         focus; clicking the back button closes it.
+ *  - The tab is a single client component holding one piece of state:
+ *      `removed` — `Set<TagKey>` driving the resolver re-runs.
+ *  - Every preview is rendered, stacked vertically one per row. The sidebar
+ *    lists each platform (grouped by category); clicking an entry smooth
+ *    scrolls to that preview, and a scroll spy highlights whichever preview
+ *    is currently in view.
  *  - All resolution happens client-side via {@link resolvePreview}, so the
  *    cards re-render immediately as the toggles change. The resolver is
  *    pure and cheap (it walks `page.raw.metas` once per platform).
  */
 
-import { useMemo, useState } from "react";
-import { ChevronLeft, Eye, EyeOff, RotateCcw, Sliders } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Eye, EyeOff, RotateCcw, Sliders } from "lucide-react";
 import type { Page } from "@/lib/core/types";
-import {
-  PREVIEW_COMPONENTS,
-  PREVIEW_PLATFORMS,
-  listTagKeys,
-  resolvePreview,
-  type PreviewPlatform,
-} from "@/lib/previews";
+import { PREVIEW_COMPONENTS, PREVIEW_PLATFORMS, listTagKeys, resolvePreview } from "@/lib/previews";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +37,6 @@ interface PreviewsTabProps {
 export function PreviewsTab({ page }: PreviewsTabProps) {
   const allTags = useMemo(() => listTagKeys(page), [page]);
   const [removed, setRemoved] = useState<Set<string>>(() => new Set());
-  const [focus, setFocus] = useState<PreviewPlatform | null>(null);
 
   const toggle = (key: string) => {
     setRemoved((prev) => {
@@ -65,21 +59,8 @@ export function PreviewsTab({ page }: PreviewsTabProps) {
 
   return (
     <div className="space-y-4" data-testid="previews-tab">
-      <Toolbar
-        page={page}
-        allTags={allTags}
-        removed={removed}
-        toggle={toggle}
-        reset={reset}
-        focus={focus}
-        onClearFocus={() => setFocus(null)}
-      />
-
-      {focus === null ? (
-        <Gallery page={page} data={data} onFocus={(p) => setFocus(p)} />
-      ) : (
-        <Focused page={page} platform={focus} data={data} onPick={setFocus} />
-      )}
+      <Toolbar allTags={allTags} removed={removed} toggle={toggle} reset={reset} />
+      <PreviewsStack page={page} data={data} />
     </div>
   );
 }
@@ -89,36 +70,18 @@ export function PreviewsTab({ page }: PreviewsTabProps) {
 // ---------------------------------------------------------------------------
 
 function Toolbar({
-  page,
   allTags,
   removed,
   toggle,
   reset,
-  focus,
-  onClearFocus,
 }: {
-  page: Page;
   allTags: ReturnType<typeof listTagKeys>;
   removed: Set<string>;
   toggle: (k: string) => void;
   reset: () => void;
-  focus: PreviewPlatform | null;
-  onClearFocus: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {focus !== null && (
-        <Button variant="ghost" size="sm" onClick={onClearFocus} data-testid="previews-back">
-          <ChevronLeft className="size-4" />
-          Back to gallery
-        </Button>
-      )}
-      <div className="text-muted-foreground text-xs">
-        Resolving against{" "}
-        <span className="font-mono text-[11px]">
-          {new URL(page.fetch.finalUrl).host.replace(/^www\./, "")}
-        </span>
-      </div>
       <div className="ml-auto flex items-center gap-2">
         {removed.size > 0 && (
           <Badge variant="outline" data-testid="previews-removed-count">
@@ -205,135 +168,118 @@ function Toolbar({
 }
 
 // ---------------------------------------------------------------------------
-// Gallery & Focus views
+// Stacked previews + scroll-linked sidebar
 // ---------------------------------------------------------------------------
 
-function Gallery({
-  page,
-  data,
-  onFocus,
-}: {
-  page: Page;
-  data: ReturnType<
-    typeof useMemo<
-      {
-        platform: (typeof PREVIEW_PLATFORMS)[number];
-        resolved: ReturnType<typeof resolvePreview>;
-      }[]
-    >
-  >;
-  onFocus: (p: PreviewPlatform) => void;
-}) {
+type PreviewItem = {
+  platform: (typeof PREVIEW_PLATFORMS)[number];
+  resolved: ReturnType<typeof resolvePreview>;
+};
+
+function PreviewsStack({ page, data }: { page: Page; data: PreviewItem[] }) {
+  const sections = useRef<Record<string, HTMLElement | null>>({});
+  const [active, setActive] = useState<string>(() => data[0]?.platform.id ?? "");
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const els = Object.values(sections.current).filter((el): el is HTMLElement => el !== null);
+    if (els.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const id = visible[0]?.target.getAttribute("data-platform");
+        if (id) setActive(id);
+      },
+      // Bias the "active" zone toward the top third of the viewport so the
+      // highlight tracks the preview the reader is actually looking at.
+      { rootMargin: "-15% 0px -70% 0px", threshold: 0 },
+    );
+
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [data]);
+
+  const scrollTo = (id: string) => {
+    setActive(id);
+    sections.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const groups = useMemo(() => groupByCategory(data), [data]);
 
   return (
-    <div className="space-y-6" data-testid="previews-gallery">
-      {groups.map(({ name, items }) => (
-        <section key={name} className="space-y-3">
-          <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-            {name}
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
-            {items.map(({ platform, resolved }) => {
-              const Comp = PREVIEW_COMPONENTS[platform.id];
-              return (
-                <Card
-                  key={platform.id}
-                  className={cn("overflow-hidden")}
-                  data-testid="preview-tile"
-                  data-platform={platform.id}
-                >
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{platform.name}</CardTitle>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => onFocus(platform.id)}
-                      data-testid="preview-focus"
-                    >
-                      Focus
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="flex justify-center pt-0">
-                    <Comp data={resolved} page={page} />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function Focused({
-  page,
-  platform,
-  data,
-  onPick,
-}: {
-  page: Page;
-  platform: PreviewPlatform;
-  data: ReturnType<
-    typeof useMemo<
-      {
-        platform: (typeof PREVIEW_PLATFORMS)[number];
-        resolved: ReturnType<typeof resolvePreview>;
-      }[]
-    >
-  >;
-  onPick: (p: PreviewPlatform) => void;
-}) {
-  const item = data.find((d) => d.platform.id === platform);
-  if (!item) return null;
-  const Comp = PREVIEW_COMPONENTS[platform];
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_220px]" data-testid="previews-focus">
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle className="text-base font-medium">{item.platform.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex justify-center">
-          <Comp data={item.resolved} page={page} />
-        </CardContent>
-      </Card>
+    <div className="grid gap-6 lg:grid-cols-[200px_1fr]" data-testid="previews-stack">
       <nav
-        aria-label="All platforms"
-        className="bg-card/40 max-h-[600px] overflow-y-auto rounded-md border p-2"
+        aria-label="Jump to preview"
+        className="bg-card/40 self-start rounded-md border p-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+        data-testid="previews-nav"
       >
-        <ul className="space-y-1">
-          {data.map(({ platform: p }) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                onClick={() => onPick(p.id)}
-                className={cn(
-                  "hover:bg-muted/60 w-full rounded px-2 py-1.5 text-left text-xs",
-                  p.id === platform && "bg-muted text-foreground",
-                )}
-                data-testid="preview-focus-pick"
-                data-platform={p.id}
-              >
-                {p.name}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {groups.map(({ name, items }) =>
+          items.length === 0 ? null : (
+            <div key={name} className="mb-2 last:mb-0">
+              <div className="text-muted-foreground px-2 py-1 text-[10px] font-medium tracking-wider uppercase">
+                {name}
+              </div>
+              <ul className="space-y-0.5">
+                {items.map(({ platform }) => (
+                  <li key={platform.id}>
+                    <button
+                      type="button"
+                      onClick={() => scrollTo(platform.id)}
+                      className={cn(
+                        "hover:bg-muted/60 w-full rounded px-2 py-1.5 text-left text-xs transition-colors",
+                        platform.id === active && "bg-muted text-foreground font-medium",
+                      )}
+                      aria-current={platform.id === active ? "true" : undefined}
+                      data-testid="previews-nav-link"
+                      data-platform={platform.id}
+                    >
+                      {platform.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ),
+        )}
       </nav>
+
+      <div className="min-w-0 space-y-6">
+        {data.map(({ platform, resolved }) => {
+          const Comp = PREVIEW_COMPONENTS[platform.id];
+          return (
+            <section
+              key={platform.id}
+              id={`preview-${platform.id}`}
+              ref={(el) => {
+                sections.current[platform.id] = el;
+              }}
+              className="scroll-mt-4"
+              data-platform={platform.id}
+            >
+              <Card
+                className="overflow-hidden"
+                data-testid="preview-tile"
+                data-platform={platform.id}
+              >
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">{platform.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-center pt-0">
+                  <Comp data={resolved} page={page} />
+                </CardContent>
+              </Card>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function groupByCategory(
-  data: Array<{
-    platform: (typeof PREVIEW_PLATFORMS)[number];
-    resolved: ReturnType<typeof resolvePreview>;
-  }>,
-) {
+function groupByCategory(data: PreviewItem[]) {
   const order = ["search", "social", "messaging"] as const;
   const labels: Record<(typeof order)[number], string> = {
     search: "Search",

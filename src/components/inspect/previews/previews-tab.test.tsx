@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PreviewsTab } from "./previews-tab";
 import { tancredeFull, missingImagePage, PREVIEW_PLATFORMS } from "@/lib/previews";
 
 describe("PreviewsTab", () => {
-  it("renders one tile per platform, grouped by category", () => {
+  it("renders one tile per platform, stacked one per row", () => {
     render(<PreviewsTab page={tancredeFull} />);
     const tiles = screen.getAllByTestId("preview-tile");
     expect(tiles).toHaveLength(PREVIEW_PLATFORMS.length);
@@ -18,16 +18,16 @@ describe("PreviewsTab", () => {
     }
   });
 
-  it("opening Focus on a tile switches to the focused single-card view", () => {
+  it("renders a scroll-linked sidebar with one nav link per platform", () => {
     render(<PreviewsTab page={tancredeFull} />);
-    const tile = screen
-      .getAllByTestId("preview-tile")
-      .find((t) => t.getAttribute("data-platform") === "facebook")!;
-    fireEvent.click(within(tile).getByTestId("preview-focus"));
-    expect(screen.getByTestId("previews-focus")).toBeInTheDocument();
-    expect(screen.queryByTestId("previews-gallery")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("previews-back"));
-    expect(screen.getByTestId("previews-gallery")).toBeInTheDocument();
+    const links = screen.getAllByTestId("previews-nav-link");
+    expect(links).toHaveLength(PREVIEW_PLATFORMS.length);
+    for (const p of PREVIEW_PLATFORMS) {
+      expect(
+        links.some((l) => l.getAttribute("data-platform") === p.id),
+        `nav link for ${p.id} must exist`,
+      ).toBe(true);
+    }
   });
 
   it("'What if?' suppression of og:image visibly removes images from X / Facebook / LinkedIn", async () => {
