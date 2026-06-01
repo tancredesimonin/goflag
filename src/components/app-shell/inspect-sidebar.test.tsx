@@ -17,6 +17,7 @@ const items: InspectSidebarItem[] = [
     storedAt: 0,
     status: 200,
     extractor: "static",
+    inspected: true,
   },
   {
     url: "https://example.com/fr",
@@ -26,6 +27,7 @@ const items: InspectSidebarItem[] = [
     storedAt: 0,
     status: 200,
     extractor: "headless",
+    inspected: true,
   },
   {
     url: "https://example.com/dead",
@@ -35,6 +37,7 @@ const items: InspectSidebarItem[] = [
     storedAt: 0,
     status: 404,
     extractor: "static",
+    inspected: true,
   },
 ];
 

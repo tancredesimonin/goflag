@@ -36,6 +36,31 @@ describe("extractStatic — raw inventory", () => {
     expect(page.raw.links.length).toBeGreaterThanOrEqual(11);
     expect(page.raw.scripts.length).toBe(4);
   });
+
+  it("captures hoistable metadata rendered in <body> (React 19 / Next 15 streaming SSR)", () => {
+    // React streams `<title>`/`<meta>`/`<link>` into the body; the browser
+    // and social scrapers hoist them into the head. We must too, otherwise
+    // every Next 15 App Router page looks like an empty SPA shell.
+    const html = `<!doctype html><html lang="fr"><head><meta charSet="utf-8"/></head><body>
+      <div>content</div>
+      <title>Services</title>
+      <meta property="og:title" content="Services"/>
+      <meta property="og:image" content="https://x.com/og.png"/>
+      <link rel="canonical" href="https://x.com/fr/services"/>
+    </body></html>`;
+    const page = extractStatic(html, { baseUrl: "https://x.com/fr/services" });
+    expect(page.raw.title).toBe("Services");
+    expect(page.meta.title?.value).toBe("Services");
+    expect(page.openGraph.title?.value).toBe("Services");
+    expect(page.openGraph.images[0]?.url.value).toBe("https://x.com/og.png");
+    expect(page.links.canonical).toBe("https://x.com/fr/services");
+  });
+
+  it("ignores <title> inside inline SVG when no real title exists", () => {
+    const html = `<!doctype html><html><head></head><body><svg><title>icon label</title></svg></body></html>`;
+    const page = extractStatic(html, { baseUrl: "https://x.com/" });
+    expect(page.raw.title).toBeUndefined();
+  });
 });
 
 describe("extractStatic — generic meta", () => {

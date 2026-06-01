@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { UrlForm } from "@/components/inspect/url-form";
+import { SiteForm } from "@/components/site/site-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
@@ -9,7 +10,12 @@ export default function HomePage() {
         <Link href="/" className="text-sm font-semibold tracking-tight">
           Headlint
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <Link href="/site" className="text-muted-foreground hover:text-foreground text-sm">
+            Site
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-start justify-center gap-8 px-6 py-16">
@@ -33,6 +39,18 @@ export default function HomePage() {
           <p className="text-muted-foreground/80 mt-2 text-xs">
             Headlint fetches the page, parses it, and (for SPAs) re-renders it in headless Chromium
             to capture client-injected metadata.
+          </p>
+        </section>
+
+        <section className="w-full" aria-labelledby="explore-heading">
+          <h2 id="explore-heading" className="mb-3 text-sm font-medium tracking-wide uppercase">
+            Explore a whole site
+          </h2>
+          <SiteForm />
+          <p className="text-muted-foreground/80 mt-2 text-xs">
+            From a base URL, Headlint finds the sitemap (or crawls), checks that it&apos;s
+            well-formed and declared in <code>robots.txt</code>, then lists every page so you can
+            inspect any of them — not just the homepage.
           </p>
         </section>
       </main>
