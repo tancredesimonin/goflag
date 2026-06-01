@@ -115,18 +115,19 @@ test.describe("previews tab", () => {
     await expect(findImg("facebook")).toBeVisible();
   });
 
-  test("Focus mode opens a single preview and Back returns to the gallery", async ({ page }) => {
+  test("sidebar nav links scroll to the matching preview", async ({ page }) => {
     await stubImages(page);
     const target = `${fixtureBase}/fr?mode=static`;
     await page.goto(`/inspect?url=${encodeURIComponent(target)}`);
     await page.getByRole("tab", { name: "Previews" }).first().click();
-    await page
-      .locator(
-        '[data-testid="preview-tile"][data-platform="discord"] [data-testid="preview-focus"]',
-      )
-      .click();
-    await expect(page.getByTestId("previews-focus")).toBeVisible();
-    await page.getByTestId("previews-back").click();
-    await expect(page.getByTestId("previews-gallery")).toBeVisible();
+
+    // One nav link per platform, all rendered together.
+    await expect(page.getByTestId("previews-nav-link")).toHaveCount(11);
+
+    // Clicking a nav link scrolls its preview into view.
+    await page.locator('[data-testid="previews-nav-link"][data-platform="discord"]').click();
+    await expect(
+      page.locator('[data-testid="preview-tile"][data-platform="discord"]'),
+    ).toBeInViewport();
   });
 });
