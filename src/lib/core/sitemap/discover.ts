@@ -170,7 +170,6 @@ export async function discoverSitemap(
     // fall back to crawling so the user still gets a page list (common for
     // freshly-deployed sites that ship an empty `<urlset>`).
     if (collected.length === 0 && options.crawlFallback !== false) {
-      diagnostics.warnings.push("Sitemap found but lists no URLs — crawling instead.");
       return crawlSite(baseUrl, origin, options, diagnostics);
     }
 
@@ -217,15 +216,11 @@ async function crawlSite(
   });
   const urls = dedupe(result.visited).map((loc) => ({ loc }));
   diagnostics.urlCount = urls.length;
-  if (!diagnostics.found) {
-    diagnostics.warnings.push(
-      urls.length === 0
-        ? "No sitemap found and the crawl returned no pages."
-        : "No sitemap found — URLs were discovered by crawling links.",
-    );
-  } else if (urls.length === 0) {
-    diagnostics.warnings.push("The crawl returned no pages either.");
-  }
+  diagnostics.warnings.push(
+    diagnostics.found
+      ? "Sitemap found but lists no URLs — crawled the site instead."
+      : "No sitemap found — URLs were discovered by crawling links.",
+  );
   return {
     origin,
     baseUrl,

@@ -184,4 +184,69 @@ describe("discoverSitemap", () => {
     expect(result.diagnostics.found).toBe(false);
     expect(result.diagnostics.warnings).toContain("No sitemap found.");
   });
+
+  it("skips a declared sitemap that 404s and uses the well-known path", async () => {
+    routes.set("/robots.txt", { status: 200, body: `Sitemap: ${baseUrl}/declared.xml\n` });
+    routes.set("/sitemap.xml", { status: 200, body: urlset("/a") });
+
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.source).toBe("well-known");
+    expect(result.diagnostics.found).toBe(true);
+    expect(result.urls).toHaveLength(1);
+  });
+
+  it("warns on a malformed sitemap and keeps looking", async () => {
+    routes.set("/sitemap.xml", { status: 200, body: `<html><body>not a sitemap</body></html>` });
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.diagnostics.found).toBe(false);
+    expect(result.diagnostics.warnings.some((w) => w.includes("Malformed"))).toBe(true);
+  });
+
+  it("caps the number of child sitemaps followed", async () => {
+    routes.set("/sitemap.xml", {
+      status: 200,
+      body: `<sitemapindex><sitemap><loc>${baseUrl}/sm-1.xml</loc></sitemap><sitemap><loc>${baseUrl}/sm-2.xml</loc></sitemap></sitemapindex>`,
+    });
+    routes.set("/sm-1.xml", { status: 200, body: urlset("/p1") });
+    routes.set("/sm-2.xml", { status: 200, body: urlset("/p2") });
+
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false, maxSitemaps: 1 });
+    expect(result.urls).toEqual([{ loc: `${baseUrl}/p1` }]);
+    expect(result.truncated).toBe(true);
+    expect(result.diagnostics.warnings.some((w) => w.includes("only the first 1"))).toBe(true);
+  });
+
+  it("stops collecting child URLs once maxUrls is reached", async () => {
+    routes.set("/sitemap.xml", {
+      status: 200,
+      body: `<sitemapindex><sitemap><loc>${baseUrl}/sm-1.xml</loc></sitemap><sitemap><loc>${baseUrl}/sm-2.xml</loc></sitemap></sitemapindex>`,
+    });
+    routes.set("/sm-1.xml", { status: 200, body: urlset("/p1") });
+    routes.set("/sm-2.xml", { status: 200, body: urlset("/p2") });
+
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false, maxUrls: 1 });
+    expect(result.urls).toHaveLength(1);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("falls back to raw text when a .gz payload is not actually gzipped", async () => {
+    routes.set("/robots.txt", { status: 200, body: `Sitemap: ${baseUrl}/sitemap.xml.gz\n` });
+    routes.set("/sitemap.xml.gz", {
+      status: 200,
+      contentType: "application/gzip",
+      body: urlset("/plain"), // declared .gz but served uncompressed
+    });
+
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.urls).toEqual([{ loc: `${baseUrl}/plain` }]);
+  });
+
+  it("honours allowInsecureTls without affecting plain http", async () => {
+    routes.set("/sitemap.xml", { status: 200, body: urlset("/a") });
+    const result = await discoverSitemap(baseUrl, {
+      crawlFallback: false,
+      allowInsecureTls: true,
+    });
+    expect(result.urls).toHaveLength(1);
+  });
 });
