@@ -202,13 +202,21 @@ function pickFavicon(
   const live = page.raw.links.filter((l) => !linkSuppressed(l, removed));
   const apple = live.find((l) => l.rel.toLowerCase() === "apple-touch-icon");
   if (apple?.href) {
-    return { url: apple.href, origin: { kind: "link", rel: "apple-touch-icon" } };
+    return {
+      url: resolveAssetUrl(apple.href, page.fetch.finalUrl),
+      origin: { kind: "link", rel: "apple-touch-icon" },
+    };
   }
   const icons = live.filter((l) => /^(?:shortcut icon|icon|mask-icon)$/i.test(l.rel));
   if (icons.length > 0) {
     const sorted = [...icons].sort((a, b) => maxSizeOf(b) - maxSizeOf(a));
     const best = sorted[0]!;
-    if (best.href) return { url: best.href, origin: { kind: "link", rel: best.rel } };
+    if (best.href) {
+      return {
+        url: resolveAssetUrl(best.href, page.fetch.finalUrl),
+        origin: { kind: "link", rel: best.rel },
+      };
+    }
   }
   // Convention fallback: /favicon.ico relative to the document URL.
   try {
@@ -216,6 +224,20 @@ function pickFavicon(
     return { url: u.toString(), origin: { kind: "computed" } };
   } catch {
     return { url: undefined };
+  }
+}
+
+/**
+ * Resolve a possibly-relative asset `href` against the document's final URL so
+ * preview cards request the asset from the inspected origin rather than the
+ * headlint app's own origin. Falls back to the raw href when it cannot be
+ * parsed (e.g. when the final URL is itself invalid).
+ */
+function resolveAssetUrl(href: string, base: string): string {
+  try {
+    return new URL(href, base).toString();
+  } catch {
+    return href;
   }
 }
 

@@ -176,5 +176,20 @@ describe("resolvePreview", () => {
       expect(data.favicon.value).toContain("/favicon.ico");
       expect(data.favicon.source?.key).toBe("computed:favicon-fallback");
     });
+
+    it("resolves a relative apple-touch-icon href against the final URL", () => {
+      // tancredeFull declares href="/apple-touch-icon.png" with finalUrl
+      // https://tancrede.dev/. The preview <img> must point at the inspected
+      // origin, not the headlint app, so the URL has to be absolute.
+      const data = resolvePreview("google-serp-desktop", tancredeFull);
+      expect(data.favicon.value).toBe("https://tancrede.dev/apple-touch-icon.png");
+    });
+
+    it("resolves a relative <link rel=icon> href against the final URL", () => {
+      const data = resolvePreview("google-serp-desktop", tancredeFull, {
+        removed: new Set(["link:rel=apple-touch-icon"]),
+      });
+      expect(data.favicon.value).toBe("https://tancrede.dev/favicon.ico");
+    });
   });
 });
