@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { analyzeEntries, analyzeSitemapHealth, parseWildcardDisallows } from "./analyze";
+import {
+  analyzeEntries,
+  analyzeSitemapHealth,
+  parseWildcardDisallows,
+  pathDisallowed,
+} from "./analyze";
 import { discoverSitemap } from "./discover";
 import type { SiteDiscovery } from "./types";
 import {
@@ -54,6 +59,16 @@ describe("parseWildcardDisallows", () => {
   });
 });
 
+describe("pathDisallowed", () => {
+  it("matches root, prefix, exact, and trailing-wildcard rules", () => {
+    expect(pathDisallowed("/anything", "/")).toBe(true);
+    expect(pathDisallowed("/blog/post", "/blog")).toBe(true);
+    expect(pathDisallowed("/admin", "/admin")).toBe(true);
+    expect(pathDisallowed("/files/x.pdf", "/files/*")).toBe(true);
+    expect(pathDisallowed("/public", "/private")).toBe(false);
+  });
+});
+
 describe("analyzeSitemapHealth — real fetch path", () => {
   let server: AuditFixtureServer;
   let discovery: SiteDiscovery;
@@ -100,5 +115,15 @@ describe("analyzeSitemapHealth — real fetch path", () => {
     });
     expect(health.orphanCount).toBe(1);
     expect(health.orphans).toContain(`${server.url}/orphan`);
+  });
+
+  it("skips reachability probing when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const health = await analyzeSitemapHealth(discovery, {
+      signal: controller.signal,
+      sleep: noSleep,
+    });
+    expect(health.reachable.checked).toBe(0);
   });
 });

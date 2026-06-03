@@ -212,7 +212,7 @@ export function parseWildcardDisallows(raw: string): string[] {
 }
 
 /** A minimal robots path-prefix match (supports a trailing `*` wildcard). */
-function pathDisallowed(path: string, rule: string): boolean {
+export function pathDisallowed(path: string, rule: string): boolean {
   if (rule === "/") return true;
   if (rule.endsWith("*")) return path.startsWith(rule.slice(0, -1));
   return path === rule || path.startsWith(rule);

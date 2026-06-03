@@ -74,3 +74,49 @@ describe("listHosts", () => {
     expect(listHosts(report())).toEqual(["other.example", "site.example"]);
   });
 });
+
+describe("buildLinkRows tie-breakers and fallbacks", () => {
+  it("orders same-verdict rows by reference count then URL", () => {
+    const a = check("https://site.example/a", "broken", 404); // 1 source
+    const b = check("https://site.example/b", "broken", 404); // 2 sources
+    const c = check("https://site.example/c", "broken", 404); // 1 source, sorts after /a
+    const r: LinkAuditReport = {
+      origin: "https://site.example",
+      baseUrl: "https://site.example",
+      pagesScanned: 1,
+      occurrences: [
+        { pageUrl: "p1", ref: ref(a.url, "internal", "a") },
+        { pageUrl: "p1", ref: ref(b.url, "internal", "b") },
+        { pageUrl: "p2", ref: ref(b.url, "internal", "b2") },
+        { pageUrl: "p1", ref: ref(c.url, "internal", "c") },
+      ],
+      checks: { [a.url]: a, [b.url]: b, [c.url]: c },
+      summary: emptyVerdictSummary(),
+      brokenByPage: [],
+      truncated: false,
+      diagnostics: { pagesFailed: 0, warnings: [] },
+    };
+    const urls = buildLinkRows(r).map((row) => row.check.url);
+    expect(urls[0]).toBe(b.url); // most references first
+    expect(urls.indexOf(a.url)).toBeLessThan(urls.indexOf(c.url)); // then alpha
+  });
+
+  it("falls back gracefully for an un-parseable check URL with no occurrences", () => {
+    const weird = check(":::not a url", "skipped", 0);
+    const r: LinkAuditReport = {
+      origin: "https://site.example",
+      baseUrl: "https://site.example",
+      pagesScanned: 1,
+      occurrences: [],
+      checks: { [weird.url]: weird },
+      summary: emptyVerdictSummary(),
+      brokenByPage: [],
+      truncated: false,
+      diagnostics: { pagesFailed: 0, warnings: [] },
+    };
+    const rows = buildLinkRows(r);
+    expect(rows[0]?.kind).toBe("external");
+    expect(rows[0]?.host).toBe(":::not a url");
+    expect(rows[0]?.sources).toEqual([]);
+  });
+});
