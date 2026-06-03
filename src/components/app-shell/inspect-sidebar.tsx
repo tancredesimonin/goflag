@@ -37,6 +37,8 @@ export interface InspectSidebarItem {
   extractor?: "static" | "headless";
   /** True when the page has actually been inspected (vs. listed from the sitemap). */
   inspected: boolean;
+  /** Number of broken links found on this page by a prior link audit. */
+  brokenLinks?: number;
 }
 
 export interface InspectSidebarProps {
@@ -127,6 +129,16 @@ export function InspectSidebar({ items, brand = "Headlint" }: InspectSidebarProp
                                     title="Captured via headless Chromium"
                                   >
                                     JS
+                                  </Badge>
+                                ) : null}
+                                {item.brokenLinks && item.brokenLinks > 0 ? (
+                                  <Badge
+                                    variant="destructive"
+                                    className="h-4 px-1 text-[9px] tabular-nums"
+                                    title={`${item.brokenLinks} broken link(s) on this page`}
+                                    data-testid="sidebar-broken-links"
+                                  >
+                                    {item.brokenLinks}↯
                                   </Badge>
                                 ) : null}
                               </span>

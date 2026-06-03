@@ -1,5 +1,6 @@
 import { listCachedPages } from "@/lib/store/inspect-cache";
 import { listSites } from "@/lib/store/site-store";
+import { listLinkAudits } from "@/lib/store/link-audit-store";
 import type { InspectSidebarItem } from "./inspect-sidebar";
 
 /**
@@ -19,6 +20,15 @@ import type { InspectSidebarItem } from "./inspect-sidebar";
 export function buildSidebarItems(): InspectSidebarItem[] {
   const items = new Map<string, InspectSidebarItem>();
 
+  // Broken-link counts per page, from any link audits run this session.
+  const brokenByPage = new Map<string, number>();
+  for (const report of listLinkAudits()) {
+    for (const { pageUrl, broken } of report.brokenByPage) {
+      const count = broken.filter((c) => c.verdict === "broken").length;
+      if (count > 0) brokenByPage.set(pageUrl, (brokenByPage.get(pageUrl) ?? 0) + count);
+    }
+  }
+
   for (const site of listSites()) {
     for (const entry of site.urls) {
       if (items.has(entry.loc)) continue;
@@ -30,6 +40,7 @@ export function buildSidebarItems(): InspectSidebarItem[] {
         storedAt: 0,
         status: 0,
         inspected: false,
+        brokenLinks: brokenByPage.get(entry.loc),
       });
     }
   }
@@ -44,6 +55,7 @@ export function buildSidebarItems(): InspectSidebarItem[] {
       status: page.fetch.status,
       extractor: page.extractor.mode,
       inspected: true,
+      brokenLinks: brokenByPage.get(url),
     });
   }
 
