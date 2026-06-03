@@ -171,7 +171,16 @@ export async function startAuditFixtureServer(
 
   app.get("/sitemap.xml", (c) => {
     const origin = new URL(c.req.url).origin;
-    const locs = ["/", "/about", "/contact", "/blog", "/blog/post-1", "/blog/post-2", "/missing"];
+    const locs = [
+      "/",
+      "/about",
+      "/contact",
+      "/blog",
+      "/blog/post-1",
+      "/blog/post-2",
+      "/missing",
+      "/private/secret",
+    ];
     const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${locs
@@ -185,6 +194,7 @@ ${locs
 
   app.get("/future", () => html(`<a href="/">Home</a>`));
   app.get("/badmod", () => html(`<a href="/">Home</a>`));
+  app.get("/private/secret", () => html(`<a href="/">Home</a>`));
 
   const server: ServerType = await new Promise((resolveBound, rejectBound) => {
     try {
