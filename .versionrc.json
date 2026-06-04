@@ -10,6 +10,6 @@
     { "type": "ci", "section": "CI", "hidden": true },
     { "type": "style", "section": "Style", "hidden": true }
   ],
-  "header": "# Headlint changelog\n\nAll notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.\n",
+  "header": "# Goflag changelog\n\nAll notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.\n",
   "tagPrefix": "v"
 }

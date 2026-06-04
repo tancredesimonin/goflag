@@ -17,7 +17,7 @@
  *
  * Like everything under `src/lib/core/**`, this module is plain and
  * JSON-serializable with no Next.js / React / DOM coupling so it can
- * ship as part of `@headlint/core`.
+ * ship as part of `@goflag/core`.
  */
 
 import { combineSignals } from "../probes/abort";

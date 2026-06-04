@@ -2,7 +2,7 @@
  * Tiny glob-to-regex matcher used by the Phase 7 crawler include /
  * exclude filters.
  *
- * Supports the small subset of patterns Headlint actually advertises:
+ * Supports the small subset of patterns Goflag actually advertises:
  *
  *   - `*`   matches any run of characters, NOT crossing `/`
  *   - `**`  matches any run of characters, including `/`

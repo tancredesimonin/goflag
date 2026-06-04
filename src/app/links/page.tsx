@@ -28,7 +28,7 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
             Check a site&apos;s links
           </h1>
           <p className="text-muted-foreground text-sm">
-            Enter a base URL. Headlint discovers every page, scrapes their links, and probes each
+            Enter a base URL. Goflag discovers every page, scrapes their links, and probes each
             unique target once — finding broken internal and external links across the whole site.
           </p>
         </div>

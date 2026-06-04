@@ -30,7 +30,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             Audit a site
           </h1>
           <p className="text-muted-foreground text-sm">
-            Enter a base URL once. Headlint discovers the site, then runs three audits over it —
+            Enter a base URL once. Goflag discovers the site, then runs three audits over it —
             sitemap health, head/meta quality, and link integrity.
           </p>
         </div>

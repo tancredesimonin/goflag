@@ -100,7 +100,7 @@ describe("<IssuesTab />", () => {
   it("falls back to dispatching a CustomEvent on document when no onJump is provided", async () => {
     const user = userEvent.setup();
     const handler = vi.fn();
-    document.addEventListener("headlint:jump-to-origin", handler as EventListener);
+    document.addEventListener("goflag:jump-to-origin", handler as EventListener);
     try {
       const issues: Issue[] = [
         makeIssue({
@@ -115,7 +115,7 @@ describe("<IssuesTab />", () => {
       const evt = handler.mock.calls[0]![0] as CustomEvent<string>;
       expect(evt.detail).toBe("html:lang");
     } finally {
-      document.removeEventListener("headlint:jump-to-origin", handler as EventListener);
+      document.removeEventListener("goflag:jump-to-origin", handler as EventListener);
     }
   });
 

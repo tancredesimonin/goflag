@@ -1,10 +1,10 @@
-import { HEADLINT_VERSION, isPreAlpha } from "@/lib/version";
+import { GOFLAG_VERSION, isPreAlpha } from "@/lib/version";
 
 export interface VersionBadgeProps {
   version?: string;
 }
 
-export function VersionBadge({ version = HEADLINT_VERSION }: VersionBadgeProps) {
+export function VersionBadge({ version = GOFLAG_VERSION }: VersionBadgeProps) {
   const label = isPreAlpha(version) ? `pre-alpha · v${version}` : `v${version}`;
   return (
     <span

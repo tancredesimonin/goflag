@@ -52,7 +52,7 @@ export interface InspectSidebarProps {
  * locale (per PLAN 3.3). Items render as links to /inspect?url=…; the
  * active item is derived from the current `?url=…` query string.
  */
-export function InspectSidebar({ items, brand = "Headlint" }: InspectSidebarProps) {
+export function InspectSidebar({ items, brand = "Goflag" }: InspectSidebarProps) {
   const params = useSearchParams();
   const activeUrl = params.get("url");
   const grouped = groupByLocale(items);

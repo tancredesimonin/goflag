@@ -12,7 +12,7 @@ accessibility tool's window list. A missing or empty title forces every
 consumer to invent one — typically by falling back to the URL path, which
 is rarely useful.
 
-Headlint treats this as an **error** because the cost of fixing it is one
+Goflag treats this as an **error** because the cost of fixing it is one
 line of HTML and the cost of not fixing it is felt on every surface a link
 to the page ever lands on.`,
     exampleFix: {

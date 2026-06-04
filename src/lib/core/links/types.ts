@@ -8,7 +8,7 @@
  *
  * Like the rest of `src/lib/core/**`, everything here is plain,
  * JSON-serializable data with no Next.js / React / DOM coupling so it
- * can ship as part of `@headlint/core`.
+ * can ship as part of `@goflag/core`.
  */
 
 /** Whether a link points back at the audited origin or off-site. */

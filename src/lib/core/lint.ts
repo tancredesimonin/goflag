@@ -1,9 +1,9 @@
 /**
- * The Headlint rule runner.
+ * The Goflag rule runner.
  *
  * Pure function: `Page` → ordered `Issue[]`. No I/O, no caching, no
  * mutation. Every consumer of the engine — the Issues panel, the CLI
- * `headlint lint` command, snapshot diffs (Phase 9), the future hosted
+ * `goflag lint` command, snapshot diffs (Phase 9), the future hosted
  * audit log — calls this single entry point so behaviour stays
  * identical across surfaces.
  *

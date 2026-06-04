@@ -1,7 +1,7 @@
 import type { FetchMeta } from "../types";
 
 export interface HeadlessExtractOptions {
-  /** Optional User-Agent override. Defaults to a Headlint UA. */
+  /** Optional User-Agent override. Defaults to a Goflag UA. */
   userAgent?: string;
   /** Per-navigation timeout in ms. Defaults to 30_000 (Chromium can be slow). */
   timeoutMs?: number;
@@ -57,7 +57,7 @@ export interface HeadlessNavigation {
   headers: Record<string, string>;
 }
 
-const DEFAULT_UA = "Headlint/0.0 (+https://github.com/tancredesimonin-indie/headlint; headless)";
+const DEFAULT_UA = "Goflag/0.0 (+https://github.com/tancredesimonin-indie/goflag; headless)";
 
 /**
  * Thrown when Playwright (or its Chromium binary) is not available locally.
@@ -78,7 +78,7 @@ export class HeadlessUnavailableError extends Error {
  *
  * Implementation notes:
  *  - Playwright is loaded lazily via dynamic `import()` so that users who
- *    only ever run `headlint inspect --static` never pay the import cost
+ *    only ever run `goflag inspect --static` never pay the import cost
  *    (it pulls in ~80 MB of types and ~15 MB of runtime).
  *  - If the import fails (`playwright` not installed) or the browser refuses
  *    to launch (Chromium binary missing), we throw `HeadlessUnavailableError`

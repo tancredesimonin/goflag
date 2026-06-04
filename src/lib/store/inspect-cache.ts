@@ -5,11 +5,11 @@ import type { Page } from "@/lib/core/types";
  *
  * Why a module-level Map rather than a database or KV?
  *
- *  - Phase 3 is local-first: a single dev runs `headlint dev <url>` against
+ *  - Phase 3 is local-first: a single dev runs `goflag dev <url>` against
  *    their localhost; there's only ever one writer and one reader, both in
  *    the same Next.js process.
  *  - We deliberately avoid any persistence so the engine + UI stay shippable
- *    as `@headlint/core` later (no DB dependency, no migrations).
+ *    as `@goflag/core` later (no DB dependency, no migrations).
  *  - When the SaaS layer (v2.x) ships, this module becomes the seam where
  *    a real backend slots in — same API, different storage.
  *

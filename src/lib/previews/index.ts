@@ -3,7 +3,7 @@
  *
  * Engine-pure exports (resolve, types, fixtures, tag-key) live alongside
  * the React components but never import them, so this module is safe to
- * import from anywhere — including the future `@headlint/core` standalone
+ * import from anywhere — including the future `@goflag/core` standalone
  * engine package.
  */
 

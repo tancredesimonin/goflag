@@ -7,7 +7,7 @@ import { lint } from "@/lib/core/lint";
 import { inspect } from "@/lib/core/inspect";
 
 /**
- * `headlint.config.ts` `rules: { "<id>": "off" }` must drop the rule's
+ * `goflag.config.ts` `rules: { "<id>": "off" }` must drop the rule's
  * issues from the pipeline the App Router server component uses —
  * proven by feeding the same `Page` through `lint` then `applyRuleConfig`.
  */

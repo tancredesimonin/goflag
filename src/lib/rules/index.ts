@@ -1,9 +1,9 @@
 /**
  * Rule registry.
  *
- * The single source of truth for which rules ship with Headlint. The
+ * The single source of truth for which rules ship with Goflag. The
  * runner (`src/lib/core/lint.ts`), the docs route (`/rules/[id]`), the
- * CLI (`headlint lint`), and the contract test harness all walk this
+ * CLI (`goflag lint`), and the contract test harness all walk this
  * array. Adding a rule means:
  *
  *   1. Drop a new module at `src/lib/rules/<id>.ts` exporting a
@@ -16,7 +16,7 @@
  *
  * We intentionally use static imports rather than dynamic discovery: the
  * rules layer needs to be importable from edge runtimes, the CLI single-
- * file bundle, and a future `@headlint/core` package, none of which can
+ * file bundle, and a future `@goflag/core` package, none of which can
  * scan the filesystem at runtime.
  */
 
@@ -56,7 +56,7 @@ import manifestMissing from "./manifest.missing";
 import robotsConflict from "./robots.conflict";
 
 /**
- * The full set of rules registered with Headlint, alphabetised by id.
+ * The full set of rules registered with Goflag, alphabetised by id.
  * `lint()` iterates this list in order; the order is also surfaced in the
  * docs index, so keep it stable. Adding a new rule = appending to this
  * list AND its import above.

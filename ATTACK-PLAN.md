@@ -1,6 +1,6 @@
 # goflag — Attack Plan
 
-> **Living document.** The step-by-step plan to take the project (currently `headlint`) from a local web app to a launched, distributable OSS dev tool under the **goflag** brand. Check items as we ship. Keep this in sync with commits so the trail is auditable.
+> **Living document.** The step-by-step plan to take the project (currently `goflag`) from a local web app to a launched, distributable OSS dev tool under the **goflag** brand. Check items as we ship. Keep this in sync with commits so the trail is auditable.
 >
 > Companion docs: [`BRANDING-AND-STRATEGY.md`](./BRANDING-AND-STRATEGY.md) (the why + the brand), [`PLAN.md`](./PLAN.md) (the engineering build plan), [`SPEC-suite.md`](./SPEC-suite.md) (the three-lens technical spec).
 
@@ -29,10 +29,10 @@
 
 ## Phase 0 — Identity & scope freeze · _Week 0_ · serves O1 O2 O3 O4
 
-**DoD:** Test suite green under the new name · zero references to "headlint" · v1 scope written down.
+**DoD:** Test suite green under the new name · zero references to "goflag" · v1 scope written down.
 
-- [ ] **0.1** Lock the name **goflag** across identifiers: npm `goflag`, GitHub org `goflag`, domain `goflag.dev` (+ `goflag.sh` optional).
-- [ ] **0.2** Rename the codebase: package name, `@headlint/core` → `@goflag/core`, `headlint.config.ts` → `goflag.config.ts`, `.headlint/` dir → `.goflag/`, all docs and copy.
+- [ ] **0.1** Lock the name **goflag** across identifiers: npm `goflag`, GitHub org `goflag`, domain `goflag.tech` (+ `goflag.sh` optional).
+- [ ] **0.2** Rename the codebase: package name, `@goflag/core` → `@goflag/core`, `goflag.config.ts` → `goflag.config.ts`, `.goflag/` dir → `.goflag/`, all docs and copy.
 - [ ] **0.3** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` all green after the rename (~700 tests).
 - [ ] **0.4** Write the v1 "shippable" scope: what we un-park (CLI packaging, hosted demo) vs what stays cut (SaaS, monitoring).
 
@@ -42,11 +42,11 @@
 
 ## Phase 1 — Make it distributable · _Weeks 1-2_ · serves O1 O2 O3 O4
 
-**DoD:** `npx goflag http://localhost:3000` works on a clean Node 20 machine · live demo on `goflag.dev`.
+**DoD:** `npx goflag http://localhost:3000` works on a clean Node 20 machine · live demo on `goflag.tech`.
 
 - [ ] **1.1** Un-park the packaging (PLAN Phase 11): `bin/` entry point, Next.js `output: "standalone"`, `npx` distribution.
 - [ ] **1.2** Verify `npx goflag <url>` end-to-end on a fresh machine (no project-local setup).
-- [ ] **1.3** Landing page + instant hosted demo on `goflag.dev` (PLAN Phase 12).
+- [ ] **1.3** Landing page + instant hosted demo on `goflag.tech` (PLAN Phase 12).
 
 > **Why this is the keystone:** the localhost-first wedge fights against hosted paste-URL distribution. `npx goflag` is the only surface that keeps the wedge **and** gives frictionless dev distribution.
 

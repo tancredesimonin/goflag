@@ -9,7 +9,7 @@ import { startFixtureServer } from "../fixture-server";
  * decoupled from Playwright's transformer.
  */
 async function main(): Promise<void> {
-  const port = Number.parseInt(process.env.HEADLINT_FIXTURE_PORT ?? "4321", 10);
+  const port = Number.parseInt(process.env.GOFLAG_FIXTURE_PORT ?? "4321", 10);
   const server = await startFixtureServer({
     root: resolve(__dirname, "../../fixtures/sites/tancrede"),
     port,

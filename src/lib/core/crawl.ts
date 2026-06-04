@@ -6,7 +6,7 @@
  * of trust:
  *
  *   1. `<link rel="alternate" hreflang="...">` siblings on every
- *      visited page — Headlint's primary use-case is i18n surfaces, so
+ *      visited page — Goflag's primary use-case is i18n surfaces, so
  *      we always follow these even when they wouldn't pass an
  *      include filter (otherwise the i18n matrix would have
  *      systematic blind spots).
@@ -44,7 +44,7 @@ export interface CrawlOptions {
   entryUrl: string;
   /**
    * BFS depth. `0` means "only the entry page". `1` means "entry +
-   * its direct children". Defaults to `1` (matches `headlint inspect
+   * its direct children". Defaults to `1` (matches `goflag inspect
    * --crawl --depth 1`).
    */
   depth?: number;

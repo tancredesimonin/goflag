@@ -27,10 +27,10 @@ export async function generateMetadata({ params }: RuleDocPageProps): Promise<Me
   const { id } = await params;
   const rule = getRule(id);
   if (!rule) {
-    return { title: "Rule not found — Headlint" };
+    return { title: "Rule not found — Goflag" };
   }
   return {
-    title: `${rule.id} — Headlint`,
+    title: `${rule.id} — Goflag`,
     description: rule.docs.summary,
   };
 }

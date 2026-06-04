@@ -1,5 +1,5 @@
 /**
- * Headlint's "out of the box" defaults.
+ * Goflag's "out of the box" defaults.
  *
  * These are applied by `resolveConfig()` *after* the user's config
  * file has been parsed. Keeping them out of the zod schema (no
@@ -8,7 +8,7 @@
  * "Settings" UI panel.
  */
 
-import type { HeadlintConfig } from "./types";
+import type { GoflagConfig } from "./types";
 
 export const DEFAULT_CONFIG = {
   framework: "auto" as const,
@@ -24,5 +24,5 @@ export const DEFAULT_CONFIG = {
     maxPages: 200,
     followHreflang: true,
   },
-  rules: {} as HeadlintConfig["rules"],
+  rules: {} as GoflagConfig["rules"],
 };

@@ -1,7 +1,7 @@
 /**
- * Headlint rule contract.
+ * Goflag rule contract.
  *
- * A rule is a pure function from a `Page` (Headlint's deterministic snapshot
+ * A rule is a pure function from a `Page` (Goflag's deterministic snapshot
  * of one URL) to zero or more `Issue`s. Rules never fetch, never mutate,
  * never throw — they describe a policy and return findings. The `Issue`
  * shape itself lives in `@/lib/core/types` because it crosses the
@@ -59,7 +59,7 @@ export interface RuleDocs {
   rationale: string;
   /**
    * Optional canonical fix snippet rendered in the docs page and offered
-   * by `headlint lint --json` consumers. Keep it copy-pasteable.
+   * by `goflag lint --json` consumers. Keep it copy-pasteable.
    */
   exampleFix?: {
     title: string;
@@ -96,7 +96,7 @@ export interface RuleContext {
 }
 
 /**
- * A rule is the smallest enforceable Headlint policy. Each one is a pure
+ * A rule is the smallest enforceable Goflag policy. Each one is a pure
  * function over a `Page`; the runner (`src/lib/core/lint.ts`) handles
  * iteration, ordering, and aggregation.
  */

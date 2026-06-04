@@ -41,7 +41,7 @@ export async function InspectView({ page }: InspectViewProps) {
   const tags = await Promise.all(
     annotated.map(async (t) => ({ ...t, highlighted: await highlightHtml(t.html) })),
   );
-  // Apply the project's `headlint.config.ts` if one is present. Loader
+  // Apply the project's `goflag.config.ts` if one is present. Loader
   // failures fall back to the empty default config — surfacing them
   // in the UI is left to a future Settings panel.
   const configResult = await loadConfig();

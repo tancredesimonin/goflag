@@ -1,5 +1,5 @@
 /**
- * Headlint preview layer — type contracts.
+ * Goflag preview layer — type contracts.
  *
  * Each preview component renders a single platform's link-unfurl card. The
  * truth source is always a {@link Page}, but every preview also needs:

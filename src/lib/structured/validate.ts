@@ -118,7 +118,7 @@ function validateType(obj: Record<string, unknown>, path: string, type: string, 
           path,
           "info",
           "unknown-type",
-          `Headlint does not yet validate \`${type}\` — block is preserved as-is.`,
+          `Goflag does not yet validate \`${type}\` — block is preserved as-is.`,
           type,
         ),
       );

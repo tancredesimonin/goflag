@@ -29,7 +29,7 @@ export default defineConfig({
       // avoid collision with `test/manual/serve-spa.ts` which defaults to
       // 4321.
       command: "pnpm exec tsx test/e2e/fixture-launcher.ts",
-      env: { HEADLINT_FIXTURE_PORT: "4322" },
+      env: { GOFLAG_FIXTURE_PORT: "4322" },
       url: "http://127.0.0.1:4322/_health",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
@@ -39,18 +39,18 @@ export default defineConfig({
       // matrix E2E test. Distinct port from the tancrede fixture so
       // both can run concurrently under one Playwright invocation.
       command: "pnpm exec tsx test/e2e/i18n-fixture-launcher.ts",
-      env: { HEADLINT_I18N_FIXTURE_PORT: "4323" },
+      env: { GOFLAG_I18N_FIXTURE_PORT: "4323" },
       url: "http://127.0.0.1:4323/_health",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
     {
-      // Headlint Suite fixture: programmable site with broken/redirect
+      // Goflag Suite fixture: programmable site with broken/redirect
       // links + a sitemap listing a dead URL, used by the suite E2E test.
       // 4324 = site, 4325 = its "external" host (kept local for hermetic
       // external-link probing).
       command: "pnpm exec tsx test/e2e/audit-fixture-launcher.ts",
-      env: { HEADLINT_AUDIT_FIXTURE_PORT: "4324" },
+      env: { GOFLAG_AUDIT_FIXTURE_PORT: "4324" },
       url: "http://127.0.0.1:4324/_health",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

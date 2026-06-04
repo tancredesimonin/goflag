@@ -26,6 +26,6 @@ playwright/.cache/
 .vscode/*
 !.vscode/extensions.json
 
-# Headlint
-.headlint/
+# Goflag
+.goflag/
 tsconfig.tsbuildinfo

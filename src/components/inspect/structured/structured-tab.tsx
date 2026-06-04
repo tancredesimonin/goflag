@@ -36,7 +36,7 @@ export function StructuredTab({ blocks }: StructuredTabProps) {
         <CardContent className="text-muted-foreground text-sm">
           This page declares no{" "}
           <code className="bg-muted rounded px-1 text-xs">application/ld+json</code> blocks. Check
-          the Suggestions tab — Headlint may recommend adding one.
+          the Suggestions tab — Goflag may recommend adding one.
         </CardContent>
       </Card>
     );

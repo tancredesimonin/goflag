@@ -9,7 +9,7 @@ export default function HomePage() {
     <div className="bg-background text-foreground flex min-h-screen flex-col">
       <header className="border-border/40 flex items-center justify-between border-b px-6 py-3">
         <Link href="/" className="text-sm font-semibold tracking-tight">
-          Headlint
+          Goflag
         </Link>
         <div className="flex items-center gap-3 text-sm">
           <Link href="/site" className="text-muted-foreground hover:text-foreground">
@@ -27,11 +27,11 @@ export default function HomePage() {
           Pre-alpha · Suite
         </span>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          Headlint &mdash;{" "}
+          Goflag &mdash;{" "}
           <span className="text-muted-foreground">a three-lens local site auditor.</span>
         </h1>
         <p className="text-muted-foreground max-w-xl text-lg">
-          Enter a base URL once. Headlint audits your <strong>sitemap</strong> discoverability, your{" "}
+          Enter a base URL once. Goflag audits your <strong>sitemap</strong> discoverability, your{" "}
           <strong>head</strong> presentation in search &amp; social, and your <strong>link</strong>{" "}
           integrity — all locally, no account, no telemetry.
         </p>
@@ -60,8 +60,8 @@ export default function HomePage() {
           </h2>
           <UrlForm />
           <p className="text-muted-foreground/80 mt-2 text-xs">
-            Headlint fetches the page, parses it, and (for SPAs) re-renders it in headless Chromium
-            to capture client-injected metadata.
+            Goflag fetches the page, parses it, and (for SPAs) re-renders it in headless Chromium to
+            capture client-injected metadata.
           </p>
         </section>
       </main>

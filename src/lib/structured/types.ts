@@ -6,7 +6,7 @@
  *   - `JsonLdValidationIssue`: a single finding produced by the
  *     validator against one JSON-LD block. The Issues panel and the
  *     Structured-data tab both render these; the CLI surfaces them via
- *     `headlint lint --json` (Phase 5 hook stays unchanged because
+ *     `goflag lint --json` (Phase 5 hook stays unchanged because
  *     these are translated into regular `Issue`s before reaching that
  *     pipeline).
  *

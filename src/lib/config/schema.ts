@@ -1,5 +1,5 @@
 /**
- * Zod runtime schema for `headlint.config.{ts,js,mjs}`.
+ * Zod runtime schema for `goflag.config.{ts,js,mjs}`.
  *
  * Design notes:
  *
@@ -89,7 +89,7 @@ export const ConfigSchema = z.object({
  * Parse a raw `unknown` (typically the default export of a config
  * file) and return either the validated shape or a list of human
  * messages. We never throw out of here — the loader needs the
- * issues to format a single `headlint:` error block.
+ * issues to format a single `goflag:` error block.
  */
 export function parseConfig(
   raw: unknown,

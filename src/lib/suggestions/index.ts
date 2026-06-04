@@ -1,7 +1,7 @@
 /**
  * Suggestion engine — Phase 6 entry point.
  *
- * Given a `Page`, returns the set of JSON-LD blocks Headlint thinks
+ * Given a `Page`, returns the set of JSON-LD blocks Goflag thinks
  * should be added. The engine is purely additive: it never recommends
  * removing or replacing existing structured data. Each suggestion
  * carries a copy-pasteable snippet (`example.snippet`) that the UI
