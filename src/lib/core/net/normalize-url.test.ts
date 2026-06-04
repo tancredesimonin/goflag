@@ -18,7 +18,10 @@ describe("normalizeInputUrl", () => {
   });
 
   it("keeps an explicit http:// scheme untouched", () => {
-    expect(normalizeInputUrl("http://example.com")).toEqual({ ok: true, url: "http://example.com" });
+    expect(normalizeInputUrl("http://example.com")).toEqual({
+      ok: true,
+      url: "http://example.com",
+    });
   });
 
   it("keeps an explicit https:// scheme untouched", () => {
