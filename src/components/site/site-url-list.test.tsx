@@ -49,4 +49,18 @@ describe("<SiteUrlList />", () => {
     // The inspected marker (CheckCircle2) renders an svg with the emerald class.
     expect(about?.querySelector("svg.text-emerald-500")).not.toBeNull();
   });
+
+  it("renders per-entry reachability status badges when provided", () => {
+    render(
+      <SiteUrlList
+        urls={urls}
+        statuses={{
+          "https://example.com/about": { verdict: "broken", status: 404 },
+        }}
+      />,
+    );
+    const badge = screen.getByTestId("site-url-status");
+    expect(badge.dataset.verdict).toBe("broken");
+    expect(badge.textContent).toBe("broken");
+  });
 });

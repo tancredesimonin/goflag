@@ -8,24 +8,42 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+/** Minimal per-entry reachability annotation (a subset of LinkCheck). */
+export interface UrlStatus {
+  verdict: "ok" | "redirect" | "broken" | "blocked" | "warning" | "skipped";
+  status: number;
+}
+
 export interface SiteUrlListProps {
   /** All page URLs discovered for the site. */
   urls: SitemapUrlEntry[];
   /** URLs already inspected this session (rendered with a "done" marker). */
   inspectedUrls?: string[];
+  /** Optional per-entry reachability status, keyed by URL. */
+  statuses?: Record<string, UrlStatus>;
 }
 
 interface UrlRow extends SitemapUrlEntry {
   pathname: string;
   inspected: boolean;
+  status?: UrlStatus;
 }
+
+const STATUS_CLASS: Record<UrlStatus["verdict"], string> = {
+  ok: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  redirect: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  broken: "border-destructive/30 bg-destructive/10 text-destructive",
+  blocked: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  warning: "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+  skipped: "border-border bg-muted/40 text-muted-foreground",
+};
 
 /**
  * Searchable, grouped list of every page in the sitemap. Each row links
  * to `/inspect?url=…` so the user can drill into any page's head/meta —
  * the core "navigate the whole site, not just the root" use-case.
  */
-export function SiteUrlList({ urls, inspectedUrls = [] }: SiteUrlListProps) {
+export function SiteUrlList({ urls, inspectedUrls = [], statuses }: SiteUrlListProps) {
   const [query, setQuery] = useState("");
   const inspectedSet = useMemo(() => new Set(inspectedUrls), [inspectedUrls]);
 
@@ -34,8 +52,9 @@ export function SiteUrlList({ urls, inspectedUrls = [] }: SiteUrlListProps) {
       ...entry,
       pathname: pathnameOf(entry.loc),
       inspected: inspectedSet.has(entry.loc),
+      status: statuses?.[entry.loc],
     }));
-  }, [urls, inspectedSet]);
+  }, [urls, inspectedSet, statuses]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,6 +106,20 @@ export function SiteUrlList({ urls, inspectedUrls = [] }: SiteUrlListProps) {
                       )}
                       <span className="truncate font-mono text-xs">{row.pathname}</span>
                       <div className="ml-auto flex shrink-0 items-center gap-2">
+                        {row.status ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-5 px-1.5 text-[10px] font-medium uppercase",
+                              STATUS_CLASS[row.status.verdict],
+                            )}
+                            data-testid="site-url-status"
+                            data-verdict={row.status.verdict}
+                            title={`Reachability: ${row.status.verdict} (${row.status.status || "error"})`}
+                          >
+                            {row.status.verdict}
+                          </Badge>
+                        ) : null}
                         {row.lastmod ? (
                           <Badge variant="outline" className="h-5 px-1.5 text-[10px] tabular-nums">
                             {formatDate(row.lastmod)}

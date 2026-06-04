@@ -32,7 +32,15 @@ Nobody owns _"the dev-grade linter for how a site appears in search and social, 
 > Preview and lint how your site appears in search and social — locally, in your browser. _(CI and localhost-vs-prod diff are part of the longer-term vision but parked for now.)_
 
 **In scope** (the moat is depth, not breadth): OG / Twitter / Discord / Slack / iMessage previews, Google SERP rendering, JSON-LD validity, hreflang, robots, sitemap, manifest, favicons.
-**Deliberately out of scope**: performance metrics, accessibility audits, security headers, broken-link crawls. Specialization is the moat.
+**Deliberately out of scope**: performance metrics, accessibility audits, security headers. Specialization is the moat.
+
+> **Update — the Headlint Suite.** Headlint has grown from a single `<head>` inspector into a **three-lens local site auditor** that shares one discovery pipeline (`discoverSitemap`). The three lenses are deliberately *related but distinct* processes — close, not the same — and stay within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security:
+>
+> - **Sitemap** — discoverability & map health (`/site`).
+> - **Head** — search/social presentation, the original "Lighthouse for the `<head>`" (`/inspect`).
+> - **Links** — link-graph integrity, finding broken internal & external links (`/links`).
+>
+> See the _Headlint Suite_ phase section below for the engine/UI breakdown. (This supersedes the earlier note that excluded broken-link crawls.)
 
 ### Business model — three layers
 
@@ -597,6 +605,63 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ---
 
+## Headlint Suite — sitemap + head + links (shipped)
+
+**Goal**: one base URL → three audits over the same site, sharing one discovery pass.
+
+```
+   base URL ──► discoverSitemap(baseUrl)  (shared, runs once)
+                          │
+        ┌─────────────────┼──────────────────┐
+        ▼                 ▼                   ▼
+   Sitemap engine    Head engine        Link engine
+   (analysis +       inspect() +        scrape + probe
+    entry health)    rules per page     every link once
+        ▼                 ▼                   ▼
+     /site            /inspect             /links
+```
+
+### Architectural principles (inherited, non-negotiable)
+
+1. **Engine ↔ UI separation.** New engine code under `src/lib/core/links/**`, `src/lib/core/net/**` and `src/lib/core/sitemap/analyze.ts` is plain, JSON-serializable and free of `next`/`react`/DOM globals.
+2. **Never throw across an engine boundary.** Every failure collapses into a shaped result with diagnostics; a single dead link or 500 never aborts an audit.
+3. **No telemetry.** No outbound calls except to the site under audit (and the external hosts its links point to).
+4. **Caps everywhere.** Every scan/probe loop is bounded (`maxPages`, `maxLinks`, `maxPerHost`, timeouts).
+5. **Tested through the real fetch path** against a programmable Hono fixture server (`test/audit-fixture-server.ts`) — no mocks in engine tests.
+
+### Phase L0 — shared `fetchUrl` primitive ✅
+
+- [x] `src/lib/core/net/fetch-url.ts` — timeout + cancel via `combineSignals`, real browser UA (avoids bot 403s), `follow`/`manual` redirects, body cap, `Retry-After` surfaced, TLS relax, never throws. Unit-tested incl. self-signed TLS (openssl-generated cert).
+
+### Phase L1 — link engine core ✅
+
+- [x] `links/types.ts`, `extract.ts` (cheerio, `<a>` default + optional asset scope, `<base href>`, rel/anchor/fragment), `check.ts` (HEAD→GET, redirect chain/loop, soft-404, anti-bot 403/429, `Retry-After`-aware retry), `classify.ts`, `audit.ts` (two-phase scan→check, global dedupe, per-host concurrency caps, progress callback). `report.ts` joins checks back to source pages.
+
+### Phase L2 — store + server actions ✅
+
+- [x] `src/lib/store/link-audit-store.ts` (per-origin, LRU) and `src/app/actions/audit.ts` (`runLinkAudit`, `runFullAudit`) reusing `site-store` so the base URL is entered once.
+
+### Phase L3 — `/links` UI ✅
+
+- [x] Summary header (per-verdict counts), filterable broken-links table (verdict / scope / host, collapsible source pages, redirect chains), `LinksForm`.
+
+### Phase S1 — sitemap consolidation ✅
+
+- [x] `src/lib/core/sitemap/analyze.ts` — entry reachability (via `checkLink`), `lastmod` hygiene, protocol/host consistency, robots conflicts, orphan-page detection. `SitemapDiagnostics` extended with optional health fields. `/site` gains a Health checklist + per-entry reachability badges.
+
+### Phase U1 — unified entry/dashboard ✅
+
+- [x] `AuditForm` on `/` → `runFullAudit` → `/dashboard` with three result cards (Sitemap / Head / Links). Cross-feature sidebar shows a per-page broken-link badge from the link-audit store.
+
+**Definition of Done** ✅
+
+- One base URL on the home page runs discovery + the link audit and lands on a dashboard linking to all three feature pages.
+- `/links` reports broken internal & external links, deduped (each URL probed once) and mapped back to source pages, with redirect/blocked/soft-404 triaged separately from hard breaks.
+- `/site` surfaces entry reachability, lastmod/protocol/host/robots checks and orphans.
+- Engine tested through the real fetch path against the fixture server; `src/lib/core/**` coverage stays ≥ 90% lines/branches.
+
+---
+
 ## Out of scope for now (parked for later)
 
 **Trimmed from the current build** (the product is now an easy local web tool to preview, lint with a fixed ruleset, and get suggestions). These were removed from the codebase and may return later:
@@ -616,7 +681,7 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - Hosted SaaS layer: continuous monitoring of deployed sites, regression alerts, shared team configs, public/private shareable report URLs (planned v2.x — see _Strategy & business model_)
 - Self-hostable team server with PR bot (planned v2.0)
 
-> **Explicitly _not_ planned**: Headlint will never expand into adjacent linter families (a11y, performance, security, broken-link crawls). Specialization is the moat — see _Strategy & business model_.
+> **Explicitly _not_ planned**: Headlint will never expand into adjacent linter families (a11y, performance, security). Specialization is the moat — see _Strategy & business model_. (Link integrity is now in scope as the third lens of the Headlint Suite; it shares the discovery pipeline and stays within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security.)
 
 ---
 

@@ -42,6 +42,13 @@ export function AppShell({ section, children }: AppShellProps) {
             >
               Site
             </Link>
+            <Link
+              href="/links"
+              className="text-muted-foreground hover:text-foreground"
+              data-testid="nav-links"
+            >
+              Links
+            </Link>
             <span className="text-muted-foreground/60 tracking-wider uppercase">{section}</span>
           </nav>
           <div className="ml-auto">

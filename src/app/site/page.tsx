@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { discoverSitemap } from "@/lib/core/sitemap/discover";
 import type { SiteDiscovery } from "@/lib/core/sitemap/types";
+import { analyzeSitemapHealth } from "@/lib/core/sitemap/analyze";
 import { getSite, setSite } from "@/lib/store/site-store";
+import { getLinkAudit } from "@/lib/store/link-audit-store";
 import { listCachedPages } from "@/lib/store/inspect-cache";
 import { SitemapAnalysis } from "@/components/site/sitemap-analysis";
-import { SiteUrlList } from "@/components/site/site-url-list";
+import { SitemapHealthChecklist } from "@/components/site/sitemap-health";
+import { SiteUrlList, type UrlStatus } from "@/components/site/site-url-list";
 import { SiteForm } from "@/components/site/site-form";
 import { InspectSkeleton } from "@/components/inspect/inspect-skeleton";
 
@@ -53,6 +56,27 @@ async function SiteAsync({ url }: { url: string }) {
     .map((p) => p.url)
     .filter((u) => sameOrigin(u, discovery!.origin));
 
+  // Reuse a prior link audit (same origin) to surface orphan pages without
+  // re-scanning. The reachability probe runs here as part of the audit.
+  const linkAudit = getLinkAudit(discovery.baseUrl);
+  const linkedInternalUrls = linkAudit
+    ? linkAudit.occurrences.filter((o) => o.ref.kind === "internal").map((o) => o.ref.url)
+    : [];
+
+  const health =
+    discovery.urls.length > 0
+      ? await analyzeSitemapHealth(discovery, { linkedInternalUrls })
+      : undefined;
+
+  const statuses: Record<string, UrlStatus> | undefined = health
+    ? Object.fromEntries(
+        Object.entries(health.checks).map(([url, check]) => [
+          url,
+          { verdict: check.verdict, status: check.status },
+        ]),
+      )
+    : undefined;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -69,8 +93,10 @@ async function SiteAsync({ url }: { url: string }) {
 
       <SitemapAnalysis discovery={discovery} />
 
+      {health ? <SitemapHealthChecklist health={health} /> : null}
+
       {discovery.urls.length > 0 ? (
-        <SiteUrlList urls={discovery.urls} inspectedUrls={inspectedUrls} />
+        <SiteUrlList urls={discovery.urls} inspectedUrls={inspectedUrls} statuses={statuses} />
       ) : (
         <p className="text-muted-foreground py-8 text-center text-sm">
           No pages were found for this site. Try a different base URL.

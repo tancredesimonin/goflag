@@ -62,6 +62,20 @@ export interface SitemapDiagnostics {
   urlCount: number;
   /** Human-readable warnings (malformed XML, gzip failure, caps hit, ...). */
   warnings: string[];
+
+  // --- Strengthened analysis (all optional; populated by analyzeSitemapHealth) ---
+  /** Entry reachability tally (probed via the link engine's checkLink). */
+  reachable?: { checked: number; ok: number; broken: number; redirected: number };
+  /** Pages found by crawl/link-scan but absent from the sitemap. */
+  orphanCount?: number;
+  /** Entries with missing / malformed / future-dated `<lastmod>`. */
+  lastmodIssues?: number;
+  /** Entries mix http and https. */
+  mixedProtocol?: boolean;
+  /** Entries mix hosts (e.g. www vs apex). */
+  mixedHost?: boolean;
+  /** Sitemap entries disallowed by robots.txt. */
+  robotsConflicts?: number;
 }
 
 /**

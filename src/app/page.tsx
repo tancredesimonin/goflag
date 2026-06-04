@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { FileText, Link2, Map as MapIcon } from "lucide-react";
 import { UrlForm } from "@/components/inspect/url-form";
-import { SiteForm } from "@/components/site/site-form";
+import { AuditForm } from "@/components/dashboard/audit-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
@@ -10,9 +11,12 @@ export default function HomePage() {
         <Link href="/" className="text-sm font-semibold tracking-tight">
           Headlint
         </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/site" className="text-muted-foreground hover:text-foreground text-sm">
-            Site
+        <div className="flex items-center gap-3 text-sm">
+          <Link href="/site" className="text-muted-foreground hover:text-foreground">
+            Sitemap
+          </Link>
+          <Link href="/links" className="text-muted-foreground hover:text-foreground">
+            Links
           </Link>
           <ThemeToggle />
         </div>
@@ -20,37 +24,44 @@ export default function HomePage() {
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-start justify-center gap-8 px-6 py-16">
         <span className="text-muted-foreground inline-flex items-center rounded-full border border-white/10 px-3 py-1 text-xs tracking-wider uppercase">
-          Pre-alpha · Phase 3
+          Pre-alpha · Suite
         </span>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Headlint &mdash;{" "}
-          <span className="text-muted-foreground">Lighthouse for the &lt;head&gt;.</span>
+          <span className="text-muted-foreground">a three-lens local site auditor.</span>
         </h1>
         <p className="text-muted-foreground max-w-xl text-lg">
-          Lint how your site appears in search and social. Local-first, runnable in CI, with a
-          side-by-side diff between localhost and production.
+          Enter a base URL once. Headlint audits your <strong>sitemap</strong> discoverability, your{" "}
+          <strong>head</strong> presentation in search &amp; social, and your <strong>link</strong>{" "}
+          integrity — all locally, no account, no telemetry.
         </p>
+
+        <section className="w-full" aria-labelledby="audit-heading">
+          <h2 id="audit-heading" className="mb-3 text-sm font-medium tracking-wide uppercase">
+            Audit a site
+          </h2>
+          <AuditForm />
+          <div className="text-muted-foreground/80 mt-3 grid gap-2 text-xs sm:grid-cols-3">
+            <span className="flex items-center gap-1.5">
+              <MapIcon className="size-3.5" /> Sitemap health &amp; reachability
+            </span>
+            <span className="flex items-center gap-1.5">
+              <FileText className="size-3.5" /> Head / meta &amp; social previews
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Link2 className="size-3.5" /> Broken internal &amp; external links
+            </span>
+          </div>
+        </section>
 
         <section className="w-full" aria-labelledby="inspect-heading">
           <h2 id="inspect-heading" className="mb-3 text-sm font-medium tracking-wide uppercase">
-            Inspect a URL
+            Or inspect a single URL
           </h2>
           <UrlForm />
           <p className="text-muted-foreground/80 mt-2 text-xs">
             Headlint fetches the page, parses it, and (for SPAs) re-renders it in headless Chromium
             to capture client-injected metadata.
-          </p>
-        </section>
-
-        <section className="w-full" aria-labelledby="explore-heading">
-          <h2 id="explore-heading" className="mb-3 text-sm font-medium tracking-wide uppercase">
-            Explore a whole site
-          </h2>
-          <SiteForm />
-          <p className="text-muted-foreground/80 mt-2 text-xs">
-            From a base URL, Headlint finds the sitemap (or crawls), checks that it&apos;s
-            well-formed and declared in <code>robots.txt</code>, then lists every page so you can
-            inspect any of them — not just the homepage.
           </p>
         </section>
       </main>

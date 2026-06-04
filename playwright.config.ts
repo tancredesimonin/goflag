@@ -44,5 +44,16 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      // Headlint Suite fixture: programmable site with broken/redirect
+      // links + a sitemap listing a dead URL, used by the suite E2E test.
+      // 4324 = site, 4325 = its "external" host (kept local for hermetic
+      // external-link probing).
+      command: "pnpm exec tsx test/e2e/audit-fixture-launcher.ts",
+      env: { HEADLINT_AUDIT_FIXTURE_PORT: "4324" },
+      url: "http://127.0.0.1:4324/_health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });
