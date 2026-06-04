@@ -1,4 +1,4 @@
-# Headlint — Build Plan to v1.0
+# Goflag — Build Plan to v1.0
 
 > Living document. Check items as we ship. Each phase has a clear, testable Definition of Done.
 
@@ -6,7 +6,7 @@
 
 **Architecture recap**: a single Next.js app _is_ the product. Server Actions / Route Handlers expose the engine; the same app's pages render the UI. You run it with `pnpm dev`, open the home page, and paste a URL to inspect. Engine code lives in `src/lib/core/` and stays cleanly separable so a CLI / hosted layer / acquirer platform can reuse it later — but the current scope is the local web app only.
 
-> **Scope note (current focus)**: Headlint is intentionally trimmed to "an easy local tool to preview, lint with a fixed ruleset, and get suggestions". The CLI, snapshots, CI runner, and the localhost-vs-prod diff are **parked** — see _Out of scope for now_ at the bottom. The phases below retain the longer-term vision for context; anything CLI/snapshot/CI/diff-related is deferred, not active.
+> **Scope note (current focus)**: Goflag is intentionally trimmed to "an easy local tool to preview, lint with a fixed ruleset, and get suggestions". The CLI, snapshots, CI runner, and the localhost-vs-prod diff are **parked** — see _Out of scope for now_ at the bottom. The phases below retain the longer-term vision for context; anything CLI/snapshot/CI/diff-related is deferred, not active.
 
 ---
 
@@ -34,13 +34,13 @@ Nobody owns _"the dev-grade linter for how a site appears in search and social, 
 **In scope** (the moat is depth, not breadth): OG / Twitter / Discord / Slack / iMessage previews, Google SERP rendering, JSON-LD validity, hreflang, robots, sitemap, manifest, favicons.
 **Deliberately out of scope**: performance metrics, accessibility audits, security headers. Specialization is the moat.
 
-> **Update — the Headlint Suite.** Headlint has grown from a single `<head>` inspector into a **three-lens local site auditor** that shares one discovery pipeline (`discoverSitemap`). The three lenses are deliberately *related but distinct* processes — close, not the same — and stay within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security:
+> **Update — the Goflag Suite.** Goflag has grown from a single `<head>` inspector into a **three-lens local site auditor** that shares one discovery pipeline (`discoverSitemap`). The three lenses are deliberately *related but distinct* processes — close, not the same — and stay within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security:
 >
 > - **Sitemap** — discoverability & map health (`/site`).
 > - **Head** — search/social presentation, the original "Lighthouse for the `<head>`" (`/inspect`).
 > - **Links** — link-graph integrity, finding broken internal & external links (`/links`).
 >
-> See the _Headlint Suite_ phase section below for the engine/UI breakdown. (This supersedes the earlier note that excluded broken-link crawls.)
+> See the _Goflag Suite_ phase section below for the engine/UI breakdown. (This supersedes the earlier note that excluded broken-link crawls.)
 
 ### Business model — three layers
 
@@ -58,7 +58,7 @@ These three features exist not just for user value, but as moat, viral loop, and
 
 ### Architectural non-negotiables (driven by the strategy)
 
-- **Engine and UI are cleanly separable.** Engine code in `src/lib/core/**` must never depend on Next.js / React / DOM / browser APIs. The engine must be shippable as a standalone package (`@headlint/core`) and reusable by a future hosted SaaS, a VS Code extension, or an acquirer's platform.
+- **Engine and UI are cleanly separable.** Engine code in `src/lib/core/**` must never depend on Next.js / React / DOM / browser APIs. The engine must be shippable as a standalone package (`@goflag/core`) and reusable by a future hosted SaaS, a VS Code extension, or an acquirer's platform.
 - **No telemetry by default**, ever. Optional opt-in only, and only in hosted contexts.
 - **Multi-tenant ready, even if single-tenant for v1.0**: no global state, no implicit `process.cwd()` reads outside CLI entry points, all config passed explicitly. This avoids a costly rewrite when the SaaS layer ships.
 - **Output formats are first-class.** Every command must support `--json` and (where it makes sense) `--report <path.html>`. Anything that's only available in the local UI is invisible to CI, marketers, and future SaaS.
@@ -67,13 +67,13 @@ These three features exist not just for user value, but as moat, viral loop, and
 
 ## CLI surface — PARKED
 
-> The CLI (`headlint inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point have been **removed from the current scope**. The product runs as a local web app (`pnpm dev`). The engine in `src/lib/core/**` is kept cleanly separable so a CLI can be reintroduced later without an engine rewrite. The historical command tree is preserved in git history and in _Out of scope for now_ below.
+> The CLI (`goflag inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point have been **removed from the current scope**. The product runs as a local web app (`pnpm dev`). The engine in `src/lib/core/**` is kept cleanly separable so a CLI can be reintroduced later without an engine rewrite. The historical command tree is preserved in git history and in _Out of scope for now_ below.
 
 ---
 
 ## Testing standards (apply to every phase)
 
-Headlint's whole value proposition is "trust me to lint your site". That requires the codebase itself to be exhaustively tested. The following standards are non-negotiable and must hold at the end of every phase.
+Goflag's whole value proposition is "trust me to lint your site". That requires the codebase itself to be exhaustively tested. The following standards are non-negotiable and must hold at the end of every phase.
 
 ### Test layers
 
@@ -196,17 +196,17 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [ ] **1.4** Side-channel probes: `robots.txt`, `sitemap.xml`, linked `manifest.json`
 - [ ] **1.5** JSON-LD parser: extract all `<script type="application/ld+json">`, parse, attach to `Page`
 - [ ] **1.6** Image probe utility: dimensions + filesize via `sharp` (only when needed)
-- [ ] **1.7** CLI scaffold (`src/bin/headlint.ts`) using `commander`, with `bin` entry in `package.json`
-- [ ] **1.8** Command: `headlint inspect <url> [--json]` — prints human-readable summary or full JSON
+- [ ] **1.7** CLI scaffold (`src/bin/goflag.ts`) using `commander`, with `bin` entry in `package.json`
+- [ ] **1.8** Command: `goflag inspect <url> [--json]` — prints human-readable summary or full JSON
 - [ ] **1.9** Fixtures: snapshot 5–8 representative pages from `tancrede` (home, blog post, contact) into `fixtures/sites/tancrede/`
 - [ ] **1.10** Unit tests: every parser/extractor utility (cheerio extractor, JSON-LD parser, image probe, robots/sitemap probes) hits ≥ 90% coverage with hand-crafted edge cases (malformed HTML, invalid JSON-LD, missing fields, relative vs absolute URLs)
 - [ ] **1.11** Integration tests: extractor parses each `tancrede` fixture and matches expected `Page` shape — served via the fixture server, not file reads
-- [ ] **1.12** E2E (CLI) test: `headlint inspect <fixture-server-url> --json` boots the CLI as a child process, asserts JSON output structure and exit code 0
-- [ ] **1.13** E2E (CLI) test: `headlint inspect <unreachable-url>` exits non-zero with a friendly error
+- [ ] **1.12** E2E (CLI) test: `goflag inspect <fixture-server-url> --json` boots the CLI as a child process, asserts JSON output structure and exit code 0
+- [ ] **1.13** E2E (CLI) test: `goflag inspect <unreachable-url>` exits non-zero with a friendly error
 
 **Definition of Done**
 
-- `pnpm headlint inspect http://localhost:3000 --json` (with tancrede running) prints a complete `Page` JSON.
+- `pnpm goflag inspect http://localhost:3000 --json` (with tancrede running) prints a complete `Page` JSON.
 - `pnpm test` exercises the extractor against all fixtures and passes.
 - A `Page` from a tancrede blog post correctly contains: title, description, canonical, all OG fields, twitter card, all `hreflang` alternates, JSON-LD blocks, favicon links.
 
@@ -226,7 +226,7 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Definition of Done**
 
-- `headlint inspect <SPA url>` returns the same complete `Page` as it would for an SSR page.
+- `goflag inspect <SPA url>` returns the same complete `Page` as it would for an SSR page.
 - The Page object distinguishes server-rendered tags from client-injected ones.
 
 ---
@@ -242,17 +242,17 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [x] **3.5** Tabs scaffold: `Previews`, `Issues`, `Raw`, `Structured data`, `i18n`, `Assets` (most empty stubs at this stage)
 - [x] **3.6** "Raw" tab: syntax-highlighted `<head>` content (use `shiki`), each tag annotated with its parsed meaning on hover
 - [x] **3.7** "Assets" tab v0: favicon grid (renders each `link rel=icon` at its declared size), manifest JSON viewer, robots.txt viewer
-- [x] **3.8** Wire `headlint dev <url>` CLI command: spawns Next.js standalone server, opens browser to `/inspect?url=...`
+- [x] **3.8** Wire `goflag dev <url>` CLI command: spawns Next.js standalone server, opens browser to `/inspect?url=...`
 - [x] **3.9** Dark mode by default with theme toggle
 - [x] **3.10** Loading + error states (skeleton, toast on fetch failure)
 - [x] **3.11** Component tests: every new shadcn-composed component (URL form, header card, raw viewer, favicon grid, manifest viewer) has a render test with realistic props
 - [x] **3.12** Server Action test: the inspect action returns a valid `Page` for a fixture URL and a structured error for an unreachable URL
-- [x] **3.13** E2E (UI) test: `headlint dev` boots Next.js, Playwright opens `/inspect`, submits a fixture-server URL, asserts that the header card, sidebar, and Raw tab all render with the expected content
+- [x] **3.13** E2E (UI) test: `goflag dev` boots Next.js, Playwright opens `/inspect`, submits a fixture-server URL, asserts that the header card, sidebar, and Raw tab all render with the expected content
 - [x] **3.14** E2E (UI) test: error path — submitting an unreachable URL surfaces a toast and does not crash the page
 
 **Definition of Done**
 
-- Running `pnpm headlint dev http://localhost:3000` opens a browser to a working inspect view of the tancrede homepage.
+- Running `pnpm goflag dev http://localhost:3000` opens a browser to a working inspect view of the tancrede homepage.
 - The Raw tab shows every `<head>` tag, syntax-highlighted, with hover annotations.
 - Re-fetch works and updates the view.
 - All component tests pass; the inspect E2E flow runs green in CI.
@@ -301,17 +301,17 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [x] **5.4** Implement first 10 trivial-existence rules: `title.missing`, `title.length`, `description.missing`, `description.length`, `canonical.missing`, `canonical.absolute`, `viewport.missing`, `lang.missing`, `og.image.missing`, `og.image.absolute`
 - [x] **5.5** Implement next 10 OG/Twitter rules: `og.title.missing`, `og.image.dimensions`, `og.image.size`, `og.url.matches`, `twitter.card.missing`, `twitter.image.alt`, `twitter.card.matchesImage`, `og.type.valid`, `og.locale.valid`, `og.siteName.missing`
 - [x] **5.6** Implement structural/i18n rules: `hreflang.reciprocal`, `hreflang.x-default`, `favicon.sizes`, `manifest.missing`, `robots.conflict`
-- [x] **5.7** "Issues" tab UI: grouped by severity (error/warning/info), each with rule id, message, doc link, "Fix it" snippet block, jump-to-tag in Raw view. Queried the **shadcn studio MCP** for "issue list" / "linter results" / "audit findings" patterns; nothing close to a developer-tool issues panel ships in the catalog, so the tab is composed from primitives (Card, Badge, ScrollArea, Button) for the same minimalist feel as the Raw / Previews tabs. Cross-tab "Jump to tag" rides on a `headlint:jump-to-origin` `CustomEvent` consumed by a new `InspectTabs` client wrapper + the existing Raw viewer (which now anchors each row by `originDomId(origin)` and flashes the matched row).
+- [x] **5.7** "Issues" tab UI: grouped by severity (error/warning/info), each with rule id, message, doc link, "Fix it" snippet block, jump-to-tag in Raw view. Queried the **shadcn studio MCP** for "issue list" / "linter results" / "audit findings" patterns; nothing close to a developer-tool issues panel ships in the catalog, so the tab is composed from primitives (Card, Badge, ScrollArea, Button) for the same minimalist feel as the Raw / Previews tabs. Cross-tab "Jump to tag" rides on a `goflag:jump-to-origin` `CustomEvent` consumed by a new `InspectTabs` client wrapper + the existing Raw viewer (which now anchors each row by `originDomId(origin)` and flashes the matched row).
 - [x] **5.8** Per-rule docs page generator (`/rules/[id]`) — auto-built from rule metadata, statically generated via `generateStaticParams()` so all 25 routes are pre-rendered at build time. Index lives at `/rules`, grouped by category.
-- [x] **5.9** CLI: `headlint lint <url>` — prints issues, exits with non-zero on errors. Supports `--json`, `--max-warnings <n>`, `--no-probes`, `--insecure`, `--timeout`, `--static`, `--headless`. Exit-code contract: 0 = no errors, 1 = errors (or `--max-warnings` exceeded), 2 = unrecoverable fetch/headless/CLI failures.
+- [x] **5.9** CLI: `goflag lint <url>` — prints issues, exits with non-zero on errors. Supports `--json`, `--max-warnings <n>`, `--no-probes`, `--insecure`, `--timeout`, `--static`, `--headless`. Exit-code contract: 0 = no errors, 1 = errors (or `--max-warnings` exceeded), 2 = unrecoverable fetch/headless/CLI failures.
 - [x] **5.10** Per-rule tests: each rule has `fixtures/rules/<rule-id>/{pass,fail}.html`, generated by `scripts/gen-rule-fixtures.mjs` from a single shared base; the contract harness in `src/lib/rules/__tests__/contract.test.ts` asserts the rule under test does not fire on its `pass.html` and does fire (with the right severity, non-empty message, and `/rules/<id>` docs href) on its `fail.html`.
 - [x] **5.11** Lint check that fails CI if a rule lands in `src/lib/rules/` without both fixture files. Implemented as `scripts/check-rule-fixtures.mjs` (exposed via `pnpm verify:rule-fixtures`) and wired into the GitLab `verify` stage as the `rule-fixtures` job.
 - [x] **5.12** Component test for the Issues panel: empty state, severity grouping order, rule id / message rendering, learn-more link href, fix snippet rendering, "Jump to tag" both via injected `onJump` and the default `CustomEvent` dispatch path, plus severity summary chips.
-- [x] **5.13** E2E (CLI) tests for `headlint lint`: spawns the real `tsx src/bin/headlint.ts` against a Hono fixture server hosting `fixtures/sites/tancrede`, asserts the human-readable header, the `--json` payload shape (`schemaVersion`, `url`, `finalUrl`, `fetchedAt`, `counts`, `issues[]` with required fields), the `--max-warnings` budget message, and the unreachable-URL exit path.
+- [x] **5.13** E2E (CLI) tests for `goflag lint`: spawns the real `tsx src/bin/goflag.ts` against a Hono fixture server hosting `fixtures/sites/tancrede`, asserts the human-readable header, the `--json` payload shape (`schemaVersion`, `url`, `finalUrl`, `fetchedAt`, `counts`, `issues[]` with required fields), the `--max-warnings` budget message, and the unreachable-URL exit path.
 
 **Definition of Done**
 
-- ✅ Running `headlint lint http://localhost:3000` against tancrede prints a real, non-empty issues report (verified locally: 5 issues — 0 errors, 1 warning, 4 info).
+- ✅ Running `goflag lint http://localhost:3000` against tancrede prints a real, non-empty issues report (verified locally: 5 issues — 0 errors, 1 warning, 4 info).
 - ✅ All 25 MVP rules are documented at `/rules/<id>` with example fixes (statically pre-rendered by Next.js, build output confirms `/rules/[id]` SSG with 25 paths).
 - ✅ Rule unit tests cover both pass and fail cases for every rule (`src/lib/rules/__tests__/contract.test.ts`, 100 contract tests = 25 rules × 4 assertions).
 - ✅ All gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm test` (423 tests across 46 files), `pnpm test:integration` (CLI E2E for both `inspect` and `lint`), `pnpm build`.
@@ -353,12 +353,12 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [x] **7.3** Sidebar grouping by locale (already scaffolded in 3.3 — verified intact end-to-end)
 - [x] **7.4** "i18n" tab: hreflang reciprocity matrix (visual grid: route × locale). The shadcn studio catalogue had no purpose-built "status grid"; we composed a CSS grid from `Card`/`Badge`/anchor primitives so the dense matrix doesn't pay per-cell tooltip-render overhead.
 - [x] **7.5** `x-default` presence check, locale code validity
-- [x] **7.6** CLI: `headlint inspect <url> --crawl --depth 2 --include "/blog/**"`
+- [x] **7.6** CLI: `goflag inspect <url> --crawl --depth 2 --include "/blog/**"`
 - [x] **7.7** Performance: parallel fetches with concurrency cap + `--max-pages` safety bound (in-memory cache deferred to Phase 8 since the BFS only visits each URL once)
 - [x] **7.8** Unit tests: include/exclude glob matching, depth limit, cycle protection (page links back to itself), de-duplication of trailing-slash variants
 - [x] **7.9** Integration test: crawl a multi-page fixture site (4 locales × 3 routes) served by the fixture server; assert exact set of URLs visited and hreflang matrix shape
 - [x] **7.10** Integration test: hreflang reciprocity rule fires correctly on a fixture where `/de/blog/post` links from peers but does not advertise `/fr/blog/post` back
-- [x] **7.11** E2E (CLI): `headlint inspect ... --crawl --depth 2 --include "/blog/**"` produces the expected URL set and respects the include filter
+- [x] **7.11** E2E (CLI): `goflag inspect ... --crawl --depth 2 --include "/blog/**"` produces the expected URL set and respects the include filter
 - [x] **7.12** Component test: i18n matrix renders green/red cells correctly for given snapshot data + browser-level matrix render against the i18n-grid fixture
 
 **Definition of Done**
@@ -373,23 +373,23 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ## Phase 8 — Configuration system
 
-**Goal**: a single `headlint.config.ts` that controls everything.
+**Goal**: a single `goflag.config.ts` that controls everything.
 
 - [x] **8.1** `defineConfig()` helper + Zod schema in `src/lib/config/`
-- [x] **8.2** Config loader: searches CWD for `headlint.config.{ts,mts,js,mjs,cjs}` (uses `tsx`'s `tsImport` for TS variants; CJS + ESM via plain `import()`)
+- [x] **8.2** Config loader: searches CWD for `goflag.config.{ts,mts,js,mjs,cjs}` (uses `tsx`'s `tsImport` for TS variants; CJS + ESM via plain `import()`)
 - [x] **8.3** Config surfaces: `baseUrl`, `framework`, `i18n`, `crawl`, `rules`, `normalize`, `snapshot.dir`
-- [x] **8.4** `headlint init` — interactive scaffolder via `@clack/prompts` (with `--yes` non-interactive mode for CI) that writes a parseable `headlint.config.ts`. The in-UI settings panel is deferred until a real user actually asks for it (the shadcn studio "settings form" exploration would buy nothing without that signal).
+- [x] **8.4** `goflag init` — interactive scaffolder via `@clack/prompts` (with `--yes` non-interactive mode for CI) that writes a parseable `goflag.config.ts`. The in-UI settings panel is deferred until a real user actually asks for it (the shadcn studio "settings form" exploration would buy nothing without that signal).
 - [x] **8.5** Framework detection from `package.json` deps (Next, Astro, Nuxt, SvelteKit, Remix, Vite-React) with deliberate precedence + `auto` sentinel resolved by the loader.
 - [x] **8.6** Framework-aware fix snippets: Next snippets reference `metadata.openGraph.images` / `Metadata.title` / `Metadata.description`; Astro and Nuxt have a starter set. Snippets are post-applied so rules stay framework-agnostic.
 - [x] **8.7** Unit tests: Zod schema rejection messages cover baseUrl, framework slugs, BCP 47 locales, empty arrays, depth bounds, rule-shorthand severities, and normalize entries.
 - [x] **8.8** Unit tests: loader walks up nested CWDs, resolves `.ts/.mjs/.js`, distinguishes "no default export" from "namespace masquerade", reports zod failures with file path.
-- [x] **8.9** Integration test: `rules: { "<id>": "off" }` in `headlint.config.ts` disables the rule from both the spawned CLI (`headlint lint --json --config <path>`) and the in-process pipeline used by the App Router server component.
+- [x] **8.9** Integration test: `rules: { "<id>": "off" }` in `goflag.config.ts` disables the rule from both the spawned CLI (`goflag lint --json --config <path>`) and the in-process pipeline used by the App Router server component.
 - [x] **8.10** Integration test: framework detection correctly identifies Next/Astro/Nuxt/unknown against fixture `package.json` files.
-- [x] **8.11** E2E (CLI): `headlint init --yes` writes a parseable `headlint.config.ts` whose contents round-trip through `loadConfig()` with defaults applied; refuses to overwrite without `--force`.
+- [x] **8.11** E2E (CLI): `goflag init --yes` writes a parseable `goflag.config.ts` whose contents round-trip through `loadConfig()` with defaults applied; refuses to overwrite without `--force`.
 
 **Definition of Done**
 
-- ✅ `headlint init --yes --base-url https://x.com` writes a `headlint.config.ts` whose `loadConfig()` round-trip exposes the user's `baseUrl` and the engine's defaults (`crawl.depth = 1`, `crawl.concurrency = 4`, `snapshot.dir = .headlint/snapshots`) — asserted in `test/integration/cli-init.test.ts`.
+- ✅ `goflag init --yes --base-url https://x.com` writes a `goflag.config.ts` whose `loadConfig()` round-trip exposes the user's `baseUrl` and the engine's defaults (`crawl.depth = 1`, `crawl.concurrency = 4`, `snapshot.dir = .goflag/snapshots`) — asserted in `test/integration/cli-init.test.ts`.
 - ✅ Disabling a rule in the config (`rules: { "<id>": "off" }`) drops it from both the CLI's `--json` output and the App Router's `applyRuleConfig(lint(page), config)` call (asserted in `test/integration/config-rules.test.ts`).
 - ✅ Schema tests cover the happy path and 9 distinct invalid-shape branches with human-readable error messages (`src/lib/config/schema.test.ts`).
 - ✅ Gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm verify:i18n-fixture`, `pnpm test` (572 tests across 68 files), `pnpm test:integration` (36 cases including config-rules + framework-detect + cli-init), `pnpm exec playwright test` (44 E2E specs, no regressions), `pnpm build`.
@@ -408,32 +408,32 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 > - **MR 9c — PR comments + screenshots**: 9.8, 9.16.
 
 - [x] **9.1** Snapshot format definition in `src/lib/snapshots/types.ts` (route, sample URL, tags array, jsonld types/fields, normalized values, rule outcomes, body digest). `SNAPSHOT_SCHEMA_VERSION = 1` is the migration handle. Tag projection is exhaustive and stable: every parsed `Page` field maps to a documented `key` (e.g. `meta:og:image[0]:width`, `link:alternate[hreflang=fr]`, `probe:robots:blocks-all`).
-- [x] **9.2** Snapshot writer + reader: `.headlint/snapshots/<route>.json`. Writes are atomic (temp file + `rename`) so a crash mid-write never leaves a half-written committed file. Schema mismatches throw `SnapshotSchemaError` so the CLI can print a friendly "run with --update" message; corrupted files in `listSnapshots` are silently skipped (don't poison the dev workflow).
+- [x] **9.2** Snapshot writer + reader: `.goflag/snapshots/<route>.json`. Writes are atomic (temp file + `rename`) so a crash mid-write never leaves a half-written committed file. Schema mismatches throw `SnapshotSchemaError` so the CLI can print a friendly "run with --update" message; corrupted files in `listSnapshots` are silently skipped (don't poison the dev workflow).
 - [x] **9.3** Snapshot diff engine: compare two snapshots, classify as `regression` (shape lost / rule failed) / `addition` / `content-drift`. Coalesces repeated `@type` JSON-LD entries; severity downgrades count as regressions (warning → error).
 - [x] **9.4** Normalizer applies `config.normalize` rules to volatile fields before the digest is computed. Strategies: `hash` (sha256-12 in place), `redact` (`<redacted>` sentinel), `strip` (drop entry/field). Path syntax: `<tag-key>`, `meta:og:image[*]`, `jsonld:<Type>`, `jsonld:<Type>.<field>`. Last matching rule wins (CSS-cascade norm).
-- [x] **9.5** CLI: `headlint snapshot <url> [--update] [--json] [--config] [--no-probes] [--insecure] [--timeout] [--static] [--headless]`. Exit codes: 0 (clean / --update succeeded), 1 (regressions), 2 (no committed snapshot, schema mismatch, or fetch failure).
+- [x] **9.5** CLI: `goflag snapshot <url> [--update] [--json] [--config] [--no-probes] [--insecure] [--timeout] [--static] [--headless]`. Exit codes: 0 (clean / --update succeeded), 1 (regressions), 2 (no committed snapshot, schema mismatch, or fetch failure).
 - [x] **9.6** "Snapshot" tab in UI shows three states: empty (no committed snapshot — "Save snapshot" CTA), identical (no changes), or diff (regression / addition / content-drift groupings + "Accept changes" CTA). Server action `acceptSnapshot` always re-fetches before writing — never trusts a cached `Page`. _shadcn studio MCP queried for "diff viewer" / "review changes" patterns; nothing in the catalogue matches a developer-tool snapshot panel, so composed from `Card`/`Badge`/primitives the same way Issues was._
-- [ ] **9.7** Differential rule runner: `headlint ci <url> --base <ref>` runs against the current state and the merge-base, fails only on _new_ errors — **MR 9b**.
-- [ ] **9.8** PR comment renderer: HTML output with the four-section format (regressions / new warnings / content diffs / pre-existing). **Renders preview cards as PNGs server-side via Playwright (already in the stack) and embeds them inline, Vercel-style** — this is the viral loop: every engineer who sees a preview-card screenshot in their PR becomes a user. When invoked from `headlint diff` (Phase 9.5), renders local vs prod cards side-by-side in the same comment — **MR 9c**.
+- [ ] **9.7** Differential rule runner: `goflag ci <url> --base <ref>` runs against the current state and the merge-base, fails only on _new_ errors — **MR 9b**.
+- [ ] **9.8** PR comment renderer: HTML output with the four-section format (regressions / new warnings / content diffs / pre-existing). **Renders preview cards as PNGs server-side via Playwright (already in the stack) and embeds them inline, Vercel-style** — this is the viral loop: every engineer who sees a preview-card screenshot in their PR becomes a user. When invoked from `goflag diff` (Phase 9.5), renders local vs prod cards side-by-side in the same comment — **MR 9c**.
 - [ ] **9.9** GitLab CI template (`templates/gitlab-ci.yml`) ready to copy-paste into any project — **MR 9b**.
 - [ ] **9.10** GitHub Actions template (`templates/github-actions.yml`) — **MR 9b**.
-- [ ] **9.11** `headlint ci` exit codes: `0` = clean, `1` = new errors, `2` = structural regression, `3` = both — **MR 9b**.
+- [ ] **9.11** `goflag ci` exit codes: `0` = clean, `1` = new errors, `2` = structural regression, `3` = both — **MR 9b**.
 - [x] **9.12** Unit tests: snapshot diff classifier — every transition (added tag, removed tag, content change, JSON-LD type added/removed, JSON-LD field added/removed, rule pass→fail / fail→pass, severity worsening / improving) produces the correct classification. 17 test cases in `src/lib/snapshots/diff.test.ts`.
 - [x] **9.13** Unit tests: normalizer — every strategy on every path shape (literal, `[*]` array wildcard, JSON-LD entry-or-field). 10 test cases in `src/lib/snapshots/normalize.test.ts`.
 - [x] **9.14** _Lane-classification half (MR 9a)_: integration tests in `test/integration/cli-snapshot.test.ts` cover three scenarios (clean / structural regression via `og:image` drop / no committed snapshot). Per-lane fixture-repo pairs (rule-pass→fail, pre-existing debt) ship with the differential runner in **MR 9b**.
-- [ ] **9.15** E2E (CLI): `headlint ci` against a git-backed fixture repo with two commits, asserts exit code matches the introduced lane(s) — **MR 9b**.
-- [ ] **9.16** Snapshot test: PR comment renderer output matches a committed Markdown/HTML golden file for each of the four section combinations, **plus visual regression baselines for the rendered preview-card PNGs** and a snapshot for the `headlint diff` (Phase 9.5) localhost-vs-prod side-by-side mode — **MR 9c**.
+- [ ] **9.15** E2E (CLI): `goflag ci` against a git-backed fixture repo with two commits, asserts exit code matches the introduced lane(s) — **MR 9b**.
+- [ ] **9.16** Snapshot test: PR comment renderer output matches a committed Markdown/HTML golden file for each of the four section combinations, **plus visual regression baselines for the rendered preview-card PNGs** and a snapshot for the `goflag diff` (Phase 9.5) localhost-vs-prod side-by-side mode — **MR 9c**.
 
 **Definition of Done** _(closed when all three sub-MRs land)_
 
-- A test repo with two commits (one safe, one regressing) produces the expected pass/fail from `headlint ci`. ← **MR 9b**.
+- A test repo with two commits (one safe, one regressing) produces the expected pass/fail from `goflag ci`. ← **MR 9b**.
 - The PR comment template renders correctly with mock data. ← **MR 9c**.
 - Tancrède can adopt the CI step on `develop` without breaking existing pipelines (Lane 1 differential mode covers pre-existing debt). ← **MR 9b** + manual verification.
 
 **MR 9a Definition of Done** ✅
 
-- ✅ `pnpm headlint snapshot <url> --update` writes a `Snapshot` JSON to `.headlint/snapshots/<route>.json`; re-running without `--update` returns "no changes since the committed snapshot" (asserted in `test/integration/cli-snapshot.test.ts`).
-- ✅ Mutating the served HTML to drop `og:image`, then re-running `pnpm headlint snapshot <url>`, exits `1` and reports a `meta:og:image[0]` regression.
+- ✅ `pnpm goflag snapshot <url> --update` writes a `Snapshot` JSON to `.goflag/snapshots/<route>.json`; re-running without `--update` returns "no changes since the committed snapshot" (asserted in `test/integration/cli-snapshot.test.ts`).
+- ✅ Mutating the served HTML to drop `og:image`, then re-running `pnpm goflag snapshot <url>`, exits `1` and reports a `meta:og:image[0]` regression.
 - ✅ The in-UI Snapshot tab renders three states (empty / identical / diff) with an "Accept changes" CTA on the diff state; the `acceptSnapshot` server action writes the resolved snapshot to disk after re-fetching.
 - ✅ All gates green: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm verify:rule-fixtures`, `pnpm verify:i18n-fixture`, `pnpm test` (691 tests across 80 files), `pnpm test:integration` (41 cases including the 5 new `cli-snapshot` specs), `pnpm exec playwright test --project=chromium` (45 specs including the new Snapshot tab E2E), `pnpm build`. `src/lib/snapshots/**` coverage 100/90.8/100/100 (lines/branches/functions/statements).
 
@@ -451,24 +451,24 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 2. **Acquirer demo**: the cleanest possible "buy us" pitch for Vercel / Netlify / Cloudflare — your localhost-vs-prod insight is exactly what makes preview deployments more valuable.
 3. **SaaS seed**: the same diff engine, run continuously against deployed snapshots, becomes the v2.x continuous-monitoring product.
 
-- [ ] **9.5.1** Command: `headlint diff <local-url> <prod-url>` — fetches both, runs the engine on each, produces a side-by-side diff. Shares 100% of the engine code with `headlint inspect` and `headlint lint` — this phase adds a comparison layer, not a new extractor.
+- [ ] **9.5.1** Command: `goflag diff <local-url> <prod-url>` — fetches both, runs the engine on each, produces a side-by-side diff. Shares 100% of the engine code with `goflag inspect` and `goflag lint` — this phase adds a comparison layer, not a new extractor.
 - [ ] **9.5.2** Diff classifier in `src/lib/core/diff.ts`: per-tag, per-JSON-LD-block, per-rule. Classifies each delta as `lost` (live in prod, missing locally → about-to-regress), `gained` (missing in prod, present locally → about-to-add), `changed` (different value), or `same` (no change).
-- [ ] **9.5.3** Smart route mapping: `headlint diff http://localhost:3000 https://tancrede.com` matches `/` ↔ `/` and `/blog/foo` ↔ `/blog/foo` automatically. Optional `--map <local-path>=<prod-path>` for non-trivial mappings (e.g. `--map /preview/blog/foo=/blog/foo`).
+- [ ] **9.5.3** Smart route mapping: `goflag diff http://localhost:3000 https://tancrede.com` matches `/` ↔ `/` and `/blog/foo` ↔ `/blog/foo` automatically. Optional `--map <local-path>=<prod-path>` for non-trivial mappings (e.g. `--map /preview/blog/foo=/blog/foo`).
 - [ ] **9.5.4** UI: new "Diff" tab in the inspect view, shown only when invoked with both endpoints. Visual side-by-side: Raw `<head>`, Issues, Previews. Query the **shadcn studio MCP** for "diff viewer" / "side-by-side comparison" / "split view" patterns first.
 - [ ] **9.5.5** Severity ordering in output: lost-rendering-tags first (will visibly break previews), then lost-JSON-LD types (will lose rich snippets), then rule-pass→fail regressions, then content drift.
-- [ ] **9.5.6** Crawl-aware mode: `headlint diff <local-url> <prod-url> --crawl --depth 2 --include "/blog/**"` runs the diff across a whole site, reuses Phase 7's crawler.
+- [ ] **9.5.6** Crawl-aware mode: `goflag diff <local-url> <prod-url> --crawl --depth 2 --include "/blog/**"` runs the diff across a whole site, reuses Phase 7's crawler.
 - [ ] **9.5.7** Exit codes: `0` = no losses, `1` = at least one regression (lost tag / JSON-LD type / rule), `2` = at least one structural break (preview-rendering tag lost), `3` = both. Adoptable as a deploy-gate in CI.
 - [ ] **9.5.8** `--json` output schema: stable, documented; consumed by Phase 9.8 PR comment renderer and (later) the SaaS layer.
 - [ ] **9.5.9** Unit tests: diff classifier — every transition (tag added / removed / changed, JSON-LD type added / removed, rule pass→fail, rule fail→pass, hreflang sibling lost, manifest changed) produces the correct classification.
 - [ ] **9.5.10** Unit tests: route mapper — automatic same-path matching, explicit `--map`, trailing-slash and query-string normalization.
 - [ ] **9.5.11** Integration tests: spin up two fixture servers (one as "local", one as "prod") with controlled deltas; assert diff output for each lane (clean / regression / structural break / content drift).
-- [ ] **9.5.12** E2E (CLI): `headlint diff` against the fixture server pair on a known-regressing change set; assert exit code, JSON output shape, and that the textual report contains the expected sections.
+- [ ] **9.5.12** E2E (CLI): `goflag diff` against the fixture server pair on a known-regressing change set; assert exit code, JSON output shape, and that the textual report contains the expected sections.
 - [ ] **9.5.13** Component test: Diff tab renders correctly for fixture diff data (clean state, mixed state, all-regressed state).
 - [ ] **9.5.14** E2E (UI): inspect view in diff mode renders side-by-side preview cards with the local side visibly degraded for a fixture where the local HTML drops `og:image`.
 
 **Definition of Done**
 
-- `headlint diff http://localhost:3000 https://tancrede.com --crawl --depth 1` produces a clean diff for a no-op change set, and a non-empty regression report when a local refactor drops `og:image` from the homepage.
+- `goflag diff http://localhost:3000 https://tancrede.com --crawl --depth 1` produces a clean diff for a no-op change set, and a non-empty regression report when a local refactor drops `og:image` from the homepage.
 - The Diff tab in the UI shows side-by-side previews for the homepage, with the local-side visibly degraded.
 - Exit codes are deterministic and correct across the test scenarios (clean / regression / structural break / both).
 - The `--json` schema is documented at `/rules/diff` (or equivalent) and is treated as a stable contract from this phase forward.
@@ -483,35 +483,35 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [ ] **10.2** WebSocket channel from Next.js server → UI for live updates
 - [ ] **10.3** Auto re-fetch + re-lint on detected change; smooth UI update without full reload
 - [ ] **10.4** Diff badge in sidebar when a route's metadata changed since last view
-- [ ] **10.5** CLI flag: `headlint dev --watch`
+- [ ] **10.5** CLI flag: `goflag dev --watch`
 - [ ] **10.6** Unit tests: file-watcher debounce/throttle, ignore patterns (`node_modules`, `.next`, `.git`)
 - [ ] **10.7** Integration test: WebSocket channel — server pushes a re-fetch event, mock UI client receives expected payload
-- [ ] **10.8** E2E (UI): boot `headlint dev --watch` against a fixture site whose HTML is rewritten mid-test; Playwright asserts the preview updates within 2 s without page reload
+- [ ] **10.8** E2E (UI): boot `goflag dev --watch` against a fixture site whose HTML is rewritten mid-test; Playwright asserts the preview updates within 2 s without page reload
 
 **Definition of Done**
 
-- Editing `app/[locale]/metadata.ts` in tancrede with `headlint dev --watch` running causes the preview cards to update within ~1s.
+- Editing `app/[locale]/metadata.ts` in tancrede with `goflag dev --watch` running causes the preview cards to update within ~1s.
 - Watch-mode E2E test passes deterministically in CI.
 
 ---
 
 ## Phase 11 — Packaging & distribution
 
-**Goal**: `npx headlint` works on a fresh machine, anywhere.
+**Goal**: `npx goflag` works on a fresh machine, anywhere.
 
 - [ ] **11.1** Next.js `output: "standalone"` build target
-- [ ] **11.2** `bin/headlint.js` entry point that boots the standalone server in interactive modes, runs the engine directly in CI mode
-- [ ] **11.3** `package.json` `bin` mapping, `files` whitelist, `exports` map for `@headlint/core` use
+- [ ] **11.2** `bin/goflag.js` entry point that boots the standalone server in interactive modes, runs the engine directly in CI mode
+- [ ] **11.3** `package.json` `bin` mapping, `files` whitelist, `exports` map for `@goflag/core` use
 - [ ] **11.4** Lazy Playwright Chromium download: prompt and install on first use of headless mode
 - [ ] **11.5** npm publish dry-run; verify install size (<30 MB without Chromium)
-- [ ] **11.6** Smoke test script: `npm pack` → install the tarball into a fresh tmp directory → run `headlint inspect`, `headlint lint`, `headlint dev --no-open` against the fixture server → assert exit codes and stdout
+- [ ] **11.6** Smoke test script: `npm pack` → install the tarball into a fresh tmp directory → run `goflag inspect`, `goflag lint`, `goflag dev --no-open` against the fixture server → assert exit codes and stdout
 - [ ] **11.7** Smoke-test runs in CI as a dedicated `package` stage, gating the release
 - [ ] **11.8** Integration test: lazy Chromium download — first headless run in a clean Playwright cache prompts and installs successfully
 
 **Definition of Done**
 
-- `npx headlint inspect <url>` works on a fresh Node 20 install with no project-local setup.
-- `npx headlint dev <url>` opens a working browser UI.
+- `npx goflag inspect <url>` works on a fresh Node 20 install with no project-local setup.
+- `npx goflag dev <url>` opens a working browser UI.
 
 ---
 
@@ -519,19 +519,19 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Goal**: close the dev-vs-marketer audience gap. Devs run the tool; marketers open a single file. No installs for non-devs, ever.
 
-**Why this exists** (see _Strategy & business model_ above): the product is built for devs, but the people who care about how a page renders on Twitter or in Google SERPs are PMs, content leads and marketers. They will never install Node, never run a CLI, never read JSON. A self-contained HTML report is the cleanest hand-off: a dev runs `headlint inspect --report report.html`, sends the file (or a Slack message), the non-dev opens it in any browser with zero setup. This is also the seed for the v2.x SaaS feature _"publish a private shareable report URL with optional auth"_.
+**Why this exists** (see _Strategy & business model_ above): the product is built for devs, but the people who care about how a page renders on Twitter or in Google SERPs are PMs, content leads and marketers. They will never install Node, never run a CLI, never read JSON. A self-contained HTML report is the cleanest hand-off: a dev runs `goflag inspect --report report.html`, sends the file (or a Slack message), the non-dev opens it in any browser with zero setup. This is also the seed for the v2.x SaaS feature _"publish a private shareable report URL with optional auth"_.
 
-- [ ] **11.5.1** CLI flag plumbing: `--report <path.html>` available on `headlint inspect`, `headlint lint`, and `headlint diff` (Phase 9.5). For crawl mode, the report aggregates all crawled pages into a single navigable file.
+- [ ] **11.5.1** CLI flag plumbing: `--report <path.html>` available on `goflag inspect`, `goflag lint`, and `goflag diff` (Phase 9.5). For crawl mode, the report aggregates all crawled pages into a single navigable file.
 - [ ] **11.5.2** HTML report bundler in `src/lib/report/`: produces a single self-contained `.html` file with all assets (CSS, fonts, preview-card PNGs, screenshots, icons) inlined as base64 / data URIs. **Zero outbound network requests when opened**, including in air-gapped environments — verified by test.
 - [ ] **11.5.3** Report sections: header card (URL, fetch time, overall status badge), preview gallery (all 10 cards rendered as static images via Playwright, lazy-rendered server-side), issues list (severity-grouped, with fix snippets and copy-to-clipboard), structured-data summary, i18n matrix when applicable, raw `<head>` (collapsed by default).
 - [ ] **11.5.4** Marketer-friendly tone: top-level copy avoids dev jargon ("how this page appears when shared" instead of "OG tag lint result"), uses plain-English issue summaries, hides rule IDs and CLI snippets behind a collapsible "for developers" toggle. Both audiences served from the same file.
-- [ ] **11.5.5** Diff mode: `headlint diff <local> <prod> --report report.html` produces a side-by-side report — local vs prod preview cards next to each other for every route, regressions visually highlighted. This is the headline artifact a dev sends to a marketer when escalating a deploy decision.
+- [ ] **11.5.5** Diff mode: `goflag diff <local> <prod> --report report.html` produces a side-by-side report — local vs prod preview cards next to each other for every route, regressions visually highlighted. This is the headline artifact a dev sends to a marketer when escalating a deploy decision.
 - [ ] **11.5.6** Optional `--report-format json` for downstream consumers (Slack bots, dashboards, the future SaaS ingestion path). The JSON shape mirrors the section structure of the HTML report and is treated as a stable contract.
 - [ ] **11.5.7** Branding hooks: `--report-title <string>`, `--report-logo <path>` for white-label scenarios (consultancies running audits for clients). Default branding is the project's own.
 - [ ] **11.5.8** Unit tests: HTML bundler — assets are correctly inlined; the produced file passes a strict no-network test (loaded with offline / network-denied browser context, asserts zero failed requests).
 - [ ] **11.5.9** Component tests: each report section renders correctly with full / minimal / empty fixture data.
-- [ ] **11.5.10** E2E (CLI): `headlint inspect <fixture-url> --report tmp/report.html` produces a file that, when loaded into a network-denied headless browser, contains the expected DOM (preview gallery, issues, sections), with zero failed network requests.
-- [ ] **11.5.11** E2E (CLI): `headlint diff --report tmp/diff.html` against the regressing fixture pair produces a report whose DOM contains a "Regressions" section with the expected entries.
+- [ ] **11.5.10** E2E (CLI): `goflag inspect <fixture-url> --report tmp/report.html` produces a file that, when loaded into a network-denied headless browser, contains the expected DOM (preview gallery, issues, sections), with zero failed network requests.
+- [ ] **11.5.11** E2E (CLI): `goflag diff --report tmp/diff.html` against the regressing fixture pair produces a report whose DOM contains a "Regressions" section with the expected entries.
 - [ ] **11.5.12** Cross-browser smoke: open the produced report in Chrome, Firefox, and Safari (Playwright matrix); assert visual baseline matches.
 
 **Definition of Done**
@@ -539,24 +539,24 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - A non-developer can open the produced `.html` file in any browser without internet access and see a complete preview/issue report.
 - The report renders identically in Chrome, Firefox, and Safari (visual smoke test).
 - File size for a typical single-URL report is under 3 MB; under 15 MB for a 20-page crawl.
-- A `headlint diff --report` artifact is the artifact a dev sends to their marketer/PM when escalating a deploy decision; this flow is documented in the README.
+- A `goflag diff --report` artifact is the artifact a dev sends to their marketer/PM when escalating a deploy decision; this flow is documented in the README.
 
 ---
 
 ## Phase 12 — Docs site
 
-**Goal**: a marketing + reference site that dogfoods Headlint itself.
+**Goal**: a marketing + reference site that dogfoods Goflag itself.
 
 - [ ] **12.1** Add a `docs/` folder (or sibling Next.js app) with marketing landing + docs sections
 - [ ] **12.2** Pages: Home, Quickstart, Rules reference (auto-generated from rule metadata), CI guide, Config reference, Roadmap. Query the **shadcn studio MCP** for "marketing landing", "docs sidebar", and "API reference list" patterns.
 - [ ] **12.3** Live demo embedded on the home page (sandboxed)
-- [ ] **12.4** Run Headlint on the docs site itself; pass with zero errors
-- [ ] **12.5** Deploy to `headlint.com` via GitLab Pages or Vercel
-- [ ] **12.6** Add `headlint lint` step against the docs site to the docs-site CI pipeline; fails on any new error
+- [ ] **12.4** Run Goflag on the docs site itself; pass with zero errors
+- [ ] **12.5** Deploy to `goflag.com` via GitLab Pages or Vercel
+- [ ] **12.6** Add `goflag lint` step against the docs site to the docs-site CI pipeline; fails on any new error
 
 **Definition of Done**
 
-- The docs site is live at `headlint.com`, all rules documented, quickstart works on a fresh machine in under 60 seconds.
+- The docs site is live at `goflag.com`, all rules documented, quickstart works on a fresh machine in under 60 seconds.
 
 ---
 
@@ -570,13 +570,13 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - [ ] **13.6** CHANGELOG.md curated for the v1 entry
 - [ ] **13.7** Run `pnpm release` (commit-and-tag-version) → bumps to `1.0.0`, tags, updates changelog
 - [ ] **13.8** Open MR `develop` → `main`, merge after CI green
-- [ ] **13.9** Publish to npm as `headlint` (and `@headlint/core` for the engine package)
+- [ ] **13.9** Publish to npm as `goflag` (and `@goflag/core` for the engine package)
 - [ ] **13.10** Announcement post (blog on tancrede.com + X + Bluesky + Hacker News "Show HN")
 - [ ] **13.11** Open `good first issue` items: contribute-a-rule template (with test fixture template)
 
 **Definition of Done**
 
-- `npm view headlint version` returns `1.0.0`.
+- `npm view goflag version` returns `1.0.0`.
 - A first external user can install, run against their site, and successfully diagnose at least one real metadata issue.
 
 ---
@@ -605,7 +605,7 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 ---
 
-## Headlint Suite — sitemap + head + links (shipped)
+## Goflag Suite — sitemap + head + links (shipped)
 
 **Goal**: one base URL → three audits over the same site, sharing one discovery pass.
 
@@ -666,7 +666,7 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 
 **Trimmed from the current build** (the product is now an easy local web tool to preview, lint with a fixed ruleset, and get suggestions). These were removed from the codebase and may return later:
 
-- **CLI** (`headlint inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point. The app runs via `pnpm dev`. The engine stays separable so a CLI can return without a rewrite.
+- **CLI** (`goflag inspect/lint/dev/snapshot/init/ci/diff`) and the `bin/` entry point. The app runs via `pnpm dev`. The engine stays separable so a CLI can return without a rewrite.
 - **Snapshots + regression guard** (`src/lib/snapshots/**`, the Snapshot UI tab, snapshot config). Was Phase 9.
 - **CI / differential runner + PR comment cards** (Phase 9.7–9.16).
 - **Localhost-vs-production diff** (Phase 9.5).
@@ -681,7 +681,7 @@ If a perfect block doesn't exist in the studio, fall back to composing free shad
 - Hosted SaaS layer: continuous monitoring of deployed sites, regression alerts, shared team configs, public/private shareable report URLs (planned v2.x — see _Strategy & business model_)
 - Self-hostable team server with PR bot (planned v2.0)
 
-> **Explicitly _not_ planned**: Headlint will never expand into adjacent linter families (a11y, performance, security). Specialization is the moat — see _Strategy & business model_. (Link integrity is now in scope as the third lens of the Headlint Suite; it shares the discovery pipeline and stays within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security.)
+> **Explicitly _not_ planned**: Goflag will never expand into adjacent linter families (a11y, performance, security). Specialization is the moat — see _Strategy & business model_. (Link integrity is now in scope as the third lens of the Goflag Suite; it shares the discovery pipeline and stays within the discoverability/presentation/integrity story rather than sprawling into a11y/perf/security.)
 
 ---
 

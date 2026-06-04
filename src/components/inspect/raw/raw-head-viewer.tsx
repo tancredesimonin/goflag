@@ -17,7 +17,7 @@ import type { AnnotatedRawTag } from "./annotations";
  * scroll to. We listen on `document` so any sibling component can
  * trigger a jump without prop drilling through the tab tree.
  */
-export const JUMP_TO_ORIGIN_EVENT = "headlint:jump-to-origin";
+export const JUMP_TO_ORIGIN_EVENT = "goflag:jump-to-origin";
 
 export interface AnnotatedHighlightedTag extends AnnotatedRawTag {
   /** Pre-rendered shiki HTML for this tag. */
@@ -58,7 +58,7 @@ export function RawHeadViewer({ tags }: RawHeadViewerProps) {
       const detail = (event as CustomEvent<string>).detail;
       if (!detail) return;
       setQuery("");
-      const id = `headlint-origin-${detail}`;
+      const id = `goflag-origin-${detail}`;
       requestAnimationFrame(() => {
         const el = document.getElementById(id);
         if (!el) return;

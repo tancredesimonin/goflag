@@ -1,8 +1,8 @@
 /**
- * The (deliberately small) subset of schema.org Headlint validates.
+ * The (deliberately small) subset of schema.org Goflag validates.
  *
  * Schema.org is enormous — thousands of types and tens of thousands of
- * properties — and Headlint will never replicate that surface in a
+ * properties — and Goflag will never replicate that surface in a
  * runtime check. What we *can* do is encode the handful of types that
  * Google actually surfaces as rich results (Article, Organization,
  * BreadcrumbList, FAQPage, Person, SoftwareApplication, WebSite,

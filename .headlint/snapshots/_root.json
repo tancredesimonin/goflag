@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "route": "/",
+  "sampleUrl": "http://localhost:3000/",
+  "capturedAt": "2026-05-07T18:06:15.230Z",
+  "tags": [
+    {
+      "key": "html:dir",
+      "value": "ltr"
+    },
+    {
+      "key": "html:lang",
+      "value": "fr"
+    },
+    {
+      "key": "link:alternate[hreflang=en]",
+      "value": "http://localhost:3000/en"
+    },
+    {
+      "key": "link:alternate[hreflang=fr]",
+      "value": "http://localhost:3000/fr"
+    },
+    {
+      "key": "link:alternate[hreflang=x-default]",
+      "value": "http://localhost:3000/"
+    },
+    {
+      "key": "link:canonical",
+      "value": "http://localhost:3000/fr"
+    },
+    {
+      "key": "meta:charset",
+      "value": "utf-8"
+    },
+    {
+      "key": "meta:description",
+      "value": "Impact business + excellence technique. Je conçois des applications et outils qui transforment concrètement les opérations de mes clients."
+    },
+    {
+      "key": "meta:googlebot",
+      "value": "noindex, nofollow"
+    },
+    {
+      "key": "meta:og:description",
+      "value": "Impact business + excellence technique. Je conçois des applications et outils qui transforment concrètement les opérations de mes clients."
+    },
+    {
+      "key": "meta:og:image[0]",
+      "value": "http://localhost:3000/og?title=Voir%20mon%20site.&description=Impact%20Business.%20Excellence%20Technique."
+    },
+    {
+      "key": "meta:og:image[0]:alt",
+      "value": "Tancrède Simonin | Développeur Fullstack Freelance"
+    },
+    {
+      "key": "meta:og:image[0]:height",
+      "value": "630"
+    },
+    {
+      "key": "meta:og:image[0]:width",
+      "value": "1200"
+    },
+    {
+      "key": "meta:og:locale",
+      "value": "fr_FR"
+    },
+    {
+      "key": "meta:og:title",
+      "value": "Tancrède Simonin | Développeur Fullstack Freelance"
+    },
+    {
+      "key": "meta:og:url",
+      "value": "http://localhost:3000/fr"
+    },
+    {
+      "key": "meta:robots",
+      "value": "noindex, nofollow"
+    },
+    {
+      "key": "meta:twitter:card",
+      "value": "summary_large_image"
+    },
+    {
+      "key": "meta:twitter:description",
+      "value": "Impact business + excellence technique. Je conçois des applications et outils qui transforment concrètement les opérations de mes clients."
+    },
+    {
+      "key": "meta:twitter:image",
+      "value": "http://localhost:3000/og?title=Voir%20mon%20site.&description=Impact%20Business.%20Excellence%20Technique."
+    },
+    {
+      "key": "meta:twitter:title",
+      "value": "Tancrède Simonin | Développeur Fullstack Freelance"
+    },
+    {
+      "key": "meta:viewport",
+      "value": "width=device-width, initial-scale=1"
+    },
+    {
+      "key": "probe:robots",
+      "value": "found"
+    },
+    {
+      "key": "probe:robots:blocks-all",
+      "value": "true"
+    },
+    {
+      "key": "probe:sitemap",
+      "value": "found"
+    },
+    {
+      "key": "probe:sitemap:is-index",
+      "value": "false"
+    },
+    {
+      "key": "title",
+      "value": "Tancrède Simonin | Développeur Fullstack Freelance"
+    }
+  ],
+  "jsonLd": [],
+  "ruleOutcomes": {
+    "favicon.sizes": "info",
+    "manifest.missing": "info",
+    "og.siteName.missing": "info",
+    "twitter.image.alt": "info"
+  },
+  "digest": "5602e8b69659"
+}

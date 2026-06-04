@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
  *
  * The fixture server is spawned by Playwright's `webServer` config (see
  * `playwright.config.ts`), bound to a fixed port so we can hit it from the
- * Headlint app and reference it from these specs without a sidecar file.
+ * Goflag app and reference it from these specs without a sidecar file.
  */
 
 const fixtureBase = "http://127.0.0.1:4322";

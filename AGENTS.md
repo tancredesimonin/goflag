@@ -8,11 +8,11 @@ The runnable Next.js app lives on **`develop`**. The default **`main`** branch c
 
 ### Services (no Docker / databases)
 
-| Service                      | Port | How to start                                                                      |
-| ---------------------------- | ---- | --------------------------------------------------------------------------------- |
-| Headlint (Next.js)           | 3000 | `pnpm dev` (dev) or `pnpm build && pnpm start` (prod-like)                        |
-| Tancrede fixture HTTP (Hono) | 4322 | `HEADLINT_FIXTURE_PORT=4322 pnpm exec tsx test/e2e/fixture-launcher.ts`           |
-| i18n fixture HTTP (Hono)     | 4323 | `HEADLINT_I18N_FIXTURE_PORT=4323 pnpm exec tsx test/e2e/i18n-fixture-launcher.ts` |
+| Service                      | Port | How to start                                                                    |
+| ---------------------------- | ---- | ------------------------------------------------------------------------------- |
+| Goflag (Next.js)             | 3000 | `pnpm dev` (dev) or `pnpm build && pnpm start` (prod-like)                      |
+| Tancrede fixture HTTP (Hono) | 4322 | `GOFLAG_FIXTURE_PORT=4322 pnpm exec tsx test/e2e/fixture-launcher.ts`           |
+| i18n fixture HTTP (Hono)     | 4323 | `GOFLAG_I18N_FIXTURE_PORT=4323 pnpm exec tsx test/e2e/i18n-fixture-launcher.ts` |
 
 Playwright E2E starts all three automatically via `playwright.config.ts` `webServer`. For manual UI testing against fixtures, run the fixture server(s) before inspecting `http://127.0.0.1:4322/...` URLs.
 

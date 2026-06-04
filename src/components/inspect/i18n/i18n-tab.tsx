@@ -26,7 +26,7 @@ export interface I18nTabProps {
  * The crawl mode adds the reciprocity matrix and per-pair issue list
  * derived from the crawled `Page[]`. Both modes route through the
  * same `reciprocityIssues()` engine so what shows here matches what
- * `headlint inspect --crawl --json` returns to CI.
+ * `goflag inspect --crawl --json` returns to CI.
  */
 export function I18nTab({ page, crawledPages }: I18nTabProps) {
   const universe = crawledPages && crawledPages.length > 0 ? crawledPages : [page];

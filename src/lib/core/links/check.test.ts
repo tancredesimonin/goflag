@@ -105,7 +105,7 @@ describe("checkLink — real fetch path", () => {
   });
 
   it("classifies a dns failure as broken with the reason attached", async () => {
-    const check = await checkLink("http://nonexistent.invalid.headlint-test/", { sleep: noSleep });
+    const check = await checkLink("http://nonexistent.invalid.goflag-test/", { sleep: noSleep });
     expect(check.verdict).toBe("broken");
     expect(check.reason).toBe("dns");
   });

@@ -12,7 +12,7 @@ loop is broken, Google ignores the entire hreflang cluster and ranks
 each language independently — defeating the whole point of declaring
 the alternates.
 
-Headlint can't follow the links from one URL alone, so this rule fires
+Goflag can't follow the links from one URL alone, so this rule fires
 in a softer form: it warns when the **current page** does not include
 itself in its own alternates list. Self-reference is the simplest part
 of the reciprocity contract and a strong signal that the rest is

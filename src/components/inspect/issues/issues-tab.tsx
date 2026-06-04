@@ -51,7 +51,7 @@ const SEVERITY_META: Record<
 };
 
 /**
- * Issues tab — the report side of Headlint. Renders the lint output as
+ * Issues tab — the report side of Goflag. Renders the lint output as
  * three severity-ordered groups of cards, each card carrying its rule
  * id, message, optional fix snippet, and optional "Jump to tag" link
  * back into the Raw viewer.
@@ -97,7 +97,7 @@ export function IssuesTab({ issues, onJump }: IssuesTabProps) {
           <CardTitle className="text-sm font-medium">No issues detected</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground text-sm">
-          Headlint ran all 25 rules against this page and didn&apos;t find anything to report.
+          Goflag ran all 25 rules against this page and didn&apos;t find anything to report.
           That&apos;s rare — congrats.
         </CardContent>
       </Card>

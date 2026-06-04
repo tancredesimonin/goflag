@@ -239,7 +239,7 @@ export async function startSelfSignedHttpsServer(): Promise<SelfSignedServer | n
   let key: Buffer;
   let cert: Buffer;
   try {
-    dir = mkdtempSync(join(tmpdir(), "headlint-tls-"));
+    dir = mkdtempSync(join(tmpdir(), "goflag-tls-"));
     const keyPath = join(dir, "key.pem");
     const certPath = join(dir, "cert.pem");
     execFileSync("openssl", [

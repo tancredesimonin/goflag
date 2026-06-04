@@ -230,7 +230,7 @@ function pickFavicon(
 /**
  * Resolve a possibly-relative asset `href` against the document's final URL so
  * preview cards request the asset from the inspected origin rather than the
- * headlint app's own origin. Falls back to the raw href when it cannot be
+ * goflag app's own origin. Falls back to the raw href when it cannot be
  * parsed (e.g. when the final URL is itself invalid).
  */
 function resolveAssetUrl(href: string, base: string): string {

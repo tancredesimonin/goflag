@@ -115,7 +115,7 @@ export function annotateMeta(meta: RawMetaTag): RawTagAnnotation {
   if (meta.name) {
     return {
       label: `meta name="${meta.name}"`,
-      description: "Custom or framework-specific metadata. Headlint doesn't have a rule for it.",
+      description: "Custom or framework-specific metadata. Goflag doesn't have a rule for it.",
     };
   }
   if (meta.property) {
@@ -295,7 +295,7 @@ export function annotateLink(link: RawLinkTag): RawTagAnnotation {
     case "manifest":
       return {
         label: "Web app manifest",
-        description: "Pointer to the PWA manifest. Headlint fetches it as a side-channel probe.",
+        description: "Pointer to the PWA manifest. Goflag fetches it as a side-channel probe.",
       };
     case "preconnect":
       return {
@@ -312,7 +312,7 @@ export function annotateLink(link: RawLinkTag): RawTagAnnotation {
   }
   return {
     label: `link rel="${link.rel}"`,
-    description: "Headlint doesn't yet have an annotation for this link relation.",
+    description: "Goflag doesn't yet have an annotation for this link relation.",
   };
 }
 

@@ -5,4 +5,4 @@ export { applyRuleConfig } from "./apply-rules";
 export { applyFrameworkSnippets } from "./framework-snippets";
 export { parseConfig } from "./schema";
 export { DEFAULT_CONFIG } from "./defaults";
-export type { HeadlintConfig, RuleSetting, Framework } from "./types";
+export type { GoflagConfig, RuleSetting, Framework } from "./types";

@@ -4,7 +4,7 @@
  * The suggestion engine asks "does this page look like an article?
  * Like a contact page? Like a homepage?" before deciding which JSON-LD
  * template to recommend. We keep the heuristics deliberately
- * head-only — Headlint's deterministic snapshot doesn't store the
+ * head-only — Goflag's deterministic snapshot doesn't store the
  * `<body>` parsed tree (yet), so any signal we use here has to be
  * derivable from `Page.fetch.finalUrl`, the parsed metadata, or the
  * raw `Page.html.static` string.

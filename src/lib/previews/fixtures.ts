@@ -162,7 +162,7 @@ export const tancredeFull: Page = buildPage({
     "Tancrède Simonin is a Paris-based engineer shipping AI, infrastructure and search-grade web tools. Read essays, see open-source work, and book a chat.",
   ogTitle: "Tancrède Simonin — engineer & writer",
   ogDescription:
-    "Essays on shipping software, AI infrastructure, and the next generation of developer tools. Currently building Headlint.",
+    "Essays on shipping software, AI infrastructure, and the next generation of developer tools. Currently building Goflag.",
   ogImage: "https://tancrede.dev/og.png",
   ogImageWidth: 1200,
   ogImageHeight: 630,

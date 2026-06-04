@@ -180,7 +180,7 @@ describe("resolvePreview", () => {
     it("resolves a relative apple-touch-icon href against the final URL", () => {
       // tancredeFull declares href="/apple-touch-icon.png" with finalUrl
       // https://tancrede.dev/. The preview <img> must point at the inspected
-      // origin, not the headlint app, so the URL has to be absolute.
+      // origin, not the goflag app, so the URL has to be absolute.
       const data = resolvePreview("google-serp-desktop", tancredeFull);
       expect(data.favicon.value).toBe("https://tancrede.dev/apple-touch-icon.png");
     });

@@ -5,7 +5,7 @@ export interface FetchStaticOptions {
   timeoutMs?: number;
   /** Maximum redirects to follow. Defaults to 10. */
   maxRedirects?: number;
-  /** Override the User-Agent header. Defaults to a Headlint UA. */
+  /** Override the User-Agent header. Defaults to a Goflag UA. */
   userAgent?: string;
   /** Allow self-signed certificates (for `*.local` and tunnels). */
   allowInsecureTls?: boolean;
@@ -18,7 +18,7 @@ export interface FetchStaticResult {
   body: string;
 }
 
-const DEFAULT_UA = "Headlint/0.0 (+https://github.com/tancredesimonin-indie/headlint)";
+const DEFAULT_UA = "Goflag/0.0 (+https://github.com/tancredesimonin-indie/goflag)";
 
 export class FetchError extends Error {
   readonly url: string;

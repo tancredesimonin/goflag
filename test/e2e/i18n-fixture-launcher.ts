@@ -8,7 +8,7 @@ import { startFixtureServer } from "../fixture-server";
  * fixture sites identically.
  */
 async function main(): Promise<void> {
-  const port = Number.parseInt(process.env.HEADLINT_I18N_FIXTURE_PORT ?? "4323", 10);
+  const port = Number.parseInt(process.env.GOFLAG_I18N_FIXTURE_PORT ?? "4323", 10);
   const server = await startFixtureServer({
     root: resolve(__dirname, "../../fixtures/sites/i18n-grid"),
     port,

@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { rulesByCategory, type Rule, type RuleCategory } from "@/lib/rules";
 
 export const metadata: Metadata = {
-  title: "Rules — Headlint",
-  description: "Every Headlint rule, grouped by category, with one-line summaries.",
+  title: "Rules — Goflag",
+  description: "Every Goflag rule, grouped by category, with one-line summaries.",
 };
 
 const CATEGORY_LABELS: Record<RuleCategory, string> = {
@@ -37,10 +37,10 @@ export default function RulesIndex() {
   return (
     <main className="mx-auto max-w-4xl space-y-8 px-6 py-12">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Headlint rules</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Goflag rules</h1>
         <p className="text-muted-foreground">
-          {total} rules ship with Headlint. Each one is documented below with its severity,
-          rationale, and an example fix snippet.
+          {total} rules ship with Goflag. Each one is documented below with its severity, rationale,
+          and an example fix snippet.
         </p>
       </header>
 

@@ -1,7 +1,7 @@
 /**
  * Rule-level config application.
  *
- * Given a resolved `HeadlintConfig` and a list of `Issue`s emitted by
+ * Given a resolved `GoflagConfig` and a list of `Issue`s emitted by
  * the rule runner, produces the filtered/severity-overridden list
  * the UI actually displays. Pure: no engine reach-in, no
  * mutation of the input array.
@@ -20,9 +20,9 @@
  */
 
 import type { Issue, Severity } from "@/lib/core/types";
-import type { HeadlintConfig, RuleSetting } from "./types";
+import type { GoflagConfig, RuleSetting } from "./types";
 
-export function applyRuleConfig(issues: Issue[], config: HeadlintConfig | undefined): Issue[] {
+export function applyRuleConfig(issues: Issue[], config: GoflagConfig | undefined): Issue[] {
   const overrides = config?.rules;
   if (!overrides || Object.keys(overrides).length === 0) return issues;
 

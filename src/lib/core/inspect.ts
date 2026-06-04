@@ -48,7 +48,7 @@ export interface InspectOptions extends FetchStaticOptions {
  * it in Chromium for SPA support, run the side-channel probes, and stitch
  * everything into a complete `Page`.
  *
- * This is the single entry point shared by the CLI (`headlint inspect`),
+ * This is the single entry point shared by the CLI (`goflag inspect`),
  * the UI Server Action (Phase 3), and the snapshot/diff layers (Phases 9+).
  * Keeping it thin and pure means we never have to maintain two divergent
  * code paths between local UI and CI.

@@ -70,7 +70,7 @@ describe("fetchUrl — real fetch path", () => {
   });
 
   it("returns status 0 with a dns reason for an unresolvable host", async () => {
-    const res = await fetchUrl("http://nonexistent.invalid.headlint-test/");
+    const res = await fetchUrl("http://nonexistent.invalid.goflag-test/");
     expect(res.status).toBe(0);
     expect(res.reason).toBe("dns");
   });
@@ -125,7 +125,7 @@ describe("fetchUrl — real fetch path", () => {
 
   it("honours a custom user-agent and accept header without throwing", async () => {
     const res = await fetchUrl(`${server.url}/about`, {
-      userAgent: "headlint-test/1.0",
+      userAgent: "goflag-test/1.0",
       accept: "text/html",
     });
     expect(res.status).toBe(200);

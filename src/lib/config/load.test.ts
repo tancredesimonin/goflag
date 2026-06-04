@@ -6,7 +6,7 @@ import { loadConfig } from "./load";
 const FIXTURES = resolve(__dirname, "../../../test/fixtures/config");
 
 describe("loadConfig", () => {
-  it("returns the default empty config when no headlint.config file is found", async () => {
+  it("returns the default empty config when no goflag.config file is found", async () => {
     const result = await loadConfig({ cwd: resolve(FIXTURES, "../no-such-dir-no-config") });
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -20,7 +20,7 @@ describe("loadConfig", () => {
     expect(result.ok, !result.ok ? result.errors.join("\n") : "").toBe(true);
     if (result.ok) {
       expect(result.source).toBe("file");
-      expect(result.filepath?.endsWith("headlint.config.ts")).toBe(true);
+      expect(result.filepath?.endsWith("goflag.config.ts")).toBe(true);
       expect(result.config.baseUrl).toBe("https://ts.example.com");
       expect(result.config.framework).toBe("next");
       expect(result.config.rules?.["title.length"]).toBe("off");
@@ -57,7 +57,7 @@ describe("loadConfig", () => {
     const result = await loadConfig({ cwd: resolve(FIXTURES, "broken") });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors[0]).toContain("Invalid Headlint config");
+      expect(result.errors[0]).toContain("Invalid Goflag config");
       expect(result.errors.some((e) => e.includes("baseUrl"))).toBe(true);
     }
   });
@@ -73,7 +73,7 @@ describe("loadConfig", () => {
   it("loads the explicit `file` path even when cwd has no config", async () => {
     const result = await loadConfig({
       cwd: "/tmp",
-      file: resolve(FIXTURES, "ts/headlint.config.ts"),
+      file: resolve(FIXTURES, "ts/goflag.config.ts"),
     });
     expect(result.ok).toBe(true);
     if (result.ok) {

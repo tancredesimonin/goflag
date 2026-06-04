@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { HEADLINT_VERSION, isPreAlpha } from "./version";
+import { GOFLAG_VERSION, isPreAlpha } from "./version";
 
 describe("version", () => {
   it("exposes a non-empty semver-ish version string", () => {
-    expect(HEADLINT_VERSION).toMatch(/^\d+\.\d+\.\d+/);
+    expect(GOFLAG_VERSION).toMatch(/^\d+\.\d+\.\d+/);
   });
 
   it("flags 0.x.y versions as pre-alpha", () => {

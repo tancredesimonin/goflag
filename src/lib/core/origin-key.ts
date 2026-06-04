@@ -41,5 +41,5 @@ export function originKey(origin: TagOrigin): string {
 
 /** DOM id used to anchor a raw row to its origin (prefixed for collision-safety). */
 export function originDomId(origin: TagOrigin): string {
-  return `headlint-origin-${originKey(origin)}`;
+  return `goflag-origin-${originKey(origin)}`;
 }

@@ -7,7 +7,7 @@ coverage
 test-results
 playwright-report
 pnpm-lock.yaml
-.headlint
+.goflag
 *.min.js
 
 # Author-controlled docs — never auto-format

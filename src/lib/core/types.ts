@@ -1,5 +1,5 @@
 /**
- * Canonical Headlint data model.
+ * Canonical Goflag data model.
  *
  * Everything the engine, rules, suggestions, previews, snapshots, diff, and
  * report layers consume comes from this single shape. The `Page` is the
@@ -10,7 +10,7 @@
  *
  *  - **No DOM, no React, no Next.js types here.** This module must be safely
  *    importable from a Node CLI, a browser bundle, an edge worker, or a
- *    future `@headlint/core` package consumed by a hosted SaaS.
+ *    future `@goflag/core` package consumed by a hosted SaaS.
  *  - **Stable contract.** Adding fields is fine; removing or renaming is a
  *    semver-major event. Snapshot files (Phase 9) and `--json` consumers
  *    (Phase 11.5) depend on this shape.

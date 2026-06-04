@@ -8,7 +8,7 @@ const FIXTURE = "http://127.0.0.1:4324";
 test.describe.configure({ mode: "serial" });
 
 /**
- * Headlint Suite end-to-end: enter the base URL once on the home page,
+ * Goflag Suite end-to-end: enter the base URL once on the home page,
  * land on the dashboard, and verify all three feature pages populate from
  * the single shared discovery.
  */

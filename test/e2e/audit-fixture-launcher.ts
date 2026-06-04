@@ -8,7 +8,7 @@ import { startAuditFixtureServer } from "../audit-fixture-server";
  * internet).
  */
 async function main(): Promise<void> {
-  const port = Number.parseInt(process.env.HEADLINT_AUDIT_FIXTURE_PORT ?? "4324", 10);
+  const port = Number.parseInt(process.env.GOFLAG_AUDIT_FIXTURE_PORT ?? "4324", 10);
   const externalPort = port + 1;
 
   const external = await startAuditFixtureServer({ port: externalPort });

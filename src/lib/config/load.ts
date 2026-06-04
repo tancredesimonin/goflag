@@ -1,7 +1,7 @@
 /**
- * Headlint config loader.
+ * Goflag config loader.
  *
- * Walks up from `cwd` looking for `headlint.config.{ts,mts,js,mjs,cjs}`,
+ * Walks up from `cwd` looking for `goflag.config.{ts,mts,js,mjs,cjs}`,
  * dynamically imports the module, validates the default export
  * against the zod schema, applies defaults + framework detection,
  * and returns the resolved config plus the path it loaded from.
@@ -34,14 +34,14 @@ import { tsImport } from "tsx/esm/api";
 import { detectFrameworkFromCwd } from "./detect";
 import { DEFAULT_CONFIG } from "./defaults";
 import { parseConfig } from "./schema";
-import type { HeadlintConfig } from "./types";
+import type { GoflagConfig } from "./types";
 
 const FILENAMES = [
-  "headlint.config.ts",
-  "headlint.config.mts",
-  "headlint.config.mjs",
-  "headlint.config.js",
-  "headlint.config.cjs",
+  "goflag.config.ts",
+  "goflag.config.mts",
+  "goflag.config.mjs",
+  "goflag.config.js",
+  "goflag.config.cjs",
 ];
 
 export type LoadConfigSource = "file" | "default";
@@ -50,9 +50,9 @@ export type LoadConfigResult =
   | {
       ok: true;
       /** Fully resolved config with defaults + framework detection applied. */
-      config: HeadlintConfig;
+      config: GoflagConfig;
       /** Raw user config exactly as it appeared in the file (or `{}` for default). */
-      raw: HeadlintConfig;
+      raw: GoflagConfig;
       /** Where the config came from. `"default"` when no file was found. */
       source: LoadConfigSource;
       /** Absolute path of the file that was loaded, if any. */
@@ -127,7 +127,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadC
     return {
       ok: false,
       filepath,
-      errors: [`Invalid Headlint config at ${rel(cwd, filepath)}:`, ...parsed.errors],
+      errors: [`Invalid Goflag config at ${rel(cwd, filepath)}:`, ...parsed.errors],
     };
   }
 
@@ -208,7 +208,7 @@ async function importConfig(filepath: string): Promise<{ default?: unknown }> {
  * data-out — the loader handles file I/O, this function handles
  * shape only.
  */
-export function applyDefaults(user: HeadlintConfig, cwd: string): HeadlintConfig {
+export function applyDefaults(user: GoflagConfig, cwd: string): GoflagConfig {
   const framework =
     !user.framework || user.framework === "auto" ? detectFrameworkFromCwd(cwd) : user.framework;
 

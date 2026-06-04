@@ -4,7 +4,7 @@
  * Reads a `package.json` (or accepts an already-parsed manifest) and
  * returns the best-guess framework. Detection precedence is
  * deliberate: when both `next` and `@remix-run/react` are present
- * (a very rare but real combo), Next wins because `headlint init`
+ * (a very rare but real combo), Next wins because `goflag init`
  * has more useful Next snippets — Remix detection still flags
  * correctly when Next is absent.
  *

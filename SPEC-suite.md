@@ -1,7 +1,7 @@
-# Headlint Suite — Technical Spec
+# Goflag Suite — Technical Spec
 
 > **Status:** Draft / proposal.
-> **Scope:** Turn Headlint from a single `<head>` inspector into a **three-lens local site auditor** that shares one discovery pipeline. Enter a base URL **once** → get a Sitemap audit, a Head audit, and a Link audit. Everything runs locally, no account, no telemetry.
+> **Scope:** Turn Goflag from a single `<head>` inspector into a **three-lens local site auditor** that shares one discovery pipeline. Enter a base URL **once** → get a Sitemap audit, a Head audit, and a Link audit. Everything runs locally, no account, no telemetry.
 
 ---
 
@@ -44,7 +44,7 @@ They are **related but distinct processes** — close, not the same:
 
 These come straight from `PLAN.md` and apply to every new module:
 
-1. **Engine ↔ UI separation.** Everything under `src/lib/core/**` must be plain, JSON-serializable, and free of `next` / `react` / DOM / browser globals so it can ship as `@headlint/core`. The new link engine follows the same rule as `sitemap/` and `crawl.ts`.
+1. **Engine ↔ UI separation.** Everything under `src/lib/core/**` must be plain, JSON-serializable, and free of `next` / `react` / DOM / browser globals so it can ship as `@goflag/core`. The new link engine follows the same rule as `sitemap/` and `crawl.ts`.
 2. **Never throw across an engine boundary.** Mirror `discoverSitemap` / `crawl`: every failure collapses into a shaped result with diagnostics. A single dead link or 500 must never abort an audit.
 3. **No telemetry.** No outbound calls except to the site under audit (and the external hosts its links point to).
 4. **Caps everywhere.** Every crawl/scan/probe loop is bounded (`maxPages`, `maxLinks`, `maxPerHost`, timeouts) so a misconfigured run can't hang or hammer.
@@ -160,7 +160,7 @@ export interface SitemapDiagnostics {
 
 ## 5. Feature B — Head Checker (existing — keep + integrate)
 
-The original Headlint engine: inspect each page's `<head>` and lint it against the built-in ruleset, with rendered preview cards. Already shipped; this section specs how it fits the consolidated suite and the small changes the unified flow needs.
+The original Goflag engine: inspect each page's `<head>` and lint it against the built-in ruleset, with rendered preview cards. Already shipped; this section specs how it fits the consolidated suite and the small changes the unified flow needs.
 
 ### 5.1 What exists today
 
@@ -429,7 +429,7 @@ Each phase ships green CI with its required test layers before the next starts (
 
 ## 12. Naming
 
-Keep **Headlint** as the umbrella product; it now hosts three lenses:
+Keep **Goflag** as the umbrella product; it now hosts three lenses:
 
 - **Sitemap** — discoverability & map health.
 - **Head** — search/social presentation _(the original "Lighthouse for the `<head>`")_.

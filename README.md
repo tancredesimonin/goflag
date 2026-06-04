@@ -1,4 +1,4 @@
-# Headlint
+# Goflag
 
 > **A three-lens local site auditor.**
 > Enter a base URL once → audit your sitemap, your `<head>`, and your links — locally, in your browser.
@@ -8,7 +8,7 @@
 [![pnpm](https://img.shields.io/badge/pnpm-9.15-F69220?logo=pnpm&logoColor=white)](./package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
-Headlint is a free and open-source dev-grade site auditor. Run the local web app, paste any base URL (`http://localhost:3000`, a static HTML file, a `*.local` host, or a live site), and Headlint fans out from one shared discovery pass into three related audits:
+Goflag is a free and open-source dev-grade site auditor. Run the local web app, paste any base URL (`http://localhost:3000`, a static HTML file, a `*.local` host, or a live site), and Goflag fans out from one shared discovery pass into three related audits:
 
 | Lens        | Question it answers                                                      | Route      |
 | ----------- | ------------------------------------------------------------------------ | ---------- |

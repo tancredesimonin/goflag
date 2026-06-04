@@ -11,7 +11,7 @@
  * presents robots.txt.
  *
  * Like `Page`, everything here is plain, JSON-serializable data with no
- * DOM / React / Next.js coupling so it can move into `@headlint/core`.
+ * DOM / React / Next.js coupling so it can move into `@goflag/core`.
  */
 
 /** A single `<url>` entry from a `<urlset>` document. */

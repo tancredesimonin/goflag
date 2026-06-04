@@ -10,7 +10,7 @@
 
 **Name:** **goflag** (display form always lowercase, one word).
 
-**Why the rename from `headlint`:** `headlint` only describes **one** of the three lenses. The product now audits the **sitemap**, the **`<head>`**, _and_ the **links** of a site. The umbrella name had to cover the whole.
+**Why the rename from `goflag`:** `goflag` only describes **one** of the three lenses. The product now audits the **sitemap**, the **`<head>`**, _and_ the **links** of a site. The umbrella name had to cover the whole.
 
 **Tagline:** _« Catch the red flags. Get the green flag. »_
 
@@ -73,14 +73,14 @@ Output: a per-lens recap + one global flag verdict.
 
 ## 6. Availability (reservations)
 
-| Identifier  | `goflag`     | Status                   |
-| ----------- | ------------ | ------------------------ |
-| npm package | `goflag`     | Free                     |
-| GitHub org  | `goflag`     | Free                     |
-| Domain      | `goflag.dev` | Free (primary)           |
-| Domain      | `goflag.sh`  | Free (optional, CLI nod) |
+| Identifier  | `goflag`      | Status                   |
+| ----------- | ------------- | ------------------------ |
+| npm package | `goflag`      | Free                     |
+| GitHub org  | `goflag`      | Free                     |
+| Domain      | `goflag.tech` | **Registered** (primary) |
+| Domain      | `goflag.sh`   | Free (optional, CLI nod) |
 
-**Spelling decision:** brand and all identifiers are the single lowercase token `goflag` — a clean sweep across npm + GitHub + `.dev` + `.sh`, which is rare. No hyphens, no casing rules, nothing to misspell out loud.
+**Spelling decision:** brand and all identifiers are the single lowercase token `goflag` — a clean sweep across npm + GitHub + domains, which is rare. No hyphens, no casing rules, nothing to misspell out loud. Primary domain registered on `.tech`.
 
 **Why `goflag` over the alternatives:** "vedette" single words (greenlight, takeoff, liftoff…) and short dictionary words are almost all camped or premium on npm/`.dev`. `goflag` keeps the green-light/go-signal energy, stays short (6 letters, one block), and is available everywhere. Sober coined fallbacks considered and rejected for being less self-explanatory: `spekt`, `nitid`, `scruto`, `skopo`.
 

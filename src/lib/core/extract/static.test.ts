@@ -27,7 +27,7 @@ describe("extractStatic — raw inventory", () => {
 
   it("trims and collapses whitespace in <title>", async () => {
     const page = await loadKitchenSink();
-    expect(page.raw.title).toBe("Kitchen sink — Headlint synthetic fixture");
+    expect(page.raw.title).toBe("Kitchen sink — Goflag synthetic fixture");
   });
 
   it("collects all meta / link / json-ld scripts", async () => {
@@ -66,19 +66,19 @@ describe("extractStatic — raw inventory", () => {
 describe("extractStatic — generic meta", () => {
   it("parses title, description, keywords, viewport, robots, etc.", async () => {
     const page = await loadKitchenSink();
-    expect(page.meta.title?.value).toBe("Kitchen sink — Headlint synthetic fixture");
+    expect(page.meta.title?.value).toBe("Kitchen sink — Goflag synthetic fixture");
     expect(page.meta.description?.value).toBe(
       "A handcrafted page exercising every branch of the static extractor.",
     );
-    expect(page.meta.keywords?.value).toEqual(["headlint", "fixture", "og", "twitter", "json-ld"]);
+    expect(page.meta.keywords?.value).toEqual(["goflag", "fixture", "og", "twitter", "json-ld"]);
     expect(page.meta.viewport?.value).toContain("width=device-width");
     expect(page.meta.robots?.value).toContain("max-image-preview:large");
     expect(page.meta.googlebot?.value).toBe("index,follow");
     expect(page.meta.themeColor?.value).toBe("#0a0a0a");
     expect(page.meta.colorScheme?.value).toBe("dark light");
     expect(page.meta.referrer?.value).toBe("strict-origin-when-cross-origin");
-    expect(page.meta.author?.value).toBe("Headlint");
-    expect(page.meta.applicationName?.value).toBe("Headlint demo");
+    expect(page.meta.author?.value).toBe("Goflag");
+    expect(page.meta.applicationName?.value).toBe("Goflag demo");
     expect(page.meta.charset?.value).toBe("utf-8");
   });
 

@@ -29,8 +29,8 @@ export default async function SitePage({ searchParams }: SitePageProps) {
             Explore a site
           </h1>
           <p className="text-muted-foreground text-sm">
-            Enter a base URL. Headlint finds the sitemap (or crawls), then lists every page so you
-            can inspect its <code>&lt;head&gt;</code> — not just the homepage.
+            Enter a base URL. Goflag finds the sitemap (or crawls), then lists every page so you can
+            inspect its <code>&lt;head&gt;</code> — not just the homepage.
           </p>
         </div>
         <SiteForm />

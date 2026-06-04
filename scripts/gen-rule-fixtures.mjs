@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates `fixtures/rules/<id>/{pass,fail}.html` for every Headlint rule.
+ * Generates `fixtures/rules/<id>/{pass,fail}.html` for every Goflag rule.
  *
  * Each rule has a "base" HTML that satisfies *every* rule, and a small
  * patch that mutates the base into a fail-state for that one rule. The
@@ -20,7 +20,7 @@ const root = resolve(here, "..");
 /** Block of <head> children we treat as the canonical "everything is fine" page. */
 const BASE_HEAD = `<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Test page — Headlint fixtures</title>
+  <title>Test page — Goflag fixtures</title>
   <meta name="description" content="A short paragraph designed to be over fifty characters and under one hundred sixty.">
   <link rel="canonical" href="https://example.com/page">
   <meta name="robots" content="index, follow">
