@@ -29,12 +29,12 @@
 
 ## Phase 0 — Identity & scope freeze · _Week 0_ · serves O1 O2 O3 O4
 
-**DoD:** Test suite green under the new name · zero references to "goflag" · v1 scope written down.
+**DoD:** Test suite green under the new name · zero references to the old name · v1 scope written down. ✅
 
-- [ ] **0.1** Lock the name **goflag** across identifiers: npm `goflag`, GitHub org `goflag`, domain `goflag.tech` (+ `goflag.sh` optional).
-- [ ] **0.2** Rename the codebase: package name, `@goflag/core` → `@goflag/core`, `goflag.config.ts` → `goflag.config.ts`, `.goflag/` dir → `.goflag/`, all docs and copy.
-- [ ] **0.3** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` all green after the rename (~700 tests).
-- [ ] **0.4** Write the v1 "shippable" scope: what we un-park (CLI packaging, hosted demo) vs what stays cut (SaaS, monitoring).
+- [x] **0.1** Lock the name **goflag** across identifiers: npm `goflag` (free), GitHub `goflag` (free), domain **`goflag.tech` registered** (+ `goflag.sh` optional).
+- [x] **0.2** Rename the codebase from the old name to `goflag`: `package.json` name, config file → `goflag.config.*` (loader + fixtures), config/cache dir → `.goflag/`, types/consts (`GoflagConfig`, `GOFLAG_VERSION`), all UI copy/comments/docs/fixtures. 133 files, zero references left. GitLab project + local folder renamed too.
+- [x] **0.3** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` all green after the rename (671 tests, local + CI pipeline).
+- [x] **0.4** Write the v1 "shippable" scope: what we un-park (CLI packaging, hosted demo) vs what stays cut (SaaS, monitoring). → [`SCOPE-v1.md`](./SCOPE-v1.md)
 
 > **Note:** the rename touches a heavily-tested codebase. Do it in one focused pass; keep it bounded (no feature work mixed in).
 
