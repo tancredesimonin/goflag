@@ -35,7 +35,7 @@ describe("runLinkAudit Server Action", () => {
   });
 
   it("rejects malformed URLs with code=invalid-url", async () => {
-    const result = await runLinkAudit({ url: "not-a-url" });
+    const result = await runLinkAudit({ url: "not a url" });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected error");
     expect(result.error.code).toBe("invalid-url");

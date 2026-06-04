@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { discoverSitemap } from "@/lib/core/sitemap/discover";
+import { normalizeInputUrl } from "@/lib/core/net/normalize-url";
 import { setSite } from "@/lib/store/site-store";
 
 export type LoadSiteResult =
@@ -10,8 +11,6 @@ export type LoadSiteResult =
   | { ok: false; error: { code: LoadSiteErrorCode; message: string } };
 
 export type LoadSiteErrorCode = "invalid-url" | "unexpected";
-
-const URL_PATTERN = /^https?:\/\//i;
 
 interface LoadSiteInput {
   url: string;
@@ -27,22 +26,23 @@ interface LoadSiteInput {
  * boundary, and returns a structured result the caller can surface.
  */
 export async function loadSite(input: LoadSiteInput): Promise<LoadSiteResult> {
-  const trimmed = input.url.trim();
-  if (!trimmed || !URL_PATTERN.test(trimmed)) {
+  const normalized = normalizeInputUrl(input.url);
+  if (!normalized.ok) {
     return {
       ok: false,
       error: {
         code: "invalid-url",
-        message: "Enter a full URL starting with http:// or https://",
+        message: "Enter a valid URL, e.g. example.com or https://example.com",
       },
     };
   }
+  const url = normalized.url;
 
   try {
-    const discovery = await discoverSitemap(trimmed, { allowInsecureTls: input.insecure === true });
+    const discovery = await discoverSitemap(url, { allowInsecureTls: input.insecure === true });
     setSite(discovery);
     revalidatePath("/site");
-    return { ok: true, url: trimmed, urlCount: discovery.urls.length };
+    return { ok: true, url, urlCount: discovery.urls.length };
   } catch (err) {
     return {
       ok: false,
