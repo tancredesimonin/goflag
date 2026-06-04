@@ -1,6 +1,6 @@
-# Dr. Ping — Attack Plan
+# goflag — Attack Plan
 
-> **Living document.** The step-by-step plan to take the project (currently `headlint`) from a local web app to a launched, distributable OSS dev tool under the **Dr. Ping** brand. Check items as we ship. Keep this in sync with commits so the trail is auditable.
+> **Living document.** The step-by-step plan to take the project (currently `headlint`) from a local web app to a launched, distributable OSS dev tool under the **goflag** brand. Check items as we ship. Keep this in sync with commits so the trail is auditable.
 >
 > Companion docs: [`BRANDING-AND-STRATEGY.md`](./BRANDING-AND-STRATEGY.md) (the why + the brand), [`PLAN.md`](./PLAN.md) (the engineering build plan), [`SPEC-suite.md`](./SPEC-suite.md) (the three-lens technical spec).
 
@@ -31,8 +31,8 @@
 
 **DoD:** Test suite green under the new name · zero references to "headlint" · v1 scope written down.
 
-- [ ] **0.1** Lock the name **Dr. Ping** across identifiers: npm `drping`, GitHub org `drpinghq`, domain `drping.dev` (+ `drping.sh` optional).
-- [ ] **0.2** Rename the codebase: package name, `@headlint/core` → `@drping/core`, routes (`/site` `/inspect` `/links` → `/scan` `/vision` `/circulation`), `headlint.config.ts` → `drping.config.ts`, `.headlint/` dir, all docs and copy.
+- [ ] **0.1** Lock the name **goflag** across identifiers: npm `goflag`, GitHub org `goflag`, domain `goflag.dev` (+ `goflag.sh` optional).
+- [ ] **0.2** Rename the codebase: package name, `@headlint/core` → `@goflag/core`, `headlint.config.ts` → `goflag.config.ts`, `.headlint/` dir → `.goflag/`, all docs and copy.
 - [ ] **0.3** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` all green after the rename (~700 tests).
 - [ ] **0.4** Write the v1 "shippable" scope: what we un-park (CLI packaging, hosted demo) vs what stays cut (SaaS, monitoring).
 
@@ -42,13 +42,13 @@
 
 ## Phase 1 — Make it distributable · _Weeks 1-2_ · serves O1 O2 O3 O4
 
-**DoD:** `npx drping http://localhost:3000` works on a clean Node 20 machine · live demo on `drping.dev`.
+**DoD:** `npx goflag http://localhost:3000` works on a clean Node 20 machine · live demo on `goflag.dev`.
 
 - [ ] **1.1** Un-park the packaging (PLAN Phase 11): `bin/` entry point, Next.js `output: "standalone"`, `npx` distribution.
-- [ ] **1.2** Verify `npx drping <url>` end-to-end on a fresh machine (no project-local setup).
-- [ ] **1.3** Landing page + instant hosted demo on `drping.dev` (PLAN Phase 12).
+- [ ] **1.2** Verify `npx goflag <url>` end-to-end on a fresh machine (no project-local setup).
+- [ ] **1.3** Landing page + instant hosted demo on `goflag.dev` (PLAN Phase 12).
 
-> **Why this is the keystone:** the localhost-first wedge fights against hosted paste-URL distribution. `npx drping` is the only surface that keeps the wedge **and** gives frictionless dev distribution.
+> **Why this is the keystone:** the localhost-first wedge fights against hosted paste-URL distribution. `npx goflag` is the only surface that keeps the wedge **and** gives frictionless dev distribution.
 
 ---
 
@@ -58,7 +58,7 @@
 
 - [ ] **2.1** Shareable, self-contained HTML report (PLAN Phase 11.5).
 - [ ] **2.2** README with a punchy demo GIF + the preview cards front and center.
-- [ ] **2.3** Polish the verdict vocabulary: **Clean bill of health / Symptoms / Critical**.
+- [ ] **2.3** Polish the verdict vocabulary: **green flag / yellow flag / red flag** (+ checkered flag for a clean run).
 
 > Pick **one** hook. The PR-bot and the prod-diff are heavier and deferred to Phase 4.
 

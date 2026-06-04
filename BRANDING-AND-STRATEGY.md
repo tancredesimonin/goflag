@@ -1,4 +1,4 @@
-# Dr. Ping — Branding & Strategy
+# goflag — Branding & Strategy
 
 > **Living document.** Captures the brand identity and the product strategy so the rationale is tracked alongside the code. Companion: [`ATTACK-PLAN.md`](./ATTACK-PLAN.md) (the step-by-step execution).
 >
@@ -8,81 +8,87 @@
 
 ## 1. Identity
 
-**Name:** **Dr. Ping** (display form always written with the space + period).
+**Name:** **goflag** (display form always lowercase, one word).
 
 **Why the rename from `headlint`:** `headlint` only describes **one** of the three lenses. The product now audits the **sitemap**, the **`<head>`**, _and_ the **links** of a site. The umbrella name had to cover the whole.
 
-**Tagline:** _« Catch it local. Ship it healthy. »_
+**Tagline:** _« Catch the red flags. Get the green flag. »_
 
-**Sub-tagline:** _« Dr. Ping ausculte ton site en local et le déclare apte au déploiement. »_
-_(EN: "Dr. Ping examines your site locally and clears it for deployment.")_
+**Sub-tagline:** _« A local, three-lens site auditor that waves you off before the bugs reach prod. »_
 
-**The double meaning that powers the brand:** _ping_ = the network ping (does the page respond?) **and** the EKG monitor beep (the heartbeat). One word, two readings — preventive medicine for websites.
+Short variants: _« Green-flag your deploy. »_ · _« No red flags before you ship. »_
+
+**The double meaning that powers the brand:** _red flags_ = warning signs / things that are wrong, **and** _green flag_ = the motorsport start signal ("the track is clear — go"). One metaphor, a whole verdict system for free.
 
 ---
 
 ## 2. The problem it solves (product framing)
 
-Not "diagnose a sick site" (curative) but **immunize a site before it ships** (preventive): catch all HTML/SEO bugs — broken links, dead sitemap, bad `<head>` — **locally, before they reach production**. A vaccine, not a cure. No bug ever reaches your users.
+Not "diagnose a broken site after the fact" but **catch the bugs before the site ships**: broken links, dead sitemap, bad `<head>` — found **locally, before they reach production**. Prevention, not cleanup. No bug ever reaches your users.
 
 This reframing is the north star: every feature should serve "catch it before prod, locally."
 
 ---
 
-## 3. The three exams (lenses)
+## 3. The three lenses
 
-The three lenses are renamed as medical exams — distinct metaphors, intuitive, and they tell the story better than "sitemap/head/links."
+Three independent passes over the same crawl, each with its own verdict:
 
-| Lens (engine) | Exam            | What it auscultates                                         |
-| ------------- | --------------- | ----------------------------------------------------------- |
-| Sitemap       | **Scan**        | The full-body scan: is everything discoverable and healthy? |
-| Head          | **Vision**      | How each page is _seen_ (Google, social networks).          |
-| Links         | **Circulation** | Does blood flow between pages? (a broken link = a clot)     |
+| Lens        | What it checks                                                         |
+| ----------- | ---------------------------------------------------------------------- |
+| **Sitemap** | Is everything discoverable? Is the sitemap coherent and reachable?     |
+| **Head**    | How each page is _seen_ by Google and social networks (`<head>`/meta). |
+| **Links**   | Does everything connect? (broken/dead links between and out of pages)  |
 
 ---
 
 ## 4. CLI surface
 
 ```bash
-drping example.com               # full check-up
-drping scan example.com          # sitemap
-drping vision example.com        # head / meta
-drping circulation example.com   # links
+goflag                      # audit localhost, all three lenses
+goflag https://localhost:3000
+goflag --ci                 # exit non-zero on a red flag → deploy gate
+goflag head|links|sitemap   # run a single lens
 ```
 
-**Verdict vocabulary** (instead of pass/warn/error):
+Output: a per-lens recap + one global flag verdict.
 
-- **Clean bill of health** — all good
-- **Symptoms** — worth watching
-- **Critical** — treat before deploying
+**Verdict vocabulary** (racing flags — intuitive and coherent):
+
+- 🟢 **Green flag** — all clear, the track is yours, ship it.
+- 🟡 **Yellow flag** — non-blocking warnings, proceed with caution.
+- 🔴 **Red flag** — blocking issues, stop and fix before you push.
+- 🏁 **Checkered flag** — a clean run finished with zero problems (the "all good" badge).
 
 ---
 
 ## 5. Visual identity
 
-- **Motif:** an EKG/heartbeat line whose peaks are page/link nodes. Each "beep" is a ping (network + cardiac double meaning).
-- **Palette:** clinical white + vital green / alert red. Accent used sparingly.
-- **Logo direction:** stethoscope glyph, or the pulse line forming a "P".
+- **Motif:** a minimal green flag / pennant, or a stylized checkered flag. Flat, sharp, motorsport-grade.
+- **Palette:** dark dev background + **racing green (#16a34a)** as the single accent; red/yellow reserved for verdicts.
+- **Wordmark:** `goflag` in lowercase monospace.
+- **Tone:** dry, engineering/motorsport — **not** cartoon. Restraint is what keeps it from feeling gimmicky.
 
 ---
 
 ## 6. Availability (reservations)
 
-| Identifier  | `drping`                         | Status                   |
-| ----------- | -------------------------------- | ------------------------ |
-| npm package | `drping`                         | Free                     |
-| GitHub org  | `drpinghq` (bare `drping` taken) | Free                     |
-| Domain      | `drping.dev`                     | Free (primary)           |
-| Domain      | `drping.sh`                      | Free (optional, CLI nod) |
-| Domain      | `drping.com`                     | Taken (~$699k — skip)    |
+| Identifier  | `goflag`     | Status                   |
+| ----------- | ------------ | ------------------------ |
+| npm package | `goflag`     | Free                     |
+| GitHub org  | `goflag`     | Free                     |
+| Domain      | `goflag.dev` | Free (primary)           |
+| Domain      | `goflag.sh`  | Free (optional, CLI nod) |
 
-**Spelling decision:** brand = **Dr. Ping**; identifiers = `drping` (short, slick CLI/npm string). The bare GitHub handle `drping` is taken, so the org is `drpinghq`. Hyphenated forms (`dr-ping`, `doctor-ping`) rejected — bad for recall/oral spelling. `doctorping` was the only fully-consistent-everywhere alternative (kept as a fallback).
+**Spelling decision:** brand and all identifiers are the single lowercase token `goflag` — a clean sweep across npm + GitHub + `.dev` + `.sh`, which is rare. No hyphens, no casing rules, nothing to misspell out loud.
+
+**Why `goflag` over the alternatives:** "vedette" single words (greenlight, takeoff, liftoff…) and short dictionary words are almost all camped or premium on npm/`.dev`. `goflag` keeps the green-light/go-signal energy, stays short (6 letters, one block), and is available everywhere. Sober coined fallbacks considered and rejected for being less self-explanatory: `spekt`, `nitid`, `scruto`, `skopo`.
 
 ---
 
 ## 7. Positioning (inherited from PLAN.md)
 
-> **"Lighthouse for the `<head>`"** — preview and lint how your site appears in search and social, locally, in your browser. Now extended to a **three-lens local site auditor** (Scan / Vision / Circulation).
+> **"Lighthouse for the `<head>`"** — preview and lint how your site appears in search and social, locally, in your browser. Now extended to a **three-lens local site auditor** (Sitemap / Head / Links).
 
 **Whitespace:** nobody owns "the dev-grade linter for how a site appears in search and social, runnable on localhost, with rules + fixes + framework-aware suggestions." Paste-URL tools are marketer-leaning and post-deploy; SEO crawlers are broad and shallow on `<head>`; Lighthouse's SEO tab is an afterthought.
 
@@ -135,4 +141,4 @@ An acquirer (Vercel / Netlify / Cloudflare / Sanity / Contentful) buys one of fo
 
 ## 9. One-line strategy
 
-Drop resale as the steering goal; **ship `npx drping` + a hosted demo + a narrative launch**, and let reputation (O1) be the real "exit." O1-O3 are reachable in weeks; O4 may follow as a consequence — never by aiming at it directly.
+Drop resale as the steering goal; **ship `npx goflag` + a hosted demo + a narrative launch**, and let reputation (O1) be the real "exit." O1-O3 are reachable in weeks; O4 may follow as a consequence — never by aiming at it directly.
