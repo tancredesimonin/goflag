@@ -14,11 +14,11 @@
 
 ## Objectives legend
 
-| Tag | Objective | Note |
-| --- | --- | --- |
-| **O1** | Strengthen tech reputation | "I can build a relevant, practical dev tool." |
-| **O2** | Bias to action | "I had a problem, I solved it — look." |
-| **O3** | Give back to the dev community | OSS, free forever. |
+| Tag    | Objective                         | Note                                                                            |
+| ------ | --------------------------------- | ------------------------------------------------------------------------------- |
+| **O1** | Strengthen tech reputation        | "I can build a relevant, practical dev tool."                                   |
+| **O2** | Bias to action                    | "I had a problem, I solved it — look."                                          |
+| **O3** | Give back to the dev community    | OSS, free forever.                                                              |
 | **O4** | Upside: demand → traffic → resale | **Optional.** A side effect of O1-O3, never a primary driver. See strategy doc. |
 
 ## Status legend
@@ -98,9 +98,9 @@
 
 **Critical path:** Phase 0 → 1 → 3. If only three things get done: **rename it, make it `npx`-able, launch it with a story.**
 
-| Objective | How we know it's working |
-| --- | --- |
+| Objective           | How we know it's working                                                                        |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
 | **O1 — Reputation** | GitHub stars, organic mentions, inbound (jobs/consulting/speaking), perceived artifact quality. |
-| **O2 — Action** | Binary: shipped + launched publicly. Yes/no. |
-| **O3 — Community** | External contributors, rules contributed, "this helped me" feedback. |
-| **O4 — Upside** | CI adoption, retention, platform inbound. **Leading indicators, not a target to chase.** |
+| **O2 — Action**     | Binary: shipped + launched publicly. Yes/no.                                                    |
+| **O3 — Community**  | External contributors, rules contributed, "this helped me" feedback.                            |
+| **O4 — Upside**     | CI adoption, retention, platform inbound. **Leading indicators, not a target to chase.**        |

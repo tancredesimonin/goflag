@@ -10,14 +10,14 @@
 
 **Name:** **Dr. Ping** (display form always written with the space + period).
 
-**Why the rename from `headlint`:** `headlint` only describes **one** of the three lenses. The product now audits the **sitemap**, the **`<head>`**, *and* the **links** of a site. The umbrella name had to cover the whole.
+**Why the rename from `headlint`:** `headlint` only describes **one** of the three lenses. The product now audits the **sitemap**, the **`<head>`**, _and_ the **links** of a site. The umbrella name had to cover the whole.
 
 **Tagline:** _« Catch it local. Ship it healthy. »_
 
 **Sub-tagline:** _« Dr. Ping ausculte ton site en local et le déclare apte au déploiement. »_
 _(EN: "Dr. Ping examines your site locally and clears it for deployment.")_
 
-**The double meaning that powers the brand:** *ping* = the network ping (does the page respond?) **and** the EKG monitor beep (the heartbeat). One word, two readings — preventive medicine for websites.
+**The double meaning that powers the brand:** _ping_ = the network ping (does the page respond?) **and** the EKG monitor beep (the heartbeat). One word, two readings — preventive medicine for websites.
 
 ---
 
@@ -33,11 +33,11 @@ This reframing is the north star: every feature should serve "catch it before pr
 
 The three lenses are renamed as medical exams — distinct metaphors, intuitive, and they tell the story better than "sitemap/head/links."
 
-| Lens (engine) | Exam | What it auscultates |
-| --- | --- | --- |
-| Sitemap | **Scan** | The full-body scan: is everything discoverable and healthy? |
-| Head | **Vision** | How each page is *seen* (Google, social networks). |
-| Links | **Circulation** | Does blood flow between pages? (a broken link = a clot) |
+| Lens (engine) | Exam            | What it auscultates                                         |
+| ------------- | --------------- | ----------------------------------------------------------- |
+| Sitemap       | **Scan**        | The full-body scan: is everything discoverable and healthy? |
+| Head          | **Vision**      | How each page is _seen_ (Google, social networks).          |
+| Links         | **Circulation** | Does blood flow between pages? (a broken link = a clot)     |
 
 ---
 
@@ -68,13 +68,13 @@ drping circulation example.com   # links
 
 ## 6. Availability (reservations)
 
-| Identifier | `drping` | Status |
-| --- | --- | --- |
-| npm package | `drping` | Free |
-| GitHub org | `drpinghq` (bare `drping` taken) | Free |
-| Domain | `drping.dev` | Free (primary) |
-| Domain | `drping.sh` | Free (optional, CLI nod) |
-| Domain | `drping.com` | Taken (~$699k — skip) |
+| Identifier  | `drping`                         | Status                   |
+| ----------- | -------------------------------- | ------------------------ |
+| npm package | `drping`                         | Free                     |
+| GitHub org  | `drpinghq` (bare `drping` taken) | Free                     |
+| Domain      | `drping.dev`                     | Free (primary)           |
+| Domain      | `drping.sh`                      | Free (optional, CLI nod) |
+| Domain      | `drping.com`                     | Taken (~$699k — skip)    |
 
 **Spelling decision:** brand = **Dr. Ping**; identifiers = `drping` (short, slick CLI/npm string). The bare GitHub handle `drping` is taken, so the org is `drpinghq`. Hyphenated forms (`dr-ping`, `doctor-ping`) rejected — bad for recall/oral spelling. `doctorping` was the only fully-consistent-everywhere alternative (kept as a fallback).
 
@@ -94,12 +94,12 @@ drping circulation example.com   # links
 
 ### The four goals — two incompatible families
 
-| Goal | Family |
-| --- | --- |
-| O1 — tech reputation | **Reputation / action / community.** Won by shipping a delightful, installable tool + launching it well. No business required. |
-| O2 — bias to action | ↑ same family |
-| O3 — give back to community | ↑ same family |
-| O4 — demand → traffic → resale | **Business with traction.** A lottery ticket, not a plan. |
+| Goal                           | Family                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| O1 — tech reputation           | **Reputation / action / community.** Won by shipping a delightful, installable tool + launching it well. No business required. |
+| O2 — bias to action            | ↑ same family                                                                                                                  |
+| O3 — give back to community    | ↑ same family                                                                                                                  |
+| O4 — demand → traffic → resale | **Business with traction.** A lottery ticket, not a plan.                                                                      |
 
 **The trap:** letting O4 push us to over-build (SaaS, monitoring, acquisition-readiness) and under-ship, sacrificing the near-certain O1-O3.
 
@@ -107,23 +107,23 @@ drping circulation example.com   # links
 
 An acquirer (Vercel / Netlify / Cloudflare / Sanity / Contentful) buys one of four things:
 
-| Lever | What they buy | Realism here |
-| --- | --- | --- |
-| 1. Distribution | Thousands of devs already using it | Plausible if we nail O1-O3 |
-| 2. Strategic wedge | A defensive capability (localhost-vs-prod) | Possible — Phase 4 |
-| 3. Talent (acqui-hire) | They hire you; the repo is the CV | Common for solo dev tools |
-| 4. Revenue | Meaningful ARR | Unlikely — ceiling is "low-single-digit millions" |
+| Lever                  | What they buy                              | Realism here                                      |
+| ---------------------- | ------------------------------------------ | ------------------------------------------------- |
+| 1. Distribution        | Thousands of devs already using it         | Plausible if we nail O1-O3                        |
+| 2. Strategic wedge     | A defensive capability (localhost-vs-prod) | Possible — Phase 4                                |
+| 3. Talent (acqui-hire) | They hire you; the repo is the CV          | Common for solo dev tools                         |
+| 4. Revenue             | Meaningful ARR                             | Unlikely — ceiling is "low-single-digit millions" |
 
 **Consequence:** for 3 of the 4 levers, **adoption and reputation ARE the asset.** So even if optimizing for resale, the optimal sequence is identical to optimizing for reputation: **adoption first, monetization later.**
 
-**Reframe of O4:** don't build *for* the sale. Build for **reputation + optionality.** The likely payoffs are inbound opportunities (O1 realized) or a sponsorship/partnership — not an acquisition. The "traffic to resell" model contradicts the no-telemetry ethos and is dropped.
+**Reframe of O4:** don't build _for_ the sale. Build for **reputation + optionality.** The likely payoffs are inbound opportunities (O1 realized) or a sponsorship/partnership — not an acquisition. The "traffic to resell" model contradicts the no-telemetry ethos and is dropped.
 
 ### Gates to make a resale credible
 
 - **Distribution:** > 2-3k GitHub stars, rising npx/npm installs, organic mentions.
 - **Wedge works:** localhost-vs-prod diff adopted as a deploy-gate by real teams.
 - **Retention:** people re-running it week over week (hard without the CI layer).
-- **Timing:** an acquirer has a reason *now* — the tool makes their preview deployments more valuable.
+- **Timing:** an acquirer has a reason _now_ — the tool makes their preview deployments more valuable.
 
 ### Business model (from PLAN.md, for reference)
 
