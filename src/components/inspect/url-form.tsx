@@ -64,12 +64,12 @@ export function UrlForm({
     >
       <div className="flex w-full items-stretch gap-2">
         <Input
-          type="url"
+          type="text"
           name="url"
           inputMode="url"
           autoComplete="off"
           spellCheck={false}
-          placeholder="https://localhost:3000 or https://example.com"
+          placeholder="example.com or https://localhost:3000"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           aria-invalid={error ? true : undefined}

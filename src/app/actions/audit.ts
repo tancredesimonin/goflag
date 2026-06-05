@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { discoverSitemap } from "@/lib/core/sitemap/discover";
+import { normalizeInputUrl } from "@/lib/core/net/normalize-url";
 import { runLinkAudit as runLinkAuditEngine } from "@/lib/core/links/audit";
 import type { LinkAuditOptions } from "@/lib/core/links/audit";
 import type { LinkVerdict } from "@/lib/core/links/types";
@@ -19,8 +20,6 @@ export type RunFullAuditResult =
   | { ok: true; url: string; urlCount: number; ranLinks: boolean }
   | { ok: false; error: { code: AuditErrorCode; message: string } };
 
-const URL_PATTERN = /^https?:\/\//i;
-
 interface AuditInput {
   url: string;
   insecure?: boolean;
@@ -36,7 +35,10 @@ interface FullAuditInput extends AuditInput {
 function invalidUrl(): { ok: false; error: { code: AuditErrorCode; message: string } } {
   return {
     ok: false,
-    error: { code: "invalid-url", message: "Enter a full URL starting with http:// or https://" },
+    error: {
+      code: "invalid-url",
+      message: "Enter a valid URL, e.g. example.com or https://example.com",
+    },
   };
 }
 
@@ -54,13 +56,13 @@ function unexpected(err: unknown): { ok: false; error: { code: AuditErrorCode; m
  * the boundary, return a structured result.
  */
 export async function runLinkAudit(input: AuditInput): Promise<RunLinkAuditResult> {
-  const trimmed = input.url.trim();
-  if (!trimmed || !URL_PATTERN.test(trimmed)) return invalidUrl();
+  const normalized = normalizeInputUrl(input.url);
+  if (!normalized.ok) return invalidUrl();
+  const url = normalized.url;
 
   try {
     const discovery =
-      getSite(trimmed) ??
-      (await discoverSitemap(trimmed, { allowInsecureTls: input.insecure === true }));
+      getSite(url) ?? (await discoverSitemap(url, { allowInsecureTls: input.insecure === true }));
     setSite(discovery);
 
     const options: LinkAuditOptions = {
@@ -72,7 +74,7 @@ export async function runLinkAudit(input: AuditInput): Promise<RunLinkAuditResul
     setLinkAudit(report);
 
     revalidatePath("/links");
-    return { ok: true, url: trimmed, summary: report.summary, pagesScanned: report.pagesScanned };
+    return { ok: true, url, summary: report.summary, pagesScanned: report.pagesScanned };
   } catch (err) {
     return unexpected(err);
   }
@@ -85,11 +87,12 @@ export async function runLinkAudit(input: AuditInput): Promise<RunLinkAuditResul
  * (inspected on navigation) to avoid headless cost.
  */
 export async function runFullAudit(input: FullAuditInput): Promise<RunFullAuditResult> {
-  const trimmed = input.url.trim();
-  if (!trimmed || !URL_PATTERN.test(trimmed)) return invalidUrl();
+  const normalized = normalizeInputUrl(input.url);
+  if (!normalized.ok) return invalidUrl();
+  const url = normalized.url;
 
   try {
-    const discovery = await discoverSitemap(trimmed, {
+    const discovery = await discoverSitemap(url, {
       allowInsecureTls: input.insecure === true,
     });
     setSite(discovery);
@@ -108,7 +111,7 @@ export async function runFullAudit(input: FullAuditInput): Promise<RunFullAuditR
     revalidatePath("/");
     revalidatePath("/site");
     revalidatePath("/links");
-    return { ok: true, url: trimmed, urlCount: discovery.urls.length, ranLinks };
+    return { ok: true, url, urlCount: discovery.urls.length, ranLinks };
   } catch (err) {
     return unexpected(err);
   }

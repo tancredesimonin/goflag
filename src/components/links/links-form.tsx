@@ -58,12 +58,12 @@ export function LinksForm({
     >
       <div className="flex w-full items-stretch gap-2">
         <Input
-          type="url"
+          type="text"
           name="url"
           inputMode="url"
           autoComplete="off"
           spellCheck={false}
-          placeholder="https://example.com"
+          placeholder="example.com"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           aria-invalid={error ? true : undefined}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { inspect, type InspectOptions } from "@/lib/core/inspect";
 import { FetchError } from "@/lib/core/fetch/static";
 import { HeadlessUnavailableError } from "@/lib/core/extract/headless";
+import { normalizeInputUrl } from "@/lib/core/net/normalize-url";
 import { setCachedPage } from "@/lib/store/inspect-cache";
 
 export type InspectActionResult =
@@ -16,8 +17,6 @@ export type InspectErrorCode =
   | "fetch-failed"
   | "headless-unavailable"
   | "unexpected";
-
-const URL_PATTERN = /^https?:\/\//i;
 
 interface RunInspectInput {
   url: string;
@@ -36,26 +35,27 @@ interface RunInspectInput {
  * message — never throws across the action boundary.
  */
 export async function runInspect(input: RunInspectInput): Promise<InspectActionResult> {
-  const trimmed = input.url.trim();
-  if (!trimmed || !URL_PATTERN.test(trimmed)) {
+  const normalized = normalizeInputUrl(input.url);
+  if (!normalized.ok) {
     return {
       ok: false,
       error: {
         code: "invalid-url",
-        message: "Enter a full URL starting with http:// or https://",
+        message: "Enter a valid URL, e.g. example.com or https://example.com",
       },
     };
   }
+  const url = normalized.url;
 
   try {
-    const page = await inspect(trimmed, {
+    const page = await inspect(url, {
       mode: input.mode ?? "auto",
       allowInsecureTls: input.insecure === true,
       probes: true,
     });
-    setCachedPage(trimmed, page);
+    setCachedPage(url, page);
     revalidatePath("/inspect");
-    return { ok: true, url: trimmed };
+    return { ok: true, url };
   } catch (err) {
     if (err instanceof HeadlessUnavailableError) {
       return {
