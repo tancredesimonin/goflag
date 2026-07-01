@@ -122,6 +122,16 @@ coverage:
         path: coverage/cobertura-coverage.xml
     expire_in: 1 week
 
+# Trivy scans the working dir; without this override the global default.cache
+# restores .pnpm-store/node_modules into the job and Trivy flags secrets/CVEs
+# from cached third-party packages. Disable the cache so only repo sources
+# (incl. pnpm-lock.yaml) are scanned.
+trivy-deps:
+  cache: {}
+
+trivy-scheduled:
+  cache: {}
+
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
