@@ -36,7 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
-    "next": "^15.1.0",
+    "next": "^15.5.18",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -66,7 +66,7 @@
     "eslint-config-next": "^15.1.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-vitest": "^0.5.4",
-    "hono": "^4.6.15",
+    "hono": "^4.12.25",
     "jsdom": "^25.0.1",
     "playwright": "1.59.1",
     "postcss": "^8.5.0",
@@ -77,5 +77,11 @@
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": "^7.28.0",
+      "fast-uri": "^3.1.2"
+    }
   }
 }
