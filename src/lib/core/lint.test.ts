@@ -7,7 +7,7 @@ import { pageFromHtml } from "@/lib/rules/test-utils";
 
 const noopRule = (overrides: Partial<Rule> & { id: string }): Rule => ({
   severity: "warning",
-  docs: { summary: "noop", rationale: "test only" },
+  summary: "noop",
   check: () => undefined,
   ...overrides,
 });
@@ -83,14 +83,6 @@ describe("lint runner", () => {
     expect(issues[0]!.ruleId).toBe("engine.rule-crashed");
     expect(issues[0]!.message).toContain("`boom`");
     expect(issues[0]!.message).toContain("nope");
-  });
-
-  it("defaults docs to /rules/<id> when not provided", () => {
-    const page = pageFromHtml("<html><head></head><body></body></html>");
-    const rules: Rule[] = [
-      noopRule({ id: "docs.test", check: ({ issue }) => issue({ message: "x" }) }),
-    ];
-    expect(lint(page, rules)[0]!.docs).toBe("/rules/docs.test");
   });
 });
 

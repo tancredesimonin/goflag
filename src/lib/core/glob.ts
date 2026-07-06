@@ -42,7 +42,7 @@ export function compileGlob(pattern: string): RegExp {
       i += 1;
       continue;
     }
-    if (/[.+^${}()|\\[\]\/]/.test(c)) {
+    if (/[.+^${}()|\\[\]/]/.test(c)) {
       re += `\\${c}`;
     } else {
       re += c;

@@ -1,7 +1,0 @@
-{
-  "name": "astro-app",
-  "version": "0.0.0",
-  "devDependencies": {
-    "astro": "^5.0.0"
-  }
-}

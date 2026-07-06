@@ -9,9 +9,9 @@
  * way in.
  */
 
-import type { Page } from "@/lib/core/types";
-import { PAGE_SCHEMA_VERSION } from "@/lib/core/types";
-import { extractStatic } from "@/lib/core/extract/static";
+import type { Page } from "../core/types";
+import { PAGE_SCHEMA_VERSION } from "../core/types";
+import { extractStatic } from "../core/extract/static";
 
 export interface PageFromHtmlOptions {
   /** Used to resolve relative URLs and as the `final` fetch URL. */

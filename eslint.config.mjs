@@ -1,37 +1,17 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
-import vitest from "eslint-plugin-vitest";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import prettier from "eslint-config-prettier";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
+export default tseslint.config(
   {
-    files: ["**/*.{test,spec}.{ts,tsx}", "test/**/*.{ts,tsx}"],
-    plugins: { vitest },
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "fixtures/**"],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  prettier,
+  {
     rules: {
-      "vitest/no-focused-tests": "error",
-      "vitest/no-disabled-tests": "error",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
-  {
-    ignores: [
-      "**/.next/**",
-      "node_modules/**",
-      "coverage/**",
-      "test-results/**",
-      "playwright-report/**",
-      "dist/**",
-      "build/**",
-      "**/next-env.d.ts",
-    ],
-  },
-];
-
-export default eslintConfig;
+);

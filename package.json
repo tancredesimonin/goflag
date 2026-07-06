@@ -2,80 +2,64 @@
   "name": "goflag",
   "version": "0.0.0",
   "private": true,
-  "description": "Lighthouse for the <head>. Preview and lint how your site appears in search and social — locally, in your browser.",
+  "type": "module",
+  "description": "A lean CLI that audits a site for broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.",
   "license": "MIT",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.11"
   },
+  "bin": {
+    "goflag": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "clean": "rm -rf .next coverage test-results playwright-report",
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "verify:rule-fixtures": "node scripts/check-rule-fixtures.mjs",
-    "verify:i18n-fixture": "node scripts/verify-i18n-fixture.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:unit": "vitest run src/lib test/unit",
-    "test:component": "vitest run src/components src/lib/previews test/component",
+    "test:unit": "vitest run src test/unit",
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps chromium",
     "release": "commit-and-tag-version"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.1",
-    "cheerio": "^1.2.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.14.0",
-    "next": "^15.5.18",
-    "next-themes": "^0.4.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "shadcn": "^4.6.0",
-    "shiki": "^1",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0",
-    "tw-animate-css": "^1.4.0",
-    "zod": "^4.4.3"
+    "cheerio": "^1.2.0"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.59.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^9.39.4",
     "@hono/node-server": "^2.0.1",
-    "@playwright/test": "^1.49.1",
-    "@tailwindcss/postcss": "^4.0.0",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.10.5",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
-    "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^2.1.8",
     "commit-and-tag-version": "^12.5.0",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.1.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-vitest": "^0.5.4",
     "hono": "^4.12.25",
-    "jsdom": "^25.0.1",
-    "playwright": "1.59.1",
-    "postcss": "^8.5.0",
     "prettier": "^3.4.2",
-    "prettier-plugin-tailwindcss": "^0.6.9",
-    "sharp": "^0.34.5",
-    "tailwindcss": "^4.0.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^2.1.8"
   },
   "pnpm": {

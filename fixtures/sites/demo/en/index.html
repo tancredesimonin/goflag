@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Goflag Demo — English Home</title>
+    <meta
+      name="description"
+      content="The English home page of the Goflag demo site, used to exercise the link, i18n, and SEO checks end to end."
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href="https://demo.example/en" />
+    <link rel="alternate" hreflang="en" href="/en" />
+    <link rel="alternate" hreflang="fr" href="/fr" />
+    <link rel="alternate" hreflang="de" href="/de" />
+    <link rel="alternate" hreflang="x-default" href="/en" />
+    <meta property="og:title" content="Goflag Demo — English Home" />
+    <meta property="og:description" content="English home page of the Goflag demo site." />
+    <meta property="og:image" content="https://demo.example/og.png" />
+  </head>
+  <body>
+    <main id="main">
+      <h1>Goflag demo</h1>
+      <nav>
+        <a href="/en/about">About</a>
+        <a href="/en/blog">Blog</a>
+        <a href="/en/pricing">Pricing</a>
+        <a href="/fr">Français</a>
+        <a href="/de">Deutsch</a>
+      </nav>
+      <ul>
+        <li><a href="/bad-seo">Bad SEO page</a></li>
+        <li><a href="/relative-canonical">Relative canonical page</a></li>
+        <li><a href="/good">Good page</a></li>
+      </ul>
+      <section id="broken">
+        <a href="/en/ghost">Dead internal link</a>
+        <a href="/x/server-error">Server error link</a>
+        <a href="/x/soft">Soft error link</a>
+        <a href="/x/forbidden">Forbidden link</a>
+        <a href="/x/redirect">Redirected link</a>
+        <a href="mailto:demo@demo.example">Email</a>
+        <a href="#main">Back to top</a>
+      </section>
+    </main>
+  </body>
+</html>
