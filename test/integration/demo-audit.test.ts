@@ -130,14 +130,15 @@ describe("demo site — full audit report", () => {
       expect(holes).toHaveLength(2);
 
       const blog = holes.find((h) => h.route === "/blog");
-      expect(blog).toEqual({
+      expect(blog).toMatchObject({
         route: "/blog",
         presentLocales: ["en", "fr"],
         missingLocales: ["de"],
       });
+      expect(blog?.id).toMatch(/^i18n-[0-9a-f]{10}$/);
 
       const pricing = holes.find((h) => h.route === "/pricing");
-      expect(pricing).toEqual({
+      expect(pricing).toMatchObject({
         route: "/pricing",
         presentLocales: ["en"],
         missingLocales: ["de", "fr"],
@@ -213,5 +214,64 @@ describe("demo site — full audit report", () => {
     expect(roundTripped).toEqual(report);
     expect(typeof report.finishedAt).toBe("string");
     expect(new Date(report.finishedAt).toString()).not.toBe("Invalid Date");
+  });
+
+  describe("finding fingerprints", () => {
+    it("stamps every finding with a stable, category-prefixed id", () => {
+      for (const link of report.brokenLinks) expect(link.id).toMatch(/^link-[0-9a-f]{10}$/);
+      for (const hole of report.missingTranslations.holes) {
+        expect(hole.id).toMatch(/^i18n-[0-9a-f]{10}$/);
+      }
+      for (const r of report.missingTranslations.reciprocity) {
+        expect(r.id).toMatch(/^i18n-[0-9a-f]{10}$/);
+      }
+      for (const issue of report.seoIssues) expect(issue.id).toMatch(/^seo-[0-9a-f]{10}$/);
+    });
+
+    it("ids are unique across all findings", () => {
+      const ids = [
+        ...report.brokenLinks.map((b) => b.id),
+        ...report.missingTranslations.holes.map((h) => h.id),
+        ...report.missingTranslations.reciprocity.map((r) => r.id),
+        ...report.seoIssues.map((i) => i.id),
+      ];
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("is deterministic: re-auditing the same site yields the same ids", async () => {
+      const again = await runAudit(`${server.url}/en`, {
+        depth: 2,
+        static: true,
+        exclude: ["/x/**", "/en/ghost"],
+      });
+      expect(again.seoIssues.map((i) => i.id).sort()).toEqual(
+        report.seoIssues.map((i) => i.id).sort(),
+      );
+      expect(again.brokenLinks.map((b) => b.id).sort()).toEqual(
+        report.brokenLinks.map((b) => b.id).sort(),
+      );
+    }, 60_000);
+  });
+
+  describe("actionable metadata (why / fix)", () => {
+    it("threads the rule summary through as `why`", () => {
+      const titleMissing = report.seoIssues.find(
+        (i) => i.pageUrl === abs("/bad-seo") && i.ruleId === "title.missing",
+      );
+      expect(titleMissing?.why).toContain("<title>");
+    });
+
+    it("surfaces a copy-pasteable fix snippet when the rule offers one", () => {
+      const ogImage = report.seoIssues.find(
+        (i) => i.pageUrl === abs("/bad-seo") && i.ruleId === "og.image.missing",
+      );
+      expect(ogImage?.fix).toContain('property="og:image"');
+    });
+
+    it("leaves `fix` undefined for length-style rules with no snippet", () => {
+      const relCanonical = report.seoIssues.find((i) => i.ruleId === "canonical.absolute");
+      expect(relCanonical?.why).toBeTruthy();
+      expect(relCanonical?.fix).toBeUndefined();
+    });
   });
 });

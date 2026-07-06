@@ -15,6 +15,8 @@
 
 import { runAudit, exitCode } from "./report/build";
 import { renderTerminal } from "./report/render-terminal";
+import { renderSummaryTerminal } from "./report/render-summary";
+import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
 
@@ -73,15 +75,26 @@ async function main(): Promise<number> {
   }
 
   if (args.report) {
+    // The report file is always the full report — the source of truth a
+    // baseline/diff can rely on, regardless of the --summary view choice.
     const { writeFileSync } = await import("node:fs");
     writeFileSync(args.report, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     process.stderr.write(`goflag: report written to ${args.report}\n`);
   }
 
-  if (args.json) {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  if (args.summary) {
+    const summary = summarize(report);
+    process.stdout.write(
+      args.json
+        ? `${JSON.stringify(summary, null, 2)}\n`
+        : `${renderSummaryTerminal(summary, { color: args.color })}\n`,
+    );
   } else {
-    process.stdout.write(`${renderTerminal(report, { color: args.color })}\n`);
+    process.stdout.write(
+      args.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : `${renderTerminal(report, { color: args.color })}\n`,
+    );
   }
 
   return exitCode(report);

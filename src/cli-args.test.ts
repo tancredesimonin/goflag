@@ -11,14 +11,21 @@ describe("parseArgs", () => {
     expect(parseArgs(["https://example.com"]).url).toBe("https://example.com");
   });
 
-  it("defaults: no json, no report, findings-only options empty", () => {
+  it("defaults: no json, no summary, no report, findings-only options empty", () => {
     const a = parseArgs(["https://example.com"]);
     expect(a.json).toBe(false);
+    expect(a.summary).toBe(false);
     expect(a.report).toBeUndefined();
     expect(a.help).toBe(false);
     expect(a.version).toBe(false);
     expect(a.options.include).toEqual([]);
     expect(a.options.exclude).toEqual([]);
+  });
+
+  it("parses --summary / -s", () => {
+    expect(parseArgs(["u", "--summary"]).summary).toBe(true);
+    expect(parseArgs(["u", "-s"]).summary).toBe(true);
+    expect(parseArgs(["u"]).summary).toBe(false);
   });
 
   it("parses boolean flags", () => {
@@ -88,6 +95,7 @@ describe("parseArgs", () => {
     expect(HELP).toContain("goflag <url> [options]");
     for (const flag of [
       "--json",
+      "--summary",
       "--report",
       "--depth",
       "--include",

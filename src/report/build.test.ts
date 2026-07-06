@@ -29,7 +29,14 @@ describe("deriveTranslationHoles", () => {
       "/": { en: true, fr: true },
     });
     const holes = deriveTranslationHoles(matrix);
-    expect(holes).toEqual([{ route: "/about", presentLocales: ["en"], missingLocales: ["fr"] }]);
+    expect(holes).toEqual([
+      expect.objectContaining({
+        route: "/about",
+        presentLocales: ["en"],
+        missingLocales: ["fr"],
+      }),
+    ]);
+    expect(holes[0]?.id).toMatch(/^i18n-[0-9a-f]{10}$/);
   });
 
   it("returns nothing when every route is fully translated", () => {

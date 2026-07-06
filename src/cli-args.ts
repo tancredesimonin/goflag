@@ -18,7 +18,9 @@ Usage:
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).
-  --report <file>        Write the JSON report to <file>.
+  --summary, -s          Roll findings up (dedup by link/rule/code). Pairs
+                         with --json for a compact, agent-friendly payload.
+  --report <file>        Write the (full) JSON report to <file>.
   --depth <n>            Crawl depth (0 = entry page only). Default: 2.
   --max-pages <n>        Hard cap on pages crawled. Default: 200.
   --include <glob>       Only crawl paths matching <glob> (repeatable).
@@ -38,6 +40,7 @@ Exit codes: 0 clean, 1 findings found, 2 fatal error.`;
 export interface ParsedArgs {
   url?: string;
   json: boolean;
+  summary: boolean;
   report?: string;
   color: boolean;
   help: boolean;
@@ -50,6 +53,7 @@ export interface ParsedArgs {
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
     json: false,
+    summary: false,
     color: process.stdout.isTTY === true && !process.env.NO_COLOR,
     help: false,
     version: false,
@@ -76,6 +80,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--json":
         parsed.json = true;
+        break;
+      case "-s":
+      case "--summary":
+        parsed.summary = true;
         break;
       case "--no-color":
         parsed.color = false;
