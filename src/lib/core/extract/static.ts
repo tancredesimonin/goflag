@@ -403,7 +403,7 @@ function parseSizes(sizes: string | undefined): IconLink["parsedSizes"] {
 // ---------------------------------------------------------------------------
 
 function collectAttributes(
-  $: cheerio.CheerioAPI,
+  _$: cheerio.CheerioAPI,
   el: ReturnType<cheerio.CheerioAPI>[number],
 ): Record<string, string> {
   const result: Record<string, string> = {};

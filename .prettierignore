@@ -1,26 +1,13 @@
 node_modules
-.next
-out
 dist
 build
 coverage
-test-results
-playwright-report
 pnpm-lock.yaml
 .goflag
 *.min.js
 
 # Author-controlled docs — never auto-format
-PLAN.md
 CHANGELOG.md
-
-# Vendor-generated files (shadcn primitives, shadcn studio blocks)
-src/components/ui/**
-src/components/shadcn-studio/**
-src/hooks/use-mobile.ts
-src/lib/utils.ts
-# shadcn studio adds a demo route per block — vendor-owned, ignored
-src/app/empty-state-01/**
 
 # Test fixtures — captured verbatim from real sites and synthetic edge cases;
 # keep byte-for-byte identical.

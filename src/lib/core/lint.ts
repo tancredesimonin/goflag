@@ -23,8 +23,8 @@
  * code and the UI both depend on a successful walk over every rule.
  */
 
-import type { Issue, Page, Severity } from "@/lib/core/types";
-import { RULES, type Rule } from "@/lib/rules";
+import type { Issue, Page, Severity } from "./types";
+import { RULES, type Rule } from "../rules";
 
 const SEVERITY_RANK: Record<Severity, number> = {
   error: 0,
@@ -54,7 +54,6 @@ export function lint(page: Page, rules: ReadonlyArray<Rule> = RULES): Issue[] {
           origin: input.origin,
           fix: input.fix,
           suggestion: input.suggestion,
-          docs: input.docs ?? `/rules/${rule.id}`,
         }),
       });
     } catch (err) {
@@ -62,7 +61,6 @@ export function lint(page: Page, rules: ReadonlyArray<Rule> = RULES): Issue[] {
         ruleId: "engine.rule-crashed",
         severity: "info",
         message: `Rule \`${rule.id}\` threw: ${err instanceof Error ? err.message : String(err)}`,
-        docs: "/rules/engine.rule-crashed",
       });
       continue;
     }

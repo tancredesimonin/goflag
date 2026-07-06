@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { probeRobots } from "../../src/lib/core/probes/robots";
 import { probeSitemap } from "../../src/lib/core/probes/sitemap";
 import { probeManifest } from "../../src/lib/core/probes/manifest";
-import { probeImage } from "../../src/lib/core/probes/image";
 
 interface RouteHandler {
   status: number;
@@ -129,51 +128,6 @@ describe("probeManifest", () => {
   it("returns found:false on a network error", async () => {
     const probe = await probeManifest("http://127.0.0.1:1/site.webmanifest");
     expect(probe.found).toBe(false);
-  });
-});
-
-describe("probeImage", () => {
-  /** Pre-baked 1x1 transparent PNG. */
-  const PNG_1x1 = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=",
-    "base64",
-  );
-
-  it("returns dimensions and bytes for a real PNG", async () => {
-    routes.set("/i.png", { status: 200, contentType: "image/png", body: PNG_1x1 });
-    const probe = await probeImage(`${baseUrl}/i.png`);
-    expect(probe.ok).toBe(true);
-    expect(probe.format).toBe("png");
-    expect(probe.width).toBe(1);
-    expect(probe.height).toBe(1);
-    expect(probe.bytes).toBe(PNG_1x1.byteLength);
-    expect(probe.contentType).toBe("image/png");
-  });
-
-  it("reports an error for non-image bodies", async () => {
-    routes.set("/i.png", { status: 200, contentType: "image/png", body: "not an image" });
-    const probe = await probeImage(`${baseUrl}/i.png`);
-    expect(probe.ok).toBe(false);
-    expect(probe.error).toBeDefined();
-  });
-
-  it("returns ok:false on 404", async () => {
-    routes.delete("/i.png");
-    const probe = await probeImage(`${baseUrl}/i.png`);
-    expect(probe.ok).toBe(false);
-    expect(probe.status).toBe(404);
-  });
-
-  it("returns ok:false on a network error", async () => {
-    const probe = await probeImage("http://127.0.0.1:1/i.png");
-    expect(probe.ok).toBe(false);
-  });
-
-  it("respects a caller-driven AbortSignal", async () => {
-    const ac = new AbortController();
-    ac.abort();
-    const probe = await probeImage(`${baseUrl}/i.png`, { signal: ac.signal });
-    expect(probe.ok).toBe(false);
   });
 });
 

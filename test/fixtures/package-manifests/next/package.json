@@ -1,8 +1,0 @@
-{
-  "name": "next-app",
-  "version": "0.0.0",
-  "dependencies": {
-    "next": "^15.1.0",
-    "react": "^19.0.0"
-  }
-}

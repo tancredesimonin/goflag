@@ -1,42 +1,40 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## What this is
 
-### Branch note
+Goflag is a **Node/TypeScript CLI** (no Next.js, no browser UI). It crawls a
+site and reports broken links, missing translation pages, and
+missing/misconfigured SEO metadata. The JSON report is the source of truth.
 
-The runnable Next.js app lives on **`develop`**. The default **`main`** branch currently contains only planning docs (`README.md`, `PLAN.md`) — no `package.json`. Cloud agents should `git checkout develop` (or merge it) before `pnpm install` or any test/dev commands.
+## Layout
 
-### Services (no Docker / databases)
+- `src/lib/core/**` — framework-agnostic engine: crawl, fetch/extract (static +
+  headless Chromium), link audit, i18n matrix + reciprocity, probes.
+- `src/lib/rules/**` — the SEO metadata checks and the pure `lint()` runner.
+- `src/report/**` — the `GoflagReport` schema, the orchestrator (`runAudit`),
+  and the terminal renderer.
+- `src/cli.ts` — argument parsing, orchestration, exit codes.
+- `test/**` — Hono fixture servers + integration tests (some use real Chromium).
 
-| Service                      | Port | How to start                                                                    |
-| ---------------------------- | ---- | ------------------------------------------------------------------------------- |
-| Goflag (Next.js)             | 3000 | `pnpm dev` (dev) or `pnpm build && pnpm start` (prod-like)                      |
-| Tancrede fixture HTTP (Hono) | 4322 | `GOFLAG_FIXTURE_PORT=4322 pnpm exec tsx test/e2e/fixture-launcher.ts`           |
-| i18n fixture HTTP (Hono)     | 4323 | `GOFLAG_I18N_FIXTURE_PORT=4323 pnpm exec tsx test/e2e/i18n-fixture-launcher.ts` |
+## Toolchain
 
-Playwright E2E starts all three automatically via `playwright.config.ts` `webServer`. For manual UI testing against fixtures, run the fixture server(s) before inspecting `http://127.0.0.1:4322/...` URLs.
+- Node `>=20.11`; repo pins **`pnpm@9.15.0`** via `packageManager`. Use
+  `corepack enable && corepack prepare pnpm@9.15.0 --activate`.
+- Headless SPA tests need Chromium: `pnpm exec playwright install chromium`.
 
-### Toolchain
-
-- Node `>=20.11` (see `.nvmrc`); repo pins **`pnpm@9.15.0`** via `packageManager` — use `corepack enable` and `corepack prepare pnpm@9.15.0 --activate`.
-- First-time E2E on a fresh VM: `pnpm test:e2e:install` (Chromium + OS deps). Not part of the VM update script.
-
-### Verify / test commands
-
-Standard commands are in `package.json` and `README.md`. Typical full local check:
+## Verify / test
 
 ```sh
-pnpm lint && pnpm typecheck
-pnpm test:unit && pnpm test:component && pnpm test:integration
-pnpm test:e2e    # builds app + boots fixture servers + runs Playwright
+pnpm lint && pnpm typecheck && pnpm format:check
+pnpm build
+pnpm test:unit          # no network / no Chromium
+pnpm test:integration   # boots fixture servers; SPA tests use real Chromium
 ```
 
-Integration tests use real Chromium for SPA fixtures; unit/component use Vitest + jsdom.
+## Run the CLI from source
 
-### Hello-world manual flow
+```sh
+pnpm dev https://example.com --static --depth 1
+```
 
-1. Start fixture server (4322) and `pnpm dev` (3000).
-2. Open `http://localhost:3000`, paste e.g. `http://127.0.0.1:4322/fr`, submit **Inspect**.
-3. Confirm header (title + 200), then **Previews** and **Issues** tabs.
-
-Optional `.env` from `.env.example` (shadcn studio keys, newsletter) — not required to run or test the app.
+Exit codes: `0` clean, `1` findings found, `2` fatal.
