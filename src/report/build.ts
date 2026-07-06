@@ -12,11 +12,20 @@
 import { crawl } from "../lib/core/crawl";
 import { lint } from "../lib/core/lint";
 import { buildI18nMatrix, reciprocityIssues, type I18nMatrix } from "../lib/core/i18n";
+import { getRule } from "../lib/rules";
 import { runLinkAudit } from "../lib/core/links/audit";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
 import type { Page } from "../lib/core/types";
-import type { BrokenLink, GoflagReport, SeoIssue, TranslationHole, Verdict } from "./types";
+import { fingerprint, routeKey, targetKey } from "./fingerprint";
+import type {
+  BrokenLink,
+  GoflagReport,
+  ReportReciprocityIssue,
+  SeoIssue,
+  TranslationHole,
+  Verdict,
+} from "./types";
 
 /**
  * The phase of the audit a progress event belongs to:
@@ -96,7 +105,12 @@ export function deriveTranslationHoles(matrix: I18nMatrix): TranslationHole[] {
       else missing.push(locale);
     }
     if (present.length > 0 && missing.length > 0) {
-      holes.push({ route, presentLocales: present, missingLocales: missing });
+      holes.push({
+        id: fingerprint("i18n", "hole", route),
+        route,
+        presentLocales: present,
+        missingLocales: missing,
+      });
     }
   }
   return holes;
@@ -157,12 +171,23 @@ export async function runAudit(
   // --- SEO lint ----------------------------------------------------------
   const seoIssues: SeoIssue[] = [];
   for (const page of pages) {
+    const pageUrl = page.fetch.finalUrl;
+    // A rule can fire more than once on a page (e.g. robots.conflict emits
+    // both an index and a follow conflict); the occurrence index keeps their
+    // fingerprints distinct without depending on the (mutable) message text.
+    const occurrence = new Map<string, number>();
     for (const issue of lint(page)) {
+      const n = occurrence.get(issue.ruleId) ?? 0;
+      occurrence.set(issue.ruleId, n + 1);
+      const rule = getRule(issue.ruleId);
       seoIssues.push({
-        pageUrl: page.fetch.finalUrl,
+        id: fingerprint("seo", issue.ruleId, routeKey(pageUrl), String(n)),
+        pageUrl,
         ruleId: issue.ruleId,
         severity: issue.severity,
         message: issue.message,
+        why: rule?.summary,
+        fix: issue.fix?.snippet,
       });
     }
   }
@@ -170,7 +195,16 @@ export async function runAudit(
   // --- i18n --------------------------------------------------------------
   const matrix = buildI18nMatrix(pages);
   const holes = deriveTranslationHoles(matrix);
-  const reciprocity = reciprocityIssues(pages);
+  const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(pages).map((issue) => ({
+    id: fingerprint(
+      "i18n",
+      issue.code,
+      routeKey(issue.url),
+      issue.peerUrl ? routeKey(issue.peerUrl) : "",
+      issue.locale ?? "",
+    ),
+    ...issue,
+  }));
 
   // --- Link audit over the crawled page set ------------------------------
   const discovery = syntheticDiscovery(origin, entry, pages, crawlResult.truncated);
@@ -193,6 +227,7 @@ export async function runAudit(
   for (const { pageUrl, broken } of linkReport.brokenByPage) {
     for (const check of broken) {
       brokenLinks.push({
+        id: fingerprint("link", routeKey(pageUrl), targetKey(check.url)),
         pageUrl,
         href: check.url,
         status: check.status,

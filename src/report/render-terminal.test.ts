@@ -92,12 +92,14 @@ describe("renderTerminal — sections", () => {
         summary: { brokenLinks: 1, missingTranslations: 0, seoIssues: 0, verdict: "red" },
         brokenLinks: [
           {
+            id: "link-aaaaaaaaaa",
             pageUrl: "https://example.com/",
             href: "https://example.com/ghost",
             status: 404,
             verdict: "broken",
           },
           {
+            id: "link-bbbbbbbbbb",
             pageUrl: "https://example.com/",
             href: "https://example.com/blocked",
             status: 403,
@@ -119,9 +121,17 @@ describe("renderTerminal — sections", () => {
       baseReport({
         summary: { brokenLinks: 0, missingTranslations: 2, seoIssues: 0, verdict: "yellow" },
         missingTranslations: {
-          holes: [{ route: "/blog", presentLocales: ["en", "fr"], missingLocales: ["de"] }],
+          holes: [
+            {
+              id: "i18n-hole-blog",
+              route: "/blog",
+              presentLocales: ["en", "fr"],
+              missingLocales: ["de"],
+            },
+          ],
           reciprocity: [
             {
+              id: "i18n-recip-1",
               code: "missing-back-link",
               url: "https://example.com/fr/about",
               peerUrl: "https://example.com/de/about",
@@ -147,12 +157,14 @@ describe("renderTerminal — sections", () => {
         summary: { brokenLinks: 0, missingTranslations: 0, seoIssues: 2, verdict: "red" },
         seoIssues: [
           {
+            id: "seo-aaaaaaaaaa",
             pageUrl: "https://example.com/",
             ruleId: "title.missing",
             severity: "error",
             message: "Page is missing a `<title>` element.",
           },
           {
+            id: "seo-bbbbbbbbbb",
             pageUrl: "https://example.com/",
             ruleId: "og.description.missing",
             severity: "info",

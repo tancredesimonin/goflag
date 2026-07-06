@@ -104,6 +104,35 @@ describe("goflag CLI (spawned process)", () => {
     expect(r.stdout.trim().startsWith("{")).toBe(true);
   }, 30_000);
 
+  it("emits a compact, deduped summary with --summary --json", async () => {
+    const r = await runCli([
+      `${server.url}/en`,
+      "--summary",
+      "--json",
+      "--static",
+      "--exclude",
+      "/x/**",
+    ]);
+    expect(r.status).toBe(1);
+    const summary = JSON.parse(r.stdout);
+    expect(summary.verdict).toBe("red");
+    expect(summary.totals).toBeDefined();
+    // A summary rolls up — its arrays are no larger than the raw counts.
+    expect(summary.seoIssues.length).toBeLessThanOrEqual(summary.totals.seoIssues);
+    expect(Array.isArray(summary.brokenLinks)).toBe(true);
+    // Rolled-up SEO entries carry the actionable metadata once.
+    const seo = summary.seoIssues[0];
+    expect(seo).toHaveProperty("ruleId");
+    expect(seo).toHaveProperty("count");
+  }, 30_000);
+
+  it("renders a compact summary to stdout with --summary", async () => {
+    const r = await runCli([`${server.url}/en`, "--summary", "--static", "--exclude", "/x/**"]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("(summary)");
+    expect(r.stdout).toMatch(/×\d+/);
+  }, 30_000);
+
   it("logs per-page progress to stderr in --verbose mode", async () => {
     const r = await runCli([`${server.url}/en`, "--static", "--verbose", "--exclude", "/x/**"]);
     // Progress is on stderr; the report stays on stdout.

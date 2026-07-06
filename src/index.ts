@@ -16,6 +16,16 @@ export {
   type ProgressEvent,
 } from "./report/build";
 export { renderTerminal } from "./report/render-terminal";
+export { renderSummaryTerminal } from "./report/render-summary";
+export {
+  summarize,
+  SAMPLE_LIMIT,
+  type GoflagSummary,
+  type RollupLink,
+  type RollupSeo,
+  type RollupReciprocity,
+} from "./report/summarize";
+export { fingerprint, routeKey, targetKey } from "./report/fingerprint";
 export { Logger, type LogMode, type LoggerOptions } from "./report/logger";
 export type {
   GoflagReport,
@@ -23,5 +33,6 @@ export type {
   ReportPage,
   BrokenLink,
   TranslationHole,
+  ReportReciprocityIssue,
   SeoIssue,
 } from "./report/types";

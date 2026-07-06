@@ -22,6 +22,8 @@ export interface ReportPage {
 
 /** One problematic link, mapped back to the page that references it. */
 export interface BrokenLink {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
   /** The page the link was found on. */
   pageUrl: string;
   /** The link target (canonical URL that was probed). */
@@ -35,6 +37,8 @@ export interface BrokenLink {
 
 /** A route present in some locales but missing in others. */
 export interface TranslationHole {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
   /** Canonical route (locale segment stripped), e.g. `/about`. */
   route: string;
   /** Locales that serve this route. */
@@ -43,12 +47,24 @@ export interface TranslationHole {
   missingLocales: string[];
 }
 
+/** A reciprocity / hreflang finding, carrying a stable fingerprint. */
+export type ReportReciprocityIssue = ReciprocityIssue & {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
+};
+
 /** One SEO metadata finding on a specific page. */
 export interface SeoIssue {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
   pageUrl: string;
   ruleId: string;
   severity: Severity;
   message: string;
+  /** Why this rule exists (the rule's one-line summary). */
+  why?: string;
+  /** A copy-pasteable fix snippet, when the rule offers one. */
+  fix?: string;
 }
 
 export interface GoflagReport {
@@ -68,7 +84,7 @@ export interface GoflagReport {
     /** Routes present in one locale but absent in another. */
     holes: TranslationHole[];
     /** hreflang reciprocity / x-default / invalid-locale findings. */
-    reciprocity: ReciprocityIssue[];
+    reciprocity: ReportReciprocityIssue[];
   };
   seoIssues: SeoIssue[];
   diagnostics: {
