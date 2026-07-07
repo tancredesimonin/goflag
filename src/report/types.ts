@@ -53,6 +53,15 @@ export type ReportReciprocityIssue = ReciprocityIssue & {
   id: string;
 };
 
+/** A crawled page that returned a non-2xx status (errored / unreachable). */
+export interface UnreachablePage {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
+  url: string;
+  /** HTTP status (`0` = network error). */
+  status: number;
+}
+
 /** One SEO metadata finding on a specific page. */
 export interface SeoIssue {
   /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
@@ -76,9 +85,12 @@ export interface GoflagReport {
     brokenLinks: number;
     missingTranslations: number;
     seoIssues: number;
+    unreachablePages: number;
     verdict: Verdict;
   };
   pages: ReportPage[];
+  /** Crawled pages that returned a non-2xx status. */
+  unreachablePages: UnreachablePage[];
   brokenLinks: BrokenLink[];
   missingTranslations: {
     /** Routes present in one locale but absent in another. */

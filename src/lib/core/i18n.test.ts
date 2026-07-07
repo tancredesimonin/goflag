@@ -19,8 +19,15 @@ describe("isValidLocale", () => {
     expect(isValidLocale("en-US")).toBe(true);
     expect(isValidLocale("zh-Hant")).toBe(false); // we deliberately reject script subtags in v1
     expect(isValidLocale("x-default")).toBe(true);
-    expect(isValidLocale("FR")).toBe(false);
     expect(isValidLocale("english")).toBe(false);
+  });
+
+  it("is case-insensitive (hreflang/lang are per the HTML spec)", () => {
+    // Real-world tags that were false positives before the fix.
+    expect(isValidLocale("pt-br")).toBe(true);
+    expect(isValidLocale("pt-BR")).toBe(true);
+    expect(isValidLocale("en-us")).toBe(true);
+    expect(isValidLocale("FR")).toBe(true);
   });
 });
 
@@ -109,5 +116,26 @@ describe("reciprocityIssues", () => {
     const issues = reciprocityIssues(pages).filter((i) => i.code === "locale.invalid");
     expect(issues).toHaveLength(1);
     expect(issues[0]!.locale).toBe("ENGLISH");
+  });
+
+  it("does not flag lowercase-region tags like pt-br as invalid", () => {
+    const pages = [
+      localePage("https://x.com/pt-br/about", [
+        { hreflang: "pt-br", href: "https://x.com/pt-br/about" },
+        { hreflang: "en", href: "https://x.com/en/about" },
+      ]),
+    ];
+    expect(reciprocityIssues(pages).filter((i) => i.code === "locale.invalid")).toEqual([]);
+  });
+
+  it("collapses duplicate findings from repeated hreflang tags", () => {
+    const pages = [
+      localePage("https://x.com/fr/about", [
+        { hreflang: "ENGLISH", href: "https://x.com/en/about" },
+        { hreflang: "ENGLISH", href: "https://x.com/en/about" },
+      ]),
+    ];
+    const issues = reciprocityIssues(pages).filter((i) => i.code === "locale.invalid");
+    expect(issues).toHaveLength(1);
   });
 });

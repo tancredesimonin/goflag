@@ -35,4 +35,5 @@ export type {
   TranslationHole,
   ReportReciprocityIssue,
   SeoIssue,
+  UnreachablePage,
 } from "./report/types";

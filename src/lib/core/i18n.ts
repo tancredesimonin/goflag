@@ -61,7 +61,15 @@ export interface I18nMatrix {
   cells: Record<string, Record<string, I18nCell>>;
 }
 
-const BCP47_LOOSE = /^[a-z]{2,3}(-[A-Z]{2}|-\d{3})?$/;
+// hreflang / lang values are case-insensitive per the HTML spec, so a
+// lowercase region subtag like `pt-br` is just as valid as canonical
+// `pt-BR`. The `i` flag keeps us from flagging real, common tags as invalid.
+const BCP47_LOOSE = /^[a-z]{2,3}(-[a-z]{2}|-\d{3})?$/i;
+
+/** True when a URL path segment looks like a locale tag (`/fr`, `/pt-br`, …). */
+export function looksLikeLocaleSegment(segment: string): boolean {
+  return BCP47_LOOSE.test(segment);
+}
 
 export function isValidLocale(tag: string): boolean {
   if (tag === "x-default") return true;
@@ -213,12 +221,30 @@ export function reciprocityIssues(pages: Page[]): ReciprocityIssue[] {
     }
   }
 
-  return issues;
+  // A page can repeat the same hreflang tag (or the same broken cluster can
+  // be observed twice); collapse exact duplicates so counts and fingerprints
+  // stay honest.
+  return dedupeBy(
+    issues,
+    (i) => `${i.code}\u0000${i.url}\u0000${i.peerUrl ?? ""}\u0000${i.locale ?? ""}`,
+  );
+}
+
+function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const k = key(item);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(item);
+  }
+  return out;
 }
 
 function splitRoute(pathname: string): { route: string; locale: string } {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length > 0 && BCP47_LOOSE.test(segments[0]!)) {
+  if (segments.length > 0 && looksLikeLocaleSegment(segments[0]!)) {
     const locale = segments[0]!;
     const rest = segments.slice(1).join("/");
     return { route: rest ? `/${rest}` : "/", locale };

@@ -3,12 +3,23 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_LIMIT, summarize } from "./summarize";
 import type { GoflagReport } from "./types";
 
-function baseReport(overrides: Partial<GoflagReport> = {}): GoflagReport {
-  return {
+type ReportOverrides = Partial<Omit<GoflagReport, "summary">> & {
+  summary?: Partial<GoflagReport["summary"]>;
+};
+
+function baseReport(overrides: ReportOverrides = {}): GoflagReport {
+  const base: GoflagReport = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
-    summary: { brokenLinks: 0, missingTranslations: 0, seoIssues: 0, verdict: "green" },
+    summary: {
+      brokenLinks: 0,
+      missingTranslations: 0,
+      seoIssues: 0,
+      unreachablePages: 0,
+      verdict: "green",
+    },
     pages: [],
+    unreachablePages: [],
     brokenLinks: [],
     missingTranslations: { holes: [], reciprocity: [] },
     seoIssues: [],
@@ -19,8 +30,8 @@ function baseReport(overrides: Partial<GoflagReport> = {}): GoflagReport {
       truncated: false,
       warnings: [],
     },
-    ...overrides,
   };
+  return { ...base, ...overrides, summary: { ...base.summary, ...(overrides.summary ?? {}) } };
 }
 
 describe("summarize — totals", () => {
@@ -37,6 +48,21 @@ describe("summarize — totals", () => {
       seoIssues: 4,
       pagesCrawled: 3,
     });
+  });
+});
+
+describe("summarize — unreachable pages", () => {
+  it("passes unreachable pages and their count straight through", () => {
+    const s = summarize(
+      baseReport({
+        summary: { verdict: "red", unreachablePages: 1 },
+        unreachablePages: [{ id: "page-1", url: "https://example.com/down", status: 500 }],
+      }),
+    );
+    expect(s.totals.unreachablePages).toBe(1);
+    expect(s.unreachablePages).toEqual([
+      { id: "page-1", url: "https://example.com/down", status: 500 },
+    ]);
   });
 });
 

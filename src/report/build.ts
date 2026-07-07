@@ -11,7 +11,12 @@
 
 import { crawl } from "../lib/core/crawl";
 import { lint } from "../lib/core/lint";
-import { buildI18nMatrix, reciprocityIssues, type I18nMatrix } from "../lib/core/i18n";
+import {
+  buildI18nMatrix,
+  looksLikeLocaleSegment,
+  reciprocityIssues,
+  type I18nMatrix,
+} from "../lib/core/i18n";
 import { getRule } from "../lib/rules";
 import { runLinkAudit } from "../lib/core/links/audit";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
@@ -24,8 +29,14 @@ import type {
   ReportReciprocityIssue,
   SeoIssue,
   TranslationHole,
+  UnreachablePage,
   Verdict,
 } from "./types";
+
+/** A 2xx response is the only "healthy" page we lint / audit for i18n. */
+function isOkStatus(status: number): boolean {
+  return status >= 200 && status < 300;
+}
 
 /**
  * The phase of the audit a progress event belongs to:
@@ -71,14 +82,12 @@ export interface AuditOptions {
   onProgress?: (event: ProgressEvent) => void;
 }
 
-const BCP47_LOOSE = /^[a-z]{2,3}(-[A-Z]{2}|-\d{3})?$/;
-
 /** Infer a locale from the leading path segment, or null when unprefixed. */
 function localeOfUrl(url: string): string | null {
   try {
     const { pathname } = new URL(url);
     const first = pathname.split("/").filter(Boolean)[0];
-    if (first && BCP47_LOOSE.test(first)) return first;
+    if (first && looksLikeLocaleSegment(first)) return first;
   } catch {
     // fall through
   }
@@ -168,9 +177,21 @@ export async function runAudit(
   const pages: Page[] = crawlResult.pages;
   const warnings = crawlResult.errors.map((e) => `crawl: ${e.url} — ${e.message}`);
 
-  // --- SEO lint ----------------------------------------------------------
+  // A page that returned a non-2xx status has no meaningful <head>, links,
+  // or hreflang — linting it produces phantom "missing title/description/…"
+  // findings. Split the healthy pages out and report the rest as errored.
+  const okPages = pages.filter((p) => isOkStatus(p.fetch.status));
+  const unreachablePages: UnreachablePage[] = pages
+    .filter((p) => !isOkStatus(p.fetch.status))
+    .map((p) => ({
+      id: fingerprint("page", routeKey(p.fetch.finalUrl)),
+      url: p.fetch.finalUrl,
+      status: p.fetch.status,
+    }));
+
+  // --- SEO lint (healthy pages only) -------------------------------------
   const seoIssues: SeoIssue[] = [];
-  for (const page of pages) {
+  for (const page of okPages) {
     const pageUrl = page.fetch.finalUrl;
     // A rule can fire more than once on a page (e.g. robots.conflict emits
     // both an index and a follow conflict); the occurrence index keeps their
@@ -192,10 +213,10 @@ export async function runAudit(
     }
   }
 
-  // --- i18n --------------------------------------------------------------
-  const matrix = buildI18nMatrix(pages);
+  // --- i18n (healthy pages only) -----------------------------------------
+  const matrix = buildI18nMatrix(okPages);
   const holes = deriveTranslationHoles(matrix);
-  const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(pages).map((issue) => ({
+  const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(okPages).map((issue) => ({
     id: fingerprint(
       "i18n",
       issue.code,
@@ -206,8 +227,8 @@ export async function runAudit(
     ...issue,
   }));
 
-  // --- Link audit over the crawled page set ------------------------------
-  const discovery = syntheticDiscovery(origin, entry, pages, crawlResult.truncated);
+  // --- Link audit over the healthy crawled page set ----------------------
+  const discovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
   const linkReport = await runLinkAudit(discovery, {
     allowInsecureTls: options.allowInsecureTls,
     checkExternal,
@@ -237,14 +258,33 @@ export async function runAudit(
     }
   }
 
+  // A total (or near-total) scan failure means "0 broken links" is not a
+  // clean bill of health — it's "we couldn't check". Say so loudly instead
+  // of letting the run look green.
+  const scanTargets = okPages.length;
+  const scanFailed = linkReport.diagnostics.pagesFailed;
+  const scanBlind = scanTargets > 0 && linkReport.pagesScanned === 0;
+  if (scanBlind) {
+    warnings.push(
+      `Link scan failed on all ${scanFailed} page(s) — "0 broken links" is unverified, not clean.`,
+    );
+  } else if (scanFailed > 0 && scanFailed >= scanTargets / 2) {
+    warnings.push(
+      `Link scan failed on ${scanFailed} of ${scanTargets} page(s); link results are partial.`,
+    );
+  }
+
   // --- Summary + verdict -------------------------------------------------
   const brokenCount = linkReport.summary.broken;
   const seoErrorCount = seoIssues.filter((i) => i.severity === "error").length;
   const missingTranslations = holes.length + reciprocity.length;
 
+  // A page in your own crawl that errors, or a scan that saw nothing, is a
+  // hard failure — never green.
   let verdict: Verdict = "green";
-  if (brokenCount > 0 || seoErrorCount > 0) verdict = "red";
-  else if (missingTranslations > 0 || seoIssues.length > 0 || brokenLinks.length > 0) {
+  if (brokenCount > 0 || seoErrorCount > 0 || unreachablePages.length > 0 || scanBlind) {
+    verdict = "red";
+  } else if (missingTranslations > 0 || seoIssues.length > 0 || brokenLinks.length > 0) {
     verdict = "yellow";
   }
 
@@ -255,6 +295,7 @@ export async function runAudit(
       brokenLinks: brokenCount,
       missingTranslations,
       seoIssues: seoIssues.length,
+      unreachablePages: unreachablePages.length,
       verdict,
     },
     pages: pages.map((p) => ({
@@ -262,6 +303,7 @@ export async function runAudit(
       status: p.fetch.status,
       locale: localeOfUrl(p.fetch.finalUrl),
     })),
+    unreachablePages,
     brokenLinks,
     missingTranslations: { holes, reciprocity },
     seoIssues,

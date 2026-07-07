@@ -57,9 +57,19 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
       metric(c, summary.totals.brokenLinks, "broken link"),
       metric(c, summary.totals.missingTranslations, "missing translation"),
       metric(c, summary.totals.seoIssues, "SEO issue"),
+      metric(c, summary.totals.unreachablePages, "unreachable page"),
     ].join("   "),
   );
   lines.push("");
+
+  // --- Unreachable pages -------------------------------------------------
+  if (summary.unreachablePages.length > 0) {
+    lines.push(c(ANSI.bold, "Unreachable pages"));
+    for (const page of summary.unreachablePages) {
+      lines.push(`  ${c(ANSI.red, `[${page.status || "network error"}]`)} ${page.url}`);
+    }
+    lines.push("");
+  }
 
   // --- Broken links (one row per target) --------------------------------
   if (summary.brokenLinks.length > 0) {

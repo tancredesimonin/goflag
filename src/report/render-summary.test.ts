@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import { renderSummaryTerminal } from "./render-summary";
 import type { GoflagSummary } from "./summarize";
 
-function baseSummary(overrides: Partial<GoflagSummary> = {}): GoflagSummary {
-  return {
+type SummaryOverrides = Partial<Omit<GoflagSummary, "totals">> & {
+  totals?: Partial<GoflagSummary["totals"]>;
+};
+
+function baseSummary(overrides: SummaryOverrides = {}): GoflagSummary {
+  const base: GoflagSummary = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
     verdict: "green",
@@ -12,17 +16,19 @@ function baseSummary(overrides: Partial<GoflagSummary> = {}): GoflagSummary {
       brokenLinks: 0,
       missingTranslations: 0,
       seoIssues: 0,
+      unreachablePages: 0,
       pagesCrawled: 2,
       pagesScanned: 2,
       pagesFailed: 0,
     },
+    unreachablePages: [],
     brokenLinks: [],
     translations: { holes: [], reciprocity: [] },
     seoIssues: [],
     truncated: false,
     warnings: [],
-    ...overrides,
   };
+  return { ...base, ...overrides, totals: { ...base.totals, ...(overrides.totals ?? {}) } };
 }
 
 describe("renderSummaryTerminal", () => {

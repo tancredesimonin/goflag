@@ -11,12 +11,23 @@ import { describe, expect, it } from "vitest";
 import { renderTerminal } from "./render-terminal";
 import type { GoflagReport } from "./types";
 
-function baseReport(overrides: Partial<GoflagReport> = {}): GoflagReport {
-  return {
+type ReportOverrides = Partial<Omit<GoflagReport, "summary">> & {
+  summary?: Partial<GoflagReport["summary"]>;
+};
+
+function baseReport(overrides: ReportOverrides = {}): GoflagReport {
+  const base: GoflagReport = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
-    summary: { brokenLinks: 0, missingTranslations: 0, seoIssues: 0, verdict: "green" },
+    summary: {
+      brokenLinks: 0,
+      missingTranslations: 0,
+      seoIssues: 0,
+      unreachablePages: 0,
+      verdict: "green",
+    },
     pages: [{ url: "https://example.com/", status: 200, locale: null }],
+    unreachablePages: [],
     brokenLinks: [],
     missingTranslations: { holes: [], reciprocity: [] },
     seoIssues: [],
@@ -27,8 +38,8 @@ function baseReport(overrides: Partial<GoflagReport> = {}): GoflagReport {
       truncated: false,
       warnings: [],
     },
-    ...overrides,
   };
+  return { ...base, ...overrides, summary: { ...base.summary, ...(overrides.summary ?? {}) } };
 }
 
 describe("renderTerminal — header + verdict", () => {
@@ -86,6 +97,24 @@ describe("renderTerminal — header + verdict", () => {
 });
 
 describe("renderTerminal — sections", () => {
+  it("renders an unreachable-pages section with status tags", () => {
+    const out = renderTerminal(
+      baseReport({
+        summary: { verdict: "red", unreachablePages: 2 },
+        unreachablePages: [
+          { id: "page-aaaaaaaaaa", url: "https://example.com/down", status: 500 },
+          { id: "page-bbbbbbbbbb", url: "https://example.com/gone", status: 0 },
+        ],
+      }),
+      { color: false },
+    );
+    expect(out).toContain("Unreachable pages");
+    expect(out).toContain("[500]");
+    expect(out).toContain("[network error]");
+    expect(out).toContain("https://example.com/down");
+    expect(out).toContain("2 unreachable pages");
+  });
+
   it("renders broken links grouped by page with status/verdict tags", () => {
     const out = renderTerminal(
       baseReport({
