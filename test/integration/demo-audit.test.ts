@@ -216,6 +216,37 @@ describe("demo site — full audit report", () => {
     expect(new Date(report.finishedAt).toString()).not.toBe("Invalid Date");
   });
 
+  describe("unreachable pages (non-2xx are not linted as SEO)", () => {
+    let errServer: DemoServer;
+    let errReport: GoflagReport;
+
+    beforeAll(async () => {
+      errServer = await startDemoServer();
+      // Entry point itself returns 500: it must surface as an unreachable
+      // page, NOT as six phantom "missing title/description/…" SEO findings.
+      errReport = await runAudit(`${errServer.url}/x/server-error`, { depth: 0, static: true });
+    }, 30_000);
+
+    afterAll(async () => {
+      await errServer.stop();
+    });
+
+    it("reports the 500 as an unreachable page", () => {
+      expect(errReport.unreachablePages).toHaveLength(1);
+      expect(errReport.unreachablePages[0]?.status).toBe(500);
+      expect(errReport.unreachablePages[0]?.id).toMatch(/^page-[0-9a-f]{10}$/);
+      expect(errReport.summary.unreachablePages).toBe(1);
+    });
+
+    it("does not emit phantom SEO findings for the error page", () => {
+      expect(errReport.seoIssues).toHaveLength(0);
+    });
+
+    it("flags the run red (an errored page is a hard failure)", () => {
+      expect(errReport.summary.verdict).toBe("red");
+    });
+  });
+
   describe("finding fingerprints", () => {
     it("stamps every finding with a stable, category-prefixed id", () => {
       for (const link of report.brokenLinks) expect(link.id).toMatch(/^link-[0-9a-f]{10}$/);

@@ -19,7 +19,7 @@
 import type { ReciprocityCode } from "../lib/core/i18n";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { Severity } from "../lib/core/types";
-import type { GoflagReport, TranslationHole, Verdict } from "./types";
+import type { GoflagReport, TranslationHole, UnreachablePage, Verdict } from "./types";
 
 /** How many example pages/URLs a rolled-up entry keeps before it says "+N more". */
 export const SAMPLE_LIMIT = 5;
@@ -68,10 +68,12 @@ export interface GoflagSummary {
     brokenLinks: number;
     missingTranslations: number;
     seoIssues: number;
+    unreachablePages: number;
     pagesCrawled: number;
     pagesScanned: number;
     pagesFailed: number;
   };
+  unreachablePages: UnreachablePage[];
   brokenLinks: RollupLink[];
   translations: {
     holes: TranslationHole[];
@@ -91,10 +93,12 @@ export function summarize(report: GoflagReport): GoflagSummary {
       brokenLinks: report.summary.brokenLinks,
       missingTranslations: report.summary.missingTranslations,
       seoIssues: report.summary.seoIssues,
+      unreachablePages: report.summary.unreachablePages,
       pagesCrawled: report.diagnostics.pagesCrawled,
       pagesScanned: report.diagnostics.pagesScanned,
       pagesFailed: report.diagnostics.pagesFailed,
     },
+    unreachablePages: report.unreachablePages,
     brokenLinks: rollupLinks(report),
     translations: {
       holes: report.missingTranslations.holes,

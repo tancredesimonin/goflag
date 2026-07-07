@@ -79,6 +79,7 @@ describe("exitCode", () => {
     brokenLinks: 0,
     missingTranslations: 0,
     seoIssues: 0,
+    unreachablePages: 0,
     verdict: "green",
   };
   const report = (verdict: GoflagReport["summary"]["verdict"]): GoflagReport => ({
@@ -86,6 +87,7 @@ describe("exitCode", () => {
     finishedAt: "2026-01-01T00:00:00.000Z",
     summary: { ...base, verdict },
     pages: [],
+    unreachablePages: [],
     brokenLinks: [],
     missingTranslations: { holes: [], reciprocity: [] },
     seoIssues: [],
