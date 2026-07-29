@@ -73,8 +73,14 @@ export function lint(page: Page, rules: ReadonlyArray<Rule> = RULES): Issue[] {
   return sortIssues(issues);
 }
 
-/** Stable ordering used by every consumer. Exported for tests. */
-export function sortIssues(issues: Issue[]): Issue[] {
+/**
+ * Stable ordering used by every consumer. Exported for tests.
+ *
+ * Generic over the issue type so `lint-site.ts` can reuse the exact same
+ * severity/ruleId contract on `Issue & { pageUrl }` without a cast — and so
+ * that any extra field a caller carries survives the sort.
+ */
+export function sortIssues<T extends Issue>(issues: T[]): T[] {
   return [...issues].sort((a, b) => {
     const sev = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
     if (sev !== 0) return sev;

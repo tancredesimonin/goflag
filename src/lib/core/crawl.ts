@@ -43,6 +43,17 @@ export interface CrawlOptions {
   /** Entry-point URL the crawl starts from. Must be absolute http/https. */
   entryUrl: string;
   /**
+   * Extra same-origin URLs to enqueue alongside the entry point, at depth 0.
+   *
+   * Discovery via links alone is circular for i18n: a site that declares no
+   * `hreflang` gives the BFS nothing to follow into its other locales, so the
+   * frontier never leaves the entry locale and the i18n matrix collapses to a
+   * single column. Seeding from an independent artefact — the sitemap — breaks
+   * that loop. Seeds bypass include/exclude for the same reason hreflang
+   * siblings do: a filter must not reintroduce a systematic blind spot.
+   */
+  seedUrls?: readonly string[];
+  /**
    * BFS depth. `0` means "only the entry page". `1` means "entry +
    * its direct children". Defaults to `1` (matches `goflag inspect
    * --crawl --depth 1`).
@@ -120,6 +131,18 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
 
   const visitedSet = new Set<string>([entry]);
   const queue: QueueItem[] = [{ url: entry, depth: 0 }];
+
+  // Seeds join the entry at depth 0 so their own children remain reachable
+  // within `depth`. Off-origin and unparseable seeds are dropped silently —
+  // a sitemap listing another host is the sitemap's problem, not the crawl's.
+  for (const seed of options.seedUrls ?? []) {
+    const normalised = canonicaliseUrl(seed);
+    if (!normalised || visitedSet.has(normalised)) continue;
+    if (new URL(normalised).origin !== origin) continue;
+    visitedSet.add(normalised);
+    queue.push({ url: normalised, depth: 0 });
+  }
+
   const pages: Page[] = [];
   const errors: CrawlError[] = [];
   let truncated = false;

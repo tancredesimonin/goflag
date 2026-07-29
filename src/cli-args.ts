@@ -8,7 +8,7 @@
  * exit-code-2 with the help text.
  */
 
-import type { AuditOptions } from "./report/build";
+import type { AuditOptions, FailOn } from "./report/build";
 import type { LogMode } from "./report/logger";
 
 export const HELP = `goflag — audit a site for broken links, missing translations, and SEO metadata
@@ -25,6 +25,19 @@ Options:
   --max-pages <n>        Hard cap on pages crawled. Default: 200.
   --include <glob>       Only crawl paths matching <glob> (repeatable).
   --exclude <glob>       Skip paths matching <glob> (repeatable).
+  --locales <list>       Comma-separated locales the site serves, e.g.
+                         "fr,en,pt-br". Authoritative: overrides what the
+                         sitemap and crawl suggest, and makes a locale the
+                         site does not serve yet show up as missing.
+  --no-sitemap           Do not discover the sitemap; crawl from <url> only.
+                         Discovery is on by default because link-only crawling
+                         cannot find locales a site never links to.
+  --fail-on <level>      Exit 1 at or above this severity: warning (default),
+                         error, or never.
+  --start <cmd>          Boot <cmd>, wait for <url> to answer, audit, then
+                         stop it. Use to gate a merge on the built app before
+                         it ships.
+  --start-timeout <ms>   How long to wait for --start to answer. Default: 60000.
   --no-external          Do not probe off-origin (external) links.
   --static               Static HTML only; never launch headless Chromium.
   --allow-insecure-tls   Accept self-signed / invalid TLS (localhost, tunnels).
@@ -47,8 +60,16 @@ export interface ParsedArgs {
   version: boolean;
   /** Live-progress verbosity for the logger. */
   logMode: LogMode;
+  /** Severity at or above which the process exits 1. */
+  failOn: FailOn;
+  /** Command to boot before auditing, and stop afterwards (`--start`). */
+  start?: string;
+  /** How long to wait for `--start` to answer, in ms. */
+  startTimeoutMs: number;
   options: AuditOptions;
 }
+
+const FAIL_ON_LEVELS: readonly FailOn[] = ["warning", "error", "never"];
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
@@ -58,6 +79,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     help: false,
     version: false,
     logMode: "compact",
+    failOn: "warning",
+    startTimeoutMs: 60_000,
     options: { include: [], exclude: [] },
   };
 
@@ -104,6 +127,38 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--no-external":
         parsed.options.checkExternal = false;
+        break;
+      case "--no-sitemap":
+        parsed.options.noSitemap = true;
+        break;
+      case "--locales": {
+        // Split on commas so `--locales fr,en` and repeated flags both work.
+        const value = next(i, arg);
+        const tags = value
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (tags.length === 0) throw new Error(`${arg} expects at least one locale`);
+        parsed.options.locales = [...(parsed.options.locales ?? []), ...tags];
+        i++;
+        break;
+      }
+      case "--fail-on": {
+        const value = next(i, arg) as FailOn;
+        if (!FAIL_ON_LEVELS.includes(value)) {
+          throw new Error(`${arg} expects one of: ${FAIL_ON_LEVELS.join(", ")}`);
+        }
+        parsed.failOn = value;
+        i++;
+        break;
+      }
+      case "--start":
+        parsed.start = next(i, arg);
+        i++;
+        break;
+      case "--start-timeout":
+        parsed.startTimeoutMs = toInt(next(i, arg), arg);
+        i++;
         break;
       case "--report":
         parsed.report = next(i, arg);

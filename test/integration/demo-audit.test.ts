@@ -292,11 +292,16 @@ describe("demo site — full audit report", () => {
       expect(titleMissing?.why).toContain("<title>");
     });
 
-    it("surfaces a copy-pasteable fix snippet when the rule offers one", () => {
+    it("surfaces a copy-pasteable fix snippet at the App Router layer", () => {
+      // Snippets target the layer the reader actually edits. On App Router
+      // nobody hand-writes `<meta property="og:image">` — the framework owns
+      // the <head> — so a raw tag is advice you cannot act on.
       const ogImage = report.seoIssues.find(
         (i) => i.pageUrl === abs("/bad-seo") && i.ruleId === "og.image.missing",
       );
-      expect(ogImage?.fix).toContain('property="og:image"');
+      expect(ogImage?.fix).toContain("export const metadata");
+      expect(ogImage?.fix).toContain("openGraph");
+      expect(ogImage?.fix).not.toContain('property="og:image"');
     });
 
     it("leaves `fix` undefined for length-style rules with no snippet", () => {
