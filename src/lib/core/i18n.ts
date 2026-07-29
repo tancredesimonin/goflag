@@ -89,7 +89,27 @@ export function isValidLocale(tag: string): boolean {
  * axis. When the segment isn't a BCP 47 tag, the locale defaults to
  * `x-default` so unprefixed pages still show up in the matrix.
  */
-export function buildI18nMatrix(pages: Page[]): I18nMatrix {
+export interface BuildI18nMatrixOptions {
+  /**
+   * Absolute URLs the site *declares* it serves (today: the sitemap's `<loc>`
+   * entries) but which the crawl may not have reached. They fill their
+   * (route, locale) cell with `inspected: false`.
+   *
+   * This is what stops a site with no `hreflang` from looking monolingual:
+   * the crawler cannot discover `/fr/about` with no alternate link pointing
+   * at it, but the sitemap names it outright.
+   */
+  declaredUrls?: readonly string[];
+  /**
+   * Locales that must appear on the axis even when nothing filled them. An
+   * empty column is exactly what a translation hole looks like, so forcing
+   * the axis is how `--locales fr,en` makes a missing `/en` visible instead
+   * of silently shrinking the grid to the locales that happen to exist.
+   */
+  locales?: readonly string[];
+}
+
+export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions = {}): I18nMatrix {
   const inspectedByUrl = new Map<string, Page>();
   for (const page of pages) inspectedByUrl.set(page.fetch.finalUrl, page);
 
@@ -97,6 +117,11 @@ export function buildI18nMatrix(pages: Page[]): I18nMatrix {
   const grid = new Map<string, Map<string, Slot>>();
   const locales = new Set<string>();
   const routes = new Set<string>();
+
+  for (const locale of options.locales ?? []) {
+    const tag = locale.trim().toLowerCase();
+    if (tag) locales.add(tag);
+  }
 
   function record(route: string, locale: string, url: string): void {
     routes.add(route);
@@ -130,6 +155,19 @@ export function buildI18nMatrix(pages: Page[]): I18nMatrix {
       // (e.g. `/about` for both en and x-default).
       record(route || selfRoute, locale, altUrl.toString());
     }
+  }
+
+  // Declared-but-uncrawled URLs land last so a real inspected page always wins
+  // the cell (`record` keeps the first writer).
+  for (const declared of options.declaredUrls ?? []) {
+    let url: URL;
+    try {
+      url = new URL(declared);
+    } catch {
+      continue;
+    }
+    const { route, locale } = splitRoute(url.pathname);
+    record(route, locale, url.toString());
   }
 
   const sortedLocales = sortLocales([...locales]);
@@ -242,7 +280,14 @@ function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
   return out;
 }
 
-function splitRoute(pathname: string): { route: string; locale: string } {
+/**
+ * Split a pathname into its locale-free route and its locale segment.
+ * `/fr/about` → `{ route: "/about", locale: "fr" }`; an unprefixed path keeps
+ * its full pathname and reports `x-default`. Exported so cross-page rules key
+ * the `<head>` and the sitemap on the same route derivation — comparing two
+ * artefacts is only meaningful if both are normalised identically.
+ */
+export function splitRoute(pathname: string): { route: string; locale: string } {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length > 0 && looksLikeLocaleSegment(segments[0]!)) {
     const locale = segments[0]!;

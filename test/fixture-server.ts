@@ -35,7 +35,20 @@ export interface FixtureServerOptions {
    * Port to bind. `0` (default) lets the OS pick a free port.
    */
   port?: number;
+  /**
+   * Token replaced by the server's own origin in every text response
+   * (html/xml/txt/json). Fixtures that must carry absolute URLs — a
+   * `sitemap.xml`, a `<link rel="canonical">`, an `hreflang` href — cannot
+   * hardcode a host when the port is assigned at bind time, and rewriting
+   * them to relative URLs would defeat the point of the fixture.
+   *
+   * Defaults to `BASE`. Set to `null` to serve files byte-for-byte.
+   */
+  baseUrlToken?: string | null;
 }
+
+/** Response types worth templating; binary assets are served untouched. */
+const TEXTUAL = new Set([".html", ".htm", ".xml", ".txt", ".json", ".webmanifest"]);
 
 export interface FixtureServer {
   url: string;
@@ -61,6 +74,12 @@ export async function startFixtureServer(
     throw new Error(`Fixture root does not exist or is not a directory: ${root}`);
   }
 
+  const token = options.baseUrlToken === undefined ? "BASE" : options.baseUrlToken;
+
+  // The origin is only known after bind, but a request cannot arrive before
+  // then — so a mutable box filled in below is safe and avoids a second server.
+  let origin = "";
+
   const app = new Hono();
   app.get("/_health", (c) => c.json({ ok: true, root }));
 
@@ -78,8 +97,14 @@ export async function startFixtureServer(
       return c.text("Not Found", 404);
     }
 
+    const ext = extname(target).toLowerCase();
+    const mime = MIME[ext] ?? "application/octet-stream";
+
+    if (token && TEXTUAL.has(ext)) {
+      const text = (await readFile(target, "utf8")).split(token).join(origin);
+      return new Response(text, { headers: { "content-type": mime } });
+    }
     const body = await readFile(target);
-    const mime = MIME[extname(target).toLowerCase()] ?? "application/octet-stream";
     return new Response(body, { headers: { "content-type": mime } });
   });
 
@@ -96,6 +121,7 @@ export async function startFixtureServer(
     throw new Error("Fixture server failed to bind to a TCP port");
   }
   const port = address.port;
+  origin = `http://127.0.0.1:${port}`;
 
   return {
     url: `http://127.0.0.1:${port}`,

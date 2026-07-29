@@ -14,6 +14,7 @@
  */
 
 import { runAudit, exitCode } from "./report/build";
+import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
 import { renderSummaryTerminal } from "./report/render-summary";
 import { summarize } from "./report/summarize";
@@ -63,8 +64,21 @@ async function main(): Promise<number> {
     color: process.stderr.isTTY === true && !process.env.NO_COLOR,
   });
 
+  // `--start` owns a child process for the whole audit; it must be torn down
+  // on every exit path, including a failed audit, or CI leaks a held port.
+  let server: StartedServer | undefined;
   let report;
   try {
+    if (args.start) {
+      logger.note(`goflag: starting \`${args.start}\` …`);
+      server = await startServer({
+        command: args.start,
+        url: args.url,
+        timeoutMs: args.startTimeoutMs,
+        allowInsecureTls: args.options.allowInsecureTls,
+        onOutput: args.logMode === "verbose" ? (chunk) => process.stderr.write(chunk) : undefined,
+      });
+    }
     logger.note(`goflag: auditing ${args.url} …`);
     report = await runAudit(args.url, { ...args.options, onProgress: logger.onProgress });
     logger.stop();
@@ -72,6 +86,8 @@ async function main(): Promise<number> {
     logger.stop();
     process.stderr.write(`goflag: ${(err as Error).message}\n`);
     return 2;
+  } finally {
+    await server?.stop();
   }
 
   if (args.report) {
@@ -97,7 +113,7 @@ async function main(): Promise<number> {
     );
   }
 
-  return exitCode(report);
+  return exitCode(report, args.failOn);
 }
 
 main()

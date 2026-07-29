@@ -16,6 +16,7 @@ function baseSummary(overrides: SummaryOverrides = {}): GoflagSummary {
       brokenLinks: 0,
       missingTranslations: 0,
       seoIssues: 0,
+      siteIssues: 0,
       unreachablePages: 0,
       pagesCrawled: 2,
       pagesScanned: 2,
@@ -25,6 +26,7 @@ function baseSummary(overrides: SummaryOverrides = {}): GoflagSummary {
     brokenLinks: [],
     translations: { holes: [], reciprocity: [] },
     seoIssues: [],
+    siteIssues: [],
     truncated: false,
     warnings: [],
   };

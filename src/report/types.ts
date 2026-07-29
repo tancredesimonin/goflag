@@ -62,6 +62,33 @@ export interface UnreachablePage {
   status: number;
 }
 
+/**
+ * One cross-page finding — a policy that needed the whole site to evaluate
+ * (hreflang coverage, `<head>` vs sitemap agreement). Same shape as `SeoIssue`
+ * so consumers render them identically; `ruleId` says which registry it came
+ * from.
+ */
+export interface SiteIssue {
+  /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
+  id: string;
+  /** Page the finding is attributed to. */
+  pageUrl: string;
+  ruleId: string;
+  severity: Severity;
+  message: string;
+  /** Why this rule exists (the rule's one-line summary). */
+  why?: string;
+  /** A copy-pasteable fix snippet, when the rule offers one. */
+  fix?: string;
+}
+
+/** How the audit established which locales the site serves. */
+export interface LocaleAxisReport {
+  locales: string[];
+  source: "explicit" | "sitemap" | "crawl";
+  multilingual: boolean;
+}
+
 /** One SEO metadata finding on a specific page. */
 export interface SeoIssue {
   /** Stable fingerprint of this finding (see `./fingerprint.ts`). */
@@ -85,9 +112,13 @@ export interface GoflagReport {
     brokenLinks: number;
     missingTranslations: number;
     seoIssues: number;
+    /** Cross-page findings (hreflang coverage, head↔sitemap agreement). */
+    siteIssues: number;
     unreachablePages: number;
     verdict: Verdict;
   };
+  /** Which locales the site serves, and how the audit found out. */
+  localeAxis: LocaleAxisReport;
   pages: ReportPage[];
   /** Crawled pages that returned a non-2xx status. */
   unreachablePages: UnreachablePage[];
@@ -99,11 +130,21 @@ export interface GoflagReport {
     reciprocity: ReportReciprocityIssue[];
   };
   seoIssues: SeoIssue[];
+  /** Findings from the cross-page rule registry (`SITE_RULES`). */
+  siteIssues: SiteIssue[];
   diagnostics: {
     pagesCrawled: number;
     pagesScanned: number;
     pagesFailed: number;
     truncated: boolean;
     warnings: string[];
+    /** Sitemap discovery outcome, when discovery ran. */
+    sitemap?: {
+      found: boolean;
+      sitemapUrl?: string;
+      urlCount: number;
+      /** URLs the sitemap declared that the crawl never reached. */
+      uncrawled: number;
+    };
   };
 }

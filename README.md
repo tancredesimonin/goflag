@@ -48,6 +48,12 @@ The terminal view is just a render of that JSON.
 --max-pages <n>        Hard cap on pages crawled. Default: 200.
 --include <glob>       Only crawl paths matching <glob> (repeatable).
 --exclude <glob>       Skip paths matching <glob> (repeatable).
+--locales <list>       Comma-separated locales the site serves ("fr,en,pt-br").
+--no-sitemap           Do not discover the sitemap; crawl from <url> only.
+--fail-on <level>      Exit 1 at or above this severity: warning (default),
+                       error, or never.
+--start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
+--start-timeout <ms>   How long to wait for --start. Default: 60000.
 --no-external          Do not probe off-origin (external) links.
 --static               Static HTML only; never launch headless Chromium.
 --allow-insecure-tls   Accept self-signed / invalid TLS (localhost, tunnels).
@@ -58,6 +64,27 @@ The terminal view is just a render of that JSON.
 ```
 
 Headless mode needs Chromium. It ships as an optional dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+### Gate a merge before it ships
+
+`--start` boots your app, waits for it to answer, audits it, and stops it — so
+the same checks that would have caught a regression in production run on the
+branch instead:
+
+```sh
+goflag http://localhost:3000 --start "pnpm start" --fail-on error
+```
+
+### Multilingual sites
+
+Discovery is seeded from the sitemap, not just from links. That matters because
+a site with no `hreflang` gives a link crawler nothing to follow into its other
+locales — so it would look monolingual, and every hreflang check would pass
+vacuously. When a site has no usable sitemap, name the locales yourself:
+
+```sh
+goflag https://example.com --locales fr,en,pt-br
+```
 
 ## Programmatic API
 

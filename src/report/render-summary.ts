@@ -7,7 +7,7 @@
  * function of the summary; no I/O.
  */
 
-import type { GoflagSummary } from "./summarize";
+import type { GoflagSummary, RollupSeo } from "./summarize";
 import type { Verdict } from "./types";
 
 interface RenderOptions {
@@ -57,6 +57,7 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
       metric(c, summary.totals.brokenLinks, "broken link"),
       metric(c, summary.totals.missingTranslations, "missing translation"),
       metric(c, summary.totals.seoIssues, "SEO issue"),
+      metric(c, summary.totals.siteIssues, "site issue"),
       metric(c, summary.totals.unreachablePages, "unreachable page"),
     ].join("   "),
   );
@@ -106,18 +107,14 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
   // --- SEO issues (one row per rule, with why/fix) ----------------------
   if (summary.seoIssues.length > 0) {
     lines.push(c(ANSI.bold, "SEO issues"));
-    for (const issue of summary.seoIssues) {
-      const sev =
-        issue.severity === "error"
-          ? c(ANSI.red, "error")
-          : issue.severity === "warning"
-            ? c(ANSI.yellow, "warn ")
-            : c(ANSI.dim, "info ");
-      lines.push(`  ${sev} ${c(ANSI.cyan, issue.ruleId)} ${c(ANSI.dim, `×${issue.count}`)}`);
-      if (issue.why) lines.push(`    ${c(ANSI.dim, stripBackticks(issue.why))}`);
-      if (issue.fix) lines.push(`    ${c(ANSI.dim, "fix:")} ${issue.fix}`);
-      lines.push(`    ${c(ANSI.dim, `on ${samplePages(issue.pages, issue.morePages)}`)}`);
-    }
+    lines.push(...rollupRows(summary.seoIssues, c));
+    lines.push("");
+  }
+
+  // --- Cross-page issues (same rollup shape) -----------------------------
+  if (summary.siteIssues.length > 0) {
+    lines.push(c(ANSI.bold, "Site-wide issues"));
+    lines.push(...rollupRows(summary.siteIssues, c));
     lines.push("");
   }
 
@@ -148,4 +145,35 @@ function samplePages(pages: string[], more: number): string {
 
 function stripBackticks(s: string): string {
   return s.replace(/`/g, "");
+}
+
+/**
+ * One block per rolled-up rule. Shared by the SEO and site-wide sections:
+ * both are `RollupSeo`, and rendering them identically keeps the fix snippet
+ * in the same place regardless of which registry produced the finding.
+ */
+function rollupRows(
+  issues: ReadonlyArray<RollupSeo>,
+  c: (code: string, t: string) => string,
+): string[] {
+  const lines: string[] = [];
+  for (const issue of issues) {
+    const sev =
+      issue.severity === "error"
+        ? c(ANSI.red, "error")
+        : issue.severity === "warning"
+          ? c(ANSI.yellow, "warn ")
+          : c(ANSI.dim, "info ");
+    lines.push(`  ${sev} ${c(ANSI.cyan, issue.ruleId)} ${c(ANSI.dim, `×${issue.count}`)}`);
+    if (issue.why) lines.push(`    ${c(ANSI.dim, stripBackticks(issue.why))}`);
+    if (issue.fix) {
+      // Multi-line snippets (the Next.js fixes) must stay readable, so indent
+      // every line rather than dumping a `\n`-laden string on one row.
+      const [head, ...rest] = issue.fix.split("\n");
+      lines.push(`    ${c(ANSI.dim, "fix:")} ${head}`);
+      for (const line of rest) lines.push(`         ${c(ANSI.dim, line)}`);
+    }
+    lines.push(`    ${c(ANSI.dim, `on ${samplePages(issue.pages, issue.morePages)}`)}`);
+  }
+  return lines;
 }

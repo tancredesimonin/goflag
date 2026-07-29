@@ -11,13 +11,18 @@
 
 import { crawl } from "../lib/core/crawl";
 import { lint } from "../lib/core/lint";
+import { lintSite } from "../lib/core/lint-site";
 import {
   buildI18nMatrix,
   looksLikeLocaleSegment,
   reciprocityIssues,
   type I18nMatrix,
 } from "../lib/core/i18n";
+import { deriveLocaleAxis } from "../lib/core/locales";
+import { discoverSitemap } from "../lib/core/sitemap/discover";
 import { getRule } from "../lib/rules";
+import { getSiteRule } from "../lib/rules/site-rules";
+import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
@@ -28,6 +33,7 @@ import type {
   GoflagReport,
   ReportReciprocityIssue,
   SeoIssue,
+  SiteIssue,
   TranslationHole,
   UnreachablePage,
   Verdict,
@@ -80,6 +86,17 @@ export interface AuditOptions {
   signal?: AbortSignal;
   /** Progress callback for a live CLI. */
   onProgress?: (event: ProgressEvent) => void;
+  /**
+   * Locales the site serves, when the operator knows better than we can infer
+   * (`--locales fr,en,pt-br`). Strongest input to the locale axis.
+   */
+  locales?: string[];
+  /**
+   * Skip sitemap discovery and seed the crawl from `<url>` alone. Defaults to
+   * false — discovery is on by default because crawl-only discovery is exactly
+   * what made hreflang checks silently vacuous.
+   */
+  noSitemap?: boolean;
 }
 
 /** Infer a locale from the leading path segment, or null when unprefixed. */
@@ -126,12 +143,29 @@ export function deriveTranslationHoles(matrix: I18nMatrix): TranslationHole[] {
 }
 
 /**
- * Map a report to a process exit code:
- *   0 = clean (green flag), 1 = findings present (yellow/red flag).
- * Used by the CLI as a CI gate.
+ * The severity at or above which findings should fail the process.
+ *
+ * `warning` is the historical behaviour (any finding fails). `error` lets a
+ * team adopt goflag on a site that is not clean yet: warnings stay visible in
+ * the report while only hard errors block a merge. `never` reports without
+ * ever failing, for exploratory runs.
  */
-export function exitCode(report: GoflagReport): number {
-  return report.summary.verdict === "green" ? 0 : 1;
+export type FailOn = "warning" | "error" | "never";
+
+/**
+ * Map a report to a process exit code:
+ *   0 = clean (or below the failure threshold), 1 = findings at/above it.
+ * Used by the CLI as a CI gate.
+ *
+ * `red` always fails unless `never`: a red verdict also covers broken links,
+ * unreachable pages and a blind link scan — states where "no findings" would
+ * be a lie rather than a pass.
+ */
+export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): number {
+  if (failOn === "never") return 0;
+  if (report.summary.verdict === "green") return 0;
+  if (failOn === "error") return report.summary.verdict === "red" ? 1 : 0;
+  return 1;
 }
 
 /** Run the full audit and return the report. Never throws for site-level failures. */
@@ -150,9 +184,26 @@ export async function runAudit(
   const maxPages = options.maxPages ?? 200;
   const checkExternal = options.checkExternal !== false;
 
+  // --- Sitemap discovery (independent of the markup we are about to judge) --
+  //
+  // Runs *before* the crawl so its URLs can seed the frontier. `crawlFallback`
+  // is off: the crawl below is the fallback, and running a second one here
+  // would double the work for nothing.
+  const discovery = options.noSitemap
+    ? undefined
+    : await discoverSitemap(entry, {
+        signal: options.signal,
+        timeoutMs: options.timeoutMs,
+        allowInsecureTls: options.allowInsecureTls,
+        crawlFallback: false,
+      }).catch(() => undefined);
+
+  const sitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
+    seedUrls: sitemapUrls,
     depth,
     maxPages,
     include: options.include,
@@ -214,7 +265,22 @@ export async function runAudit(
   }
 
   // --- i18n (healthy pages only) -----------------------------------------
-  const matrix = buildI18nMatrix(okPages);
+  //
+  // The locale axis is unioned from three independent sources so that a site
+  // declaring no `hreflang` at all can still be recognised as multilingual —
+  // the failure the crawl-only axis could not see. Sitemap URLs are also fed
+  // to the matrix as declared-but-uncrawled cells, so a route missing from a
+  // locale reads as a hole rather than as absence of evidence.
+  const localeAxis = deriveLocaleAxis({
+    explicit: options.locales,
+    sitemapUrls,
+    crawledUrls: okPages.map((p) => p.fetch.finalUrl),
+  });
+
+  const matrix = buildI18nMatrix(okPages, {
+    declaredUrls: sitemapUrls,
+    locales: localeAxis.locales,
+  });
   const holes = deriveTranslationHoles(matrix);
   const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(okPages).map((issue) => ({
     id: fingerprint(
@@ -227,9 +293,37 @@ export async function runAudit(
     ...issue,
   }));
 
+  // --- Cross-page rules ---------------------------------------------------
+  const siteContext: SiteContext = {
+    origin,
+    pages: okPages,
+    matrix,
+    localeAxis,
+    discovery,
+  };
+  // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
+  // a global index, so adding or reordering a rule cannot renumber unrelated
+  // findings and invalidate a stored baseline.
+  const siteOccurrence = new Map<string, number>();
+  const siteIssues: SiteIssue[] = lintSite(siteContext).map((draft) => {
+    const key = `${draft.ruleId} ${draft.pageUrl}`;
+    const n = siteOccurrence.get(key) ?? 0;
+    siteOccurrence.set(key, n + 1);
+    const rule = getSiteRule(draft.ruleId);
+    return {
+      id: fingerprint("site", draft.ruleId, routeKey(draft.pageUrl), String(n)),
+      pageUrl: draft.pageUrl,
+      ruleId: draft.ruleId,
+      severity: draft.severity,
+      message: draft.message,
+      why: rule?.summary,
+      fix: draft.fix?.snippet,
+    };
+  });
+
   // --- Link audit over the healthy crawled page set ----------------------
-  const discovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
-  const linkReport = await runLinkAudit(discovery, {
+  const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
+  const linkReport = await runLinkAudit(linkDiscovery, {
     allowInsecureTls: options.allowInsecureTls,
     checkExternal,
     timeoutMs: options.timeoutMs,
@@ -276,15 +370,22 @@ export async function runAudit(
 
   // --- Summary + verdict -------------------------------------------------
   const brokenCount = linkReport.summary.broken;
-  const seoErrorCount = seoIssues.filter((i) => i.severity === "error").length;
+  const errorCount =
+    seoIssues.filter((i) => i.severity === "error").length +
+    siteIssues.filter((i) => i.severity === "error").length;
   const missingTranslations = holes.length + reciprocity.length;
+  const anyFinding =
+    missingTranslations > 0 ||
+    seoIssues.length > 0 ||
+    siteIssues.length > 0 ||
+    brokenLinks.length > 0;
 
   // A page in your own crawl that errors, or a scan that saw nothing, is a
   // hard failure — never green.
   let verdict: Verdict = "green";
-  if (brokenCount > 0 || seoErrorCount > 0 || unreachablePages.length > 0 || scanBlind) {
+  if (brokenCount > 0 || errorCount > 0 || unreachablePages.length > 0 || scanBlind) {
     verdict = "red";
-  } else if (missingTranslations > 0 || seoIssues.length > 0 || brokenLinks.length > 0) {
+  } else if (anyFinding) {
     verdict = "yellow";
   }
 
@@ -295,8 +396,14 @@ export async function runAudit(
       brokenLinks: brokenCount,
       missingTranslations,
       seoIssues: seoIssues.length,
+      siteIssues: siteIssues.length,
       unreachablePages: unreachablePages.length,
       verdict,
+    },
+    localeAxis: {
+      locales: localeAxis.locales,
+      source: localeAxis.source,
+      multilingual: localeAxis.multilingual,
     },
     pages: pages.map((p) => ({
       url: p.fetch.finalUrl,
@@ -307,14 +414,37 @@ export async function runAudit(
     brokenLinks,
     missingTranslations: { holes, reciprocity },
     seoIssues,
+    siteIssues,
     diagnostics: {
       pagesCrawled: pages.length,
       pagesScanned: linkReport.pagesScanned,
       pagesFailed: linkReport.diagnostics.pagesFailed,
       truncated: crawlResult.truncated || linkReport.truncated,
       warnings,
+      ...(discovery
+        ? {
+            sitemap: {
+              found: discovery.diagnostics.found,
+              sitemapUrl: discovery.diagnostics.sitemapUrl,
+              urlCount: sitemapUrls.length,
+              uncrawled: countUncrawled(sitemapUrls, pages),
+            },
+          }
+        : {}),
     },
   };
+}
+
+/**
+ * How many sitemap URLs the crawl never reached — usually because `maxPages`
+ * capped it. Reported so "no findings on those routes" is never mistaken for
+ * "those routes are fine".
+ */
+function countUncrawled(sitemapUrls: string[], pages: Page[]): number {
+  const crawled = new Set(pages.map((p) => p.fetch.finalUrl));
+  let n = 0;
+  for (const url of sitemapUrls) if (!crawled.has(url)) n += 1;
+  return n;
 }
 
 /** Build a `SiteDiscovery` from the crawl result so the link audit can reuse the page set. */

@@ -38,8 +38,11 @@ const titleMissing: Rule = {
       origin: { kind: "title" },
       fix: {
         title: "Add a <title> to <head>",
-        snippet: `<title>Page name — Site name</title>`,
-        language: "html",
+        snippet: [
+          "// app/…/page.tsx — App Router owns the <head>; never hand-write the tag.",
+          'export const metadata = { title: "Page name — Site name" };',
+        ].join("\n"),
+        language: "tsx",
       },
     });
   },
@@ -73,8 +76,13 @@ const descriptionMissing: Rule = {
       origin: { kind: "meta", name: "description" },
       fix: {
         title: "Add a meta description",
-        snippet: `<meta name="description" content="One sentence that promises what this page delivers.">`,
-        language: "html",
+        snippet: [
+          "// app/…/page.tsx",
+          "export const metadata = {",
+          '  description: "One sentence that promises what this page delivers.",',
+          "};",
+        ].join("\n"),
+        language: "tsx",
       },
     });
   },
@@ -107,8 +115,15 @@ const canonicalMissing: Rule = {
       origin: { kind: "link", rel: "canonical" },
       fix: {
         title: "Declare the canonical URL",
-        snippet: `<link rel="canonical" href="https://example.com/the-page/">`,
-        language: "html",
+        snippet: [
+          "// app/…/page.tsx — relative canonicals resolve against metadataBase,",
+          "// which defaults to localhost and silently breaks in production.",
+          "export const metadata = {",
+          "  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),",
+          '  alternates: { canonical: "/the-page" },',
+          "};",
+        ].join("\n"),
+        language: "tsx",
       },
     });
   },
@@ -143,8 +158,11 @@ const viewportMissing: Rule = {
       origin: { kind: "meta", name: "viewport" },
       fix: {
         title: "Add a viewport meta",
-        snippet: `<meta name="viewport" content="width=device-width, initial-scale=1">`,
-        language: "html",
+        snippet: [
+          "// app/layout.tsx — a dedicated export, not part of `metadata`.",
+          'export const viewport = { width: "device-width", initialScale: 1 };',
+        ].join("\n"),
+        language: "tsx",
       },
     });
   },
@@ -194,8 +212,14 @@ const ogImageMissing: Rule = {
       origin: { kind: "meta", property: "og:image" },
       fix: {
         title: "Add an og:image",
-        snippet: `<meta property="og:image" content="https://example.com/og.png">`,
-        language: "html",
+        snippet: [
+          "// app/…/page.tsx",
+          "export const metadata = {",
+          '  openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },',
+          "};",
+          "// Or generate one per page: app/…/opengraph-image.tsx with ImageResponse.",
+        ].join("\n"),
+        language: "tsx",
       },
     });
   },

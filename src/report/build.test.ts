@@ -79,6 +79,7 @@ describe("exitCode", () => {
     brokenLinks: 0,
     missingTranslations: 0,
     seoIssues: 0,
+    siteIssues: 0,
     unreachablePages: 0,
     verdict: "green",
   };
@@ -86,11 +87,13 @@ describe("exitCode", () => {
     url: "https://x.com",
     finishedAt: "2026-01-01T00:00:00.000Z",
     summary: { ...base, verdict },
+    localeAxis: { locales: [], source: "crawl", multilingual: false },
     pages: [],
     unreachablePages: [],
     brokenLinks: [],
     missingTranslations: { holes: [], reciprocity: [] },
     seoIssues: [],
+    siteIssues: [],
     diagnostics: {
       pagesCrawled: 0,
       pagesScanned: 0,

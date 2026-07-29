@@ -19,7 +19,14 @@
 import type { ReciprocityCode } from "../lib/core/i18n";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { Severity } from "../lib/core/types";
-import type { GoflagReport, TranslationHole, UnreachablePage, Verdict } from "./types";
+import type {
+  GoflagReport,
+  SeoIssue,
+  SiteIssue,
+  TranslationHole,
+  UnreachablePage,
+  Verdict,
+} from "./types";
 
 /** How many example pages/URLs a rolled-up entry keeps before it says "+N more". */
 export const SAMPLE_LIMIT = 5;
@@ -68,6 +75,7 @@ export interface GoflagSummary {
     brokenLinks: number;
     missingTranslations: number;
     seoIssues: number;
+    siteIssues: number;
     unreachablePages: number;
     pagesCrawled: number;
     pagesScanned: number;
@@ -80,6 +88,8 @@ export interface GoflagSummary {
     reciprocity: RollupReciprocity[];
   };
   seoIssues: RollupSeo[];
+  /** Cross-page findings, rolled up by rule exactly like `seoIssues`. */
+  siteIssues: RollupSeo[];
   truncated: boolean;
   warnings: string[];
 }
@@ -93,6 +103,7 @@ export function summarize(report: GoflagReport): GoflagSummary {
       brokenLinks: report.summary.brokenLinks,
       missingTranslations: report.summary.missingTranslations,
       seoIssues: report.summary.seoIssues,
+      siteIssues: report.summary.siteIssues,
       unreachablePages: report.summary.unreachablePages,
       pagesCrawled: report.diagnostics.pagesCrawled,
       pagesScanned: report.diagnostics.pagesScanned,
@@ -104,7 +115,8 @@ export function summarize(report: GoflagReport): GoflagSummary {
       holes: report.missingTranslations.holes,
       reciprocity: rollupReciprocity(report),
     },
-    seoIssues: rollupSeo(report),
+    seoIssues: rollupByRule(report.seoIssues),
+    siteIssues: rollupByRule(report.siteIssues),
     truncated: report.diagnostics.truncated,
     warnings: report.diagnostics.warnings,
   };
@@ -134,9 +146,15 @@ function rollupLinks(report: GoflagReport): RollupLink[] {
   return [...groups.values()].sort((a, b) => b.count - a.count || a.href.localeCompare(b.href));
 }
 
-function rollupSeo(report: GoflagReport): RollupSeo[] {
+/**
+ * Collapse per-page findings by rule id. Shared by `seoIssues` and
+ * `siteIssues`: both registries emit the same finding shape, and a reader
+ * skimming a summary cares about "which policy fired, how often" regardless
+ * of which registry evaluated it.
+ */
+function rollupByRule(issues: ReadonlyArray<SeoIssue | SiteIssue>): RollupSeo[] {
   const groups = new Map<string, RollupSeo>();
-  for (const issue of report.seoIssues) {
+  for (const issue of issues) {
     const existing = groups.get(issue.ruleId);
     if (existing) {
       existing.count += 1;
