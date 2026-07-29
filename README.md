@@ -49,6 +49,8 @@ The terminal view is just a render of that JSON.
 --include <glob>       Only crawl paths matching <glob> (repeatable).
 --exclude <glob>       Skip paths matching <glob> (repeatable).
 --locales <list>       Comma-separated locales the site serves ("fr,en,pt-br").
+--ignore-holes <glob>  Route deliberately not translated everywhere
+                       (repeatable).
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
 --fail-on <level>      Exit 1 at or above this severity: warning (default),
                        error, or never.
@@ -85,6 +87,18 @@ vacuously. When a site has no usable sitemap, name the locales yourself:
 ```sh
 goflag https://example.com --locales fr,en,pt-br
 ```
+
+Some pages are meant to exist in one locale and not another — a
+jurisdiction-specific legal notice, a post written for one market. A site has
+no way to say "this page is absent on purpose", so goflag cannot tell a
+deliberate gap from a forgotten translation; only you can. Declare them:
+
+```sh
+goflag https://example.com --ignore-holes /legal --ignore-holes "/blog/**"
+```
+
+Suppressed gaps are counted in `diagnostics.ignoredHoles`, so a quiet report
+never means "nothing was wrong" by accident.
 
 ## Programmatic API
 

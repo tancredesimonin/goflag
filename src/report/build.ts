@@ -10,6 +10,7 @@
  */
 
 import { crawl } from "../lib/core/crawl";
+import { matchesAny } from "../lib/core/glob";
 import { lint } from "../lib/core/lint";
 import { lintSite } from "../lib/core/lint-site";
 import {
@@ -92,6 +93,13 @@ export interface AuditOptions {
    */
   locales?: string[];
   /**
+   * Routes (locale-free, glob-matched) that are deliberately not translated
+   * everywhere, so their gaps are not reported as missing translations.
+   * Suppression is counted in `diagnostics.ignoredHoles` — a silenced finding
+   * that leaves no trace reads as "nothing was wrong".
+   */
+  ignoreHoles?: string[];
+  /**
    * Skip sitemap discovery and seed the crawl from `<url>` alone. Defaults to
    * false — discovery is on by default because crawl-only discovery is exactly
    * what made hreflang checks silently vacuous.
@@ -116,13 +124,27 @@ function localeOfUrl(url: string): string | null {
  * the "missing translation page" the tool exists to find. `x-default` is a
  * fallback pointer, not a real translation, so it never counts as a locale
  * that must be filled.
+ *
+ * `ignoreRoutes` globs out routes the operator has declared intentionally
+ * partial. A site has no markup for "this page does not exist here on
+ * purpose", so a deliberate gap and a forgotten one are indistinguishable from
+ * outside — only the operator can tell them apart. Without a way to say so, the
+ * report can never reach zero on a site with a jurisdiction-specific legal
+ * page, and a report that can never be clean teaches its reader to ignore it.
+ *
+ * Globs match the locale-free route (`/legal`, `/blog/**`), using the same
+ * matcher as `--include`/`--exclude`.
  */
-export function deriveTranslationHoles(matrix: I18nMatrix): TranslationHole[] {
+export function deriveTranslationHoles(
+  matrix: I18nMatrix,
+  ignoreRoutes: readonly string[] = [],
+): TranslationHole[] {
   const realLocales = matrix.locales.filter((l) => l !== "x-default");
   if (realLocales.length < 2) return [];
 
   const holes: TranslationHole[] = [];
   for (const route of matrix.routes) {
+    if (ignoreRoutes.length > 0 && matchesAny(route, [...ignoreRoutes])) continue;
     const present: string[] = [];
     const missing: string[] = [];
     for (const locale of realLocales) {
@@ -281,7 +303,13 @@ export async function runAudit(
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
   });
-  const holes = deriveTranslationHoles(matrix);
+  const holes = deriveTranslationHoles(matrix, options.ignoreHoles);
+  // Count what the exclusion hid, so the number is auditable rather than a
+  // silent shrink between two runs.
+  const ignoredHoles =
+    (options.ignoreHoles?.length ?? 0) > 0
+      ? deriveTranslationHoles(matrix).length - holes.length
+      : 0;
   const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(okPages).map((issue) => ({
     id: fingerprint(
       "i18n",
@@ -421,6 +449,7 @@ export async function runAudit(
       pagesFailed: linkReport.diagnostics.pagesFailed,
       truncated: crawlResult.truncated || linkReport.truncated,
       warnings,
+      ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(discovery
         ? {
             sitemap: {

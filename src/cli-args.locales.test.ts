@@ -58,3 +58,24 @@ describe("parseArgs — phase 1 flags", () => {
     expect(parseArgs(["https://x.test"]).startTimeoutMs).toBe(60_000);
   });
 });
+
+describe("parseArgs — --ignore-holes", () => {
+  it("accumulates repeated globs", () => {
+    const args = parseArgs([
+      "https://x.test",
+      "--ignore-holes",
+      "/legal",
+      "--ignore-holes",
+      "/blog/**",
+    ]);
+    expect(args.options.ignoreHoles).toEqual(["/legal", "/blog/**"]);
+  });
+
+  it("is absent unless asked for — suppression must be opt-in", () => {
+    expect(parseArgs(["https://x.test"]).options.ignoreHoles).toBeUndefined();
+  });
+
+  it("requires a value", () => {
+    expect(() => parseArgs(["https://x.test", "--ignore-holes"])).toThrow(/requires a value/);
+  });
+});

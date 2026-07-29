@@ -138,6 +138,8 @@ export interface GoflagReport {
     pagesFailed: number;
     truncated: boolean;
     warnings: string[];
+    /** Translation gaps suppressed by `--ignore-holes`, when any. */
+    ignoredHoles?: number;
     /** Sitemap discovery outcome, when discovery ran. */
     sitemap?: {
       found: boolean;
