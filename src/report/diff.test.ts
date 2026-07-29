@@ -181,3 +181,25 @@ describe("diffExitCode", () => {
     expect(diffExitCode(diff, "warning")).toBe(0);
   });
 });
+
+describe("diffExitCode — debt budget", () => {
+  const clean = diffReports(report(), report());
+
+  it("fails when the site carries more findings than the budget allows", () => {
+    // Gating on regressions alone lets a backlog sit untouched forever behind
+    // a passing build. The ceiling is the only part that makes it go down.
+    expect(diffExitCode(clean, "warning", { total: 109, max: 108 })).toBe(1);
+  });
+
+  it("passes at exactly the budget", () => {
+    expect(diffExitCode(clean, "warning", { total: 108, max: 108 })).toBe(0);
+  });
+
+  it("ignores the budget when none is set", () => {
+    expect(diffExitCode(clean, "warning", { total: 10_000 })).toBe(0);
+  });
+
+  it("outranks --fail-on never: a budget is a promise, not a severity filter", () => {
+    expect(diffExitCode(clean, "never", { total: 109, max: 108 })).toBe(1);
+  });
+});

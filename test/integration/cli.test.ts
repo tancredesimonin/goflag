@@ -208,10 +208,10 @@ describe("goflag CLI — --baseline", () => {
     const baseline = JSON.parse(readFileSync(file, "utf8")) as GoflagReport;
     expect(baseline.seoIssues.length).toBeGreaterThan(0);
 
-    const compared = await runCli([...auditArgs(), "--baseline", file]);
+    const compared = await runCli([...auditArgs(), "--regressions-only", "--baseline", file]);
     expect(compared.status).toBe(0);
-    expect(compared.stdout).toContain("no new findings");
-    expect(compared.stdout).toContain("Nothing moved since the baseline.");
+    expect(compared.stdout).toContain("REGRESSION GATE");
+    expect(compared.stdout).toContain("known findings NOT gating this build");
   }, 60_000);
 
   it("fails, and names what appeared, when findings are new", async () => {
@@ -229,10 +229,10 @@ describe("goflag CLI — --baseline", () => {
       "--json",
     ]);
 
-    const compared = await runCli([...auditArgs(), "--baseline", file]);
+    const compared = await runCli([...auditArgs(), "--regressions-only", "--baseline", file]);
     expect(compared.status).toBe(1);
     expect(compared.stdout).toContain("New findings");
-    expect(compared.stdout).toMatch(/\d+ new/);
+    expect(compared.stdout).toContain("REGRESSION");
   }, 60_000);
 
   it("reports resolved findings, not just new ones", async () => {
@@ -247,6 +247,7 @@ describe("goflag CLI — --baseline", () => {
       "0",
       "--static",
       "--quiet",
+      "--regressions-only",
       "--baseline",
       file,
     ]);
@@ -256,7 +257,12 @@ describe("goflag CLI — --baseline", () => {
 
   it("exits 2 rather than passing when the baseline file is unreadable", async () => {
     // Silently continuing would turn a typo'd path into a green build.
-    const result = await runCli([...auditArgs(), "--baseline", join(dir, "nope.json")]);
+    const result = await runCli([
+      ...auditArgs(),
+      "--regressions-only",
+      "--baseline",
+      join(dir, "nope.json"),
+    ]);
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("could not read baseline");
   }, 60_000);

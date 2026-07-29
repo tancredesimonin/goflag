@@ -14,7 +14,7 @@
  */
 
 import { runAudit, exitCode } from "./report/build";
-import { diffReports, diffExitCode } from "./report/diff";
+import { diffReports, diffExitCode, totalFindings } from "./report/diff";
 import { renderDiffTerminal } from "./report/render-diff";
 import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
@@ -122,7 +122,13 @@ async function main(): Promise<number> {
   // The complete report stays available via --json and --report.
   if (report.diff && !args.json) {
     process.stdout.write(`${renderDiffTerminal(report.diff, { color: args.color })}\n`);
-    return diffExitCode(report.diff, args.failOn);
+    const total = totalFindings(report);
+    if (args.maxDebt !== undefined && total > args.maxDebt) {
+      process.stderr.write(
+        `goflag: ${total} findings exceeds the --max-debt budget of ${args.maxDebt}.\n`,
+      );
+    }
+    return diffExitCode(report.diff, args.failOn, { total, max: args.maxDebt });
   }
 
   if (args.summary) {
@@ -140,7 +146,17 @@ async function main(): Promise<number> {
     );
   }
 
-  if (report.diff) return diffExitCode(report.diff, args.failOn);
+  const total = totalFindings(report);
+  if (args.maxDebt !== undefined && total > args.maxDebt) {
+    process.stderr.write(
+      `goflag: ${total} findings exceeds the --max-debt budget of ${args.maxDebt}.\n`,
+    );
+    return 1;
+  }
+
+  if (report.diff) {
+    return diffExitCode(report.diff, args.failOn, { total, max: args.maxDebt });
+  }
 
   return exitCode(report, args.failOn);
 }

@@ -133,6 +133,11 @@ function sortEntries(entries: DiffEntry[]): DiffEntry[] {
   );
 }
 
+/** Total findings the site currently carries, new and known alike. */
+export function totalFindings(report: GoflagReport): number {
+  return collectFindings(report).length;
+}
+
 /** Compare a fresh report against a stored baseline. */
 export function diffReports(baseline: GoflagReport, current: GoflagReport): ReportDiff {
   const before = new Map(collectFindings(baseline).map((e) => [e.id, e]));
@@ -159,16 +164,23 @@ export function diffReports(baseline: GoflagReport, current: GoflagReport): Repo
 }
 
 /**
- * Exit code for a baseline run: fail only on findings that are *new* at or
- * above the threshold.
+ * Exit code under `--regressions-only`: fail on findings that are *new* at or
+ * above the threshold, or on a debt budget being exceeded.
  *
  * Deliberately blind to the overall verdict, unlike `exitCode`. A site with a
- * hundred known problems and no new ones is a passing build here — that is the
- * whole point. Blocking states that are not findings (an unreachable host, a
- * blind link scan) still surface as report warnings, and `--fail-on` without
- * `--baseline` remains the way to gate on absolute cleanliness.
+ * hundred known problems and no new ones passes — that is what the mode is
+ * for, and why it has to be asked for by name.
+ *
+ * `maxDebt` is the counterweight. Gating on regressions alone lets a backlog
+ * sit untouched forever behind a passing build; a ceiling you lower as you fix
+ * is the only part of this design that makes the debt actually go down.
  */
-export function diffExitCode(diff: ReportDiff, failOn: "warning" | "error" | "never"): number {
+export function diffExitCode(
+  diff: ReportDiff,
+  failOn: "warning" | "error" | "never",
+  debt?: { total: number; max?: number },
+): number {
+  if (debt?.max !== undefined && debt.total > debt.max) return 1;
   if (failOn === "never") return 0;
   const threshold = failOn === "error" ? 0 : 1;
   const blocking = diff.added.filter((e) => SEVERITY_RANK[e.severity] <= threshold);

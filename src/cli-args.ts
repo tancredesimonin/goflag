@@ -37,9 +37,15 @@ Options:
                          cannot find locales a site never links to.
   --fail-on <level>      Exit 1 at or above this severity: warning (default),
                          error, or never.
-  --baseline <file>      Compare against a stored report and fail only on
-                         findings that are NEW. Lets a site with a known
-                         backlog gate on regressions instead of perfection.
+  --regressions-only     Weaken the gate: fail only on findings that are NEW
+                         relative to --baseline. Known findings stop blocking
+                         the build — a green run no longer means a clean site.
+                         Requires --baseline.
+  --baseline <file>      Stored report to compare against. Use with
+                         --regressions-only.
+  --max-debt <n>         Fail when the site carries more than <n> findings in
+                         total, whether new or known. Lower it as you fix, to
+                         stop a baseline from fossilising.
   --start <cmd>          Boot <cmd>, wait for <url> to answer, audit, then
                          stop it. Use to gate a merge on the built app before
                          it ships.
@@ -70,6 +76,10 @@ export interface ParsedArgs {
   failOn: FailOn;
   /** Path to a stored report to compare against (`--baseline`). */
   baseline?: string;
+  /** Gate on new findings only, letting known ones through. */
+  regressionsOnly: boolean;
+  /** Hard ceiling on total findings, new or known. */
+  maxDebt?: number;
   /** Command to boot before auditing, and stop afterwards (`--start`). */
   start?: string;
   /** How long to wait for `--start` to answer, in ms. */
@@ -88,6 +98,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     version: false,
     logMode: "compact",
     failOn: "warning",
+    regressionsOnly: false,
     startTimeoutMs: 60_000,
     options: { include: [], exclude: [] },
   };
@@ -180,6 +191,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.baseline = next(i, arg);
         i++;
         break;
+      case "--regressions-only":
+        parsed.regressionsOnly = true;
+        break;
+      case "--max-debt":
+        parsed.maxDebt = toInt(next(i, arg), arg);
+        i++;
+        break;
       case "--depth":
         parsed.options.depth = toInt(next(i, arg), arg);
         i++;
@@ -205,6 +223,17 @@ export function parseArgs(argv: string[]): ParsedArgs {
         if (arg && !parsed.url) parsed.url = arg;
         else if (arg) throw new Error(`unexpected argument: ${arg}`);
     }
+  }
+
+  // Each flag is meaningless without the other, and guessing which one the
+  // caller meant would silently change how strict the build is.
+  if (parsed.baseline && !parsed.regressionsOnly) {
+    throw new Error(
+      "--baseline weakens the gate, so it must be requested explicitly: add --regressions-only",
+    );
+  }
+  if (parsed.regressionsOnly && !parsed.baseline) {
+    throw new Error("--regressions-only needs a --baseline <file> to compare against");
   }
 
   return parsed;

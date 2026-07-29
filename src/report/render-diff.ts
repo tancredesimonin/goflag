@@ -14,6 +14,8 @@ import type { DiffEntry, ReportDiff } from "./diff";
 
 interface RenderOptions {
   color?: boolean;
+  /** Injected clock, so the rendered age is testable. */
+  now?: number;
 }
 
 const ANSI = {
@@ -64,21 +66,46 @@ function listEntries(
   return lines;
 }
 
+/** Whole days between the baseline timestamp and now, or null if unparseable. */
+function baselineAgeDays(finishedAt: string, now: number): number | null {
+  const taken = Date.parse(finishedAt);
+  if (Number.isNaN(taken)) return null;
+  return Math.max(0, Math.floor((now - taken) / 86_400_000));
+}
+
 export function renderDiffTerminal(diff: ReportDiff, options: RenderOptions = {}): string {
   const c = paint(options.color ?? false);
   const lines: string[] = [];
+  const debt = diff.unchanged;
 
-  const headline =
+  // Never green, and never the word "clean". This mode passes builds on sites
+  // with known defects; a green flag would say the opposite of what happened,
+  // and a reader who learns to see green here stops reading the number beside
+  // it. The debt is the headline, not a footnote.
+  const verdict =
     diff.added.length > 0
-      ? c(ANSI.red, `${diff.added.length} new`)
-      : c(ANSI.green, "no new findings");
+      ? c(ANSI.red, "REGRESSION")
+      : debt > 0
+        ? c(ANSI.yellow, "REGRESSION GATE")
+        : c(ANSI.green, "CLEAN");
+
+  const age = baselineAgeDays(diff.baseline.finishedAt, options.now ?? Date.now());
 
   lines.push("");
+  lines.push(`${c(ANSI.bold, "goflag")} ${c(ANSI.dim, "--regressions-only")}`);
   lines.push(
-    `${c(ANSI.bold, "goflag diff")} ${c(ANSI.dim, `vs baseline ${diff.baseline.url} (${diff.baseline.finishedAt})`)}`,
+    `${verdict}  ${diff.added.length} new · ` +
+      (debt > 0
+        ? c(ANSI.bold, `${debt} known findings NOT gating this build`)
+        : c(ANSI.dim, "no known findings")) +
+      (diff.resolved.length > 0 ? c(ANSI.dim, ` · ${diff.resolved.length} resolved`) : ""),
   );
   lines.push(
-    `${headline}   ` + c(ANSI.dim, `${diff.resolved.length} resolved, ${diff.unchanged} unchanged`),
+    c(
+      ANSI.dim,
+      `baseline ${diff.baseline.url} — taken ${diff.baseline.finishedAt}` +
+        (age === null ? "" : age === 0 ? " (today)" : ` (${age} day${age === 1 ? "" : "s"} ago)`),
+    ),
   );
   lines.push("");
 
@@ -95,7 +122,14 @@ export function renderDiffTerminal(diff: ReportDiff, options: RenderOptions = {}
   }
 
   if (diff.added.length === 0 && diff.resolved.length === 0) {
-    lines.push(c(ANSI.dim, "Nothing moved since the baseline."));
+    lines.push(
+      c(
+        ANSI.dim,
+        debt > 0
+          ? `Nothing moved since the baseline — ${debt} findings still open. Run without --regressions-only to see them.`
+          : "Nothing moved since the baseline.",
+      ),
+    );
     lines.push("");
   }
 
