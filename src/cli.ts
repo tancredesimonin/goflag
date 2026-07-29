@@ -14,6 +14,8 @@
  */
 
 import { runAudit, exitCode } from "./report/build";
+import { diffReports, diffExitCode } from "./report/diff";
+import { renderDiffTerminal } from "./report/render-diff";
 import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
 import { renderSummaryTerminal } from "./report/render-summary";
@@ -90,12 +92,37 @@ async function main(): Promise<number> {
     await server?.stop();
   }
 
+  // A baseline changes the question from "is this site clean?" to "did this
+  // change make it worse?" — the only one a site with a backlog can answer.
+  if (args.baseline) {
+    try {
+      const { readFileSync } = await import("node:fs");
+      const baseline = JSON.parse(readFileSync(args.baseline, "utf8"));
+      report.diff = diffReports(baseline, report);
+    } catch (err) {
+      // Silently continuing would turn a typo'd path into a green build.
+      process.stderr.write(
+        `goflag: could not read baseline ${args.baseline}: ${(err as Error).message}\n`,
+      );
+      return 2;
+    }
+  }
+
   if (args.report) {
     // The report file is always the full report — the source of truth a
     // baseline/diff can rely on, regardless of the --summary view choice.
     const { writeFileSync } = await import("node:fs");
     writeFileSync(args.report, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     process.stderr.write(`goflag: report written to ${args.report}\n`);
+  }
+
+  // In baseline mode the diff *is* the answer. Printing the full report first
+  // buries "nothing changed" under a hundred known findings — the reader stops
+  // looking, which is precisely the failure the baseline exists to prevent.
+  // The complete report stays available via --json and --report.
+  if (report.diff && !args.json) {
+    process.stdout.write(`${renderDiffTerminal(report.diff, { color: args.color })}\n`);
+    return diffExitCode(report.diff, args.failOn);
   }
 
   if (args.summary) {
@@ -112,6 +139,8 @@ async function main(): Promise<number> {
         : `${renderTerminal(report, { color: args.color })}\n`,
     );
   }
+
+  if (report.diff) return diffExitCode(report.diff, args.failOn);
 
   return exitCode(report, args.failOn);
 }

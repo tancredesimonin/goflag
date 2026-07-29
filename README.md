@@ -54,6 +54,8 @@ The terminal view is just a render of that JSON.
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
 --fail-on <level>      Exit 1 at or above this severity: warning (default),
                        error, or never.
+--baseline <file>      Compare against a stored report; fail only on NEW
+                       findings.
 --start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
 --start-timeout <ms>   How long to wait for --start. Default: 60000.
 --no-external          Do not probe off-origin (external) links.
@@ -66,6 +68,22 @@ The terminal view is just a render of that JSON.
 ```
 
 Headless mode needs Chromium. It ships as an optional dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+### Gate on regressions, not on perfection
+
+A plain run fails on any finding, which is unusable on a site that is not clean
+yet — so it gets switched off, or ignored. Capture a baseline once, and the gate
+becomes "did this change make it worse?":
+
+```sh
+goflag https://example.com --report baseline.json --json    # once
+goflag https://example.com --baseline baseline.json         # in CI
+```
+
+A site with a hundred known findings and no new ones exits `0`. Findings are
+matched by fingerprint, and page URLs are normalised to origin-independent
+routes — so a baseline captured against production compares cleanly with a run
+against `localhost`.
 
 ### Gate a merge before it ships
 

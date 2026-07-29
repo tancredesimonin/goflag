@@ -37,6 +37,9 @@ Options:
                          cannot find locales a site never links to.
   --fail-on <level>      Exit 1 at or above this severity: warning (default),
                          error, or never.
+  --baseline <file>      Compare against a stored report and fail only on
+                         findings that are NEW. Lets a site with a known
+                         backlog gate on regressions instead of perfection.
   --start <cmd>          Boot <cmd>, wait for <url> to answer, audit, then
                          stop it. Use to gate a merge on the built app before
                          it ships.
@@ -65,6 +68,8 @@ export interface ParsedArgs {
   logMode: LogMode;
   /** Severity at or above which the process exits 1. */
   failOn: FailOn;
+  /** Path to a stored report to compare against (`--baseline`). */
+  baseline?: string;
   /** Command to boot before auditing, and stop afterwards (`--start`). */
   start?: string;
   /** How long to wait for `--start` to answer, in ms. */
@@ -169,6 +174,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--report":
         parsed.report = next(i, arg);
+        i++;
+        break;
+      case "--baseline":
+        parsed.baseline = next(i, arg);
         i++;
         break;
       case "--depth":

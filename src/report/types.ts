@@ -9,6 +9,7 @@
 import type { Severity } from "../lib/core/types";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { ReciprocityIssue } from "../lib/core/i18n";
+import type { ReportDiff } from "./diff";
 
 export type Verdict = "green" | "yellow" | "red";
 
@@ -145,6 +146,8 @@ export interface GoflagReport {
   seoIssues: SeoIssue[];
   /** Findings from the cross-page rule registry (`SITE_RULES`). */
   siteIssues: SiteIssue[];
+  /** Comparison against a stored baseline, when `--baseline` was given. */
+  diff?: ReportDiff;
   diagnostics: {
     pagesCrawled: number;
     pagesScanned: number;
