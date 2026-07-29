@@ -23,6 +23,7 @@ const MIME: Record<string, string> = {
   ".webp": "image/webp",
   ".ico": "image/x-icon",
   ".webmanifest": "application/manifest+json",
+  ".pdf": "application/pdf",
 };
 
 export interface FixtureServerOptions {

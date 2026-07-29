@@ -87,7 +87,7 @@ describe("exitCode", () => {
     url: "https://x.com",
     finishedAt: "2026-01-01T00:00:00.000Z",
     summary: { ...base, verdict },
-    localeAxis: { locales: [], source: "crawl", multilingual: false },
+    localeAxis: { locales: [], source: "none", multilingual: false },
     pages: [],
     unreachablePages: [],
     brokenLinks: [],

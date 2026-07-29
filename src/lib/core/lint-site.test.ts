@@ -8,7 +8,7 @@ function context(overrides: Partial<SiteContext> = {}): SiteContext {
     origin: "https://x.test",
     pages: [],
     matrix: { locales: [], routes: [], cells: {} },
-    localeAxis: { locales: ["en", "fr"], source: "sitemap", multilingual: true },
+    localeAxis: { locales: ["en", "fr"], source: "sitemap", multilingual: true, candidates: [] },
     ...overrides,
   };
 }
@@ -51,7 +51,7 @@ describe("lintSite", () => {
 
   it("skips a rule whose appliesTo gate returns false", () => {
     const issues = lintSite(
-      context({ localeAxis: { locales: [], source: "crawl", multilingual: false } }),
+      context({ localeAxis: { locales: [], source: "none", multilingual: false, candidates: [] } }),
       [
         rule({
           id: "a.gated",

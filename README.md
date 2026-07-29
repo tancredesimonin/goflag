@@ -88,6 +88,12 @@ vacuously. When a site has no usable sitemap, name the locales yourself:
 goflag https://example.com --locales fr,en,pt-br
 ```
 
+When a site publishes no usable sitemap and you pass no `--locales`, goflag
+does **not** guess the locale axis — it reports the prefixes it saw with the
+evidence for each and turns the i18n checks off. Guessing from path shape alone
+once turned `/cv` (a CV page served in French) into a locale, because `cv` is a
+registered ISO 639-1 code, and produced 31 findings that were never real.
+
 Some pages are meant to exist in one locale and not another — a
 jurisdiction-specific legal notice, a post written for one market. A site has
 no way to say "this page is absent on purpose", so goflag cannot tell a

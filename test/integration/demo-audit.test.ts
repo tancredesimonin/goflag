@@ -35,6 +35,12 @@ describe("demo site — full audit report", () => {
       depth: 2,
       static: true,
       exclude: ["/x/**", "/en/ghost"],
+      // The demo site ships no sitemap, and goflag no longer infers a locale
+      // axis from path shape alone — `/cv` on tancrede.eu taught us that a
+      // locale-shaped segment is not a locale. Declaring the axis here keeps
+      // this fixture a *single-page-addressable* site (the CLI tests audit
+      // `/good` on its own) while still exercising the i18n surface.
+      locales: ["en", "fr", "de"],
     });
   }, 60_000);
 

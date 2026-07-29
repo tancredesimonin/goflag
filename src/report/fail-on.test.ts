@@ -16,7 +16,7 @@ function reportWith(verdict: Verdict): GoflagReport {
       unreachablePages: 0,
       verdict,
     },
-    localeAxis: { locales: [], source: "crawl", multilingual: false },
+    localeAxis: { locales: [], source: "none", multilingual: false },
     pages: [],
     unreachablePages: [],
     brokenLinks: [],

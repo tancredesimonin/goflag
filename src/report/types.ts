@@ -85,8 +85,21 @@ export interface SiteIssue {
 /** How the audit established which locales the site serves. */
 export interface LocaleAxisReport {
   locales: string[];
-  source: "explicit" | "sitemap" | "crawl";
+  /** `none` when nothing declared an axis — goflag does not guess one. */
+  source: "explicit" | "sitemap" | "none";
   multilingual: boolean;
+  /**
+   * Locale-looking prefixes seen in the crawl, with the evidence for and
+   * against each. Only populated when `source` is `none`; a suggestion for
+   * `--locales`, never promoted automatically.
+   */
+  candidates?: Array<{
+    tag: string;
+    pages: number;
+    isKnownLanguage: boolean;
+    htmlLangAgrees?: boolean;
+    observedLangs: string[];
+  }>;
 }
 
 /** One SEO metadata finding on a specific page. */
