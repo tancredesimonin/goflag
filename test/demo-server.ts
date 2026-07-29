@@ -53,6 +53,11 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
     throw new Error(`Demo site root not found: ${root}`);
   }
 
+  // The demo site now ships a sitemap, and a sitemap must carry absolute
+  // URLs — but the port is only known at bind time. Same `BASE` token as
+  // `fixture-server.ts`, so both servers behave alike.
+  let origin = "";
+
   const app = new Hono();
 
   // --- Programmable link-outcome routes ----------------------------------
@@ -84,8 +89,13 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
     if (!existsSync(target) || !statSync(target).isFile()) {
       return c.text("Not Found", 404);
     }
+    const ext = extname(target).toLowerCase();
+    const mime = MIME[ext] ?? "application/octet-stream";
+    if (ext === ".xml" || ext === ".txt") {
+      const text = (await readFile(target, "utf8")).split("BASE").join(origin);
+      return new Response(text, { headers: { "content-type": mime } });
+    }
     const body = await readFile(target);
-    const mime = MIME[extname(target).toLowerCase()] ?? "application/octet-stream";
     return new Response(body, { headers: { "content-type": mime } });
   });
 
@@ -102,6 +112,7 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
     throw new Error("Demo server failed to bind to a TCP port");
   }
   const boundPort = address.port;
+  origin = `http://127.0.0.1:${boundPort}`;
 
   return {
     url: `http://127.0.0.1:${boundPort}`,

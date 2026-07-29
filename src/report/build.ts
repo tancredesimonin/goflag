@@ -19,7 +19,7 @@ import {
   reciprocityIssues,
   type I18nMatrix,
 } from "../lib/core/i18n";
-import { deriveLocaleAxis } from "../lib/core/locales";
+import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
 import { getRule } from "../lib/rules";
 import { getSiteRule } from "../lib/rules/site-rules";
@@ -43,6 +43,24 @@ import type {
 /** A 2xx response is the only "healthy" page we lint / audit for i18n. */
 function isOkStatus(status: number): boolean {
   return status >= 200 && status < 300;
+}
+
+/**
+ * Content types whose `<head>` is worth judging.
+ *
+ * A crawl follows links, and links point at PDFs, images and feeds as readily
+ * as at pages. Linting those produces a full set of phantom findings — a PDF
+ * has no `<title>`, no canonical, no viewport — and on tancrede.eu a single
+ * linked CV was the only `error`-severity finding in the run, which is the
+ * difference between a red and a yellow CI gate.
+ *
+ * An empty content type is treated as HTML: some servers omit it, and being
+ * silent about a real page is worse than one stray finding.
+ */
+function isHtmlPage(page: Page): boolean {
+  const type = page.fetch.contentType?.trim().toLowerCase();
+  if (!type) return true;
+  return type === "text/html" || type === "application/xhtml+xml";
 }
 
 /**
@@ -254,6 +272,9 @@ export async function runAudit(
   // or hreflang — linting it produces phantom "missing title/description/…"
   // findings. Split the healthy pages out and report the rest as errored.
   const okPages = pages.filter((p) => isOkStatus(p.fetch.status));
+  // Linked resources stay in the crawl (the link audit must still probe them)
+  // but never reach the rule layer, which only speaks about HTML documents.
+  const htmlPages = okPages.filter(isHtmlPage);
   const unreachablePages: UnreachablePage[] = pages
     .filter((p) => !isOkStatus(p.fetch.status))
     .map((p) => ({
@@ -264,7 +285,7 @@ export async function runAudit(
 
   // --- SEO lint (healthy pages only) -------------------------------------
   const seoIssues: SeoIssue[] = [];
-  for (const page of okPages) {
+  for (const page of htmlPages) {
     const pageUrl = page.fetch.finalUrl;
     // A rule can fire more than once on a page (e.g. robots.conflict emits
     // both an index and a follow conflict); the occurrence index keeps their
@@ -296,21 +317,39 @@ export async function runAudit(
   const localeAxis = deriveLocaleAxis({
     explicit: options.locales,
     sitemapUrls,
-    crawledUrls: okPages.map((p) => p.fetch.finalUrl),
+    pages: htmlPages,
   });
 
-  const matrix = buildI18nMatrix(okPages, {
+  // With no declared axis we do not invent one — but staying silent about it
+  // would look identical to "this site is fine", which is the failure mode
+  // phase 1 existed to remove. Say what we saw and what to pass instead.
+  if (localeAxis.source === "none" && localeAxis.candidates.length > 0) {
+    const suggestion = suggestedLocales(localeAxis);
+    warnings.push(
+      suggestion
+        ? `No sitemap and no --locales: i18n checks are off. Locale-looking prefixes found — re-run with \`--locales ${suggestion}\` to enable them.`
+        : `No sitemap and no --locales: i18n checks are off. Prefixes seen (${localeAxis.candidates
+            .map((c) => c.tag)
+            .join(", ")}) do not look like locales; pass --locales if any of them is one.`,
+    );
+  }
+
+  const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
   });
-  const holes = deriveTranslationHoles(matrix, options.ignoreHoles);
+  // Holes are a claim about locale coverage. With no declared axis we have
+  // just refused to claim the site is multilingual, so claiming it is missing
+  // translations would contradict that — and it is exactly how `/cv` (a CV
+  // page served in French) produced 31 phantom holes on tancrede.eu.
+  const holes = localeAxis.multilingual ? deriveTranslationHoles(matrix, options.ignoreHoles) : [];
   // Count what the exclusion hid, so the number is auditable rather than a
   // silent shrink between two runs.
   const ignoredHoles =
-    (options.ignoreHoles?.length ?? 0) > 0
+    localeAxis.multilingual && (options.ignoreHoles?.length ?? 0) > 0
       ? deriveTranslationHoles(matrix).length - holes.length
       : 0;
-  const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(okPages).map((issue) => ({
+  const reciprocity: ReportReciprocityIssue[] = reciprocityIssues(htmlPages).map((issue) => ({
     id: fingerprint(
       "i18n",
       issue.code,
@@ -324,7 +363,7 @@ export async function runAudit(
   // --- Cross-page rules ---------------------------------------------------
   const siteContext: SiteContext = {
     origin,
-    pages: okPages,
+    pages: htmlPages,
     matrix,
     localeAxis,
     discovery,
@@ -334,7 +373,7 @@ export async function runAudit(
   // findings and invalidate a stored baseline.
   const siteOccurrence = new Map<string, number>();
   const siteIssues: SiteIssue[] = lintSite(siteContext).map((draft) => {
-    const key = `${draft.ruleId} ${draft.pageUrl}`;
+    const key = `${draft.ruleId}\u0000${draft.pageUrl}`;
     const n = siteOccurrence.get(key) ?? 0;
     siteOccurrence.set(key, n + 1);
     const rule = getSiteRule(draft.ruleId);
@@ -408,10 +447,21 @@ export async function runAudit(
     siteIssues.length > 0 ||
     brokenLinks.length > 0;
 
+  // Reaching nothing at all is not a clean bill of health — it is a failed
+  // audit wearing one. Without this, an unreachable host, a DNS blip or a
+  // mid-run network drop reports GREEN with zero findings, which is the most
+  // dangerous output the tool can produce.
+  const crawlBlind = pages.length === 0;
+  if (crawlBlind) {
+    warnings.push(
+      `Crawled 0 pages from ${entry} — the audit reached nothing, so "no findings" is unverified, not clean.`,
+    );
+  }
+
   // A page in your own crawl that errors, or a scan that saw nothing, is a
   // hard failure — never green.
   let verdict: Verdict = "green";
-  if (brokenCount > 0 || errorCount > 0 || unreachablePages.length > 0 || scanBlind) {
+  if (crawlBlind || brokenCount > 0 || errorCount > 0 || unreachablePages.length > 0 || scanBlind) {
     verdict = "red";
   } else if (anyFinding) {
     verdict = "yellow";
@@ -432,6 +482,7 @@ export async function runAudit(
       locales: localeAxis.locales,
       source: localeAxis.source,
       multilingual: localeAxis.multilingual,
+      ...(localeAxis.candidates.length > 0 ? { candidates: localeAxis.candidates } : {}),
     },
     pages: pages.map((p) => ({
       url: p.fetch.finalUrl,

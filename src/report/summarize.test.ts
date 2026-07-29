@@ -19,7 +19,7 @@ function baseReport(overrides: ReportOverrides = {}): GoflagReport {
       unreachablePages: 0,
       verdict: "green",
     },
-    localeAxis: { locales: [], source: "crawl", multilingual: false },
+    localeAxis: { locales: [], source: "none", multilingual: false },
     pages: [],
     unreachablePages: [],
     brokenLinks: [],
