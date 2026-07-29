@@ -102,3 +102,31 @@ describe("extractLinks", () => {
     expect(refs[0]?.url).toBe("https://site.example/ok");
   });
 });
+
+describe("extractLinks — trailing slashes", () => {
+  it("probes the URL as authored, slash included", () => {
+    // EUR-Lex, the case that caught us: `/legal-content/FR/TXT/?uri=…` returns
+    // 200 and the slashless form returns 404. Collapsing the slash turned 159
+    // healthy citations on openfinanceguide into phantom broken links —
+    // goflag reporting a URL it had invented itself.
+    const html = `<a href="https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32015L2366">PSD2</a>`;
+    const [ref] = extractLinks(html, { baseUrl: BASE });
+    expect(ref?.url).toBe("https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32015L2366");
+  });
+
+  it("keeps a trailing slash on a plain path too", () => {
+    const [ref] = extractLinks(`<a href="/docs/">Docs</a>`, { baseUrl: BASE });
+    expect(ref?.url).toBe("https://site.example/docs/");
+  });
+
+  it("leaves a slashless URL alone", () => {
+    const [ref] = extractLinks(`<a href="/docs">Docs</a>`, { baseUrl: BASE });
+    expect(ref?.url).toBe("https://site.example/docs");
+  });
+
+  it("still strips the fragment", () => {
+    const [ref] = extractLinks(`<a href="/docs/#intro">Docs</a>`, { baseUrl: BASE });
+    expect(ref?.url).toBe("https://site.example/docs/");
+    expect(ref?.fragment).toBe("#intro");
+  });
+});

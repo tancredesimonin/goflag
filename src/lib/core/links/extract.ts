@@ -13,7 +13,7 @@
  *
  * Every URL is resolved against the page's (post-redirect) base URL,
  * then canonicalised with `canonicaliseUrl` (reused from `crawl.ts`,
- * which strips the fragment, normalises trailing slashes and rejects
+ * which strips the fragment, preserves trailing slashes and rejects
  * `mailto:` / `tel:` / `javascript:`). Non-canonicalisable links (e.g.
  * `mailto:`) are still reported — with their `rawHref` — so the checker
  * can mark them `skipped` rather than silently dropping them.
@@ -91,7 +91,10 @@ function buildRef(
   origin: string | null,
 ): LinkRef | null {
   const fragment = extractFragment(rawHref);
-  const canonical = canonicaliseUrl(rawHref, base);
+  // Probe the URL as authored. Collapsing `/x/` to `/x` is a crawl-frontier
+  // optimisation; here it would change the question from "does this link
+  // work?" to "does a URL we invented work?".
+  const canonical = canonicaliseUrl(rawHref, base, { preserveTrailingSlash: true });
 
   // Non-http(s) or otherwise un-canonicalisable links (mailto:, tel:,
   // javascript:, pure "#anchor"): keep them keyed by their raw form so
