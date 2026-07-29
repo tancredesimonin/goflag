@@ -115,3 +115,18 @@ describe("parseArgs — regressions-only gate", () => {
     );
   });
 });
+
+describe("parseArgs — --start-cwd", () => {
+  it("captures the directory", () => {
+    const args = parseArgs(["https://x.test", "--start-cwd", "apps/web"]);
+    expect(args.startCwd).toBe("apps/web");
+  });
+
+  it("is unset by default, so the process's own directory is used", () => {
+    expect(parseArgs(["https://x.test"]).startCwd).toBeUndefined();
+  });
+
+  it("requires a value", () => {
+    expect(() => parseArgs(["https://x.test", "--start-cwd"])).toThrow(/requires a value/);
+  });
+});
