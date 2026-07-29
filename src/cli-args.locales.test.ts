@@ -79,3 +79,39 @@ describe("parseArgs — --ignore-holes", () => {
     expect(() => parseArgs(["https://x.test", "--ignore-holes"])).toThrow(/requires a value/);
   });
 });
+
+describe("parseArgs — regressions-only gate", () => {
+  it("refuses --baseline on its own, naming the flag to add", () => {
+    // Silently weakening the gate is the failure this whole design guards
+    // against: someone reading the CI config six months later must be able to
+    // see that a green build does not mean a clean site.
+    expect(() => parseArgs(["https://x.test", "--baseline", "b.json"])).toThrow(
+      /must be requested explicitly: add --regressions-only/,
+    );
+  });
+
+  it("refuses --regressions-only with nothing to compare against", () => {
+    expect(() => parseArgs(["https://x.test", "--regressions-only"])).toThrow(/needs a --baseline/);
+  });
+
+  it("accepts the pair", () => {
+    const args = parseArgs(["https://x.test", "--regressions-only", "--baseline", "b.json"]);
+    expect(args.regressionsOnly).toBe(true);
+    expect(args.baseline).toBe("b.json");
+  });
+
+  it("defaults to the strict gate", () => {
+    expect(parseArgs(["https://x.test"]).regressionsOnly).toBe(false);
+  });
+
+  it("parses --max-debt, and leaves it unset otherwise", () => {
+    expect(parseArgs(["https://x.test", "--max-debt", "40"]).maxDebt).toBe(40);
+    expect(parseArgs(["https://x.test"]).maxDebt).toBeUndefined();
+  });
+
+  it("rejects a non-numeric --max-debt", () => {
+    expect(() => parseArgs(["https://x.test", "--max-debt", "lots"])).toThrow(
+      /non-negative integer/,
+    );
+  });
+});

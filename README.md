@@ -54,6 +54,11 @@ The terminal view is just a render of that JSON.
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
 --fail-on <level>      Exit 1 at or above this severity: warning (default),
                        error, or never.
+--regressions-only     Weaken the gate: fail only on NEW findings relative
+                       to --baseline. Requires --baseline.
+--baseline <file>      Stored report to compare against.
+--max-debt <n>         Fail when the site carries more than <n> findings in
+                       total, new or known.
 --start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
 --start-timeout <ms>   How long to wait for --start. Default: 60000.
 --no-external          Do not probe off-origin (external) links.
@@ -66,6 +71,43 @@ The terminal view is just a render of that JSON.
 ```
 
 Headless mode needs Chromium. It ships as an optional dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+### Gate on regressions, not on perfection
+
+A plain run fails on any finding, which is unusable on a site that is not clean
+yet — so it gets switched off, or ignored. Capture a baseline once and gate on
+"did this change make it worse?" instead:
+
+```sh
+goflag https://example.com --report baseline.json --json          # once
+goflag https://example.com --regressions-only --baseline baseline.json
+```
+
+Findings are matched by fingerprint, and page URLs are normalised to
+origin-independent routes — so a baseline captured against production compares
+cleanly with a run against `localhost`.
+
+**This mode passes builds on sites with known defects.** That is what it is
+for, and why it has to be asked for by name: `--baseline` alone is an error.
+The output never says "clean" and never goes green while findings are
+outstanding — it says how many are being let through:
+
+```
+REGRESSION GATE  0 new · 108 known findings NOT gating this build
+baseline https://example.com — taken 2026-07-29 (3 days ago)
+```
+
+The risk it carries is the one every suppression file carries: the backlog
+fossilises behind a passing build. `--max-debt` is the counterweight — a
+ceiling on total findings that you lower as you fix, so the number has to go
+down rather than merely not go up:
+
+```sh
+goflag https://example.com --regressions-only --baseline baseline.json --max-debt 108
+```
+
+Keeping `baseline.json` in the repository helps for the same reason: adding a
+finding to it then shows up in a diff someone reviews.
 
 ### Gate a merge before it ships
 

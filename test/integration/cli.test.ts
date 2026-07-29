@@ -167,3 +167,103 @@ describe("goflag CLI (spawned process)", () => {
     expect(written.summary.verdict).toBe("green");
   }, 30_000);
 });
+
+describe("goflag CLI — --baseline", () => {
+  let server: DemoServer;
+  let dir: string;
+
+  beforeAll(async () => {
+    server = await startDemoServer();
+    dir = mkdtempSync(join(tmpdir(), "goflag-baseline-"));
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  // Built lazily: the describe body runs before `beforeAll`, so `server` is
+  // still undefined at module-evaluation time.
+  const auditArgs = () => [
+    `${server.url}/en`,
+    "--depth",
+    "2",
+    "--static",
+    "--quiet",
+    "--exclude",
+    "/x/**",
+    "--exclude",
+    "/en/ghost",
+    "--locales",
+    "en,fr,de",
+  ];
+
+  it("exits 0 against its own baseline, however many findings there are", async () => {
+    // The whole reason the flag exists: a known backlog must not block a merge
+    // that does not add to it. A plain run of this same site exits 1.
+    const file = join(dir, "base.json");
+    const captured = await runCli([...auditArgs(), "--report", file, "--json"]);
+    expect(captured.status).toBe(1);
+
+    const baseline = JSON.parse(readFileSync(file, "utf8")) as GoflagReport;
+    expect(baseline.seoIssues.length).toBeGreaterThan(0);
+
+    const compared = await runCli([...auditArgs(), "--regressions-only", "--baseline", file]);
+    expect(compared.status).toBe(0);
+    expect(compared.stdout).toContain("REGRESSION GATE");
+    expect(compared.stdout).toContain("known findings NOT gating this build");
+  }, 60_000);
+
+  it("fails, and names what appeared, when findings are new", async () => {
+    // A baseline captured on one page, compared against the whole site: every
+    // finding outside that page reads as new.
+    const file = join(dir, "narrow.json");
+    await runCli([
+      `${server.url}/good`,
+      "--depth",
+      "0",
+      "--static",
+      "--quiet",
+      "--report",
+      file,
+      "--json",
+    ]);
+
+    const compared = await runCli([...auditArgs(), "--regressions-only", "--baseline", file]);
+    expect(compared.status).toBe(1);
+    expect(compared.stdout).toContain("New findings");
+    expect(compared.stdout).toContain("REGRESSION");
+  }, 60_000);
+
+  it("reports resolved findings, not just new ones", async () => {
+    // Progress is signal too: a gate that only ever shows problems stops
+    // being read.
+    const file = join(dir, "wide.json");
+    await runCli([...auditArgs(), "--report", file, "--json"]);
+
+    const compared = await runCli([
+      `${server.url}/good`,
+      "--depth",
+      "0",
+      "--static",
+      "--quiet",
+      "--regressions-only",
+      "--baseline",
+      file,
+    ]);
+    expect(compared.stdout).toContain("Resolved");
+    expect(compared.status).toBe(0);
+  }, 60_000);
+
+  it("exits 2 rather than passing when the baseline file is unreadable", async () => {
+    // Silently continuing would turn a typo'd path into a green build.
+    const result = await runCli([
+      ...auditArgs(),
+      "--regressions-only",
+      "--baseline",
+      join(dir, "nope.json"),
+    ]);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("could not read baseline");
+  }, 60_000);
+});
