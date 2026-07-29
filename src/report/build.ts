@@ -209,6 +209,46 @@ export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): numb
   return 1;
 }
 
+/**
+ * Drop pages the site itself says are duplicates.
+ *
+ * A cross-URL `<link rel="canonical">` is an explicit statement: "index that
+ * one instead of me." Linting the variant anyway judges a page the site has
+ * already disclaimed, and multiplies every finding by however many variants
+ * exist. On stereo.house, 14 of 41 crawled pages were `?tag=` filters of one
+ * library page — all correctly declaring the same canonical — and they carried
+ * 14 of the 38 SEO findings. Better than a third of the report was one page,
+ * counted fourteen times.
+ *
+ * The guard matters: a variant is only dropped when its canonical target was
+ * actually crawled. Otherwise the canonical points somewhere we never looked,
+ * and dropping the variant would remove the route from the audit entirely —
+ * trading duplicate findings for no findings, which is the worse failure.
+ *
+ * Variants stay in the crawl either way, so the link audit still probes them.
+ */
+function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number } {
+  const crawled = new Set(pages.map((p) => routeKey(p.fetch.finalUrl)));
+
+  const kept = pages.filter((page) => {
+    const canonical = page.links.canonical;
+    if (!canonical) return true;
+
+    const self = routeKey(page.fetch.finalUrl);
+    let target: string;
+    try {
+      target = routeKey(new URL(canonical, page.fetch.finalUrl).toString());
+    } catch {
+      return true;
+    }
+
+    if (target === self) return true;
+    return !crawled.has(target);
+  });
+
+  return { kept, dropped: pages.length - kept.length };
+}
+
 /** Run the full audit and return the report. Never throws for site-level failures. */
 export async function runAudit(
   inputUrl: string,
@@ -283,7 +323,8 @@ export async function runAudit(
   const okPages = pages.filter((p) => isOkStatus(p.fetch.status));
   // Linked resources stay in the crawl (the link audit must still probe them)
   // but never reach the rule layer, which only speaks about HTML documents.
-  const htmlPages = okPages.filter(isHtmlPage);
+  const documents = okPages.filter(isHtmlPage);
+  const { kept: htmlPages, dropped: duplicatePages } = dropCanonicalDuplicates(documents);
   const unreachablePages: UnreachablePage[] = pages
     .filter((p) => !isOkStatus(p.fetch.status))
     .map((p) => ({
@@ -511,6 +552,7 @@ export async function runAudit(
       truncated: crawlResult.truncated || linkReport.truncated,
       warnings,
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
+      ...(duplicatePages > 0 ? { duplicatePages } : {}),
       ...(discovery
         ? {
             sitemap: {
