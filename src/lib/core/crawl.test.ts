@@ -175,3 +175,30 @@ function mockInspect(table: Record<string, string | Error>): undefined {
 
 // Suppress unused-import lint for `Page`.
 void (null as unknown as Page);
+
+describe("canonicaliseUrl — preserveTrailingSlash", () => {
+  it("drops the trailing slash by default, for the crawl frontier", () => {
+    // `/about` and `/about/` are almost always the same page; collapsing them
+    // halves the crawl.
+    expect(canonicaliseUrl("https://x.com/about/")).toBe("https://x.com/about");
+  });
+
+  it("keeps it when asked, for link checking", () => {
+    expect(
+      canonicaliseUrl("https://x.com/about/", undefined, { preserveTrailingSlash: true }),
+    ).toBe("https://x.com/about/");
+  });
+
+  it("leaves the root slash alone either way", () => {
+    expect(canonicaliseUrl("https://x.com/")).toBe("https://x.com/");
+    expect(canonicaliseUrl("https://x.com/", undefined, { preserveTrailingSlash: true })).toBe(
+      "https://x.com/",
+    );
+  });
+
+  it("preserves the slash ahead of a query string", () => {
+    expect(
+      canonicaliseUrl("https://x.com/a/b/?q=1", undefined, { preserveTrailingSlash: true }),
+    ).toBe("https://x.com/a/b/?q=1");
+  });
+});
