@@ -156,6 +156,12 @@ export interface GoflagReport {
     warnings: string[];
     /** Translation gaps suppressed by `--ignore-holes`, when any. */
     ignoredHoles?: number;
+    /**
+     * Pages excluded from the rule layer because they declare a canonical
+     * pointing at another crawled page — the site's own statement that they
+     * are duplicates. Reported so a shrinking finding count is explicable.
+     */
+    duplicatePages?: number;
     /** Sitemap discovery outcome, when discovery ran. */
     sitemap?: {
       found: boolean;
