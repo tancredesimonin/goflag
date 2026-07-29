@@ -24,6 +24,12 @@ export interface StartedServer {
 export interface StartServerOptions {
   /** Shell command to run, e.g. `pnpm start`. */
   command: string;
+  /**
+   * Directory to run it in. Defaults to the process's own, which is right for
+   * the usual `cd my-site && npx goflag …` — but not for a monorepo audited
+   * from its root, where the app lives a few directories down.
+   */
+  cwd?: string;
   /** URL polled until it answers; normally the audit entry point. */
   url: string;
   /** Give up after this long. Defaults to 60s. */
@@ -94,7 +100,9 @@ export async function startServer(options: StartServerOptions): Promise<StartedS
   const intervalMs = options.intervalMs ?? 250;
   const allowInsecureTls = options.allowInsecureTls === true;
 
+  const cwd = options.cwd ?? process.cwd();
   const child = spawn(options.command, {
+    cwd,
     shell: true,
     // Own process group, so `terminate` can take the whole tree down.
     detached: true,
@@ -125,16 +133,25 @@ export async function startServer(options: StartServerOptions): Promise<StartedS
     if (exited) {
       await server.stop();
       const why = exited.signal ? `signal ${exited.signal}` : `exit code ${exited.code}`;
+      // Naming the directory is most of the diagnosis: a command that runs
+      // fine by hand and dies here has almost always been started somewhere
+      // other than where its package.json lives.
       throw new Error(
-        `--start command exited before ${options.url} answered (${why}).\n${tail.join("").trimEnd()}`,
+        `--start command exited before ${options.url} answered (${why}).\n` +
+          `  command: ${options.command}\n` +
+          `  in:      ${cwd}\n` +
+          `${tail.join("").trimEnd()}`,
       );
     }
     if (await answers(options.url, allowInsecureTls)) return server;
     if (Date.now() >= deadline) {
       await server.stop();
       throw new Error(
-        `--start command did not serve ${options.url} within ${timeoutMs}ms. ` +
-          `Raise --start-timeout, or check the command actually listens on that URL.`,
+        `--start command did not serve ${options.url} within ${timeoutMs}ms.\n` +
+          `  command: ${options.command}\n` +
+          `  in:      ${cwd}\n` +
+          `Raise --start-timeout, check the command listens on that URL, or point ` +
+          `--start-cwd at the directory it should run in.`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

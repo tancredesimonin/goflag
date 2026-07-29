@@ -107,3 +107,49 @@ describe("startServer", () => {
     ).rejects.toThrow(/did not serve .* within 1200ms/);
   }, 30_000);
 });
+
+describe("startServer — working directory", () => {
+  it("runs the command where it is told to", async () => {
+    // The monorepo case: goflag invoked from the repository root, the app a
+    // few directories down.
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}/`;
+    const started = await startServer({
+      command: serverCommand(port),
+      url,
+      cwd: "/tmp",
+      timeoutMs: 20_000,
+    });
+    try {
+      await expect(fetch(url).then((r) => r.text())).resolves.toBe("ok");
+    } finally {
+      await started.stop();
+    }
+  }, 30_000);
+
+  it("names the command and its directory when it exits early", async () => {
+    // A command that runs fine by hand and dies here has almost always been
+    // started somewhere other than where its package.json lives. Saying which
+    // directory turns three failed attempts into one.
+    await expect(
+      startServer({
+        command: "exit 1",
+        cwd: "/tmp",
+        url: `http://127.0.0.1:${await freePort()}/`,
+        timeoutMs: 20_000,
+      }),
+    ).rejects.toThrow(/command: exit 1[\s\S]*in: *\/tmp/);
+  }, 30_000);
+
+  it("names them on timeout too, and points at --start-cwd", async () => {
+    await expect(
+      startServer({
+        command: 'node -e "setTimeout(() => {}, 60000)"',
+        cwd: "/tmp",
+        url: `http://127.0.0.1:${await freePort()}/`,
+        timeoutMs: 1_200,
+        intervalMs: 100,
+      }),
+    ).rejects.toThrow(/--start-cwd/);
+  }, 30_000);
+});

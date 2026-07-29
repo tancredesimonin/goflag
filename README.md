@@ -61,6 +61,8 @@ The terminal view is just a render of that JSON.
 --max-debt <n>         Fail when the site carries more than <n> findings in
                        total, new or known.
 --start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
+--start-cwd <dir>      Directory to run --start in. Defaults to the current
+                       one.
 --start-timeout <ms>   How long to wait for --start. Default: 60000.
 --no-external          Do not probe off-origin (external) links.
 --static               Static HTML only; never launch headless Chromium.
@@ -118,6 +120,13 @@ branch instead:
 
 ```sh
 goflag http://localhost:3000 --start "pnpm start" --fail-on error
+```
+
+The command runs in the current directory, so run goflag from the project it
+should boot. In a monorepo audited from the root, point it at the package:
+
+```sh
+goflag http://localhost:3000 --start "pnpm start" --start-cwd apps/web
 ```
 
 ### Multilingual sites

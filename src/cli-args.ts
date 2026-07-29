@@ -49,6 +49,9 @@ Options:
   --start <cmd>          Boot <cmd>, wait for <url> to answer, audit, then
                          stop it. Use to gate a merge on the built app before
                          it ships.
+  --start-cwd <dir>      Directory to run --start in. Defaults to the current
+                         one; set it when auditing a monorepo package from the
+                         repository root.
   --start-timeout <ms>   How long to wait for --start to answer. Default: 60000.
   --no-external          Do not probe off-origin (external) links.
   --static               Static HTML only; never launch headless Chromium.
@@ -84,6 +87,8 @@ export interface ParsedArgs {
   start?: string;
   /** How long to wait for `--start` to answer, in ms. */
   startTimeoutMs: number;
+  /** Directory to run the `--start` command in. */
+  startCwd?: string;
   options: AuditOptions;
 }
 
@@ -181,6 +186,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--start-timeout":
         parsed.startTimeoutMs = toInt(next(i, arg), arg);
+        i++;
+        break;
+      case "--start-cwd":
+        parsed.startCwd = next(i, arg);
         i++;
         break;
       case "--report":

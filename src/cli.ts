@@ -75,6 +75,7 @@ async function main(): Promise<number> {
       logger.note(`goflag: starting \`${args.start}\` …`);
       server = await startServer({
         command: args.start,
+        cwd: args.startCwd,
         url: args.url,
         timeoutMs: args.startTimeoutMs,
         allowInsecureTls: args.options.allowInsecureTls,
