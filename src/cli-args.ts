@@ -29,6 +29,9 @@ Options:
                          "fr,en,pt-br". Authoritative: overrides what the
                          sitemap and crawl suggest, and makes a locale the
                          site does not serve yet show up as missing.
+  --ignore-holes <glob>  Route (locale-free) that is deliberately not
+                         translated everywhere, so its gaps are not reported
+                         as missing translations (repeatable).
   --no-sitemap           Do not discover the sitemap; crawl from <url> only.
                          Discovery is on by default because link-only crawling
                          cannot find locales a site never links to.
@@ -130,6 +133,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--no-sitemap":
         parsed.options.noSitemap = true;
+        break;
+      case "--ignore-holes":
+        parsed.options.ignoreHoles = [...(parsed.options.ignoreHoles ?? []), next(i, arg)];
+        i++;
         break;
       case "--locales": {
         // Split on commas so `--locales fr,en` and repeated flags both work.
