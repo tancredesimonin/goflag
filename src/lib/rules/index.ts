@@ -40,7 +40,7 @@ const titleMissing: Rule = {
         title: "Add a <title> to <head>",
         snippet: [
           "// app/…/page.tsx — App Router owns the <head>; never hand-write the tag.",
-          "export const metadata = { title: \"Page name — Site name\" };",
+          'export const metadata = { title: "Page name — Site name" };',
         ].join("\n"),
         language: "tsx",
       },
@@ -79,7 +79,7 @@ const descriptionMissing: Rule = {
         snippet: [
           "// app/…/page.tsx",
           "export const metadata = {",
-          "  description: \"One sentence that promises what this page delivers.\",",
+          '  description: "One sentence that promises what this page delivers.",',
           "};",
         ].join("\n"),
         language: "tsx",
@@ -120,7 +120,7 @@ const canonicalMissing: Rule = {
           "// which defaults to localhost and silently breaks in production.",
           "export const metadata = {",
           "  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),",
-          "  alternates: { canonical: \"/the-page\" },",
+          '  alternates: { canonical: "/the-page" },',
           "};",
         ].join("\n"),
         language: "tsx",
@@ -160,7 +160,7 @@ const viewportMissing: Rule = {
         title: "Add a viewport meta",
         snippet: [
           "// app/layout.tsx — a dedicated export, not part of `metadata`.",
-          "export const viewport = { width: \"device-width\", initialScale: 1 };",
+          'export const viewport = { width: "device-width", initialScale: 1 };',
         ].join("\n"),
         language: "tsx",
       },
@@ -215,7 +215,7 @@ const ogImageMissing: Rule = {
         snippet: [
           "// app/…/page.tsx",
           "export const metadata = {",
-          "  openGraph: { images: [{ url: \"/og.png\", width: 1200, height: 630 }] },",
+          '  openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },',
           "};",
           "// Or generate one per page: app/…/opengraph-image.tsx with ImageResponse.",
         ].join("\n"),

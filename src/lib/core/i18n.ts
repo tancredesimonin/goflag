@@ -109,10 +109,7 @@ export interface BuildI18nMatrixOptions {
   locales?: readonly string[];
 }
 
-export function buildI18nMatrix(
-  pages: Page[],
-  options: BuildI18nMatrixOptions = {},
-): I18nMatrix {
+export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions = {}): I18nMatrix {
   const inspectedByUrl = new Map<string, Page>();
   for (const page of pages) inspectedByUrl.set(page.fetch.finalUrl, page);
 

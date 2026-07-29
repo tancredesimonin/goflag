@@ -188,10 +188,7 @@ const hreflangSitemapMismatch: SiteRule = {
 };
 
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
-export const SITE_RULES: ReadonlyArray<SiteRule> = [
-  hreflangMissing,
-  hreflangSitemapMismatch,
-];
+export const SITE_RULES: ReadonlyArray<SiteRule> = [hreflangMissing, hreflangSitemapMismatch];
 
 export function getSiteRule(id: string): SiteRule | undefined {
   return SITE_RULES.find((rule) => rule.id === id);

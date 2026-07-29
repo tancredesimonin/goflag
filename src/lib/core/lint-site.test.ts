@@ -42,27 +42,34 @@ describe("lintSite", () => {
       rule({
         id: "a.one",
         severity: "warning",
-        check: ({ issue }) => issue({ pageUrl: "https://x.test/p", message: "m", severity: "info" }),
+        check: ({ issue }) =>
+          issue({ pageUrl: "https://x.test/p", message: "m", severity: "info" }),
       }),
     ]);
     expect(issues[0]?.severity).toBe("info");
   });
 
   it("skips a rule whose appliesTo gate returns false", () => {
-    const issues = lintSite(context({ localeAxis: { locales: [], source: "crawl", multilingual: false } }), [
-      rule({
-        id: "a.gated",
-        appliesTo: (site) => site.localeAxis.multilingual,
-        check: ({ issue }) => issue({ pageUrl: "https://x.test/p", message: "should not fire" }),
-      }),
-    ]);
+    const issues = lintSite(
+      context({ localeAxis: { locales: [], source: "crawl", multilingual: false } }),
+      [
+        rule({
+          id: "a.gated",
+          appliesTo: (site) => site.localeAxis.multilingual,
+          check: ({ issue }) => issue({ pageUrl: "https://x.test/p", message: "should not fire" }),
+        }),
+      ],
+    );
     expect(issues).toEqual([]);
   });
 
   it("accepts a bare issue, an array, or nothing at all", () => {
     const issues = lintSite(context(), [
       rule({ id: "a.none", check: () => undefined }),
-      rule({ id: "b.one", check: ({ issue }) => issue({ pageUrl: "https://x.test/1", message: "1" }) }),
+      rule({
+        id: "b.one",
+        check: ({ issue }) => issue({ pageUrl: "https://x.test/1", message: "1" }),
+      }),
       rule({
         id: "c.many",
         check: ({ issue }) => [
@@ -84,7 +91,10 @@ describe("lintSite", () => {
           throw new Error("kaboom");
         },
       }),
-      rule({ id: "b.fine", check: ({ issue }) => issue({ pageUrl: "https://x.test/p", message: "ok" }) }),
+      rule({
+        id: "b.fine",
+        check: ({ issue }) => issue({ pageUrl: "https://x.test/p", message: "ok" }),
+      }),
     ]);
 
     expect(issues.map((i) => i.ruleId)).toEqual(["b.fine", "engine.site-rule-crashed"]);

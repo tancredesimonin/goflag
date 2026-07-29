@@ -76,10 +76,7 @@ async function main(): Promise<number> {
         url: args.url,
         timeoutMs: args.startTimeoutMs,
         allowInsecureTls: args.options.allowInsecureTls,
-        onOutput:
-          args.logMode === "verbose"
-            ? (chunk) => process.stderr.write(chunk)
-            : undefined,
+        onOutput: args.logMode === "verbose" ? (chunk) => process.stderr.write(chunk) : undefined,
       });
     }
     logger.note(`goflag: auditing ${args.url} …`);

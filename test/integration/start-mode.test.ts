@@ -89,7 +89,7 @@ describe("startServer", () => {
   it("fails with the command's own output when it exits before serving", async () => {
     await expect(
       startServer({
-        command: 'node -e "console.error(\'boom: missing build\'); process.exit(1)"',
+        command: "node -e \"console.error('boom: missing build'); process.exit(1)\"",
         url: `http://127.0.0.1:${await freePort()}/`,
         timeoutMs: 20_000,
       }),
@@ -99,7 +99,7 @@ describe("startServer", () => {
   it("times out rather than hanging when the command never listens", async () => {
     await expect(
       startServer({
-        command: "node -e \"setTimeout(() => {}, 60000)\"",
+        command: 'node -e "setTimeout(() => {}, 60000)"',
         url: `http://127.0.0.1:${await freePort()}/`,
         timeoutMs: 1_200,
         intervalMs: 100,

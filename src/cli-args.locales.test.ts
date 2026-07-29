@@ -14,9 +14,7 @@ describe("parseArgs — phase 1 flags", () => {
   });
 
   it("rejects an empty --locales value rather than silently ignoring it", () => {
-    expect(() => parseArgs(["https://x.test", "--locales", " , "])).toThrow(
-      /at least one locale/,
-    );
+    expect(() => parseArgs(["https://x.test", "--locales", " , "])).toThrow(/at least one locale/);
   });
 
   it("requires a value for --locales", () => {

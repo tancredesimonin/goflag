@@ -39,13 +39,13 @@ Deux projections de ce document, jamais en désaccord :
 **Invariants d'architecture** — ils ne se négocient pas, ils existent pour
 qu'aucun des deux produits ne bloque l'autre :
 
-| # | Invariant | Pourquoi |
-|---|---|---|
-| I1 | Le **runtime** de la lib ne dépend de rien (ni goflag, ni spec) | un petit paquet sans dépendance se fait adopter ; un paquet couplé, non |
-| I2 | goflag reste utile **seul**, sur un site qui n'utilise pas la lib | sinon il n'a qu'un utilisateur : moi |
-| I3 | La dépendance est **unidirectionnelle** : `spec ← goflag`, `spec ← lib(dev)` | coupler deux produits inachevés, c'est n'en livrer aucun |
-| I4 | Le paquet `spec` n'est extrait que quand **2 consommateurs** l'importent | sinon on recrée le problème qu'on prétend résoudre |
-| I5 | Scope **Next.js App Router** assumé | permet des diagnostics et des remèdes au bon niveau d'abstraction |
+| #   | Invariant                                                                    | Pourquoi                                                                |
+| --- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| I1  | Le **runtime** de la lib ne dépend de rien (ni goflag, ni spec)              | un petit paquet sans dépendance se fait adopter ; un paquet couplé, non |
+| I2  | goflag reste utile **seul**, sur un site qui n'utilise pas la lib            | sinon il n'a qu'un utilisateur : moi                                    |
+| I3  | La dépendance est **unidirectionnelle** : `spec ← goflag`, `spec ← lib(dev)` | coupler deux produits inachevés, c'est n'en livrer aucun                |
+| I4  | Le paquet `spec` n'est extrait que quand **2 consommateurs** l'importent     | sinon on recrée le problème qu'on prétend résoudre                      |
+| I5  | Scope **Next.js App Router** assumé                                          | permet des diagnostics et des remèdes au bon niveau d'abstraction       |
 
 **Ce que ça donne, concrètement, quand c'est fini :**
 
@@ -61,16 +61,16 @@ qu'aucun des deux produits ne bloque l'autre :
 
 ## 2. État de départ (mesuré, 2026-07-29)
 
-| Fait | Valeur |
-|---|---|
-| Sites Next.js concernés | 4 (+ `fix-my-youtube-links`, hors scope : stack antérieure) |
-| Lignes TS/TSX, ces sites | 47 766 |
-| Lignes strictement dupliquées | 6 407 (13 %) |
-| Constructions manuelles de `x-default` | 15 |
-| Générations divergentes du générateur de metadata | 3 |
-| goflag : règles / tests | 11 règles · 377 tests · 40 fichiers |
-| stereo-house en prod | 4 locales servies, **0 hreflang**, 21 pages sans `og:image` |
-| openfinanceguide | `<head>` filtre les locales par slug, **le sitemap non** |
+| Fait                                              | Valeur                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| Sites Next.js concernés                           | 4 (+ `fix-my-youtube-links`, hors scope : stack antérieure) |
+| Lignes TS/TSX, ces sites                          | 47 766                                                      |
+| Lignes strictement dupliquées                     | 6 407 (13 %)                                                |
+| Constructions manuelles de `x-default`            | 15                                                          |
+| Générations divergentes du générateur de metadata | 3                                                           |
+| goflag : règles / tests                           | 11 règles · 377 tests · 40 fichiers                         |
+| stereo-house en prod                              | 4 locales servies, **0 hreflang**, 21 pages sans `og:image` |
+| openfinanceguide                                  | `<head>` filtre les locales par slug, **le sitemap non**    |
 
 **L'argument n'est pas le volume dupliqué (13 %, c'est peu). C'est la dérive.**
 
@@ -99,13 +99,13 @@ déploiement plutôt qu'après.
 
 **Livrables**
 
-| # | Livrable | Taille |
-|---|---|---|
-| 1.1 | **Découverte amorcée par le sitemap** — le parseur existe (`core/sitemap/parse.ts`) mais n'alimente pas le frontier de crawl. Le brancher. | S |
-| 1.2 | **Axe locale explicite** — `--locales fr,en,pt-br,es` en secours quand le sitemap est absent ou partiel | S |
-| 1.3 | **Mode local** — `goflag --start "pnpm start"` : boot, attente du ready, crawl de `localhost`, kill | M |
-| 1.4 | **3 règles i18n** — `hreflang.missing`, `hreflang.reciprocity` (promouvoir la logique de `core/i18n.ts`), `hreflang.sitemap-mismatch` | M |
-| 1.5 | **Remèdes Next-aware** — `fix.snippet` en code App Router, plus en `<meta>` brut | S |
+| #   | Livrable                                                                                                                                   | Taille |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| 1.1 | **Découverte amorcée par le sitemap** — le parseur existe (`core/sitemap/parse.ts`) mais n'alimente pas le frontier de crawl. Le brancher. | S      |
+| 1.2 | **Axe locale explicite** — `--locales fr,en,pt-br,es` en secours quand le sitemap est absent ou partiel                                    | S      |
+| 1.3 | **Mode local** — `goflag --start "pnpm start"` : boot, attente du ready, crawl de `localhost`, kill                                        | M      |
+| 1.4 | **3 règles i18n** — `hreflang.missing`, `hreflang.reciprocity` (promouvoir la logique de `core/i18n.ts`), `hreflang.sitemap-mismatch`      | M      |
+| 1.5 | **Remèdes Next-aware** — `fix.snippet` en code App Router, plus en `<meta>` brut                                                           | S      |
 
 **Critère de sortie** — mesurable, pas déclaratif :
 
@@ -118,7 +118,7 @@ déploiement plutôt qu'après.
   reste du plan.
 
 **Hors phase** — le catalogue de 60 règles, la couche MCP, le baseline/diff
-(M1–M3 de `rules-catalog-plan.md`). On ajoute *trois* règles, pas un moteur.
+(M1–M3 de `rules-catalog-plan.md`). On ajoute _trois_ règles, pas un moteur.
 
 ---
 
@@ -131,10 +131,10 @@ déploiement plutôt qu'après.
 
 **Livrables**
 
-| Site | Correctif | Taille |
-|---|---|---|
-| `stereo-house` | hreflang absent, `og:locale` brut (`fr` au lieu de `fr_FR`), aucune `og:image` | ~30 lignes |
-| `openfinanceguide` | passer `localesForSlug` au bloc blog du sitemap | ~10 lignes |
+| Site                   | Correctif                                                                          | Taille            |
+| ---------------------- | ---------------------------------------------------------------------------------- | ----------------- |
+| `stereo-house`         | hreflang absent, `og:locale` brut (`fr` au lieu de `fr_FR`), aucune `og:image`     | ~30 lignes        |
+| `openfinanceguide`     | passer `localesForSlug` au bloc blog du sitemap                                    | ~10 lignes        |
 | `tancrede`, `tancredo` | hreflang déclaré pour toutes les locales, y compris celles où la page n'existe pas | ~20 lignes chacun |
 
 **Critère de sortie** — la baseline de la phase 1 rejouée : 0 finding hreflang
@@ -153,12 +153,12 @@ réellement cassé) et laisser le reste.
 
 **Livrables**
 
-| # | Livrable |
-|---|---|
-| 3.1 | Chaque règle porte son `rigor` (`spec-required` › `spec-recommended` › `vendor-spec` › `guideline` › `heuristic`) |
+| #   | Livrable                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 3.1 | Chaque règle porte son `rigor` (`spec-required` › `spec-recommended` › `vendor-spec` › `guideline` › `heuristic`)              |
 | 3.2 | Chaque règle cite ≥ 1 `Source` (`id`, `publisher`, `url`, `retrievedAt`, paraphrase — jamais de copie verbatim de doc éditeur) |
-| 3.3 | Le catalogue s'exporte en Markdown lisible **et** en JSON |
-| 3.4 | Les règles i18n de la phase 1 sont couvertes en priorité |
+| 3.3 | Le catalogue s'exporte en Markdown lisible **et** en JSON                                                                      |
+| 3.4 | Les règles i18n de la phase 1 sont couvertes en priorité                                                                       |
 
 **Critère de sortie** — `goflag rules --json` produit le catalogue complet ;
 chaque règle i18n a une source normative ou éditeur datée.
@@ -177,13 +177,13 @@ robots + URL OG.
 
 **Livrables**
 
-| # | Livrable |
-|---|---|
-| 4.1 | `defineSite({ baseUrl, locales, defaultLocale, name, indexable, og })` |
-| 4.2 | `site.routes({...})` avec `collection` → disponibilité par locale **déduite** |
+| #   | Livrable                                                                                  |
+| --- | ----------------------------------------------------------------------------------------- |
+| 4.1 | `defineSite({ baseUrl, locales, defaultLocale, name, indexable, og })`                    |
+| 4.2 | `site.routes({...})` avec `collection` → disponibilité par locale **déduite**             |
 | 4.3 | Sorties : `routes.sitemap`, `site.robots`, `routes.X.metadata()`, `routes.X.staticParams` |
-| 4.4 | Adaptateur `content-collections` |
-| 4.5 | Suite de tests = les règles de la phase 3, jugées sur la sortie rendue |
+| 4.4 | Adaptateur `content-collections`                                                          |
+| 4.5 | Suite de tests = les règles de la phase 3, jugées sur la sortie rendue                    |
 
 **Critère de sortie — le test d'ergonomie, non négociable :**
 
@@ -208,16 +208,16 @@ confiance : c'est le site dont la lib est tirée.
 
 **Livrables**
 
-| # | Livrable |
-|---|---|
-| 5.1 | `tancrede`, `tancredo`, `openfinanceguide` migrés |
-| 5.2 | La lib émet `.goflag/routes.json` au build — l'**intention déclarée** |
-| 5.3 | goflag consomme ce manifeste : compare intention et observation |
+| #   | Livrable                                                                                             |
+| --- | ---------------------------------------------------------------------------------------------------- |
+| 5.1 | `tancrede`, `tancredo`, `openfinanceguide` migrés                                                    |
+| 5.2 | La lib émet `.goflag/routes.json` au build — l'**intention déclarée**                                |
+| 5.3 | goflag consomme ce manifeste : compare intention et observation                                      |
 | 5.4 | Sous-module `og` : template `ImageResponse` piloté par tokens, partagé avec le générateur de favicon |
 
 **Critère de sortie** — le test qui prouve que la circularité est morte :
 
-> Sur un site avec manifeste, retirer *tous* les hreflang du rendu doit produire
+> Sur un site avec manifeste, retirer _tous_ les hreflang du rendu doit produire
 > une **erreur** goflag. Aujourd'hui ça produit un rapport vert, parce que
 > l'absence de hreflang rend le détecteur de hreflang muet.
 
@@ -233,12 +233,12 @@ l'écosystème.
 
 **Livrables**
 
-| # | Livrable |
-|---|---|
-| 6.1 | `/raw/[locale]/[slug].md` dérivé du registre (le code existe dans ofg, testé) |
+| #   | Livrable                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6.1 | `/raw/[locale]/[slug].md` dérivé du registre (le code existe dans ofg, testé)                                                                                             |
 | 6.2 | **`llms.txt` + `llms-full.txt` multilingues** — personne n'a tranché publiquement la forme (section par locale ? fichier par locale ? `x-default` ?). Position à prendre. |
-| 6.3 | Règles goflag correspondantes |
-| 6.4 | Export des fonctions `AI_PROVIDERS` / `buildAiPrompt` **sans** les composants React (ils traînent shadcn en dépendance — cf. I1) |
+| 6.3 | Règles goflag correspondantes                                                                                                                                             |
+| 6.4 | Export des fonctions `AI_PROVIDERS` / `buildAiPrompt` **sans** les composants React (ils traînent shadcn en dépendance — cf. I1)                                          |
 
 **Critère de sortie** — `llms.txt` servi sur les 4 sites, découvrable, cohérent
 avec le sitemap.
@@ -257,11 +257,11 @@ entrant ne le traite. Si Vercel rend le markdown natif, cette phase se réduit �
 
 **Livrables**
 
-| # | Livrable |
-|---|---|
-| 7.1 | Dépôt public (spec + lib), README qui met la spec en titre, pas la lib |
-| 7.2 | npm : **`core` seulement**. Le reste reste lisible sans être installable. |
-| 7.3 | goflag publié (déjà MIT, README prêt, `private: true` à lever) |
+| #   | Livrable                                                                        |
+| --- | ------------------------------------------------------------------------------- |
+| 7.1 | Dépôt public (spec + lib), README qui met la spec en titre, pas la lib          |
+| 7.2 | npm : **`core` seulement**. Le reste reste lisible sans être installable.       |
+| 7.3 | goflag publié (déjà MIT, README prêt, `private: true` à lever)                  |
 | 7.4 | Nom propre + mots-clés descriptifs npm. Pas de scope `@oblab` (marque retirée). |
 
 **Critère de sortie** — un lecteur externe peut, en 10 minutes : lire la spec,
@@ -275,18 +275,18 @@ crée l'obligation de maintenance.
 
 ## 3. Points de décision restés ouverts
 
-| Sujet | Question | Quand trancher |
-|---|---|---|
-| Phase 2 | Corriger les 4 sites, ou seulement `stereo-house` ? | après la baseline de la phase 1 |
-| `lib/stet` | Publier les ~2 150 lignes de conversion OpenAPI/spec bancaire ? Le moat est le contenu, pas le convertisseur — mais c'est un arbitrage business | phase 7 |
-| Paquet `spec` | Extraire de goflag, ou laisser dedans ? | quand les tests de la lib l'importent (I4) |
-| `fix-my-youtube-links` | Migrer un jour, ou jamais ? | après la phase 5 |
-| Monorepo | pnpm workspace pour la lib + spec ; les 4 sites restent des repos séparés | phase 4 |
+| Sujet                  | Question                                                                                                                                        | Quand trancher                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Phase 2                | Corriger les 4 sites, ou seulement `stereo-house` ?                                                                                             | après la baseline de la phase 1            |
+| `lib/stet`             | Publier les ~2 150 lignes de conversion OpenAPI/spec bancaire ? Le moat est le contenu, pas le convertisseur — mais c'est un arbitrage business | phase 7                                    |
+| Paquet `spec`          | Extraire de goflag, ou laisser dedans ?                                                                                                         | quand les tests de la lib l'importent (I4) |
+| `fix-my-youtube-links` | Migrer un jour, ou jamais ?                                                                                                                     | après la phase 5                           |
+| Monorepo               | pnpm workspace pour la lib + spec ; les 4 sites restent des repos séparés                                                                       | phase 4                                    |
 
 ## 4. Ce que ce plan ne fait pas
 
 - Pas de fusion de repos de sites. Ils restent indépendants.
-- Pas d'extraction de `components/ui` (c'est shadcn : la copie *est* le modèle),
+- Pas d'extraction de `components/ui` (c'est shadcn : la copie _est_ le modèle),
   de `assets/svg`, ni des presets eslint/tsconfig.
 - Pas de wrapper sur `next-intl` (`routing.ts`, `request.ts`, `proxy.ts` : 40
   lignes sans valeur ajoutée).
