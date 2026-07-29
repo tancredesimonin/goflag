@@ -21,6 +21,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { probeRobots } from "../lib/core/probes/robots";
 import { getRule } from "../lib/rules";
 import { getSiteRule } from "../lib/rules/site-rules";
 import type { SiteContext } from "../lib/rules/site-types";
@@ -240,6 +241,14 @@ export async function runAudit(
 
   const sitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
 
+  // Fetched independently of sitemap discovery: `--no-sitemap` must not also
+  // blind the robots rules, and one small request is cheaper than the class of
+  // bug a site-wide `Disallow: /` represents.
+  const robots = await probeRobots(origin, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  }).catch(() => undefined);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
@@ -367,6 +376,7 @@ export async function runAudit(
     matrix,
     localeAxis,
     discovery,
+    robots,
   };
   // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
   // a global index, so adding or reordering a rule cannot renumber unrelated

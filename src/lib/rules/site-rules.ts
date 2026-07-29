@@ -187,8 +187,85 @@ const hreflangSitemapMismatch: SiteRule = {
   },
 };
 
+/** Directive tokens from a page's `<meta name="robots">`. */
+function metaRobotsTokens(page: Page): Set<string> {
+  const raw = page.meta.robots?.value ?? "";
+  return new Set(
+    raw
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * `robots.txt` forbids the whole site.
+ *
+ * The most expensive misconfiguration a site can carry, and the one nothing
+ * in the tool was watching: tancrede.eu served `User-agent: * / Disallow: /`
+ * in production while every page carried `<meta name="robots"
+ * content="index, follow">`. The pages ask to be indexed; the file forbids the
+ * crawl that would read them — and because robots.txt wins, the request never
+ * happens and the meta tag is never seen.
+ *
+ * Severity depends on whether anything contradicts the block. A staging site
+ * that disallows everything and says nothing else is doing exactly what it
+ * means to, so that is a warning. A site that blocks the crawl *and* asks to
+ * be indexed cannot have meant both — that is an error.
+ */
+const robotsBlocksSite: SiteRule = {
+  id: "robots.blocks-site",
+  severity: "error",
+  summary: "`robots.txt` must not forbid crawling a site that asks to be indexed",
+  appliesTo: (site) => site.robots?.found === true && site.robots.blocksAll,
+  check: ({ site, issue }) => {
+    const robotsUrl = site.robots?.url ?? `${site.origin}/robots.txt`;
+
+    // An explicit `index` is a statement of intent, not the mere absence of
+    // `noindex` — which every page has by default and would make this fire
+    // on every blocked staging environment.
+    const asking = site.pages.filter((page) => metaRobotsTokens(page).has("index"));
+
+    const detail = asking.length
+      ? `but ${asking.length} crawled page${asking.length === 1 ? "" : "s"} declare ` +
+        '`<meta name="robots" content="index">`. Both cannot be true: robots.txt ' +
+        "wins, so the pages are never fetched and the meta tag is never read."
+      : "so no search engine will crawl any page on this origin. If this is a " +
+        "staging or preview environment, that is correct — otherwise the site is " +
+        "invisible.";
+
+    return issue({
+      pageUrl: robotsUrl,
+      severity: asking.length > 0 ? "error" : "warning",
+      message: `\`robots.txt\` disallows the whole site for \`User-agent: *\`, ${detail}`,
+      origin: { kind: "computed" },
+      fix: {
+        title: "Gate the disallow on the deployed environment",
+        snippet: [
+          "// app/robots.ts — the flag must be readable at build AND at runtime,",
+          "// or a production container silently serves the staging rules.",
+          'const isProduction = process.env.APP_ENV === "production";',
+          "",
+          "export default function robots(): MetadataRoute.Robots {",
+          '  if (!isProduction) return { rules: { userAgent: "*", disallow: "/" } };',
+          "  return {",
+          '    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/_next/"] },',
+          "    sitemap: `${baseUrl}/sitemap.xml`,",
+          "  };",
+          "}",
+        ].join("\n"),
+        language: "ts",
+      },
+    });
+  },
+};
+
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
-export const SITE_RULES: ReadonlyArray<SiteRule> = [hreflangMissing, hreflangSitemapMismatch];
+export const SITE_RULES: ReadonlyArray<SiteRule> = [
+  hreflangMissing,
+  hreflangSitemapMismatch,
+  robotsBlocksSite,
+];
 
 export function getSiteRule(id: string): SiteRule | undefined {
   return SITE_RULES.find((rule) => rule.id === id);
