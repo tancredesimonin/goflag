@@ -25,7 +25,7 @@
 import type { I18nMatrix } from "../core/i18n";
 import type { LocaleAxis } from "../core/locales";
 import type { SiteDiscovery } from "../core/sitemap/types";
-import type { Issue, Page, Severity } from "../core/types";
+import type { Issue, Page, RobotsProbe, Severity } from "../core/types";
 
 /**
  * Everything a cross-page rule is allowed to see. Deliberately a plain,
@@ -41,6 +41,11 @@ export interface SiteContext {
   matrix: I18nMatrix;
   /** Locales the site is believed to serve, and how we know. */
   localeAxis: LocaleAxis;
+  /**
+   * The site's `robots.txt`, when it could be fetched. Site-level by nature:
+   * one file governs every page, so no per-page rule can judge it.
+   */
+  robots?: RobotsProbe;
   /**
    * The discovered sitemap, when one was found. `undefined` when discovery
    * was skipped (`--no-sitemap`) or the site has none — rules must degrade
