@@ -30,6 +30,26 @@ variables:
   PNPM_VERSION: "9.15.0"
   CI: "true"
 
+# Jobs that only make sense when the CLI package (or the workspace wiring it
+# depends on) actually changed. Docs-only commits are frequent and the test
+# suite boots HTTP servers and Chromium — several minutes for a README edit,
+# against a 400-minute monthly budget.
+#
+# Deliberately NOT applied to lint / typecheck / format: those are seconds, and
+# a merge request whose every job is filtered out produces an empty pipeline,
+# which GitLab treats as a failure.
+.cli_changes: &cli_changes
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - packages/cli/**/*
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
 .pnpm: &pnpm
   before_script:
     - corepack enable
@@ -74,7 +94,7 @@ build:
 
 test:unit:
   stage: test
-  <<: *pnpm
+  <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:unit
 
@@ -83,7 +103,7 @@ test:integration:
   # Playwright image so Chromium is preinstalled and the headless
   # integration tests can run without a separate `playwright install`.
   image: mcr.microsoft.com/playwright:v1.59.1-noble
-  <<: *pnpm
+  <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:integration
 
