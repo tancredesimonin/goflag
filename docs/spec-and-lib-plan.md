@@ -320,6 +320,40 @@ de `goflag <url>`, qui continue de marcher. Casser l'invocation principale pour
 la symétrie serait un mauvais échange. Si un verbe s'impose un jour, `audit` ou
 `check` décrivent mieux que `detect` : l'outil ne détecte pas, il juge.
 
+### Où vit le code
+
+**Arbitré 2026-07-30.** GitLab reste l'atelier, GitHub est la vitrine.
+
+|                                            | Où                                        | Visibilité           |
+| ------------------------------------------ | ----------------------------------------- | -------------------- |
+| Développement, CI, templates partagés      | `gitlab.com/tancredesimonin-indie/goflag` | **privé**            |
+| Vitrine, issues, champ `repository` de npm | `github.com/tancredesimonin/goflag`       | public               |
+| Scope npm                                  | `@goflag`                                 | indépendant des deux |
+
+**Pourquoi rester dans le groupe `-indie` plutôt que sous le nom personnel.**
+Pas pour la marque — le namespace GitLab n'est vu par personne, puisqu'il est
+privé. Pour les `include:` : le `.gitlab-ci.yml` de goflag tire trois templates
+de `tancredesimonin-indie/infrastructure`. Sortir du groupe les rend
+cross-namespace, ce qui marche mais ouvre une surface de permissions (les
+réglages de jeton de job CI peuvent bloquer l'accès inter-projets) — le genre de
+chose qui casse six mois plus tard sans qu'on comprenne pourquoi.
+
+Vérifié : créer un groupe est **gratuit** sur GitLab.com (plan Free, plafonné à
+5 utilisateurs, 400 minutes CI/mois, 10 Gio). Si un coût existe aujourd'hui,
+ce sont les **minutes**, pas le groupe — et changer de namespace n'y change
+rien. En revanche le monorepo, lui, en économise : `rules:changes` évite de
+relancer les tests du CLI quand seul le site a bougé.
+
+**À faire avant le premier push du miroir** : l'historique complet part sur
+GitHub, pas seulement l'état courant. Vérifier qu'aucun secret n'y a jamais
+transité. (Contrôlé le 2026-07-29 : seul `.env.example` est tracké, aucun `.env`
+n'a jamais été commité.)
+
+**Friction assumée** : un miroir GitHub est en lecture seule, donc les issues
+ouvertes là-bas ne seront pas vues. Bannière explicite dans le README GitHub
+renvoyant vers GitLab. Acceptable tant qu'on ne cherche pas de contributeurs ;
+à revoir si l'outil prend.
+
 ### Les deux usages, et pourquoi ils ne se mélangent pas
 
 Ce sont deux **formes** différentes du même outil, pas deux options concurrentes :
@@ -362,6 +396,36 @@ erreur que `discoverSitemap` écrit et jamais appelé.
 
 Pour openfinanceguide : `--max-pages 150` sur les MR, audit complet en nocturne
 (le pattern existe déjà — `security-scheduled.yml`).
+
+### Structure du dépôt
+
+**Monorepo, et la fenêtre est maintenant** — goflag est en `0.0.0`, jamais
+publié, jamais cloné. Restructurer après publication casse les clones et le
+lien npm → repo ; avant, c'est un `git mv` sur 207 fichiers.
+
+```
+goflag/
+  packages/cli/     → goflag
+  packages/next/    → @goflag/next
+  apps/website/     → documentation et marketing
+```
+
+`packages/` vs `apps/` sépare **ce qui est publié** de **ce qui est déployé** :
+un script de release qui itère sur les packages ne ramasse pas le site.
+
+**Propriété gratuite** : le site est un site Next, donc le **premier
+consommateur externe de `@goflag/next`** — et goflag peut l'auditer dans sa
+propre CI. Le tool et la lib s'exercent l'un l'autre sur quelque chose de réel
+qui n'est pas un site client.
+
+**Risque à tenir** : l'invariant I3. Un monorepo rend trivial le fait que
+`packages/next` importe « juste ce helper » depuis `packages/cli`, ce qui
+transformerait deux produits indépendants en un bloc. Une règle
+`no-restricted-imports` suffit.
+
+**Contrainte de séquencement** : restructurer pendant que des MR goflag sont
+ouvertes oblige à les rebaser à travers un `git mv` de tous les fichiers.
+Merger d'abord, restructurer ensuite.
 
 ### Distribution
 
