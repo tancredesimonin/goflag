@@ -19,6 +19,17 @@ Pages that declare a `<link rel="canonical">` pointing at another crawled page a
 
 SPA support is built in: pages that look client-rendered are re-rendered in headless Chromium automatically (pass `--static` to skip it).
 
+## Repository layout
+
+```
+packages/cli/      goflag — the CLI (this is what `npx goflag` installs)
+packages/next/     @goflag/next — the Next.js library (not built yet)
+apps/website/      documentation and marketing site (not built yet)
+```
+
+The library and the apps must not import from the CLI: the two products stay
+independently useful, and a lint rule enforces it rather than trusting memory.
+
 ## Quick start
 
 Requires Node `>=20.11`.
