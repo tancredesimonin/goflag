@@ -262,7 +262,7 @@ entrant ne le traite. Si Vercel rend le markdown natif, cette phase se réduit �
 | 7.1 | Dépôt public (spec + lib), README qui met la spec en titre, pas la lib          |
 | 7.2 | npm : **`core` seulement**. Le reste reste lisible sans être installable.       |
 | 7.3 | goflag publié (déjà MIT, README prêt, `private: true` à lever)                  |
-| 7.4 | Nom propre + mots-clés descriptifs npm. Pas de scope `@oblab` (marque retirée). |
+| 7.4 | Nommage : voir §2 bis. `goflag` (CLI) + `@goflag/next` (lib), scope revendiqué. |
 
 **Critère de sortie** — un lecteur externe peut, en 10 minutes : lire la spec,
 lancer goflag sur son propre site, voir ses findings.
@@ -270,6 +270,111 @@ lancer goflag sur son propre site, voir ses findings.
 **Posture assumée** — `0.x`, README explicite (« extrait de mes propres sites,
 API instable »). Le dépôt public capte l'essentiel du signal ; c'est **npm** qui
 crée l'obligation de maintenance.
+
+---
+
+## 2 bis. Nommage et distribution
+
+> Ajouté 2026-07-29, après la phase 1. Disponibilité npm vérifiée le même jour :
+> `goflag`, `goflag-next`, `goflag-detect` et **le scope `@goflag` entier** sont
+> libres.
+
+### Une marque, des outils nommés
+
+**Arbitré 2026-07-30 : `goflag` est le produit principal.** La marque et l'outil
+d'analyse portent le même nom nu ; `@goflag/next` est un outil _supplémentaire_
+sous cette marque, pas l'inverse.
+
+C'est un déplacement par rapport à la version initiale de ce plan, où goflag
+n'était que la phase 1 et la lib occupait les phases 4 à 6. Conséquences à
+tenir :
+
+- Ce qui rend **goflag** utilisable, publiable et adopté passe devant ce qui
+  fait avancer la lib. Les phases 4–6 restent valides mais cessent d'être la
+  ligne d'arrivée.
+- L'invariant **I2** (« goflag reste utile seul, sur un site qui n'utilise pas
+  la lib ») cesse d'être une précaution et devient la thèse du produit.
+- La phase 7 (public) concerne d'abord goflag. La lib peut sortir plus tard,
+  sous la même marque, sans rien renégocier.
+
+| Rôle              | Nom                | Statut                                    |
+| ----------------- | ------------------ | ----------------------------------------- |
+| CLI d'analyse     | **`goflag`** (nu)  | `npx goflag` ; `private: true` à lever    |
+| Lib Next          | **`@goflag/next`** | à créer (phase 4)                         |
+| Spec, si extraite | `@goflag/spec`     | seulement si I4 est satisfait             |
+| Scope npm         | `@goflag`          | **à revendiquer maintenant**, par défense |
+
+**Pourquoi le scope plutôt que des tirets.** `goflag-next` laisse n'importe qui
+publier `goflag-ui` ou `goflag-cli` et créer la confusion ; `@goflag/*` donne le
+namespace. Le revendiquer coûte zéro et n'est pas réversible dans l'autre sens.
+Contrepartie assumée : un paquet scopé est un peu moins découvrable que les
+`next-intl` / `next-themes` que les gens cherchent sur npm — d'où l'intérêt de
+revendiquer le scope _et_ de choisir le nom de publication séparément.
+
+**Pas de verbe sur le CLI.** `goflag detect` a été envisagé et écarté : si
+`goflag` est l'outil et `@goflag/next` la lib, le CLI n'a pas besoin d'un second
+nom, et « goflag detect » frôle le pléonasme (le nom veut déjà dire « signaler »).
+Si des sous-commandes deviennent nécessaires — `goflag rules` pour l'export du
+catalogue en phase 3 est le premier candidat réel — elles s'ajoutent **à côté**
+de `goflag <url>`, qui continue de marcher. Casser l'invocation principale pour
+la symétrie serait un mauvais échange. Si un verbe s'impose un jour, `audit` ou
+`check` décrivent mieux que `detect` : l'outil ne détecte pas, il juge.
+
+### Les deux usages, et pourquoi ils ne se mélangent pas
+
+Ce sont deux **formes** différentes du même outil, pas deux options concurrentes :
+
+|                 | Local                                      | CI                            |
+| --------------- | ------------------------------------------ | ----------------------------- |
+| Périmètre       | la page qu'on vient de toucher             | le site entier                |
+| Durée tolérable | < 5 s                                      | 30 s – 4 min                  |
+| Question        | « ce que je viens d'écrire est correct ? » | « est-ce qu'on a régressé ? » |
+
+Un audit qui vaut le coup en CI est intolérable en hook local ; l'inverse est
+presque inutile en CI. Les traiter comme le _même_ audit est ce qui les fait
+paraître exclusifs.
+
+**La CI est la maison.** Post-`deploy-develop` (les environnements
+`develop.<domaine>` existent déjà sur les 4 sites), `--regressions-only`,
+baseline commitée dans chaque repo pour que grandfather un finding apparaisse
+dans un diff relu.
+
+**En local : une commande, pas un hook.** Un `pnpm seo` dans chaque site,
+`goflag <url> --start "pnpm start" --depth 0`, lancé délibérément quand on a
+touché à la metadata. Un hook qui ajoute 60 s à chaque `pnpm build` est
+désactivé en une semaine — c'est le mode d'échec qu'on a combattu toute la
+phase 1 (le gate toujours rouge, le faux négatif rassurant) : coût payé à chaque
+itération, valeur délivrée rarement.
+
+**Signal à surveiller** : si la commande manuelle n'est jamais lancée après un
+mois, c'est qu'il faut un mode ciblé — « audite exactement ces URLs, sans
+crawler », que goflag ne sait pas faire aujourd'hui (il prend une URL d'entrée
+et crawle). Pas avant : construire ce mode sans preuve du besoin, c'est la même
+erreur que `discoverSitemap` écrit et jamais appelé.
+
+### Coût CI mesuré (phase 1, `--static --no-external`)
+
+| Site             | Pages | Durée  |
+| ---------------- | ----- | ------ |
+| stereo-house     | 41    | ~30 s  |
+| tancredo         | 49    | ~40 s  |
+| openfinanceguide | 456   | ~4 min |
+
+Pour openfinanceguide : `--max-pages 150` sur les MR, audit complet en nocturne
+(le pattern existe déjà — `security-scheduled.yml`).
+
+### Distribution
+
+goflag n'est installable nulle part aujourd'hui : `private: true`, `bin` pointe
+sur `dist/`, `dist/` est gitignoré, aucun script `prepare`. Deux options :
+
+|                                  |                                                                                                                                                                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A. Image Docker** (recommandé) | Un job dans la CI de goflag pousse `registry.gitlab.com/…/goflag:x.y.z` ; les sites l'utilisent comme `image:`. C'est **le pattern déjà en place** pour Trivy (`image: aquasec/trivy:0.59.1`). Jobs rapides, version épinglée. |
+| B. Template qui clone et build   | Zéro infrastructure, mais ~1–2 min de `clone + install + build` à chaque job, sur chaque site. Bon pour essayer, mauvais à garder.                                                                                             |
+
+Le template partagé va dans `infrastructure/gitlab-templates/`, que les 4 sites
+incluent déjà.
 
 ---
 
@@ -282,6 +387,8 @@ crée l'obligation de maintenance.
 | Paquet `spec`          | Extraire de goflag, ou laisser dedans ?                                                                                                         | quand les tests de la lib l'importent (I4) |
 | `fix-my-youtube-links` | Migrer un jour, ou jamais ?                                                                                                                     | après la phase 5                           |
 | Monorepo               | pnpm workspace pour la lib + spec ; les 4 sites restent des repos séparés                                                                       | phase 4                                    |
+| Distribution goflag    | Image Docker (A) ou template clone-and-build (B) — voir §2 bis                                                                                  | avant de brancher la CI d'un site          |
+| Mode local ciblé       | « audite ces URLs sans crawler » — seulement si le `pnpm seo` manuel n'est pas lancé                                                            | après un mois d'usage réel                 |
 
 ## 4. Ce que ce plan ne fait pas
 
