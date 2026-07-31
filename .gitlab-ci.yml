@@ -167,6 +167,65 @@ publish:npm:
     - npm config set "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
     - pnpm --filter goflag publish --access public --no-git-checks
 
+# Merging develop into main is the decision to publish. This job turns that
+# merge into a version and a tag; `publish:npm` above turns the tag into a
+# package. Two jobs rather than one because they fail for different reasons:
+# a bad version is a repository problem, a failed publish is a registry one.
+#
+# Needs RELEASE_TOKEN — a project access token with the Maintainer role and
+# `write_repository`. The job token cannot push, and a push made with it would
+# not trigger the tag pipeline that publishes.
+release:
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    # commit-and-tag-version reads the whole history and every tag to work out
+    # the bump. The default shallow clone would make it invent 1.0.0 forever.
+    GIT_DEPTH: 0
+  script:
+    - git config user.name "goflag release"
+    - git config user.email "39413504+tancredesimonin@users.noreply.github.com"
+    - git remote set-url origin "https://oauth2:${RELEASE_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git"
+    - git fetch origin --tags --quiet
+
+    # CI checks out a detached HEAD; commit-and-tag-version commits, so it needs
+    # a branch to commit onto.
+    - git checkout -B main "$CI_COMMIT_SHA"
+
+    # A merge to main is not always a release. Docs, chores and refactors are
+    # merged too, and publishing on those would spend a version number on
+    # nothing — then open a merge request on every consuming site to pin it.
+    - LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+    - RANGE="${LAST_TAG:+$LAST_TAG..HEAD}"
+    - |
+      if ! git log --format=%B $RANGE | grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE'; then
+        echo "No feat/fix/perf/breaking commit since ${LAST_TAG:-the first commit} — nothing to release."
+        exit 0
+      fi
+
+    - pnpm --filter goflag release
+    - VERSION="$(node -p "require('./packages/cli/package.json').version")"
+    - echo "releasing v$VERSION"
+
+    # Tag last-ish: pushing the branch and the tag together means the tag
+    # pipeline (which publishes) only ever sees a commit that is already on main.
+    - git push origin HEAD:main --follow-tags
+
+    # The release commit carries the new version and the changelog. If develop
+    # does not receive it, the next merge to main sees two different versions of
+    # package.json and resolves the conflict in whichever direction it likes.
+    #
+    # Loud on failure: the package is already published at this point, so a
+    # silent skip would leave develop quietly wrong for weeks.
+    - |
+      if ! git push origin HEAD:develop; then
+        echo "v$VERSION is published, but develop did not fast-forward." >&2
+        echo "Someone pushed to develop during the release. Merge main into develop by hand." >&2
+        exit 1
+      fi
+
 # Trivy scans the working dir; disable the cache so only repo sources
 # (incl. pnpm-lock.yaml) are scanned, not cached third-party packages.
 trivy-deps:
@@ -177,8 +236,19 @@ trivy-scheduled:
 
 workflow:
   rules:
+    # First, and deliberately so. A tag pipeline shares the commit message of
+    # the release commit below, so any rule matching that message would take
+    # the publishing pipeline down with it. This is the same trap as putting
+    # `[skip ci]` in the release commit: it skips the tag too.
+    - if: $CI_COMMIT_TAG
+
+    # The `release` job pushes its own commit back to main, which triggers a
+    # pipeline, which would run `release` again. Cut the loop here rather than
+    # in the job, so the whole pipeline is skipped instead of merely idle.
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /^chore\(release\)/
+      when: never
+
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "schedule"

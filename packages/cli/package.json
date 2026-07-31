@@ -1,6 +1,6 @@
 {
   "name": "goflag",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "A lean CLI that audits a site for broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.",
   "keywords": [
