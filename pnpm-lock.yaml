@@ -36,10 +36,6 @@ importers:
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
-    optionalDependencies:
-      playwright:
-        specifier: ^1.59.1
-        version: 1.59.1
     devDependencies:
       '@hono/node-server':
         specifier: ^2.0.1
@@ -56,6 +52,9 @@ importers:
       hono:
         specifier: ^4.12.25
         version: 4.12.27
+      playwright:
+        specifier: ^1.59.1
+        version: 1.59.1
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.13)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.4)
@@ -4563,15 +4562,13 @@ snapshots:
       mlly: 1.8.2
       pathe: 2.0.3
 
-  playwright-core@1.59.1:
-    optional: true
+  playwright-core@1.59.1: {}
 
   playwright@1.59.1:
     dependencies:
       playwright-core: 1.59.1
     optionalDependencies:
       fsevents: 2.3.2
-    optional: true
 
   postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.13)(tsx@4.21.0)(yaml@2.8.4):
     dependencies:

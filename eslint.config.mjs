@@ -15,6 +15,15 @@ export default tseslint.config(
     },
   },
   {
+    // Repository tooling: plain Node ESM, no TypeScript. The TS configs above
+    // disable `no-undef` (the compiler already covers it), so these files are
+    // the only ones that need Node's globals spelled out.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { process: "readonly" },
+    },
+  },
+  {
     // Invariant I3, enforced rather than remembered.
     //
     // The library and the CLI are two products that must stay independently
