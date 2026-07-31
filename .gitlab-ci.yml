@@ -25,6 +25,7 @@ stages:
   - verify
   - test
   - security
+  - release
 
 variables:
   PNPM_VERSION: "9.15.0"
@@ -106,6 +107,60 @@ test:integration:
   <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:integration
+
+# The tarball is what users get; the repository is not. Everything below this
+# line exists because a monorepo hides packaging bugs: `dist/` is present
+# because we just built it, dependencies resolve because the workspace is
+# there. Neither is true in someone else's `node_modules`.
+#
+# So: pack, install the tarball into an empty directory with npm — not pnpm,
+# not the workspace — and run the binary the way `npx goflag` would.
+test:package:
+  stage: test
+  <<: [*pnpm, *cli_changes]
+  script:
+    - pnpm --filter goflag build
+    # `pnpm pack` prints the absolute tarball path as its last line.
+    - TARBALL="$(cd packages/cli && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - echo "packed $TARBALL"
+
+    # The npm page and the licence come from files staged by `prepack`. If the
+    # hook regresses, the package still installs and the page is silently blank.
+    - tar -tzf "$TARBALL" | grep -qx 'package/README.md'
+    - tar -tzf "$TARBALL" | grep -qx 'package/LICENSE'
+
+    - mkdir -p /tmp/goflag-install && cd /tmp/goflag-install
+    - npm init -y > /dev/null
+    - npm install "$TARBALL"
+
+    # `playwright` is an *optional peer*: headless mode asks for it at runtime
+    # and degrades with a clear message. As an optionalDependency it installed
+    # by default, and its postinstall downloads Chromium — a ~150 MB surprise
+    # for someone who only wants `--static`. This asserts it stays absent.
+    - test ! -d node_modules/playwright
+
+    - ./node_modules/.bin/goflag --version
+    - ./node_modules/.bin/goflag --help > /dev/null
+
+# Publishing happens on a tag and nowhere else: a version is a promise, and
+# `develop` makes no promises. Tags come from `pnpm release`
+# (commit-and-tag-version), which bumps package.json and tags in one step.
+publish:npm:
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    # commit-and-tag-version writes both, so a mismatch means the tag was made
+    # by hand. Publishing it would put a version on npm that matches no commit.
+    - PKG_VERSION="$(node -p "require('./packages/cli/package.json').version")"
+    - |
+      if [ "$CI_COMMIT_TAG" != "v$PKG_VERSION" ]; then
+        echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
+        exit 1
+      fi
+    - npm config set "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
+    - pnpm --filter goflag publish --access public --no-git-checks
 
 # Trivy scans the working dir; disable the cache so only repo sources
 # (incl. pnpm-lock.yaml) are scanned, not cached third-party packages.
