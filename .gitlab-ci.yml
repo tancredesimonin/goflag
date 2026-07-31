@@ -126,8 +126,13 @@ test:package:
 
     # The npm page and the licence come from files staged by `prepack`. If the
     # hook regresses, the package still installs and the page is silently blank.
-    - tar -tzf "$TARBALL" | grep -qx 'package/README.md'
-    - tar -tzf "$TARBALL" | grep -qx 'package/LICENSE'
+    #
+    # Listed to a file rather than piped: `grep -q` exits at the first match and
+    # closes the pipe, `tar` takes SIGPIPE, and the runner's `pipefail` turns a
+    # passing assertion into exit 141.
+    - tar -tzf "$TARBALL" > tarball-contents.txt
+    - grep -qx 'package/README.md' tarball-contents.txt
+    - grep -qx 'package/LICENSE' tarball-contents.txt
 
     - mkdir -p /tmp/goflag-install && cd /tmp/goflag-install
     - npm init -y > /dev/null
