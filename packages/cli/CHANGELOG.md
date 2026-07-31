@@ -9,6 +9,9 @@ history; this one is written by hand, because the history before it belongs to
 a different tool. goflag began as a browser UI called headlint, and replaying
 that changelog here would document a product that no longer exists.
 
+Published as `@goflag/cli`; the command it installs is `goflag`. The bare
+`goflag` package name is deliberately left unclaimed for now.
+
 ### What it does
 
 - **Broken links** — crawls the site, dedupes targets globally so a footer link

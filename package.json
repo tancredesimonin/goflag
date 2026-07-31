@@ -21,7 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "pnpm -r clean",
-    "dev": "pnpm --filter goflag dev"
+    "dev": "pnpm --filter @goflag/cli dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

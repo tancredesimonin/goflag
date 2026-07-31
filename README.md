@@ -22,7 +22,7 @@ SPA support is built in: pages that look client-rendered are re-rendered in head
 ## Repository layout
 
 ```
-packages/cli/      goflag — the CLI (this is what `npx goflag` installs)
+packages/cli/      @goflag/cli — the CLI (installs the `goflag` command)
 packages/next/     @goflag/next — the Next.js library (not built yet)
 apps/website/      documentation and marketing site (not built yet)
 ```
@@ -35,8 +35,12 @@ independently useful, and a lint rule enforces it rather than trusting memory.
 Requires Node `>=20.11`.
 
 ```sh
-npx goflag https://example.com
+npx @goflag/cli https://example.com
 ```
+
+The package is `@goflag/cli`; the command it installs is `goflag`. The bare
+`goflag` name on npm is not claimed yet — see the note in
+[docs/spec-and-lib-plan.md](docs/spec-and-lib-plan.md#une-marque-des-outils-nommés).
 
 You get a coloured terminal report and an exit code:
 
@@ -47,8 +51,8 @@ You get a coloured terminal report and an exit code:
 ### JSON is the source of truth
 
 ```sh
-npx goflag https://example.com --json > report.json      # print JSON to stdout
-npx goflag https://example.com --report report.json      # write JSON to a file
+npx @goflag/cli https://example.com --json > report.json      # print JSON to stdout
+npx @goflag/cli https://example.com --report report.json      # write JSON to a file
 ```
 
 The terminal view is just a render of that JSON.
