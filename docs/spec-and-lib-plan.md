@@ -92,12 +92,29 @@ deux produits indépendants en un bloc.
 
 ### Une marque, des outils nommés
 
-| Rôle                    | Nom                | Statut                                 |
-| ----------------------- | ------------------ | -------------------------------------- |
-| Analyseur **et marque** | **`goflag`** (nu)  | `npx goflag` ; `private: true` à lever |
-| Lib Next                | **`@goflag/next`** | à créer (phase 4)                      |
-| Spec, si extraite       | `@goflag/spec`     | seulement si I4 est satisfait          |
-| Scope npm               | `@goflag`          | **à revendiquer**, par défense         |
+| Rôle              | Nom                | Statut                                 |
+| ----------------- | ------------------ | -------------------------------------- |
+| Analyseur         | **`@goflag/cli`**  | publié ; installe la commande `goflag` |
+| Marque            | **`goflag`** (nu)  | **non revendiqué** — voir ci-dessous   |
+| Lib Next          | **`@goflag/next`** | à créer (phase 4)                      |
+| Spec, si extraite | `@goflag/spec`     | seulement si I4 est satisfait          |
+| Scope npm         | `@goflag`          | ✅ revendiqué                          |
+
+**Le nom nu est reporté (2026-07-31).** La première publication devait le
+revendiquer ; elle a échoué en 403. Cause : un _granular access token_ npm ne se
+restreint qu'à des paquets **déjà publiés**, donc le jeton portait le scope
+`@goflag/*` et rien sur `goflag`. Chicken-and-egg — pour autoriser le nom il
+faut l'avoir publié.
+
+Élargir le jeton à « all packages » le temps d'une publication aurait suffi. Le
+choix a été de **publier sous le scope d'abord** et de traiter le nom nu
+ensuite, séparément : le scope est ce qui protège le namespace, le nom nu n'est
+qu'un raccourci de frappe. La commande, elle, s'appelle `goflag` dans les deux
+cas — c'est `bin`, pas le nom du paquet, qui la détermine.
+
+**Ce que ça coûte tant que ce n'est pas fait** : `npx @goflag/cli` au lieu de
+`npx goflag`, et le nom reste prenable par quelqu'un d'autre. À trancher avant
+toute communication publique.
 
 **Le scope plutôt que des tirets.** `goflag-next` laisse n'importe qui publier
 `goflag-ui` et créer la confusion ; `@goflag/*` donne le namespace. Revendiquer

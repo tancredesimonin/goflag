@@ -119,7 +119,7 @@ test:package:
   stage: test
   <<: [*pnpm, *cli_changes]
   script:
-    - pnpm --filter goflag build
+    - pnpm --filter @goflag/cli build
     # `pnpm pack` prints the absolute tarball path as its last line.
     - TARBALL="$(cd packages/cli && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
     - echo "packed $TARBALL"
@@ -165,7 +165,7 @@ publish:npm:
         exit 1
       fi
     - npm config set "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-    - pnpm --filter goflag publish --access public --no-git-checks
+    - pnpm --filter @goflag/cli publish --access public --no-git-checks
 
 # Merging develop into main is the decision to publish. This job turns that
 # merge into a version and a tag; `publish:npm` above turns the tag into a
@@ -205,7 +205,7 @@ release:
         exit 0
       fi
 
-    - pnpm --filter goflag release
+    - pnpm --filter @goflag/cli release
     - VERSION="$(node -p "require('./packages/cli/package.json').version")"
     - echo "releasing v$VERSION"
 
