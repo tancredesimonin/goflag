@@ -1,43 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":automergeMinor",
-    ":automergeDigest",
-    "schedule:nonOfficeHours"
-  ],
-  "platformAutomerge": true,
-  "minimumReleaseAge": "3 days",
-  "pinDigests": true,
-  "postUpdateOptions": ["pnpmDedupe"],
-  "major": {
-    "enabled": false
-  },
-  "packageRules": [
-    {
-      "description": "Group all non-major updates into a single MR",
-      "matchUpdateTypes": ["patch", "minor", "digest"],
-      "groupName": "non-major dependencies",
-      "automerge": true,
-      "automergeType": "branch"
-    },
-    {
-      "description": "Group all devDependencies together",
-      "matchDepTypes": ["devDependencies"],
-      "groupName": "dev dependencies",
-      "automerge": true,
-      "automergeType": "branch"
-    }
-  ],
-  "vulnerabilityAlerts": {
-    "enabled": true,
-    "labels": ["security"],
-    "automerge": true
-  },
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 6am on monday"]
-  },
-  "prConcurrentLimit": 5,
-  "prHourlyLimit": 2
+  "extends": ["gitlab>tancredesimonin-indie/infrastructure:renovate-base"],
+  "baseBranches": ["develop"]
 }
