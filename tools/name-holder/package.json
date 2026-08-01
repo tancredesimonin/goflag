@@ -1,0 +1,26 @@
+{
+  "name": "goflag",
+  "version": "0.0.1",
+  "description": "goflag ships as @goflag/cli — install that instead.",
+  "keywords": [
+    "goflag",
+    "seo",
+    "hreflang",
+    "i18n",
+    "audit"
+  ],
+  "license": "MIT",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "homepage": "https://github.com/tancredesimonin/goflag#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tancredesimonin/goflag.git",
+    "directory": "tools/name-holder"
+  },
+  "bugs": {
+    "url": "https://github.com/tancredesimonin/goflag/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
