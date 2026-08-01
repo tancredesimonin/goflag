@@ -28,7 +28,7 @@ stages:
   - release
 
 variables:
-  PNPM_VERSION: "9.15.0"
+  PNPM_VERSION: "11.18.0"
   CI: "true"
 
 # Jobs that only make sense when the CLI package (or the workspace wiring it
