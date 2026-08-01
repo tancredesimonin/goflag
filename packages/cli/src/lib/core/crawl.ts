@@ -155,8 +155,7 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
     // earlier than every item still in the queue.
     const wave = queue.splice(0, concurrency);
     type WaveResult =
-      | { kind: "ok"; item: QueueItem; page: Page }
-      | { kind: "err"; item: QueueItem; error: string };
+      { kind: "ok"; item: QueueItem; page: Page } | { kind: "err"; item: QueueItem; error: string };
     const inspections: Promise<WaveResult>[] = wave.map(async (item) => {
       try {
         const page = await inspect(item.url, options.inspectOptions);
