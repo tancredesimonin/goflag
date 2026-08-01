@@ -1,0 +1,10 @@
+# Published artefacts live under `packages/`, deployed ones under `apps/`.
+# Keeping them apart means a release script that iterates over packages never
+# picks up the website, and `rules:changes` in CI can key on the distinction.
+#
+# Neither `packages/next` nor `apps/website` exists yet. The globs are ready for
+# them; creating empty stubs for things that do not exist is how a repository
+# accumulates code nobody calls.
+packages:
+  - "packages/*"
+  - "apps/*"

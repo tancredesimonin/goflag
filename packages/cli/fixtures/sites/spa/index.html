@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>React App</title>
+    <script>
+      // Mimics a typical client-rendered SPA: the server ships a placeholder
+      // <head>, then the bundle hydrates real metadata once the document is
+      // ready. A non-JS fetch (curl, Slackbot, our static extractor) sees the
+      // shell above; only Chromium's headless extractor sees the tags below.
+      function hydrate() {
+        document.title = "Tancrede SPA — Hydrated";
+        document.documentElement.lang = "fr";
+
+        const metas = [
+          { name: "description", content: "An SPA whose <head> is built at runtime" },
+          { property: "og:title", content: "Tancrede SPA — Hydrated" },
+          { property: "og:description", content: "Loaded via JS, invisible to non-JS crawlers" },
+          { property: "og:image", content: "https://example.test/og.png" },
+          { property: "og:type", content: "website" },
+          { property: "og:url", content: "https://example.test/" },
+          { property: "og:site_name", content: "Tancrede" },
+          { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:title", content: "Tancrede SPA — Hydrated" },
+          { name: "twitter:image", content: "https://example.test/og.png" },
+        ];
+        for (const m of metas) {
+          const el = document.createElement("meta");
+          if (m.name) el.setAttribute("name", m.name);
+          if (m.property) el.setAttribute("property", m.property);
+          el.setAttribute("content", m.content);
+          document.head.appendChild(el);
+        }
+
+        const links = [
+          { rel: "canonical", href: "https://example.test/" },
+          { rel: "alternate", hreflang: "en", href: "https://example.test/en/" },
+          { rel: "alternate", hreflang: "fr", href: "https://example.test/fr/" },
+          { rel: "alternate", hreflang: "x-default", href: "https://example.test/" },
+        ];
+        for (const l of links) {
+          const el = document.createElement("link");
+          for (const [k, v] of Object.entries(l)) el.setAttribute(k, v);
+          document.head.appendChild(el);
+        }
+
+        const ld = document.createElement("script");
+        ld.type = "application/ld+json";
+        ld.textContent = JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Tancrede",
+          url: "https://example.test/",
+        });
+        document.head.appendChild(ld);
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", hydrate);
+      } else {
+        hydrate();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root">Loading…</div>
+  </body>
+</html>

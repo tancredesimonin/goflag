@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Goflag Demo — Relative Canonical</title>
+    <meta
+      name="description"
+      content="This page is otherwise well-formed but declares a relative canonical URL, which must be flagged as an error."
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Relative canonical: must trip canonical.absolute (error). -->
+    <link rel="canonical" href="/relative-canonical" />
+    <meta property="og:title" content="Goflag Demo — Relative Canonical" />
+    <meta property="og:description" content="Otherwise well-formed, but the canonical is relative." />
+    <meta property="og:image" content="https://demo.example/og.png" />
+  </head>
+  <body>
+    <main>
+      <h1>Relative canonical</h1>
+      <a href="/en">Home</a>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<url>
+<loc>http://localhost:3000/fr</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/blog</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/blog</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/blog</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/blog</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/open-banking/glossary</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/glossary" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/open-banking/glossary</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/glossary" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/open-banking/glossary</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/glossary" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/open-banking/glossary</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/glossary" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/glossary" />
+<lastmod>2026-05-04T05:03:54.976Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/open-banking/stet/1.6.3</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<lastmod>2026-04-28T05:12:13.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/open-banking/stet/1.6.3</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<lastmod>2026-04-28T05:12:13.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/open-banking/stet/1.6.3</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<lastmod>2026-04-28T05:12:13.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/open-banking/stet/1.6.3</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/open-banking/stet/1.6.3" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/open-banking/stet/1.6.3" />
+<lastmod>2026-04-28T05:12:13.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.85</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/blog/architecture-api-dsp2</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog/architecture-api-dsp2" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog/architecture-api-dsp2" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog/architecture-api-dsp2" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog/architecture-api-dsp2" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog/architecture-api-dsp2" />
+<lastmod>2026-04-07T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/blog/comprendre-psd2-visuellement</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/blog/comprendre-psd2-visuellement" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/blog/comprendre-psd2-visuellement" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/blog/comprendre-psd2-visuellement" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/blog/comprendre-psd2-visuellement" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/blog/comprendre-psd2-visuellement" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/cookies</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/cookies" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/cookies" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/cookies" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/cookies" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/cookies" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/legal-notice</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/legal-notice" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/legal-notice" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/legal-notice" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/legal-notice" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/legal-notice" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/en/privacy-policy</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/privacy-policy" />
+<lastmod>2025-11-15T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/cookies</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/cookies" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/cookies" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/cookies" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/cookies" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/cookies" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/legal-notice</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/legal-notice" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/legal-notice" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/legal-notice" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/legal-notice" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/legal-notice" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/es/privacy-policy</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/privacy-policy" />
+<lastmod>2025-11-15T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/cookies</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/cookies" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/cookies" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/cookies" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/cookies" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/cookies" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/legal-notice</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/legal-notice" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/legal-notice" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/legal-notice" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/legal-notice" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/legal-notice" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/fr/privacy-policy</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/privacy-policy" />
+<lastmod>2025-11-15T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/cookies</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/cookies" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/cookies" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/cookies" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/cookies" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/cookies" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/legal-notice</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/legal-notice" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/legal-notice" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/legal-notice" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/legal-notice" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/legal-notice" />
+<lastmod>2026-04-06T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+<url>
+<loc>http://localhost:3000/pt-br/privacy-policy</loc>
+<xhtml:link rel="alternate" hreflang="fr" href="http://localhost:3000/fr/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="en" href="http://localhost:3000/en/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="pt-br" href="http://localhost:3000/pt-br/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="es" href="http://localhost:3000/es/privacy-policy" />
+<xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:3000/fr/privacy-policy" />
+<lastmod>2025-11-15T00:00:00.000Z</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.2</priority>
+</url>
+</urlset>

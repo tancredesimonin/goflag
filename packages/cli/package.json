@@ -1,0 +1,88 @@
+{
+  "name": "@goflag/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A lean CLI that audits a site for broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.",
+  "keywords": [
+    "seo",
+    "hreflang",
+    "i18n",
+    "sitemap",
+    "canonical",
+    "open-graph",
+    "broken-links",
+    "crawler",
+    "audit",
+    "nextjs",
+    "ci"
+  ],
+  "license": "MIT",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "homepage": "https://github.com/tancredesimonin/goflag#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tancredesimonin/goflag.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/tancredesimonin/goflag/issues"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "bin": {
+    "goflag": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist coverage README.md LICENSE",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run src test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:coverage": "vitest run --coverage",
+    "prepack": "node ../../scripts/stage-package-docs.mjs",
+    "prepublishOnly": "pnpm build",
+    "release": "commit-and-tag-version"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.59.1"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.0.1",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^2.1.8",
+    "commit-and-tag-version": "^12.5.0",
+    "hono": "^4.12.25",
+    "playwright": "^1.59.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

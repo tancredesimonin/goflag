@@ -1,0 +1,3 @@
+# Trivy ignore file — add CVE IDs (one per line) to accept specific advisories.
+# Example:
+# CVE-2024-12345

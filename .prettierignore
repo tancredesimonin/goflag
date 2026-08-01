@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+coverage
+pnpm-lock.yaml
+.goflag
+*.min.js
+
+# Author-controlled docs — never auto-format
+**/CHANGELOG.md
+
+# Test fixtures — captured verbatim from real sites and synthetic edge cases;
+# keep byte-for-byte identical. Globbed from any depth so the pattern survives
+# packages moving around the workspace.
+**/fixtures/**
