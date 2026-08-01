@@ -21,12 +21,7 @@ import type { GoflagReport } from "./types";
 
 /** Which part of the report a finding came from. */
 export type FindingKind =
-  | "brokenLink"
-  | "unreachablePage"
-  | "translationHole"
-  | "reciprocity"
-  | "seo"
-  | "site";
+  "brokenLink" | "unreachablePage" | "translationHole" | "reciprocity" | "seo" | "site";
 
 /** One finding, flattened out of its report section for comparison. */
 export interface DiffEntry {
