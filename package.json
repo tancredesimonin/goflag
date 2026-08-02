@@ -5,7 +5,7 @@
   "type": "module",
   "description": "goflag — a CLI that flags the site problems humans can't catch at scale, and the tooling around it.",
   "license": "MIT",
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@11.18.0",
   "engines": {
     "node": ">=20.11"
   },
@@ -16,7 +16,7 @@
     "test:integration": "pnpm -r test:integration",
     "test:coverage": "pnpm -r test:coverage",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -30,11 +30,5 @@
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.62.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "undici": "^7.28.0",
-      "fast-uri": "^3.1.2"
-    }
   }
 }

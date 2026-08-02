@@ -25,10 +25,7 @@
 import type { Page } from "./types";
 
 export type ReciprocityCode =
-  | "missing-back-link"
-  | "self-mismatch"
-  | "x-default-missing"
-  | "locale.invalid";
+  "missing-back-link" | "self-mismatch" | "x-default-missing" | "locale.invalid";
 
 export interface ReciprocityIssue {
   code: ReciprocityCode;

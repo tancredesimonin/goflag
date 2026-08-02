@@ -26,6 +26,24 @@ const chromiumAvailable = (() => {
   }
 })();
 
+/**
+ * The skip is a courtesy to contributors, not a licence for CI to report green
+ * without ever launching a browser. In CI the binary's absence means the image
+ * tag and the resolved Playwright version have drifted apart — a broken pin,
+ * not a missing optional extra — so it fails loudly here instead.
+ *
+ * This is not hypothetical: an automerged dependency bump moved Playwright past
+ * the pinned image, and these three tests skipped silently while the suite
+ * reported success.
+ */
+if (!chromiumAvailable && process.env.CI) {
+  throw new Error(
+    "Chromium is missing in CI. The `playwright` version and the " +
+      "mcr.microsoft.com/playwright image tag in .gitlab-ci.yml must match — " +
+      "check whether one moved without the other.",
+  );
+}
+
 const itIfChromium = chromiumAvailable ? it : it.skip;
 
 describe("inspect against an SPA fixture (real Chromium)", () => {

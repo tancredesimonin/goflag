@@ -10,24 +10,31 @@
 
 ## 0. Où on en est
 
-| Phase                                     | État                                                          |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                               |
-| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)                         |
-| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6)              |
-| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                               |
-| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                                       |
-| **3** — Durcir la spec                    | ⬜ à faire                                                    |
-| **Distribution**                          | ⬜ **prochain blocage** — goflag n'est installable nulle part |
-| **4 à 7** — La lib, le contenu, public    | ⬜ à faire                                                    |
+| Phase                                     | État                                             |
+| ----------------------------------------- | ------------------------------------------------ |
+| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                  |
+| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)            |
+| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6) |
+| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                  |
+| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                          |
+| **Distribution**                          | ✅ livrée — `@goflag/cli@0.1.0` sur npm          |
+| **3** — Durcir la spec                    | ⬜ **prochaine**                                 |
+| **4 à 7** — La lib, le contenu, public    | ⬜ à faire                                       |
 
 **Chiffres actuels** : 516 tests, 12 règles par page + 3 règles site, monorepo
-en place, jamais publié (`0.0.0`).
+en place, publié en `0.1.0`.
 
-**Prochaine action recommandée** : la distribution. goflag est le produit ; un
-produit que personne ne peut installer ne peut être ni adopté ni évalué. Le
-durcissement du catalogue (phase 3) rend la _spec_ publiable, pas l'_outil_ —
-il vient après.
+**Ce que la distribution a appris** : publier par le canal public plutôt que par
+une image privée était le bon choix, et pas pour des raisons de principe. Trois
+défauts n'existaient que sur ce chemin-là et auraient été invisibles depuis une
+image construite dans le monorepo — `playwright` en `optionalDependencies`, donc
+un Chromium imposé à qui ne veut que `--static` ; aucun fichier `LICENSE` malgré
+le badge du README ; et une page npm vide, parce que npm ne lit jamais le README
+au-dessus du répertoire du paquet. D'où `test:package`, qui installe le tarball
+dans un répertoire vierge à chaque MR.
+
+**Prochaine action recommandée** : la phase 3. L'outil est installable et gaté
+en CI ; ce qui manque maintenant, c'est qu'une règle puisse citer sa source.
 
 ---
 
@@ -92,29 +99,35 @@ deux produits indépendants en un bloc.
 
 ### Une marque, des outils nommés
 
-| Rôle              | Nom                | Statut                                 |
-| ----------------- | ------------------ | -------------------------------------- |
-| Analyseur         | **`@goflag/cli`**  | publié ; installe la commande `goflag` |
-| Marque            | **`goflag`** (nu)  | **non revendiqué** — voir ci-dessous   |
-| Lib Next          | **`@goflag/next`** | à créer (phase 4)                      |
-| Spec, si extraite | `@goflag/spec`     | seulement si I4 est satisfait          |
-| Scope npm         | `@goflag`          | ✅ revendiqué                          |
+| Rôle              | Nom                | Statut                                    |
+| ----------------- | ------------------ | ----------------------------------------- |
+| Analyseur         | **`@goflag/cli`**  | ✅ publié · installe la commande `goflag` |
+| Lib Next          | **`@goflag/next`** | à créer (phase 4)                         |
+| Spec, si extraite | `@goflag/spec`     | seulement si I4 est satisfait             |
+| Scope npm         | `@goflag`          | ✅ revendiqué                             |
+| Nom nu `goflag`   | panneau indicateur | `tools/name-holder`, déprécié vers le CLI |
 
-**Le nom nu est reporté (2026-07-31).** La première publication devait le
-revendiquer ; elle a échoué en 403. Cause : un _granular access token_ npm ne se
-restreint qu'à des paquets **déjà publiés**, donc le jeton portait le scope
-`@goflag/*` et rien sur `goflag`. Chicken-and-egg — pour autoriser le nom il
-faut l'avoir publié.
+**Tout vit dans le scope (arbitré 2026-08-01).** Le plan initial faisait du nom
+nu le paquet principal. La publication l'a mis à l'épreuve : trois échecs
+successifs — `403` (un _granular token_ npm ne se restreint qu'à des paquets
+déjà publiés), `EOTP` (publier depuis une CI avec le 2FA sur les écritures),
+`404` (session npm expirée en local). Tous d'authentification, aucun lié au nom.
 
-Élargir le jeton à « all packages » le temps d'une publication aurait suffi. Le
-choix a été de **publier sous le scope d'abord** et de traiter le nom nu
-ensuite, séparément : le scope est ce qui protège le namespace, le nom nu n'est
-qu'un raccourci de frappe. La commande, elle, s'appelle `goflag` dans les deux
-cas — c'est `bin`, pas le nom du paquet, qui la détermine.
+Une fois le diagnostic fait, revenir au nom nu était possible — et a été
+préparé, puis annulé. La raison retenue n'est pas technique : **un seul scope
+est plus simple et plus uniforme**. `@goflag/cli`, `@goflag/next`,
+`@goflag/spec` se lisent comme une famille ; un nom nu à côté de deux paquets
+scopés se lit comme une exception à expliquer. Et `pnpm i @goflag/cli` ne coûte
+rien à personne.
 
-**Ce que ça coûte tant que ce n'est pas fait** : `npx @goflag/cli` au lieu de
-`npx goflag`, et le nom reste prenable par quelqu'un d'autre. À trancher avant
-toute communication publique.
+Le nom nu est quand même publié, en paquet vide qui renvoie vers `@goflag/cli`
+et déprécié dans la foulée : il reste pris, et il pointe vers le bon endroit
+plutôt que vers rien — ou vers quelqu'un d'autre.
+
+**Ce qu'on en retient** : ne pas laisser un obstacle d'outillage décider d'un
+nom de produit. Le renommage a été proposé après deux échecs, avant que le
+diagnostic soit terminé ; il s'est trouvé aller dans la bonne direction, mais
+pour de mauvaises raisons.
 
 **Le scope plutôt que des tirets.** `goflag-next` laisse n'importe qui publier
 `goflag-ui` et créer la confusion ; `@goflag/*` donne le namespace. Revendiquer

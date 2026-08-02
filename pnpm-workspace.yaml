@@ -8,3 +8,31 @@
 packages:
   - "packages/*"
   - "apps/*"
+
+# Hold newly published versions back for three days. This is the layer that actually holds:
+# Renovate exempts security updates from its own minimumReleaseAge, and pnpm does not — it
+# refuses to resolve a version inside the window at all, writes no lockfile, and so fails CI
+# before any automerge can fire. It covers transitive packages, which Renovate never gated,
+# and the weekly lockFileMaintenance run, which Renovate documents as not supporting
+# minimumReleaseAge.
+#
+# It matters more for a published package than for a site: whatever resolves here is what
+# every consumer of @goflag/cli installs.
+minimumReleaseAge: 4320
+
+# Install-time build scripts, denied. pnpm 9 ran every postinstall it found, so unlike the
+# sibling repos this is a real change rather than a restatement of what pnpm already did.
+# Both are dev-only and neither needs its script here: esbuild resolves its native binary
+# through optional platform sub-packages, and msw's postinstall exists to copy a service
+# worker into a browser app's public directory, which a CLI has none of. Denied rather than
+# carried over because the full build, the typecheck and all 516 tests pass without them —
+# the permission was never doing anything.
+allowBuilds:
+  esbuild: false
+  msw: false
+
+# Security floors, moved verbatim from the package.json `pnpm.overrides` block — pnpm 11 no
+# longer reads that field, so leaving them there would have dropped both pins silently.
+overrides:
+  undici: ^7.28.0
+  fast-uri: ^3.1.2
