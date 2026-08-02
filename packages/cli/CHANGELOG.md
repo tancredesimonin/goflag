@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.1.3](https://github.com/tancredesimonin/goflag/compare/v0.1.2...v0.1.3) (2026-08-02)
+
+
+### Bug Fixes
+
+* **ci:** stop the tag pipeline dying on an override with no job left ([5fed36a](https://github.com/tancredesimonin/goflag/commit/5fed36a33f5053c622f2c115140f31e88f2d9e7d))
+* **dist:** drop the ./ from bin, which npm 11 now deletes outright ([d285116](https://github.com/tancredesimonin/goflag/commit/d2851166a4e7171835872bb23cb12a2216f3b986))
+
+
+### Documentation
+
+* **og:** plan OG images as the remedy to a rule we already ship ([80348c4](https://github.com/tancredesimonin/goflag/commit/80348c4121cce737f94d7535cf93ac034c1a282f))
+* refresh AGENTS.md for the monorepo and pnpm 11 ([6f77c79](https://github.com/tancredesimonin/goflag/commit/6f77c79cf086d4c96e1b3c868d6370b70f244651))
+
 ## [0.1.2](https://github.com/tancredesimonin/goflag/compare/v0.1.1...v0.1.2) (2026-08-02)
 
 
