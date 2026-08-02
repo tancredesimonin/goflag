@@ -1,14 +1,29 @@
 # Layer 1 — vulnerability scanning (infrastructure/gitlab-templates)
+#
+# Skipped on tags. A cross-project include is resolved with the permissions of
+# whoever triggered the pipeline, and tags are pushed by the release job's
+# project access token — a bot that is a member of this project and no other,
+# so it cannot read `infrastructure`. The include fails, and the whole pipeline
+# dies at creation with zero jobs, taking `publish:npm` with it.
+#
+# Nothing is lost: these jobs already restrict themselves to merge requests and
+# the default branch, so they would have been filtered out on a tag anyway.
 include:
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-trivy-deps.yml"
+    rules:
+      - if: $CI_COMMIT_TAG == null
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-pnpm-audit.yml"
+    rules:
+      - if: $CI_COMMIT_TAG == null
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-scheduled.yml"
+    rules:
+      - if: $CI_COMMIT_TAG == null
 
 default:
   image: node:24.18.1
