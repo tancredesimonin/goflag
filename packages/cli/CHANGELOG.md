@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.1.1](https://github.com/tancredesimonin/goflag/compare/v0.1.0...v0.1.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* **ci:** keep playwright and its image in lockstep, and fail when they drift ([c637fa0](https://github.com/tancredesimonin/goflag/commit/c637fa039a8a196ba9bf045f4792a64a8aa14778))
+* **ci:** stop the release guard inverting itself on a match ([d597fe5](https://github.com/tancredesimonin/goflag/commit/d597fe5334fdf1953e6252bc7dd863900e247696))
+* **deps:** rebuild the lockfile under the release-age policy ([71cfe99](https://github.com/tancredesimonin/goflag/commit/71cfe99e14cc428a9efba702689bae23364c272e))
+
+
+### Documentation
+
+* **tools:** pin the deprecate command, and say why it is not a one-way door ([d1da97f](https://github.com/tancredesimonin/goflag/commit/d1da97f7d353e4f6b112ba61bd4705a3aa2ac0ab))
+
 ## 0.1.0 (2026-07-31)
 
 First published version. Every entry above this one is generated from commit
