@@ -16,7 +16,7 @@
     "test:integration": "pnpm -r test:integration",
     "test:coverage": "pnpm -r test:coverage",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
