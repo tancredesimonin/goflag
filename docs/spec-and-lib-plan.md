@@ -166,7 +166,10 @@ groupe — et le namespace n'y change rien. Le monorepo, lui, en économise :
 
 **Avant le premier push du miroir** : l'historique complet part sur GitHub, pas
 seulement l'état courant. Contrôlé le 2026-07-29 — seul `.env.example` est
-tracké, aucun `.env` n'a jamais été commité.
+tracké, aucun `.env` n'a jamais été commité. Recontrôlé le 2026-08-02 : toutes
+ses révisions ne contenaient que des placeholders et des valeurs vides. Le
+fichier a été supprimé depuis — il venait du template Next.js d'origine et
+aucune de ses variables n'était lue par le CLI.
 
 **Friction assumée** : un miroir GitHub est en lecture seule, donc les issues
 ouvertes là-bas ne seront pas vues. Bannière explicite dans le README GitHub
