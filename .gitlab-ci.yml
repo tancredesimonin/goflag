@@ -216,10 +216,19 @@ release:
     # A merge to main is not always a release. Docs, chores and refactors are
     # merged too, and publishing on those would spend a version number on
     # nothing — then open a merge request on every consuming site to pin it.
+    #
+    # Written to a file rather than piped into `grep -q`. Under the runner's
+    # `pipefail`, grep exits at the first match, `git log` takes SIGPIPE, and
+    # the pipeline reports 141 — so `if !` reads a match as "found nothing".
+    # That inverts the guard exactly when there is something to release, which
+    # is how v0.1.1 was skipped.
     - LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
     - RANGE="${LAST_TAG:+$LAST_TAG..HEAD}"
+    # Outside the working tree: commit-and-tag-version commits right after, and
+    # a stray file next to package.json is one `git add -A` away from shipping.
+    - git log --format=%B $RANGE > /tmp/release-range.txt
     - |
-      if ! git log --format=%B $RANGE | grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE'; then
+      if ! grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE' /tmp/release-range.txt; then
         echo "No feat/fix/perf/breaking commit since ${LAST_TAG:-the first commit} — nothing to release."
         exit 0
       fi
