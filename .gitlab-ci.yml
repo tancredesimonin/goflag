@@ -101,9 +101,15 @@ test:unit:
 
 test:integration:
   stage: test
-  # Playwright image so Chromium is preinstalled and the headless
-  # integration tests can run without a separate `playwright install`.
-  image: mcr.microsoft.com/playwright:v1.59.1-noble
+  # Playwright image so Chromium is preinstalled and the headless integration
+  # tests can run without a separate `playwright install`.
+  #
+  # This tag and the `playwright` devDependency are one pin in two files and
+  # must move together: the image ships the browser build that one version
+  # expects, and `chromium.executablePath()` points somewhere that does not
+  # exist as soon as they disagree. The dependency is pinned exactly for the
+  # same reason — a caret range silently resolves past the image.
+  image: mcr.microsoft.com/playwright:v1.62.0-noble
   <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:integration
