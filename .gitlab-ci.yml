@@ -1,39 +1,35 @@
 # Layer 1 — vulnerability scanning (infrastructure/gitlab-templates)
 #
-# Skipped on tags. A cross-project include is resolved with the permissions of
-# whoever triggered the pipeline, and tags are pushed by the release job's
-# project access token — a bot that is a member of this project and no other,
-# so it cannot read `infrastructure`. The include fails, and the whole pipeline
-# dies at creation with zero jobs, taking `publish:npm` with it.
+# Skipped on everything the release job pushes. A cross-project include is
+# resolved with the permissions of whoever triggered the pipeline, and the
+# release job pushes the tag, the release commit on main, and the same commit
+# on develop using a project access token — a bot that is a member of this
+# project and no other, so it cannot read `infrastructure`. The include fails
+# and the pipeline dies at creation with zero jobs, `publish:npm` included.
 #
 # Nothing is lost: these jobs already restrict themselves to merge requests and
-# the default branch, so they would have been filtered out on a tag anyway.
+# the default branch, so they were filtered out on those refs anyway.
+#
+# `$CI_COMMIT_MESSAGE` may be unavailable this early. If it is, the condition
+# reads as a non-match and the include is added — which is exactly today's
+# behaviour, so the tag half still holds and nothing regresses.
 include:
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-trivy-deps.yml"
-    rules:
-      - if: $CI_COMMIT_TAG == null
+    rules: &not_a_release_push
+      - if: $CI_COMMIT_TAG == null && $CI_COMMIT_MESSAGE !~ /^chore\(release\)/
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-pnpm-audit.yml"
-    rules:
-      - if: $CI_COMMIT_TAG == null
+    rules: *not_a_release_push
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-scheduled.yml"
-    rules:
-      - if: $CI_COMMIT_TAG == null
+    rules: *not_a_release_push
 
 default:
   image: node:24.18.1
-  cache:
-    key:
-      files:
-        - pnpm-lock.yaml
-    paths:
-      - .pnpm-store
-      - node_modules
 
 stages:
   - install
@@ -66,7 +62,21 @@ variables:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
+# The cache lives here rather than in `default:` on purpose. Every job in this
+# file pulls in this anchor, so they all still get it; the jobs that come from
+# the security include do not, which is what the two `cache: {}` overrides used
+# to say. Those overrides were the bug: on a ref where the include is skipped,
+# they survived as jobs with no `script:`, the config became invalid, and the
+# pipeline died at creation — the same zero-job symptom the include itself
+# caused, one layer down. A job override cannot outlive the job it overrides.
 .pnpm: &pnpm
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+      - node_modules
   before_script:
     - corepack enable
     - corepack prepare pnpm@${PNPM_VERSION} --activate
@@ -268,14 +278,6 @@ release:
         echo "Someone pushed to develop during the release. Merge main into develop by hand." >&2
         exit 1
       fi
-
-# Trivy scans the working dir; disable the cache so only repo sources
-# (incl. pnpm-lock.yaml) are scanned, not cached third-party packages.
-trivy-deps:
-  cache: {}
-
-trivy-scheduled:
-  cache: {}
 
 workflow:
   rules:
