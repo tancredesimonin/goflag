@@ -31,7 +31,7 @@
     "node": ">=20.11"
   },
   "bin": {
-    "goflag": "./dist/cli.js"
+    "goflag": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
