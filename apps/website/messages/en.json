@@ -31,7 +31,8 @@
       "copied": "Copied",
       "expectRed": "Expect it to be red. Almost every site that has never been audited carries a backlog — that is not a reason to wait until it is clean.",
       "docsCta": "Read the docs",
-      "rulesCta": "See all {count} rules"
+      "rulesCta": "See all {count} rules",
+      "workflowLabel": "What it does, in five passes"
     },
     "checks": {
       "title": "Four things, checked properly",

@@ -31,7 +31,8 @@
       "copied": "Copiado",
       "expectRed": "Espere vermelho. Quase todo site que nunca foi auditado carrega um acúmulo de problemas — isso não é motivo para esperar até que ele esteja limpo.",
       "docsCta": "Leia a documentação",
-      "rulesCta": "Veja todas as {count} regras"
+      "rulesCta": "Veja todas as {count} regras",
+      "workflowLabel": "O que ele faz, em cinco passagens"
     },
     "checks": {
       "title": "Quatro coisas, verificadas direito",

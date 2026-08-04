@@ -31,7 +31,8 @@
       "copied": "Copié",
       "expectRed": "Attendez-vous à du rouge. Presque tous les sites qui n’ont jamais été audités traînent une dette — ce n’est pas une raison d’attendre que le site soit propre.",
       "docsCta": "Lire la documentation",
-      "rulesCta": "Voir les {count} règles"
+      "rulesCta": "Voir les {count} règles",
+      "workflowLabel": "Ce qu’il fait, en cinq passes"
     },
     "checks": {
       "title": "Quatre choses, vérifiées correctement",

@@ -374,6 +374,28 @@
   background-size: 3rem 3rem;
 }
 
+/* ── Dot backdrop ──
+ * The grid's counterpart, behind the workflow diagram: dots read as a canvas to
+ * arrange things on, where the grid reads as paper to write on. Tinted with the
+ * brand rather than the border colour, because at 14% it is the one place a wash
+ * of emerald costs nothing — nothing is judged against it. */
+.bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--brand) 14%, transparent) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 1.25rem 1.25rem;
+}
+
+/* A tint reads as texture on white and as nothing on near-black, so the dark
+   mode needs the mix pushed rather than the same value inherited. */
+.dark .bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--brand) 30%, transparent) 1.5px,
+    transparent 1.5px
+  );
+}
+
 /* ── Scroll reveal ──
  * A scroll-driven CSS animation, so there is no client component wrapping the
  * content and therefore no hydration boundary around it — which is what the

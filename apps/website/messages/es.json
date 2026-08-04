@@ -31,7 +31,8 @@
       "copied": "Copiado",
       "expectRed": "Cuente con que salga en rojo. Casi todos los sitios que nunca se han auditado arrastran una deuda acumulada; eso no es motivo para esperar a tenerlo limpio.",
       "docsCta": "Leer la documentación",
-      "rulesCta": "Ver las {count} reglas"
+      "rulesCta": "Ver las {count} reglas",
+      "workflowLabel": "Lo que hace, en cinco pasadas"
     },
     "checks": {
       "title": "Cuatro cosas, comprobadas como es debido",

@@ -5,7 +5,7 @@ import { Checks } from "@/components/home/checks";
 import { Ci } from "@/components/home/ci";
 import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
-import { Hero } from "@/components/home/hero";
+import { HeroWorkflow } from "@/components/home/hero-workflow";
 import { Invisible } from "@/components/home/invisible";
 import { Method } from "@/components/home/method";
 import { NotThis } from "@/components/home/not-this";
@@ -37,7 +37,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <>
-      <Hero />
+      <HeroWorkflow />
       <Checks />
       <Output />
       <Invisible />
