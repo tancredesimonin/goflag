@@ -1,0 +1,122 @@
+---
+title: Running goflag in CI
+description: The two moments worth auditing, the flags that keep a pipeline honest, and ready-made GitLab CI and GitHub Actions jobs.
+navTitle: CI
+group: use
+order: 1
+---
+
+Two moments are worth auditing, and they answer different questions.
+
+| When                 | Against                                     | Answers                              |
+| -------------------- | ------------------------------------------- | ------------------------------------ |
+| On the merge request | The branch's own build, booted by `--start` | Does this change regress?            |
+| After deploying      | The running environment                     | Is what is actually serving correct? |
+
+Neither replaces the other. Only the deployed run sees what the environment
+injects — the real base URL, whatever the proxy serves for `robots.txt`, the
+redirects a CDN adds. Only the merge-request run can block the change before it
+ships.
+
+## The merge-request job
+
+```yaml title=".gitlab-ci.yml"
+seo:
+  stage: test
+  image: node:24-alpine
+  script:
+    - corepack enable && pnpm install --frozen-lockfile
+    - pnpm build
+    - >
+      npx --yes "@goflag/cli@0.1.4" http://localhost:3000
+      --start "pnpm start" --static --no-external
+      --baseline .goflag/baseline.json --regressions-only --max-debt 13
+      --report goflag-report.json
+  artifacts:
+    when: always
+    paths:
+      - goflag-report.json
+    expire_in: 1 week
+```
+
+The same job on GitHub Actions:
+
+```yaml title=".github/workflows/seo.yml"
+name: seo
+on: pull_request
+
+jobs:
+  goflag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: |
+          npx --yes "@goflag/cli@0.1.4" http://localhost:3000 \
+            --start "pnpm start" --static --no-external \
+            --baseline .goflag/baseline.json --regressions-only --max-debt 13
+```
+
+## Why `--start`
+
+`--start` boots the command you give it, waits for the URL to answer, audits,
+then kills the process group on the way out. Any HTTP response counts as up, so a
+server that answers `404` at the root still ends the wait — the alternative is a
+job that hangs for the full `--start-timeout` because the health check was too
+clever.
+
+Use `--start-cwd` when the server has to run from somewhere other than the
+repository root, and raise `--start-timeout` (default `60000` ms) if the build
+warms slowly.
+
+## Why `--static --no-external`
+
+`--static` needs no browser, so the job runs on a plain Node image and cannot be
+slowed — or broken — by a Chromium download. On a server-rendered site it changes
+no finding.
+
+`--no-external` skips off-origin links. Those are the links you cannot fix, and
+their failures are somebody else's outage. A gate that goes red because a third
+party is down teaches people to ignore the gate. Audit external links on a
+schedule instead, where nobody is waiting on the result:
+
+```yaml
+seo:external:
+  rule: schedule
+  script:
+    - npx --yes "@goflag/cli@0.1.4" https://example.com --static --fail-on never --json > links.json
+```
+
+`--fail-on never` collects findings without failing the pipeline, which is what
+you want for a report nobody is blocked on.
+
+## Pin the version
+
+```bash
+npx --yes "@goflag/cli@0.1.4" …
+```
+
+A floating version turns somebody else's release into a red pipeline on a commit
+that touched nothing. Bump it deliberately, read the [changelog](/changelog), and
+re-capture the baseline in the same merge request if the bump moves findings.
+
+## Exit codes
+
+| Code | Meaning                                                                                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | No findings at or above `--fail-on`. Also returned by `--update-baseline`, `--help` and `--version`.                     |
+| `1`  | Findings at or above `--fail-on`, a new regression against a baseline, or `--max-debt` exceeded. This is the gate.       |
+| `2`  | The run itself failed — bad arguments, the entry URL unreachable, `--start` never came up. Not a verdict about the site. |
+
+Treat `2` as a broken job, not as a red site. It means goflag never got to
+judge anything.
+
+## Keep the JSON
+
+`--report <file>` writes the full report next to the pipeline logs. When a gate
+fires three weeks later, the artefact is the difference between "something about
+hreflang" and the exact finding, page and rule.

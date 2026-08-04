@@ -6,6 +6,12 @@ pnpm-lock.yaml
 .goflag
 *.min.js
 
+# Build output and generated sources. Formatting them is churn that never lands
+# in a review, and `.next` alone is large enough to dominate the run.
+.next
+**/.next/**
+**/.content-collections/**
+
 # Author-controlled docs — never auto-format
 **/CHANGELOG.md
 
