@@ -1,12 +1,17 @@
 # Goflag
 
 > **A lean CLI that flags the site problems humans can't catch at scale.**
-> Point it at a URL and get three things: broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.
+> Point it at a URL and get four things: broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.
 
 [![node](https://img.shields.io/badge/node-%3E%3D20.11-339933?logo=nodedotjs&logoColor=white)](./package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
-Goflag crawls a site once and runs three focused static checks over it. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
+Goflag crawls a site once and judges what it found. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
+
+It is built for the mistakes that are invisible while browsing and expensive in
+search: a `hreflang` that points at a 404, a canonical that silently
+de-indexes a page, a `robots.txt` that contradicts every `<meta name="robots">`
+on the site. A human cannot check those on 400 pages. That is the whole job.
 
 ## What it checks
 
@@ -17,43 +22,99 @@ Goflag crawls a site once and runs three focused static checks over it. It is de
 
 Pages that declare a `<link rel="canonical">` pointing at another crawled page are excluded from the checks — the site has said they are duplicates, so linting them would multiply every finding by the number of filtered variants. The count is reported as `diagnostics.duplicatePages`.
 
-SPA support is built in: pages that look client-rendered are re-rendered in headless Chromium automatically (pass `--static` to skip it).
+**Client-rendered pages.** By default, a page whose `<head>` looks empty — no
+title, no description, no canonical, no OG, no JSON-LD — is re-rendered in
+headless Chromium before being judged, so a SPA is not reported as missing
+everything. `--static` turns that off, including the detection: with it, a
+client-rendered page is judged on its unhydrated shell.
 
-## Repository layout
+That direction is deliberate. Static mode over-reports rather than under-reports
+— the metadata is genuinely absent from the HTML a crawler receives — so it
+fails loudly rather than passing quietly. It is also why `--static` is the right
+default in CI: it needs no browser, and it cannot mistake a broken page for a
+fine one.
 
-```
-packages/cli/      @goflag/cli — the CLI (installs the `goflag` command)
-tools/name-holder/ the bare `goflag` name on npm, a signpost to @goflag/cli
-```
-
-That is the whole tree. `@goflag/next` (the Next.js library) and the
-documentation site are planned but deliberately absent: the workspace globs
-(`packages/*`, `apps/*`) are ready for them, and empty stubs for things that do
-not exist are how a repository accumulates code nobody calls.
-
-When they land, they must not import from the CLI: the two products stay
-independently useful, and an ESLint rule enforces it rather than trusting
-memory.
-
-## Quick start
+## Install
 
 Requires Node `>=20.11`.
+
+```sh
+npx @goflag/cli https://example.com          # one-off, nothing installed
+pnpm add -D @goflag/cli                      # then: pnpm goflag https://example.com
+```
+
+Install it as a dev dependency once you run it more than once — in a script, in
+CI, in a git hook. `npx` is for trying it.
+
+The package is `@goflag/cli`; the command it installs is `goflag`. Everything
+under the brand lives in the `@goflag` scope; the bare `goflag` name on npm is a
+deprecated signpost pointing here and carries no code.
+
+Headless rendering needs Chromium, which is **not** installed with goflag —
+`playwright` is an optional peer dependency. Add it only if you audit
+client-rendered pages without `--static`:
+
+```sh
+pnpm add -D playwright && pnpm exec playwright install chromium
+```
+
+## Getting started
+
+Five steps, in this order. Each one is explained in full further down; this is
+the sequence.
+
+**1. Look at your site.** No flags, no gate — find out what is there.
 
 ```sh
 npx @goflag/cli https://example.com
 ```
 
-The package is `@goflag/cli`; the command it installs is `goflag`. Everything
-under the brand lives in the `@goflag` scope. The bare `goflag` name on npm is
-claimed as a deprecated signpost pointing here — it carries no code, so install
-the scoped package. The reasoning is in
-[docs/spec-and-lib-plan.md](docs/spec-and-lib-plan.md#une-marque-des-outils-nommés).
+Expect it to be red. Almost every site that has never been audited has a
+backlog, and that is not a reason to fix everything before continuing.
+
+**2. Decide what is real.** Some findings are deliberate — a legal page that
+exists in one jurisdiction, a route you chose not to translate. Tell goflag,
+rather than living with noise:
+
+```sh
+npx @goflag/cli https://example.com --ignore-holes /legal
+```
+
+**3. Capture a baseline.** This freezes today's findings as "known", so the gate
+can ask _did this change make it worse?_ instead of _is this site perfect?_
+
+```sh
+npx @goflag/cli https://example.com --static --no-external \
+  --baseline .goflag/baseline.json --update-baseline
+```
+
+It prints how many findings it grandfathered and the `--max-debt` to set next.
+Commit `.goflag/baseline.json`.
+
+**4. Gate CI on regressions.** See [In CI](#in-ci) for a job you can copy.
+
+```sh
+goflag https://example.com --static --no-external \
+  --baseline .goflag/baseline.json --regressions-only --max-debt 41
+```
+
+**5. Lower the ratchet.** Fix a finding, drop `--max-debt` by one, commit both.
+This is the only part that makes the backlog shrink; without it a baseline
+fossilises behind a passing build.
+
+Steps 3 to 5 are the whole method. The rest of this README is why each flag
+behaves the way it does.
 
 You get a coloured terminal report and an exit code:
 
 - `0` — clean (green flag)
 - `1` — findings present (yellow/red flag) — use this as a CI gate
 - `2` — fatal error (bad URL, unexpected failure)
+
+## Using it
+
+Everything below is reference: what each flag does and why it behaves that way.
+The five steps above are the path; this is the map.
 
 ### JSON is the source of truth
 
@@ -206,6 +267,117 @@ goflag https://example.com --ignore-holes /legal --ignore-holes "/blog/**"
 Suppressed gaps are counted in `diagnostics.ignoredHoles`, so a quiet report
 never means "nothing was wrong" by accident.
 
+## In CI
+
+Two moments are worth auditing, and they answer different questions.
+
+| When                 | Against                                     | Answers                                  |
+| -------------------- | ------------------------------------------- | ---------------------------------------- |
+| On the merge request | the branch's own build, booted by `--start` | does **this change** regress?            |
+| After deploying      | the running environment                     | is what is **actually serving** correct? |
+
+Neither replaces the other. Only the deployed run sees what the environment
+injects — the real base URL, whatever the proxy serves for `robots.txt`,
+redirects. A canonical broken by a misconfigured environment variable is
+invisible in a local build.
+
+Three rules, whichever you use:
+
+- **Pin the version.** A floating one turns someone else's release into a red
+  pipeline on a commit that touched nothing, and the job is only worth having if
+  red means "you broke something".
+- **Commit the baseline.** Grandfathering a finding then shows up in a diff
+  somebody reviews, instead of vanishing into a cache.
+- **Build the same site the baseline was captured against.** Frameworks bake
+  build-time environment into the output; a build that differs produces
+  differences that are real in the report and meaningless as findings.
+
+### GitLab CI
+
+```yaml
+stages: [build, deploy, audit]
+
+variables:
+  GOFLAG_VERSION: "0.1.4"
+
+# Before the merge: build the branch, let goflag boot it, audit that.
+seo:mr:
+  stage: audit
+  image: node:24-alpine
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+  script:
+    - corepack enable && pnpm install --frozen-lockfile
+    - pnpm build
+    - npx --yes "@goflag/cli@$GOFLAG_VERSION" http://localhost:3000
+      --start "pnpm start" --static --no-external
+      --baseline .goflag/baseline.json --regressions-only --max-debt 41
+  artifacts:
+    when: always
+    paths: [goflag-report.json]
+
+# After the deploy: audit what is serving.
+seo:
+  stage: audit
+  image: node:24-alpine
+  needs: [{ job: deploy, artifacts: false }]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  script:
+    - npx --yes "@goflag/cli@$GOFLAG_VERSION" https://develop.example.com
+      --static --no-external
+      --baseline .goflag/baseline.json --regressions-only --max-debt 41
+      --report goflag-report.json
+  artifacts:
+    when: always
+    paths: [goflag-report.json]
+```
+
+### GitHub Actions
+
+```yaml
+name: seo
+on: [pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: |
+          npx --yes @goflag/cli@0.1.4 http://localhost:3000 \
+            --start "pnpm start" --static --no-external \
+            --baseline .goflag/baseline.json --regressions-only --max-debt 41
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goflag-report
+          path: goflag-report.json
+```
+
+### Why `--static --no-external` in CI
+
+`--static` needs no browser, so the job runs on a plain Node image and cannot
+be slowed by a Chromium download. `--no-external` skips off-origin links, which
+are the ones you cannot fix and whose failures are somebody else's outage — a
+gate that goes red because a third party is down teaches people to ignore it.
+
+Audit external links on a schedule instead, where nobody is waiting.
+
+### Reading a red build
+
+The report artefact is the thing to open. It is the same JSON as `--json`, and
+it is kept whether the job passed or failed, because it is most wanted when it
+is red.
+
+If the finding is one you have decided to accept, refresh the baseline with the
+same command minus `--regressions-only`, plus `--update-baseline`. It will tell
+you what it accepted, and that number belongs in the commit message.
+
 ## Programmatic API
 
 ```ts
@@ -216,6 +388,22 @@ console.log(report.summary); // { brokenLinks, missingTranslations, seoIssues, v
 ```
 
 `runAudit` returns the same `GoflagReport` object the CLI emits.
+
+## Repository layout
+
+```
+packages/cli/      @goflag/cli — the CLI (installs the `goflag` command)
+tools/name-holder/ the bare `goflag` name on npm, a signpost to @goflag/cli
+```
+
+That is the whole tree. `@goflag/next` (the Next.js library) and the
+documentation site are planned but deliberately absent: the workspace globs
+(`packages/*`, `apps/*`) are ready for them, and empty stubs for things that do
+not exist are how a repository accumulates code nobody calls.
+
+When they land, they must not import from the CLI: the two products stay
+independently useful, and an ESLint rule enforces it rather than trusting
+memory.
 
 ## Develop locally
 

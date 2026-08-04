@@ -3,7 +3,8 @@
 ## What this is
 
 Goflag is a **Node/TypeScript CLI**. It crawls a site and reports broken links,
-missing translation pages, and missing/misconfigured SEO metadata. The JSON
+missing translation pages, a robots.txt that contradicts the pages it serves,
+and missing or misconfigured SEO metadata. The JSON
 report is the source of truth. There is no web app and no browser UI here.
 
 The repository is a pnpm workspace (`packages/*`, `apps/*`). Today the only
