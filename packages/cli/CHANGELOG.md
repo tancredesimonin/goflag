@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.1.4](https://github.com/tancredesimonin/goflag/compare/v0.1.3...v0.1.4) (2026-08-04)
+
+
+### Features
+
+* **cli:** capture a baseline with the command that will judge it ([bfbebca](https://github.com/tancredesimonin/goflag/commit/bfbebcad009c33bcb78a7a2822eacb8883e84e52))
+
+
+### Bug Fixes
+
+* **ci:** release only when the published surface moved ([919b590](https://github.com/tancredesimonin/goflag/commit/919b59051a66c09ddef48a6b16f9534b0b9a8666))
+
+
+### Documentation
+
+* correct the README for the monorepo and the published name ([e50ce53](https://github.com/tancredesimonin/goflag/commit/e50ce53c85d6ebfcd44235439e6bcc85045e7207))
+* **plan:** record how distribution actually shipped ([5315126](https://github.com/tancredesimonin/goflag/commit/5315126cbadc598c0f2f4042cf94b44a072f61a4))
+
 ## [0.1.3](https://github.com/tancredesimonin/goflag/compare/v0.1.2...v0.1.3) (2026-08-02)
 
 
