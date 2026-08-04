@@ -82,6 +82,8 @@ The terminal view is just a render of that JSON.
 --regressions-only     Weaken the gate: fail only on NEW findings relative
                        to --baseline. Requires --baseline.
 --baseline <file>      Stored report to compare against.
+--update-baseline      Write this run to --baseline and exit 0, instead of
+                       judging against it.
 --max-debt <n>         Fail when the site carries more than <n> findings in
                        total, new or known.
 --start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
@@ -106,7 +108,7 @@ yet — so it gets switched off, or ignored. Capture a baseline once and gate on
 "did this change make it worse?" instead:
 
 ```sh
-goflag https://example.com --report baseline.json --json          # once
+goflag https://example.com --baseline baseline.json --update-baseline   # once
 goflag https://example.com --regressions-only --baseline baseline.json
 ```
 
@@ -135,6 +137,28 @@ goflag https://example.com --regressions-only --baseline baseline.json --max-deb
 
 Keeping `baseline.json` in the repository helps for the same reason: adding a
 finding to it then shows up in a diff someone reviews.
+
+Capture it with the run that will later judge it, minus one flag:
+
+```sh
+goflag https://example.com --baseline baseline.json --update-baseline
+```
+
+That matters more than it looks. A baseline captured with different options than
+the gate — a forgotten `--static`, another `--max-pages` — does not compare
+cleanly, and the mismatch surfaces as findings that appear from nowhere. Using
+the same command for both makes that impossible.
+
+The same flag accepts findings you have decided to live with, and it says what
+it accepted:
+
+```
+goflag: baseline updated — 3 newly accepted, 0 resolved, 44 findings now
+grandfathered in baseline.json
+```
+
+Refreshing a baseline is taking on debt. It prints the number so the commit that
+does it can be read as what it is.
 
 ### Gate a merge before it ships
 

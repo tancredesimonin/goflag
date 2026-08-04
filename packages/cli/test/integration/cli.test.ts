@@ -198,6 +198,42 @@ describe("goflag CLI — --baseline", () => {
     "en,fr,de",
   ];
 
+  it("captures a baseline that a later run then passes against", async () => {
+    // The capture path: no file yet, so there is nothing to compare against and
+    // nothing to judge. It writes, says what it grandfathered, and exits 0.
+    const file = join(dir, "captured.json");
+    const captured = await runCli([...auditArgs(), "--baseline", file, "--update-baseline"]);
+    expect(captured.status).toBe(0);
+    expect(captured.stdout).toContain("baseline captured");
+    expect(captured.stdout).toContain("--max-debt");
+
+    const written = JSON.parse(readFileSync(file, "utf8")) as GoflagReport;
+    expect(written.seoIssues.length).toBeGreaterThan(0);
+
+    // And it is a real baseline, not just a file: the gate accepts it.
+    const gated = await runCli([...auditArgs(), "--regressions-only", "--baseline", file]);
+    expect(gated.status).toBe(0);
+  }, 60_000);
+
+  it("says what it accepted when refreshing an existing baseline", async () => {
+    // Refreshing is accepting. A counter that drops without explanation reads
+    // as "the problem went away", which is the failure the baseline exists to
+    // prevent — so the second write has to account for itself.
+    const file = join(dir, "refreshed.json");
+    await runCli([...auditArgs(), "--baseline", file, "--update-baseline"]);
+
+    const refreshed = await runCli([...auditArgs(), "--baseline", file, "--update-baseline"]);
+    expect(refreshed.status).toBe(0);
+    expect(refreshed.stdout).toContain("baseline updated");
+    expect(refreshed.stdout).toContain("0 newly accepted");
+  }, 60_000);
+
+  it("refuses --update-baseline without a file to write to", async () => {
+    const orphan = await runCli([...auditArgs(), "--update-baseline"]);
+    expect(orphan.status).toBe(2);
+    expect(orphan.stderr).toContain("needs a --baseline");
+  }, 60_000);
+
   it("exits 0 against its own baseline, however many findings there are", async () => {
     // The whole reason the flag exists: a known backlog must not block a merge
     // that does not add to it. A plain run of this same site exits 1.
