@@ -4,7 +4,10 @@ import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/fixtures/**"],
+    // `.claude/worktrees` holds full copies of this repository, so linting it
+    // reports the same file twice — and reports it wrongly, since the path no
+    // longer matches the `scripts/**` override below. Git already excludes it.
+    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/fixtures/**", ".claude/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

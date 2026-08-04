@@ -1,6 +1,6 @@
 # goflag — Plan de développement
 
-> **Rédigé** 2026-07-29 · **Mis à jour** 2026-07-30
+> **Rédigé** 2026-07-29 · **Mis à jour** 2026-08-02
 > **Portée** — `goflag` (le produit), `@goflag/next` (un second outil sous la
 > même marque), et les 4 sites qui servent de terrain : `openfinanceguide`,
 > `stereo-house`, `tancrede`, `tancredo`.
@@ -17,24 +17,27 @@
 | **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6) |
 | **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                  |
 | **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                          |
-| **Distribution**                          | ✅ livrée — `@goflag/cli@0.1.0` sur npm          |
+| **Distribution**                          | ✅ livrée — `@goflag/cli@0.1.3` sur npm          |
 | **3** — Durcir la spec                    | ⬜ **prochaine**                                 |
 | **4 à 7** — La lib, le contenu, public    | ⬜ à faire                                       |
 
 **Chiffres actuels** : 516 tests, 12 règles par page + 3 règles site, monorepo
-en place, publié en `0.1.0`.
+en place, publié en `0.1.3`. Release et publication automatisées, sans aucune
+credential npm en CI — voir §2, « Distribution ».
 
-**Ce que la distribution a appris** : publier par le canal public plutôt que par
-une image privée était le bon choix, et pas pour des raisons de principe. Trois
-défauts n'existaient que sur ce chemin-là et auraient été invisibles depuis une
-image construite dans le monorepo — `playwright` en `optionalDependencies`, donc
-un Chromium imposé à qui ne veut que `--static` ; aucun fichier `LICENSE` malgré
-le badge du README ; et une page npm vide, parce que npm ne lit jamais le README
-au-dessus du répertoire du paquet. D'où `test:package`, qui installe le tarball
-dans un répertoire vierge à chaque MR.
+### Ce qu'il reste à faire, dans l'ordre
 
-**Prochaine action recommandée** : la phase 3. L'outil est installable et gaté
-en CI ; ce qui manque maintenant, c'est qu'une règle puisse citer sa source.
+| #   | Quoi                                                                                                                        | Qui                                                                             |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 1   | `GOFLAG_VERSION` de stereo-house à `0.1.3` — la CI y épingle encore `0.1.0`, dont le `bin` est cassé                        | Renovate le proposera sous 3 jours (plancher `minimumReleaseAge`), ou à la main |
+| 2   | Capturer la baseline de stereo-house : le premier audit publie `goflag-report.json`, à committer en `.goflag/baseline.json` | après le premier `deploy-develop`                                               |
+| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                                                            | voir §2, « Dette laissée derrière »                                             |
+| 4   | Étendre le gate aux 3 autres sites                                                                                          | après la baseline de stereo-house                                               |
+| 5   | **Phase 3** — `rigor` et `Source` par règle, `goflag rules --json`                                                          | le vrai travail suivant                                                         |
+
+Les points 1 à 4 sont de la finition sur ce qui vient d'être livré. **Le travail
+qui compte est la phase 3** : l'outil est installable et gaté en CI ; ce qui
+manque, c'est qu'une règle puisse citer sa source.
 
 ---
 
@@ -166,7 +169,10 @@ groupe — et le namespace n'y change rien. Le monorepo, lui, en économise :
 
 **Avant le premier push du miroir** : l'historique complet part sur GitHub, pas
 seulement l'état courant. Contrôlé le 2026-07-29 — seul `.env.example` est
-tracké, aucun `.env` n'a jamais été commité.
+tracké, aucun `.env` n'a jamais été commité. Recontrôlé le 2026-08-02 : toutes
+ses révisions ne contenaient que des placeholders et des valeurs vides. Le
+fichier a été supprimé depuis — il venait du template Next.js d'origine et
+aucune de ses variables n'était lue par le CLI.
 
 **Friction assumée** : un miroir GitHub est en lecture seule, donc les issues
 ouvertes là-bas ne seront pas vues. Bannière explicite dans le README GitHub
@@ -190,22 +196,78 @@ consommateur externe de `@goflag/next`** — et goflag pourra l'auditer dans sa
 propre CI. Les deux outils s'exercent l'un l'autre sur quelque chose de réel qui
 n'est pas un site client.
 
-### Distribution — le blocage actuel
+### Distribution — livrée par npm, pas par une image
 
-goflag n'est **installable nulle part** : `private: true`, `bin` pointe sur
-`dist/`, `dist/` est gitignoré, aucun script `prepare`.
+**Arbitré 2026-07-31.** Le tableau qui suivait comparait une image Docker à un
+template clone-and-build. npm n'y figurait pas, parce qu'au moment de l'écrire
+goflag n'était publiable nulle part — la comparaison est devenue caduque le jour
+où on a décidé de publier.
 
-|                                  |                                                                                                                                                                                                                              |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. Image Docker** (recommandé) | Un job de la CI de goflag pousse `registry.gitlab.com/…/goflag:x.y.z` ; les sites l'utilisent comme `image:`. **C'est le pattern déjà en place** pour Trivy (`image: aquasec/trivy:0.59.1`). Jobs rapides, version épinglée. |
-| B. Template clone-and-build      | Zéro infrastructure, mais ~1–2 min de `clone + install + build` à chaque job, sur chaque site. Bon pour essayer, mauvais à garder.                                                                                           |
+Ce qui a tranché n'est pas le coût CI mais le dogfooding : **une image
+construite depuis ce monorepo ne prouve rien de ce qu'un utilisateur reçoit.**
+`dist/` y est parce qu'on vient de le builder, les dépendances résolvent parce
+que le workspace est là. Rien n'y teste `files`, `bin`, `exports`, ni la
+résolution depuis un vrai `node_modules`.
 
-Le template partagé va dans `infrastructure/gitlab-templates/`, que les 4 sites
-incluent déjà.
+Ce n'était pas théorique. Trois défauts n'existaient que sur le chemin public :
 
-**Répartition** — le code (Dockerfile, job de publication, lever
-`private: true`) est faisable ici ; revendiquer `@goflag`, créer le miroir
-GitHub et poser le token npm passent par les comptes de l'auteur.
+| Défaut                                 | Conséquence                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `playwright` en `optionalDependencies` | npm les installe par défaut, et son postinstall télécharge Chromium — imposé à qui ne veut que `--static` |
+| Aucun fichier `LICENSE`                | le badge MIT du README mentait depuis le premier commit                                                   |
+| README hors du répertoire du paquet    | npm ne regarde jamais au-dessus : la page npm serait partie vide                                          |
+
+D'où **`test:package`** : `pnpm pack`, installation du tarball dans un
+répertoire vierge **avec npm**, et vérification que Chromium reste dehors et que
+le binaire répond. À chaque MR.
+
+### La chaîne de release
+
+```
+merge develop → main
+  → job `release`   calcule la version, écrit le changelog, tague,
+                    repousse le commit sur main ET develop
+  → pipeline du tag → `publish:npm` échange un jeton OIDC contre le droit
+                      de publier ce seul paquet
+  → npm
+```
+
+Merger sur `main` **est** la décision de publier : c'est déjà le geste qui veut
+dire « ça part » sur les 4 sites. Rien à lancer depuis un portable, et **aucune
+credential npm en CI** — le trusted publisher npm reconnaît le projet et le
+chemin du fichier CI, et GitLab forge un jeton de quelques minutes. Il n'y a
+plus rien à voler, à faire tourner, ni qui survive à une fuite.
+
+### Ce que la première publication a coûté
+
+Quatre défauts, chacun caché derrière le précédent, tous invisibles autrement
+qu'en publiant pour de vrai :
+
+| #   | Défaut                                                                                                      | Pourquoi il ne se voyait pas                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | Le garde de release s'inversait : `git log \| grep -q` sous `pipefail`, SIGPIPE lu comme « rien à publier » | Il échoue **quand il y a quelque chose à publier** ; les deux essais précédents avaient un intervalle vide          |
+| 2   | Le pipeline de tag mourait à la création : `include: project:` irrésoluble pour le bot du jeton de projet   | Zéro job, aucune erreur YAML — indiscernable d'un filtrage de règles                                                |
+| 3   | Puis la surcharge `trivy-deps` orpheline, une fois l'include sauté                                          | Même symptôme que le n°2, une couche plus bas                                                                       |
+| 4   | `bin: "./dist/cli.js"` — npm 11 le **supprime** au lieu de le normaliser                                    | `test:package` teste le tarball qu'on empaquette ; npm réécrit `package.json` à la publication, pas à l'empaquetage |
+
+Le n°4 est le pire : la publication aurait livré un CLI **sans commande**, et
+rien dans le pipeline ne l'aurait vu.
+
+**La leçon commune** — un pipeline vert ne dit pas qu'une chaîne fonctionne,
+seulement qu'elle n'a pas été exercée. Trois de ces quatre défauts vivaient
+depuis des jours dans une CI verte.
+
+### Dette laissée derrière
+
+- **Le garde de release se déclenche sur le préfixe du commit**, pas sur ce qui
+  a bougé dans le paquet. Un `fix(ci)` consomme donc un numéro de version et
+  ouvre une MR Renovate sur chaque site consommateur — exactement ce que le
+  commentaire du garde dit vouloir éviter. À conditionner sur `packages/cli/src`.
+- **Rien ne vérifie le paquet _publié_.** `test:package` s'arrête au tarball
+  local. Une assertion post-publication sur les métadonnées du registre aurait
+  attrapé le n°4.
+- `v0.1.1` et `v0.1.2` sont tagués et non publiés. npm lit `0.1.0 → 0.1.3` ;
+  un trou est sans conséquence.
 
 ---
 
@@ -450,12 +512,12 @@ entrant ne le traite. Si Vercel rend le markdown natif, cette phase se réduit �
 
 ## Phase 7 — Public ⬜
 
-| #   | Livrable                                            |
-| --- | --------------------------------------------------- |
-| 7.1 | Miroir GitHub public + bannière « issues → GitLab » |
-| 7.2 | `goflag` publié sur npm (`private: true` levé)      |
-| 7.3 | Scope `@goflag` revendiqué                          |
-| 7.4 | README qui met la spec en avant autant que le code  |
+| #   | Livrable                                                             |
+| --- | -------------------------------------------------------------------- |
+| 7.1 | Miroir GitHub public + bannière « issues → GitLab »                  |
+| 7.2 | ✅ `@goflag/cli` publié sur npm, release et publication automatisées |
+| 7.3 | ✅ Scope `@goflag` revendiqué, nom nu tenu en panneau indicateur     |
+| 7.4 | README qui met la spec en avant autant que le code                   |
 
 **Critère de sortie** — un lecteur externe peut, en 10 minutes : lire la spec,
 lancer goflag sur son propre site, voir ses findings.
@@ -503,7 +565,6 @@ refus du vert en mode régression.
 | `lib/stet`              | Publier les ~2 150 lignes de conversion OpenAPI ? Le moat est le contenu, pas le convertisseur | phase 7                                    |
 | Paquet `spec`           | Extraire de goflag, ou laisser dedans ?                                                        | quand les tests de la lib l'importent (I4) |
 | `fix-my-youtube-links`  | Migrer un jour, ou jamais ?                                                                    | après la phase 5                           |
-| Distribution            | Image Docker (A) ou clone-and-build (B) — voir §2                                              | avant de brancher la CI d'un site          |
 | Mode local ciblé        | « audite ces URLs sans crawler » — seulement si le `pnpm seo` manuel n'est pas lancé           | après un mois d'usage réel                 |
 
 ---

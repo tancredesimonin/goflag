@@ -258,6 +258,31 @@ release:
         exit 0
       fi
 
+    # And the commit type is not enough. `fix(ci)` and `fix(deps)` are honest
+    # conventional-commit fixes that change nothing a consumer can install —
+    # three of the four versions tagged on 2026-08-02 were exactly that, each
+    # spending a number and queueing a merge request on every consuming site.
+    #
+    # So: did the published surface move? That is `src`, the manifest, and the
+    # two files `prepack` stages into the tarball. `dist/` is not listed
+    # because it is built from `src` and never committed.
+    #
+    # Skipped when no tag exists: the first release has nothing to diff against
+    # and should always go out.
+    - |
+      if [ -n "$LAST_TAG" ]; then
+        git diff --name-only "$LAST_TAG..HEAD" -- \
+          packages/cli/src packages/cli/package.json README.md LICENSE \
+          > /tmp/release-paths.txt
+        if [ ! -s /tmp/release-paths.txt ]; then
+          echo "Nothing under the published surface changed since $LAST_TAG — nothing to release."
+          echo "(src, package.json, README, LICENSE — the files that reach the tarball)"
+          exit 0
+        fi
+        echo "published surface changed:"
+        sed 's/^/  /' /tmp/release-paths.txt
+      fi
+
     - pnpm --filter @goflag/cli release
     - VERSION="$(node -p "require('./packages/cli/package.json').version")"
     - echo "releasing v$VERSION"

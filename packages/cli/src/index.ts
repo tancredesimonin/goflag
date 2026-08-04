@@ -1,7 +1,7 @@
 /**
  * Programmatic API for goflag.
  *
- *   import { runAudit } from "goflag";
+ *   import { runAudit } from "@goflag/cli";
  *   const report = await runAudit("https://example.com");
  *
  * `runAudit` returns a `GoflagReport` — the same JSON the CLI emits.

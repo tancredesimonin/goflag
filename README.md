@@ -3,7 +3,7 @@
 > **A lean CLI that flags the site problems humans can't catch at scale.**
 > Point it at a URL and get three things: broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.
 
-[![node](https://img.shields.io/badge/node-%3E%3D20.11-339933?logo=nodedotjs&logoColor=white)](./.nvmrc)
+[![node](https://img.shields.io/badge/node-%3E%3D20.11-339933?logo=nodedotjs&logoColor=white)](./package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
 Goflag crawls a site once and runs three focused static checks over it. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
@@ -23,12 +23,17 @@ SPA support is built in: pages that look client-rendered are re-rendered in head
 
 ```
 packages/cli/      @goflag/cli — the CLI (installs the `goflag` command)
-packages/next/     @goflag/next — the Next.js library (not built yet)
-apps/website/      documentation and marketing site (not built yet)
+tools/name-holder/ the bare `goflag` name on npm, a signpost to @goflag/cli
 ```
 
-The library and the apps must not import from the CLI: the two products stay
-independently useful, and a lint rule enforces it rather than trusting memory.
+That is the whole tree. `@goflag/next` (the Next.js library) and the
+documentation site are planned but deliberately absent: the workspace globs
+(`packages/*`, `apps/*`) are ready for them, and empty stubs for things that do
+not exist are how a repository accumulates code nobody calls.
+
+When they land, they must not import from the CLI: the two products stay
+independently useful, and an ESLint rule enforces it rather than trusting
+memory.
 
 ## Quick start
 
@@ -38,8 +43,10 @@ Requires Node `>=20.11`.
 npx @goflag/cli https://example.com
 ```
 
-The package is `@goflag/cli`; the command it installs is `goflag`. The bare
-`goflag` name on npm is not claimed yet — see the note in
+The package is `@goflag/cli`; the command it installs is `goflag`. Everything
+under the brand lives in the `@goflag` scope. The bare `goflag` name on npm is
+claimed as a deprecated signpost pointing here — it carries no code, so install
+the scoped package. The reasoning is in
 [docs/spec-and-lib-plan.md](docs/spec-and-lib-plan.md#une-marque-des-outils-nommés).
 
 You get a coloured terminal report and an exit code:
@@ -75,6 +82,8 @@ The terminal view is just a render of that JSON.
 --regressions-only     Weaken the gate: fail only on NEW findings relative
                        to --baseline. Requires --baseline.
 --baseline <file>      Stored report to compare against.
+--update-baseline      Write this run to --baseline and exit 0, instead of
+                       judging against it.
 --max-debt <n>         Fail when the site carries more than <n> findings in
                        total, new or known.
 --start <cmd>          Boot <cmd>, wait for <url>, audit, then stop it.
@@ -90,7 +99,7 @@ The terminal view is just a render of that JSON.
 -v, --version          Show the version.
 ```
 
-Headless mode needs Chromium. It ships as an optional dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+Headless mode needs Chromium. `playwright` is an optional peer dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
 
 ### Gate on regressions, not on perfection
 
@@ -99,7 +108,7 @@ yet — so it gets switched off, or ignored. Capture a baseline once and gate on
 "did this change make it worse?" instead:
 
 ```sh
-goflag https://example.com --report baseline.json --json          # once
+goflag https://example.com --baseline baseline.json --update-baseline   # once
 goflag https://example.com --regressions-only --baseline baseline.json
 ```
 
@@ -128,6 +137,28 @@ goflag https://example.com --regressions-only --baseline baseline.json --max-deb
 
 Keeping `baseline.json` in the repository helps for the same reason: adding a
 finding to it then shows up in a diff someone reviews.
+
+Capture it with the run that will later judge it, minus one flag:
+
+```sh
+goflag https://example.com --baseline baseline.json --update-baseline
+```
+
+That matters more than it looks. A baseline captured with different options than
+the gate — a forgotten `--static`, another `--max-pages` — does not compare
+cleanly, and the mismatch surfaces as findings that appear from nowhere. Using
+the same command for both makes that impossible.
+
+The same flag accepts findings you have decided to live with, and it says what
+it accepted:
+
+```
+goflag: baseline updated — 3 newly accepted, 0 resolved, 44 findings now
+grandfathered in baseline.json
+```
+
+Refreshing a baseline is taking on debt. It prints the number so the commit that
+does it can be read as what it is.
 
 ### Gate a merge before it ships
 
@@ -178,7 +209,7 @@ never means "nothing was wrong" by accident.
 ## Programmatic API
 
 ```ts
-import { runAudit } from "goflag";
+import { runAudit } from "@goflag/cli";
 
 const report = await runAudit("https://example.com", { depth: 2 });
 console.log(report.summary); // { brokenLinks, missingTranslations, seoIssues, verdict }
@@ -187,6 +218,9 @@ console.log(report.summary); // { brokenLinks, missingTranslations, seoIssues, v
 `runAudit` returns the same `GoflagReport` object the CLI emits.
 
 ## Develop locally
+
+Requires pnpm `11.18.0` (pinned via `packageManager` — `corepack enable` picks
+it up). Run these from the repository root:
 
 ```sh
 pnpm install
@@ -200,7 +234,11 @@ pnpm typecheck                 # tsc --noEmit
 pnpm format                    # prettier
 ```
 
-The engine is framework-agnostic and lives in [`src/lib/core/`](src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`src/lib/rules/`](src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`src/report/`](src/report) and [`src/cli.ts`](src/cli.ts).
+`lint`, `format` and `format:check` run once over the whole repository; the
+rest fan out across workspace packages with `pnpm -r`. To work on one package,
+filter: `pnpm --filter @goflag/cli test`.
+
+The engine is framework-agnostic and lives in [`packages/cli/src/lib/core/`](packages/cli/src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`packages/cli/src/lib/rules/`](packages/cli/src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`packages/cli/src/report/`](packages/cli/src/report) and [`packages/cli/src/cli.ts`](packages/cli/src/cli.ts).
 
 ## License
 
