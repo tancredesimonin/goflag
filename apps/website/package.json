@@ -9,7 +9,7 @@
     "start": "next start --port 3004",
     "clean": "rm -rf .next .content-collections",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "content-collections build && tsc --noEmit",
     "build:local-origin": "APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 next build",
     "seo": "pnpm build:local-origin && pnpm --filter @goflag/cli dev http://localhost:3004 --start \"APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 pnpm --filter @goflag/website start\" --static --no-external --depth 3 --locales en,fr,es,pt-br --ignore-holes /docs --ignore-holes \"/docs/**\""
   },

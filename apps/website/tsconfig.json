@@ -17,6 +17,11 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
+      // Generated, gitignored, and written as a side effect of `next dev` /
+      // `next build`. So the `typecheck` script runs `content-collections build`
+      // first: without it, a fresh clone resolves this alias to nothing, every
+      // consumer of `allDocs` degrades to `any`, and `tsc` fails on a machine
+      // that has never started the dev server — which is every CI runner.
       "content-collections": ["./.content-collections/generated"]
     }
   },
