@@ -48,3 +48,16 @@ allowBuilds:
 overrides:
   undici: ^7.28.0
   fast-uri: ^3.1.2
+
+  # Both arrived with `apps/website`, and both are Next's own pins rather than
+  # anything we asked for: it depends on `postcss` at exactly 8.4.31 and resolves
+  # `sharp` to 0.34.x, which are the three `high` advisories that
+  # `pnpm audit --prod --audit-level=high` fails the pipeline on. The patched
+  # versions were already in the tree for our own use, so the lockfile carried the
+  # fixed and the vulnerable copy of each side by side.
+  #
+  # postcss is a minor bump inside the range everything else already accepts.
+  # sharp crosses a minor, which would be worth more care if anything used it —
+  # it exists only for `next/image`, which this site never imports.
+  postcss: ^8.5.18
+  sharp: ^0.35.0
