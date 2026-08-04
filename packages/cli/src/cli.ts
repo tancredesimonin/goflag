@@ -96,17 +96,48 @@ async function main(): Promise<number> {
   // A baseline changes the question from "is this site clean?" to "did this
   // change make it worse?" — the only one a site with a backlog can answer.
   if (args.baseline) {
-    try {
-      const { readFileSync } = await import("node:fs");
-      const baseline = JSON.parse(readFileSync(args.baseline, "utf8"));
-      report.diff = diffReports(baseline, report);
-    } catch (err) {
-      // Silently continuing would turn a typo'd path into a green build.
-      process.stderr.write(
-        `goflag: could not read baseline ${args.baseline}: ${(err as Error).message}\n`,
-      );
-      return 2;
+    const { existsSync, readFileSync } = await import("node:fs");
+    // Capturing a baseline for the first time is the one case where the file
+    // is legitimately absent. Everywhere else a missing baseline is a typo,
+    // and continuing would turn it into a green build.
+    if (existsSync(args.baseline) || !args.updateBaseline) {
+      try {
+        const baseline = JSON.parse(readFileSync(args.baseline, "utf8"));
+        report.diff = diffReports(baseline, report);
+      } catch (err) {
+        process.stderr.write(
+          `goflag: could not read baseline ${args.baseline}: ${(err as Error).message}\n`,
+        );
+        return 2;
+      }
     }
+  }
+
+  // Writing the baseline is accepting everything in it. The one thing this
+  // must not do is accept it quietly: a counter that drops without explanation
+  // reads as "the problem went away".
+  if (args.updateBaseline && args.baseline) {
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(args.baseline, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    const total = totalFindings(report);
+    if (report.diff) {
+      const { added, resolved } = report.diff;
+      process.stdout.write(
+        `goflag: baseline updated — ${added.length} newly accepted, ${resolved.length} resolved, ` +
+          `${total} findings now grandfathered in ${args.baseline}\n`,
+      );
+      if (added.length > 0) {
+        process.stdout.write(`${renderDiffTerminal(report.diff, { color: args.color })}\n`);
+      }
+    } else {
+      process.stdout.write(
+        `goflag: baseline captured — ${total} findings grandfathered in ${args.baseline}\n`,
+      );
+    }
+    process.stdout.write(
+      `goflag: set --max-debt ${total} to stop that number growing, and lower it as you fix.\n`,
+    );
+    return 0;
   }
 
   if (args.report) {

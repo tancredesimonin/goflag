@@ -43,6 +43,10 @@ Options:
                          Requires --baseline.
   --baseline <file>      Stored report to compare against. Use with
                          --regressions-only.
+  --update-baseline      Write this run to --baseline and exit 0, instead of
+                         judging against it. Use it to capture a baseline, or
+                         to accept findings you have decided to live with —
+                         it says what it accepted.
   --max-debt <n>         Fail when the site carries more than <n> findings in
                          total, whether new or known. Lower it as you fix, to
                          stop a baseline from fossilising.
@@ -81,6 +85,8 @@ export interface ParsedArgs {
   baseline?: string;
   /** Gate on new findings only, letting known ones through. */
   regressionsOnly: boolean;
+  /** Write the run to `--baseline` rather than judging against it. */
+  updateBaseline: boolean;
   /** Hard ceiling on total findings, new or known. */
   maxDebt?: number;
   /** Command to boot before auditing, and stop afterwards (`--start`). */
@@ -104,6 +110,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     logMode: "compact",
     failOn: "warning",
     regressionsOnly: false,
+    updateBaseline: false,
     startTimeoutMs: 60_000,
     options: { include: [], exclude: [] },
   };
@@ -200,6 +207,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.baseline = next(i, arg);
         i++;
         break;
+      case "--update-baseline":
+        parsed.updateBaseline = true;
+        break;
       case "--regressions-only":
         parsed.regressionsOnly = true;
         break;
@@ -236,7 +246,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
   // Each flag is meaningless without the other, and guessing which one the
   // caller meant would silently change how strict the build is.
-  if (parsed.baseline && !parsed.regressionsOnly) {
+  if (parsed.updateBaseline && !parsed.baseline) {
+    throw new Error("--update-baseline needs a --baseline <file> to write to");
+  }
+  // Capturing a baseline is not gating against one, so the explicit opt-in that
+  // --regressions-only exists to force does not apply.
+  if (parsed.baseline && !parsed.regressionsOnly && !parsed.updateBaseline) {
     throw new Error(
       "--baseline weakens the gate, so it must be requested explicitly: add --regressions-only",
     );
