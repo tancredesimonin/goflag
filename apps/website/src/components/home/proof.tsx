@@ -12,7 +12,6 @@ export async function Proof() {
       label: t("stat2", { duration: PROOF.largestSiteDuration }),
     },
     { value: String(PROOF.tests), label: t("stat3") },
-    { value: String(PROOF.pageRules + PROOF.siteRules), label: t("stat4") },
   ];
 
   return (
@@ -23,7 +22,7 @@ export async function Proof() {
           <p className="text-muted-foreground text-lg">{t("lead")}</p>
         </div>
 
-        <dl className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+        <dl className="grid gap-6 sm:grid-cols-3">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-background rounded-lg border p-5">
               <dt className="sr-only">{stat.label}</dt>
@@ -36,17 +35,6 @@ export async function Proof() {
             </div>
           ))}
         </dl>
-
-        {/* One story, not two. A second bug post-mortem stops being transparency
-            and starts being a case against the tool; the strongest one carries
-            the point alone. */}
-        <div className="reveal bg-background mt-10 flex flex-col gap-3 rounded-lg border p-6">
-          <h3 className="text-lg font-semibold">{t("storyTitle")}</h3>
-          <p className="text-muted-foreground max-w-3xl leading-relaxed">{t("storyBody")}</p>
-          <p className="border-flag-red/50 border-l-2 pl-4 font-mono text-sm leading-relaxed">
-            {t("storyPunch")}
-          </p>
-        </div>
       </div>
     </section>
   );

@@ -23,16 +23,10 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "MIT · Node {node} · sem conta, sem painel",
       "title": "Sua página está perfeita. O Google não a vê mais.",
-      "lead": "O goflag é uma CLI que lê o seu site como um rastreador lê — links, traduções, robots.txt, metadados — e faz falhar uma etapa de CI antes que um defeito invisível chegue à produção.",
-      "commandLabel": "Rode no seu site",
+      "lead": "O goflag é uma CLI que lê o seu site como um rastreador lê, e faz falhar uma etapa de CI antes que um defeito invisível chegue à produção.",
       "copy": "Copiar",
       "copied": "Copiado",
-      "timeToValue": "Um comando, nada para instalar. Primeiro relatório em cerca de um minuto.",
-      "expectRed": "Espere vermelho na primeira execução — todo site que nunca foi auditado carrega um acúmulo. O baseline existe para você começar hoje e reduzi-lo, não para esperar o site ficar limpo.",
-      "docsCta": "Leia a documentação",
-      "rulesCta": "Veja todas as {count} regras",
       "workflowLabel": "Uma barreira, quatro verificações"
     },
     "workflow": {
@@ -41,7 +35,6 @@
         "origin": {
           "title": "Uma tag muda.",
           "label": "commit",
-          "detail": "Uma linha no head. A página continua renderizando perfeitamente.",
           "time": "dia 0"
         },
         "without": {
@@ -49,19 +42,16 @@
           "shipped": {
             "title": "Vai para produção.",
             "label": "publicado",
-            "detail": "Todos os testes verdes. Nada tinha motivo para falhar.",
             "time": "dia 0"
           },
           "unnoticed": {
             "title": "A página sai do índice.",
             "label": "despercebido",
-            "detail": "Nada que você controla avisa.",
             "time": "semanas depois"
           },
           "tooLate": {
             "title": "Alguém pergunta por que o tráfego caiu.",
             "label": "tarde demais",
-            "detail": "A essa altura ninguém lembra do commit.",
             "time": "meses depois"
           }
         },
@@ -70,19 +60,16 @@
           "flagged": {
             "title": "A CI levanta a bandeira.",
             "label": "detectado na CI",
-            "detail": "Cada página do build é lida, antes de qualquer coisa ser publicada.",
             "time": "4 min depois"
           },
           "fixed": {
             "title": "Uma pessoa ou um agente corrige.",
             "label": "corrigido",
-            "detail": "O achado nomeia a página e a tag. Não há nada para investigar.",
             "time": "minutos depois"
           },
           "clean": {
             "title": "Vai para produção limpo.",
             "label": "publicado limpo",
-            "detail": "Indexado sob o canonical certo, e todo link compartilhado renderiza seu cartão de prévia.",
             "time": "ainda no dia 0"
           }
         }
@@ -142,42 +129,18 @@
         "question": "Um crawler vai ler o que você quis publicar?",
         "stages": {
           "work": {
-            "title": "14 regras",
-            "split": "11 por página, 3 no site inteiro"
+            "title": "Presença, comprimento, contradições",
+            "split": "verificadas em cada página, e no site inteiro"
           },
           "output": {
-            "snippet": "cinco delas trazem o trecho que corrige"
+            "snippet": "com a correção pronta para colar, quando existe"
           }
         }
       }
     },
-    "checks": {
-      "title": "Quatro coisas, verificadas direito",
-      "lead": "Deliberadamente pequeno. Sem painel, sem sistema de configuração, sem galeria de pré-visualização social — apenas os achados, em um relatório que você pode encadear com pipe, comparar com diff ou usar como gate.",
-      "links": {
-        "title": "Links quebrados",
-        "body": "Todo link de toda página, testado uma única vez — um link de rodapé presente em 500 páginas custa uma única requisição. Soft 404 e 403 de anti-bot são triados à parte do que está realmente quebrado.",
-        "detail": "Mapeados de volta para as páginas que os referenciam."
-      },
-      "translations": {
-        "title": "Páginas de tradução ausentes",
-        "body": "Uma matriz route × locale semeada a partir do seu sitemap: mesmo um site sem hreflang tem seus idiomas verificados. Ela também pega falhas de reciprocidade, x-default ausente e tags de idioma inválidas.",
-        "detail": "Lacunas intencionais são declaradas, não toleradas."
-      },
-      "robots": {
-        "title": "Política do robots.txt",
-        "body": "Um site que proíbe o rastreamento enquanto suas páginas pedem para ser indexadas. As duas declarações não podem valer ao mesmo tempo, o robots.txt vence e, por isso, a meta tag nunca chega a ser lida.",
-        "detail": "Um aviso em staging, um erro em produção."
-      },
-      "metadata": {
-        "title": "Metadados de SEO",
-        "body": "Onze verificações no head de cada página — title, description, canonical, Open Graph, viewport, robots — para presença, comprimento, caráter absoluto e contradições.",
-        "detail": "Cinco delas trazem o trecho de App Router que corrige o problema."
-      }
-    },
     "terminal": {
       "title": "A interface inteira",
-      "lead": "Não há UI para mostrar. A saída do terminal é uma renderização do relatório JSON, e o JSON é a fonte da verdade.",
+      "lead": "O relatório JSON é a interface: encadeie com pipe nos seus scripts, compare entre execuções, condicione o CI a ele ou entregue para um agente de IA ler. A saída do terminal é uma renderização dele.",
       "tabs": {
         "full": "Relatório completo",
         "summary": "--summary",
@@ -209,7 +172,7 @@
       "lead": "Uma execução que falha diante de qualquer achado é inutilizável em um site que ainda não está limpo — então ela é desligada, ou ignorada em silêncio. Três flags tornam o gate sustentável, e uma delas faz o acúmulo realmente diminuir.",
       "step1": {
         "title": "Capture um baseline",
-        "body": "Congele os achados de hoje como conhecidos, para que o gate pergunte se esta mudança piorou as coisas em vez de perguntar se o site está perfeito. Ele imprime quantos achados foram herdados e qual teto definir em seguida. Faça commit do arquivo."
+        "body": "Congele os achados de hoje como conhecidos, para que o gate pergunte se esta mudança piorou as coisas em vez de perguntar se o site está perfeito. A saída nunca diz que está limpo enquanto houver achados em aberto — ela diz quantos estão sendo deixados passar."
       },
       "step2": {
         "title": "Faça o gate no que é novo",
@@ -217,14 +180,12 @@
       },
       "step3": {
         "title": "Baixe a catraca",
-        "body": "Corrija um achado, reduza --max-debt em um, faça commit dos dois. Esta é a única parte que faz o acúmulo diminuir; sem ela, um baseline fossiliza atrás de um build que passa."
-      },
-      "honestyTitle": "Este modo aprova builds em sites com defeitos conhecidos",
-      "honestyBody": "É para isso que ele serve, e é por isso que precisa ser pedido pelo nome — --baseline sozinho é um erro. A saída nunca diz que está limpo e nunca fica verde enquanto houver achados em aberto. Ela diz quantos estão sendo deixados passar, e qual é a idade do baseline."
+        "body": "Corrija um achado, reduza --max-debt em um, faça commit dos dois — sem isso, um baseline fossiliza atrás de um build que passa."
+      }
     },
     "ci": {
       "title": "No CI",
-      "lead": "Dois momentos valem uma auditoria, e eles respondem perguntas diferentes. Nenhum substitui o outro: só a execução contra o ambiente publicado vê o que o ambiente injeta.",
+      "lead": "Dois momentos valem uma auditoria, e eles respondem perguntas diferentes.",
       "whenHeader": "Quando",
       "againstHeader": "Contra",
       "answersHeader": "Responde",
@@ -239,45 +200,18 @@
     },
     "proof": {
       "title": "Construído auditando meus próprios sites",
-      "lead": "Não há mural de logotipos aqui, porque não há logotipos. O goflag existe porque quatro sites que eu mantenho precisavam dele — este incluído: goflag.tech é protegido pela sua própria auditoria no CI, e um merge que a quebra não passa. Cada número abaixo é medido, não estimado.",
+      "lead": "O goflag existe porque quatro sites que eu mantenho precisavam dele — este incluído: goflag.tech é protegido pela sua própria auditoria no CI, e um merge que a quebra não passa. Cada número abaixo é medido, não estimado.",
       "stat1": "sites com gate no CI",
       "stat2": "páginas auditadas em {duration}",
-      "stat3": "testes na CLI",
-      "stat4": "regras, cada uma com sua página de documentação",
-      "storyTitle": "O bug que ele foi construído para corrigir era o dele mesmo",
-      "storyBody": "A primeira versão reportou zero traduções ausentes em um site de quatro idiomas que não carregava uma única tag hreflang. O eixo de idiomas era derivado dos alternates que as páginas declaravam — então um site silencioso tinha exatamente uma coluna, e toda verificação passava por vacuidade.",
-      "storyPunch": "O goflag detectava a ausência de hreflang lendo o hreflang."
+      "stat3": "testes na CLI"
     },
     "not": {
       "title": "O que o goflag não é",
-      "lead": "Descobrir rápido que esta é a ferramenta errada vale mais para você do que uma avaliação longa.",
-      "items": {
-        "dashboard": "Sem painel hospedado, e nada em que fazer login",
-        "account": "Sem conta, sem chave de API, sem licença por usuário",
-        "rank": "Sem monitoramento de posições e sem pesquisa de palavras-chave",
-        "vitals": "Sem Core Web Vitals, sem pontuação do Lighthouse",
-        "score": "Sem pontuação de 0 a 100",
-        "config": "Sem arquivo de configuração para aprender",
-        "gallery": "Sem galeria de pré-visualização social",
-        "telemetry": "Sem telemetria — nada sai da sua máquina além das requisições para o site que você indicou"
-      },
       "closing": "Um comando, um relatório JSON, um código de saída. Se o que você quer é um número para otimizar, esta é a ferramenta errada: uma pontuação convida a otimizar a pontuação.",
-      "versus": "Se você quer um rastreador de desktop com interface, o Screaming Frog existe; se só procura links quebrados, o lychee é mais rápido. O goflag serve para condicionar um build ao que um rastreador lê — inclusive a matriz route × locale que nenhum dos dois verifica."
-    },
-    "rules": {
-      "title": "O catálogo de regras",
-      "lead": "Onze regras por página e três de escopo do site. Todo achado nomeia a regra que o produziu, então é possível contestar um relatório.",
-      "idHeader": "Regra",
-      "severityHeader": "Severidade",
-      "checksHeader": "O que verifica",
-      "scopePage": "página",
-      "scopeSite": "site",
-      "honestyTitle": "Os limites de comprimento são heurísticas, e estão rotulados como tal",
-      "honestyBody": "As faixas de comprimento de title e description são convenções, não especificação — e a saída as rotula como heurísticas em vez de apresentá-las como algo normativo.",
-      "cta": "Leia o catálogo completo"
+      "versus": "Se você quer um rastreador de desktop com interface, o Screaming Frog existe; se só procura links quebrados, o lychee é mais rápido. O goflag serve para condicionar um build ao que um rastreador lê."
     },
     "faq": {
-      "title": "Perguntas que valem uma resposta antes de você instalar",
+      "title": "Antes de instalar",
       "source": {
         "q": "Ele precisa de acesso ao meu código-fonte?",
         "a": "Não. Ele precisa de uma URL. O goflag lê o que um rastreador lê, e é também por isso que ele pega coisas que um build local não mostra — a URL base real, o que o proxy serve como robots.txt, os redirecionamentos."
@@ -288,19 +222,15 @@
       },
       "chromium": {
         "q": "Eu preciso do Chromium?",
-        "a": "Só sem --static. Por padrão, uma página cujo head parece vazio — sem title, sem description, sem canonical, sem Open Graph, sem JSON-LD — é renderizada de novo em um Chromium headless, para que um app renderizado no cliente não seja reportado como se lhe faltasse tudo. --static desliga isso, incluindo a detecção, e nunca baixa um navegador. O playwright é uma peer dependency opcional, então nada é instalado sem que você peça."
+        "a": "Só sem --static. Uma página cujo head parece vazio é renderizada de novo em um Chromium headless, para que um app renderizado no cliente não seja reportado como se lhe faltasse tudo; --static desliga isso e nunca baixa um navegador."
       },
       "privacy": {
         "q": "O que sai da minha máquina?",
-        "a": "As requisições HTTP para o site que você indicou, e nada mais. Sem telemetria, sem conta, sem upload. O relatório é escrito no seu disco ou no seu stdout."
+        "a": "As requisições HTTP para o site que você indicou, e nada mais. O relatório é escrito no seu disco ou no seu stdout."
       },
       "free": {
         "q": "Quanto custa?",
         "a": "Nada. MIT."
-      },
-      "zerox": {
-        "q": "Por que ele ainda está em 0.x?",
-        "a": "Porque a API ainda vai mudar. O goflag foi extraído de quatro sites em produção, em vez de projetado no abstrato, e o número de versão deve dizer isso."
       },
       "scale": {
         "q": "Ele termina em um site grande?",
@@ -309,9 +239,8 @@
     },
     "close": {
       "title": "Aponte para o seu site.",
-      "lead": "Um comando, sem instalação, nada para assinar. Depois, o início rápido leva você em cinco passos de uma primeira execução vermelha a um gate em que você confia.",
+      "lead": "O início rápido leva você de uma primeira execução vermelha a um gate em que você confia.",
       "quickstart": "Início rápido",
-      "rules": "Catálogo de regras",
       "changelog": "Changelog"
     }
   },
@@ -334,9 +263,7 @@
       "fixes": "Correções de bugs",
       "docs": "Documentação",
       "other": "Outras mudanças"
-    },
-    "pinTitle": "Fixe a versão que serve de gate",
-    "pinBody": "Uma versão flutuante transforma o release de outra pessoa em um pipeline vermelho num commit que não mexeu em nada."
+    }
   },
   "footer": {
     "tagline": "Sinaliza os problemas de site que ninguém detecta em escala.",

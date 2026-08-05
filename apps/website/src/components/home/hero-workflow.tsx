@@ -1,10 +1,7 @@
-import { ArrowRightIcon } from "lucide-react";
-import NextLink from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { WorkflowTabs } from "@/components/home/workflow/workflow-tabs";
 import { CopyCommand } from "@/components/site/copy-command";
-import { Button } from "@/components/ui/button";
 import { INSTALL } from "@/lib/constants";
 
 /**
@@ -30,53 +27,21 @@ export async function HeroWorkflow() {
       <div className="bg-dots pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_bottom,black,transparent_70%)]" />
 
       {/* Everything between the headline and the first tab is spend against a
-          three-second budget: the reader has to take in the problem, the fix, the
-          command and one worked example before deciding to stay. What used to sit
-          in here and no longer does — a badge of licence and Node version, a label
-          over a command that already starts with `$`, a caption over five tabs
-          that name themselves — was all true and none of it was worth a line. */}
+          three-second budget: one sentence, one command, and the diagram. */}
       <div className="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
           <h1 className="text-4xl font-semibold text-balance sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
             {t("title")}
           </h1>
 
-          {/* `<head>` cannot be written literally in a message: next-intl parses
-              angle brackets as rich-text tags and throws when no handler matches.
-              The brackets belong to the renderer anyway — a translator should see
-              an element name they must not touch, not markup they might. */}
-          <p className="text-muted-foreground text-lg leading-relaxed text-pretty">
-            {t.rich("lead", {
-              code: (chunks) => (
-                <code className="text-foreground font-mono text-[0.95em]">&lt;{chunks}&gt;</code>
-              ),
-            })}
-          </p>
+          <p className="text-muted-foreground text-lg leading-relaxed text-pretty">{t("lead")}</p>
 
-          <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <div className="w-full max-w-md">
-              <CopyCommand
-                command={INSTALL.tryIt}
-                copyLabel={t("copy")}
-                copiedLabel={t("copied")}
-              />
-            </div>
-            <Button size="lg" variant="ghost" asChild className="shrink-0">
-              <NextLink href="/docs/quickstart">
-                {t("docsCta")}
-                <ArrowRightIcon />
-              </NextLink>
-            </Button>
+          <div className="w-full max-w-md">
+            <CopyCommand command={INSTALL.tryIt} copyLabel={t("copy")} copiedLabel={t("copied")} />
           </div>
-
-          <p className="text-muted-foreground text-sm">{t("timeToValue")}</p>
         </div>
 
         <WorkflowTabs label={t("workflowLabel")} />
-
-        <p className="text-muted-foreground border-flag-yellow/60 mx-auto max-w-2xl border-l-2 pl-4 text-sm">
-          {t("expectRed")}
-        </p>
       </div>
     </section>
   );
