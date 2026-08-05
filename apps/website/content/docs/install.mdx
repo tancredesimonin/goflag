@@ -34,20 +34,21 @@ somebody's shell history:
 ```json title="package.json"
 {
   "scripts": {
-    "seo": "goflag http://localhost:3000 --start \"pnpm start\" --static --no-external"
+    "seo": "goflag http://localhost:3000 --start \"pnpm start\" --no-external"
   }
 }
 ```
 
 `--start` boots the command, waits for the URL to answer, audits, then stops it
-again — see [CI](/docs/ci).
+again; `--no-external` keeps third-party outages out of the result — see
+[CI](/docs/ci) for why both belong in a gate.
 
 ## Pin the version you gate on
 
 In a pipeline, do not float:
 
 ```bash
-npx --yes "@goflag/cli@0.1.4" https://example.com --static
+npx --yes "@goflag/cli@__CLI_VERSION__" https://example.com
 ```
 
 A floating version turns somebody else's release into a red pipeline on a commit
@@ -69,16 +70,25 @@ pnpm add -D playwright
 pnpm exec playwright install chromium
 ```
 
-If you never want a browser involved, pass `--static`. It turns off both the
-re-render and the detection that triggers it, and never downloads anything:
+Without it, goflag does not fail: the page is judged on its static HTML and the
+report notes that it would have escalated. Install Chromium when you see that
+note and the findings look wrong.
+
+### `--static`, if you are certain
+
+`--static` turns off both the re-render and the detection that triggers it, and
+never downloads anything:
 
 ```bash
 goflag https://example.com --static
 ```
 
-For a server-rendered site — Next.js App Router included, as long as the
-metadata is emitted on the server — `--static` costs you nothing and makes the
-run several times faster. It is the right default in CI.
+It makes a run several times faster — and it is only safe when **every** page
+emits its metadata on the server. That is rarer than it sounds, and it drifts:
+one route that fills its `<head>` in the browser is enough to make findings
+misleading, and nothing will warn you when somebody adds it next quarter. Opt
+in when you are sure, re-check the assumption when the stack changes, and
+leave the default alone otherwise.
 
 ## Verify the install
 

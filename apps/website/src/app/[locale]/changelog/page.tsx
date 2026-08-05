@@ -66,13 +66,6 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
           </div>
         ) : null}
 
-        <div className="border-flag-yellow/50 mt-8 rounded-lg border-l-2 py-2 pl-4">
-          <p className="font-semibold">{t("pinTitle")}</p>
-          <p className="text-muted-foreground mt-1 text-[0.9375rem] leading-relaxed">
-            {t("pinBody")}
-          </p>
-        </div>
-
         <a
           href={PACKAGE.npm}
           target="_blank"

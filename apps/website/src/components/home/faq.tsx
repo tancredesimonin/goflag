@@ -6,7 +6,7 @@ import { PROOF } from "@/lib/constants";
 export async function Faq() {
   const t = await getTranslations("home.faq");
 
-  const keys = ["source", "next", "chromium", "privacy", "free", "zerox"] as const;
+  const keys = ["source", "next", "chromium", "privacy", "free"] as const;
 
   return (
     <FAQ

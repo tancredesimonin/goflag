@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { Checks } from "@/components/home/checks";
 import { Ci } from "@/components/home/ci";
 import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
-import { Hero } from "@/components/home/hero";
+import { HeroWorkflow } from "@/components/home/hero-workflow";
 import { Invisible } from "@/components/home/invisible";
 import { Method } from "@/components/home/method";
 import { NotThis } from "@/components/home/not-this";
 import { Output } from "@/components/home/output";
 import { Proof } from "@/components/home/proof";
-import { Rules } from "@/components/home/rules";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({
@@ -37,15 +35,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <>
-      <Hero />
-      <Checks />
-      <Output />
+      <HeroWorkflow />
       <Invisible />
+      <Output />
       <Method />
       <Ci />
       <Proof />
       <NotThis />
-      <Rules />
       <Faq />
       <Closing />
     </>

@@ -137,8 +137,6 @@ export default function RulesPage() {
           Nothing in this catalogue yet cites a standard, because for the length windows there is
           none to cite. Treat <code className="font-mono text-sm">title.length</code> and{" "}
           <code className="font-mono text-sm">description.length</code> as the conventions they are.
-          A future version attaches a rigor level and a dated source to every rule, so the ones
-          resting on convention are visible as such.
         </p>
       </div>
     </DocsPage>

@@ -112,14 +112,9 @@ export default async function RulePage({ params }: PageProps) {
         </section>
       )}
 
-      <section className="mt-10 rounded-lg border p-6">
-        <h2 className="font-display text-base font-semibold tracking-tight">Rigor</h2>
-        <p className="text-muted-foreground mt-2 text-[0.9375rem] leading-relaxed">
-          {rule.rigor === null
-            ? "Not yet classified. This rule cites no dated source, so treat it as the convention it is rather than as anything normative. A future version attaches a rigor level and a source to every rule."
-            : rule.rigor}
-        </p>
-      </section>
+      {/* The rigor level is announced once, on the catalogue page, rather than
+          repeated verbatim under every rule. This section returns when the
+          registry actually carries per-rule rigor data (phase 3). */}
     </DocsPage>
   );
 }

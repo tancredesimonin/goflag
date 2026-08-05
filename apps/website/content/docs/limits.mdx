@@ -10,15 +10,8 @@ A tool that only documents what it catches is not honest about what it misses.
 ## Engine caps
 
 These are compiled in, not configurable. They exist so a run on a large site
-finishes rather than melting somebody's laptop or somebody's origin.
-
-| Limit                       | Value                       |
-| --------------------------- | --------------------------- |
-| Pages inspected in parallel | 4                           |
-| Pages scanned for links     | 500                         |
-| Unique link targets probed  | 10,000                      |
-| Link probes in parallel     | 8 overall, 3 per host       |
-| Redirect hops followed      | 10, then reported as a loop |
+finishes rather than melting somebody's laptop or somebody's origin — the
+values are listed in the [CLI reference](/docs/cli#engine-limits).
 
 The user-facing caps you _can_ move are `--max-pages` (default `200`) and
 `--depth` (default `2`). When any cap cuts a crawl short, `diagnostics.truncated`
@@ -62,14 +55,12 @@ belongs in a CI gate.
 
 **The length thresholds are conventions, not specifications.** `title.length` and
 `description.length` cite no standard, because there is none to cite. They are
-labelled as heuristics in the [catalogue](/docs/rules), and a future version
-attaches a rigor level and a dated source to every rule so the ones resting on
-convention are visible as such.
+labelled as heuristics in the [catalogue](/docs/rules).
 
-**Client-rendered metadata needs the browser path.** Without `--static`, a page
-with an empty-looking head is re-rendered in Chromium. With `--static`, it is
-judged as served — which is correct for a crawler, and misleading if you expected
-the runtime result.
+**Client-rendered metadata needs the browser path.** By default, a page with an
+empty-looking head is re-rendered in Chromium. With `--static`, it is judged as
+served — which is correct for a crawler, and misleading if you expected the
+runtime result. See [Install](/docs/install#chromium) before opting in.
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
 known defects. That is what it is for. The output never says `clean` and always
@@ -82,10 +73,9 @@ if nobody reads it, the number does not help. See
 Capturing the first baselines on four production sites surfaced five ways goflag
 was wrong. Two are worth reading because they shaped the design:
 
-- The path segment `/cv` was read as **Chuvash** — a real ISO 639-1 code — and
-  invented 31 translation holes that never existed. This is why goflag no longer
-  guesses a locale axis: see
-  [Translations](/docs/i18n#where-the-locale-axis-comes-from).
+- The path segment `/cv` was read as a locale — the mistake that ended locale
+  guessing. The full story is in
+  [Translations](/docs/i18n#the-bug-that-started-this).
 - A trailing slash was stripped before probing, which declared 159 working
   citation links dead and sent somebody to fix content that was already correct.
 

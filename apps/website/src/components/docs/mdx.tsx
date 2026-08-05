@@ -3,7 +3,16 @@ import { InfoIcon, LightbulbIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+function SiteEmail() {
+  return (
+    <a href={`mailto:${SITE.email}`} className="text-link underline-offset-4">
+      {SITE.email}
+    </a>
+  );
+}
 
 const CALLOUT = {
   note: { icon: InfoIcon, className: "border-link/50", iconClass: "text-link" },
@@ -59,6 +68,7 @@ function Anchor({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">
 
 const components = {
   Callout,
+  SiteEmail,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">

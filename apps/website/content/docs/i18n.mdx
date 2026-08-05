@@ -41,15 +41,6 @@ depends on it, so it is decided explicitly, in this order:
 That third case used to be a guess, and the guess was wrong in a way that
 mattered. See below.
 
-## Why the sitemap and not the links
-
-A site with no `hreflang` gives a link crawler nothing to follow into its other
-locales. If the axis were derived from the alternates the pages declare, then a
-silent site would have exactly one column — and every check would pass
-vacuously, on precisely the site that needs the check most.
-
-That is not a hypothetical. It is the first bug goflag ever had.
-
 ## Reciprocity
 
 A filled matrix is not enough: the pages have to point at each other. These are

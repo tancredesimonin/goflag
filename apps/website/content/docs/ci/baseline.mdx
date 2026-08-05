@@ -10,7 +10,7 @@ A run that fails on any finding is unusable on a site that is not clean yet. So
 it gets switched off, or quietly ignored, and the pipeline keeps a red badge
 nobody reads. A baseline replaces the question.
 
-## The three flags
+## The four flags
 
 | Flag                 | What it does                                                                                                                  |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -23,7 +23,7 @@ nobody reads. A baseline replaces the question.
 
 ```bash
 mkdir -p .goflag
-goflag https://example.com --static \
+goflag https://example.com \
   --baseline .goflag/baseline.json --update-baseline
 ```
 
@@ -73,6 +73,10 @@ New findings
 Resolved
   - warn  seo  og.image.missing  on /about
 ```
+
+The headline changes with the state of the run: `REGRESSION` when new findings
+exist, `REGRESSION GATE` when only known debt is passing through, `CLEAN` when
+nothing is outstanding. The two gate labels are not a typo for each other.
 
 Three deliberate choices in that output:
 

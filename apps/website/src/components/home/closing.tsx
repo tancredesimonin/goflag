@@ -28,9 +28,6 @@ export async function Closing() {
             </NextLink>
           </Button>
           <Button variant="secondary" asChild>
-            <NextLink href="/docs/rules">{t("rules")}</NextLink>
-          </Button>
-          <Button variant="secondary" asChild>
             <Link href="/changelog">{t("changelog")}</Link>
           </Button>
         </div>

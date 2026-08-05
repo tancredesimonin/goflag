@@ -21,7 +21,7 @@ const FAQ = ({ title, faqItems }: FAQProps) => {
   const secondHalf = faqItems.slice(halfLength);
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="bg-muted/40 border-y py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 max-w-3xl">
           <h2 className="text-3xl font-semibold text-balance md:text-4xl">{title}</h2>

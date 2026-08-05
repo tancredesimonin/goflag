@@ -18,7 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const localizedPaths = [
     "",
     "/changelog",
-    ...(allLegals.some((doc) => doc.slug === "legal") ? ["/legal"] : []),
+    ...[...new Set(allLegals.map((doc) => `/${doc.slug}`))],
   ];
 
   const localized = localizedPaths.flatMap((path) =>

@@ -1,16 +1,14 @@
-import { TriangleAlertIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 const STEPS = [
   {
     key: "step1",
-    command:
-      "goflag https://example.com --static \\\n  --baseline .goflag/baseline.json --update-baseline",
+    command: "goflag https://example.com \\\n  --baseline .goflag/baseline.json --update-baseline",
   },
   {
     key: "step2",
     command:
-      "goflag http://localhost:3000 --static --no-external \\\n  --baseline .goflag/baseline.json --regressions-only",
+      "goflag http://localhost:3000 --no-external \\\n  --baseline .goflag/baseline.json --regressions-only",
   },
   {
     key: "step3",
@@ -50,14 +48,6 @@ export async function Method() {
             </li>
           ))}
         </ol>
-
-        <div className="border-flag-yellow/50 bg-background mt-12 rounded-lg border-l-2 p-6">
-          <p className="mb-2 flex items-center gap-2 font-semibold">
-            <TriangleAlertIcon className="text-flag-yellow size-4.5 shrink-0" />
-            {t("honestyTitle")}
-          </p>
-          <p className="text-muted-foreground leading-relaxed">{t("honestyBody")}</p>
-        </div>
       </div>
     </section>
   );

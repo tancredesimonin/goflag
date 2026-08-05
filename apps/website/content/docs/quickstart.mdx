@@ -14,7 +14,7 @@ exist precisely so you can gate a site that is not clean yet.
 Start with the entry page only, so you can read every finding:
 
 ```bash
-npx @goflag/cli https://example.com --static --depth 0
+npx @goflag/cli https://example.com --depth 0
 ```
 
 `--depth 0` audits the URL you named and follows nothing. This is the fastest way
@@ -23,7 +23,7 @@ to see whether the metadata rules agree with what you think your site declares.
 ## 2. Crawl the site
 
 ```bash
-npx @goflag/cli https://example.com --static --summary
+npx @goflag/cli https://example.com --summary
 ```
 
 `--summary` lists each distinct problem once, with a count and a sample of
@@ -32,11 +32,15 @@ with a real backlog it is the only readable view.
 
 Two flags are worth reaching for immediately:
 
-- `--no-external` skips off-origin links. They are the ones you cannot fix, and
-  their failures are somebody else's outage.
+- `--no-external` skips off-origin links — the ones you cannot fix. [CI](/docs/ci)
+  explains why they never belong in a gate.
 - `--max-pages 50` caps the crawl while you are still exploring. A run that hit a
   cap says so under `diagnostics`, rather than reporting a smaller number as if
   it were the whole site.
+
+One flag is worth knowing about but **not** reaching for yet: `--static` makes
+the run several times faster and is only safe on fully server-rendered
+metadata — see [Install](/docs/install#chromium).
 
 ## 3. Fix what is cheap, then capture a baseline
 
@@ -46,7 +50,7 @@ everything still outstanding:
 
 ```bash
 mkdir -p .goflag
-goflag https://example.com --static \
+goflag https://example.com \
   --baseline .goflag/baseline.json --update-baseline
 ```
 
@@ -54,26 +58,19 @@ That writes the current run to the file and exits `0`. It prints how many
 findings it grandfathered, and the `--max-debt` ceiling to set next. **Commit the
 file.** It is the record of what you agreed to live with.
 
-<Callout type="warning" title="A baseline changes the question">
-  Without one, the gate asks "is this site perfect?" — and on a site with a backlog the answer is
-  no, forever, so the job gets switched off. With one, it asks "did this change make things worse?",
-  which is a question a pipeline can answer usefully on day one.
-</Callout>
-
 ## 4. Gate on regressions
 
 ```bash
-goflag http://localhost:3000 --static --no-external \
+goflag http://localhost:3000 --no-external \
   --baseline .goflag/baseline.json --regressions-only
 ```
 
-Only findings that are **new** relative to the baseline fail the build. Findings
-are matched by fingerprint, and page URLs are normalised to origin-independent
-routes — so a baseline captured against production compares cleanly with a run
-against `localhost`.
+Only findings that are **new** relative to the baseline fail the build. Matching
+survives the environment change — a baseline captured against production gates a
+run against `localhost` — and [Baseline gating](/docs/ci/baseline) explains how.
 
-This mode never prints `clean` and never goes green while findings are
-outstanding. It says how many are being let through and how old the baseline is:
+The output never goes green while findings are outstanding; it says how many are
+being let through and how old the baseline is:
 
 ```plaintext
 REGRESSION GATE  0 new · 13 known findings NOT gating this build
