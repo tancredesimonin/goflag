@@ -36,7 +36,7 @@ const C = (t: string): Span => ({ t, tone: "cyan" });
  */
 export const HERO_REPORT: TerminalSample = {
   id: "hero",
-  command: "npx @goflag/cli https://example.com --static",
+  command: "npx @goflag/cli https://example.com",
   lines: [
     [B("goflag"), " ", D("https://example.com/")],
     [R("RED FLAG"), "  ", D("128 pages crawled, 128 scanned")],
@@ -59,7 +59,7 @@ export const HERO_REPORT: TerminalSample = {
 
 export const FULL_REPORT: TerminalSample = {
   id: "full",
-  command: "npx @goflag/cli https://example.com --static",
+  command: "npx @goflag/cli https://example.com",
   lines: [
     [B("goflag"), " ", D("https://example.com/")],
     [R("RED FLAG"), "  ", D("128 pages crawled, 128 scanned")],
@@ -125,7 +125,7 @@ export const FULL_REPORT: TerminalSample = {
 
 export const SUMMARY_REPORT: TerminalSample = {
   id: "summary",
-  command: "npx @goflag/cli https://example.com --static --summary",
+  command: "npx @goflag/cli https://example.com --summary",
   lines: [
     [B("goflag"), " ", D("https://example.com/"), " ", D("(summary)")],
     [R("RED FLAG"), "  ", D("128 pages crawled, 128 scanned")],

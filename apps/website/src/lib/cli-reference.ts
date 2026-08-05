@@ -164,17 +164,16 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
     id: "fetch",
     title: "Fetching",
     intro:
-      "How pages and links are retrieved. --static --no-external is the pair worth having in CI, for reasons that are not about speed.",
+      "How pages and links are retrieved. --no-external belongs in a CI gate; --static is an opt-in for sites that are certain everything renders on the server.",
     flags: [
       {
         flag: "--static",
         description:
-          "Static HTML only; never launch headless Chromium, and skip the detection that would. A client-rendered page is then judged on its unhydrated shell — it over-reports rather than under-reports.",
+          "Static HTML only; never launch headless Chromium, and skip the detection that would. Only safe when every page emits its metadata on the server — an assumption that drifts as a site grows. A client-rendered page is then judged on its unhydrated shell.",
       },
       {
         flag: "--no-external",
-        description:
-          "Do not probe off-origin links. Their failures are somebody else's outage, and a gate that goes red for one teaches people to ignore it.",
+        description: "Do not probe off-origin links. Their failures are somebody else's outage.",
       },
       {
         flag: "--timeout <ms>",

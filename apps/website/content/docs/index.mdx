@@ -11,7 +11,7 @@ goflag crawls a site you name by URL and reports four classes of defect:
 - **Broken links** — every link on every crawled page, probed and triaged.
 - **Missing translation pages** — a route that exists in one locale and not in another, plus the `hreflang` declarations that are supposed to tie them together.
 - **A `robots.txt` that contradicts the pages it serves** — a site that forbids crawling while every page asks to be indexed.
-- **Missing or misconfigured SEO metadata** — eleven checks on the `<head>` of every page.
+- **Missing or misconfigured SEO metadata** — a battery of checks on the `<head>` of every page, each one listed in the [rule catalogue](/docs/rules).
 
 It needs a URL and nothing else. No account, no API key, no configuration file, no access to your source code.
 
@@ -39,7 +39,7 @@ the rule that produced it, so a report can be argued with instead of chased.
 The terminal output is a rendering of a JSON document, not the other way round.
 
 ```bash
-goflag https://example.com --static --json > report.json
+goflag https://example.com --json > report.json
 ```
 
 That document has a stable shape — see [the report reference](/docs/report) —

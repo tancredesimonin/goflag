@@ -24,15 +24,130 @@
   "home": {
     "hero": {
       "eyebrow": "MIT · Node {node} · aucun compte, aucun tableau de bord",
-      "title": "Personne ne peut vérifier 400 pages à la main.",
-      "lead": "Un hreflang qui pointe vers un 404. Un canonical qui a désindexé une page en silence. Un robots.txt qui contredit toutes les balises meta du site. goflag explore le site une fois, juge ce qu’il a trouvé, et vous rend un rapport JSON sur lequel vous pouvez bloquer votre CI.",
+      "title": "Votre page est parfaite. Google ne la voit plus.",
+      "lead": "Le <code>head</code> ne s’affiche nulle part, et toutes vos balises SEO y vivent. goflag les lit page par page et fait échouer une étape de CI avant la mise en production.",
       "commandLabel": "Lancez-le sur votre site",
       "copy": "Copier",
       "copied": "Copié",
-      "expectRed": "Attendez-vous à du rouge. Presque tous les sites qui n’ont jamais été audités traînent une dette — ce n’est pas une raison d’attendre que le site soit propre.",
       "docsCta": "Lire la documentation",
       "rulesCta": "Voir les {count} règles",
-      "workflowLabel": "Ce qu’il fait, en cinq passes"
+      "workflowLabel": "Une barrière, quatre contrôles"
+    },
+    "workflow": {
+      "prevents": {
+        "name": "Ce qu’il évite",
+        "origin": {
+          "title": "Une balise change.",
+          "label": "commit",
+          "detail": "Une ligne dans le head. La page s’affiche toujours parfaitement.",
+          "time": "jour 0"
+        },
+        "without": {
+          "label": "Sans goflag",
+          "shipped": {
+            "title": "Ça part en production.",
+            "label": "déployé",
+            "detail": "Tous les tests étaient au vert. Rien n’avait de raison d’échouer.",
+            "time": "jour 0"
+          },
+          "unnoticed": {
+            "title": "La page quitte l’index.",
+            "label": "inaperçu",
+            "detail": "Rien de ce que vous possédez ne le signale.",
+            "time": "des semaines plus tard"
+          },
+          "tooLate": {
+            "title": "Quelqu’un demande pourquoi le trafic a baissé.",
+            "label": "trop tard",
+            "detail": "À ce stade, plus personne ne se souvient du commit.",
+            "time": "des mois plus tard"
+          }
+        },
+        "with": {
+          "label": "Avec goflag",
+          "flagged": {
+            "title": "La CI lève le drapeau.",
+            "label": "détecté en CI",
+            "detail": "Chaque page du build est lue, avant que quoi que ce soit ne soit déployé.",
+            "time": "4 min plus tard"
+          },
+          "fixed": {
+            "title": "Un développeur ou un agent corrige.",
+            "label": "corrigé",
+            "detail": "Le constat nomme la page et la balise. Il n’y a rien à chercher.",
+            "time": "quelques minutes plus tard"
+          },
+          "clean": {
+            "title": "Ça part en production, propre.",
+            "label": "déployé propre",
+            "detail": "Indexé sous le bon canonical, et chaque lien partagé affiche sa carte d’aperçu.",
+            "time": "toujours jour 0"
+          }
+        }
+      },
+      "links": {
+        "name": "Liens",
+        "question": "Chaque lien mène-t-il encore quelque part ?",
+        "stages": {
+          "input": {
+            "crawled": "sur chaque page explorée"
+          },
+          "work": {
+            "title": "Une requête par cible",
+            "deduped": "dédupliqué à l’échelle du site"
+          },
+          "output": {
+            "mapped": "avec la page qui le référence"
+          }
+        }
+      },
+      "i18n": {
+        "name": "Traductions",
+        "question": "Une locale a-t-elle perdu une page en silence ?",
+        "stages": {
+          "input": {
+            "title": "Les locales que vous déclarez"
+          },
+          "work": {
+            "title": "Une matrice route × locale",
+            "cells": "une case par page, une ligne par route"
+          },
+          "output": {
+            "declared": "les manques déclarés sont ignorés, pas signalés"
+          }
+        }
+      },
+      "robots": {
+        "name": "robots.txt",
+        "question": "Le site interdit-il ce qu’il réclame ailleurs ?",
+        "stages": {
+          "input": {
+            "title": "robots.txt, et vos balises meta",
+            "together": "lus ensemble, pour une fois"
+          },
+          "work": {
+            "title": "Les deux ne peuvent pas être vrais",
+            "contradiction": "un site fermé aux crawlers, qui sert des pages demandant à être indexées"
+          },
+          "output": {
+            "wins": "robots.txt gagne, la balise n’est donc jamais lue",
+            "severity": "une erreur en production, un avertissement en préproduction"
+          }
+        }
+      },
+      "metadata": {
+        "name": "Métadonnées",
+        "question": "Un crawler lira-t-il ce que vous vouliez publier ?",
+        "stages": {
+          "work": {
+            "title": "14 règles",
+            "split": "11 par page, 3 à l’échelle du site"
+          },
+          "output": {
+            "snippet": "cinq d’entre elles embarquent le correctif"
+          }
+        }
+      }
     },
     "checks": {
       "title": "Quatre choses, vérifiées correctement",
@@ -55,7 +170,7 @@
       "metadata": {
         "title": "Métadonnées SEO",
         "body": "Onze vérifications sur le head de chaque page : présence et longueur du title et de la description, présence du canonical et son caractère absolu, og:title, og:description, og:image, viewport, et directives robots contradictoires.",
-        "detail": "Chaque constat est accompagné d’un correctif App Router."
+        "detail": "Cinq d’entre elles embarquent le correctif App Router."
       }
     },
     "terminal": {
@@ -117,8 +232,8 @@
       "deployWhen": "Après le déploiement",
       "deployAgainst": "L’environnement en cours d’exécution",
       "deployAnswers": "Ce qui est réellement servi est-il correct ?",
-      "flagsTitle": "Pourquoi --static --no-external",
-      "flagsBody": "--static n’a besoin d’aucun navigateur : le job tourne donc sur une simple image Node et ne peut pas être ralenti par un téléchargement de Chromium. --no-external ignore les liens hors origine, ceux que vous ne pouvez pas corriger et dont les pannes sont celles de quelqu’un d’autre — un garde-fou qui passe au rouge parce qu’un tiers est tombé apprend aux gens à l’ignorer. Auditez les liens externes sur une exécution planifiée, quand personne n’attend.",
+      "flagsTitle": "Pourquoi --no-external",
+      "flagsBody": "--no-external ignore les liens hors origine, ceux que vous ne pouvez pas corriger et dont les pannes sont celles de quelqu’un d’autre — un garde-fou qui passe au rouge parce qu’un tiers est tombé apprend aux gens à l’ignorer. Auditez les liens externes sur une exécution planifiée, quand personne n’attend. N’ajoutez --static que si vous êtes certain que chaque page rend ses métadonnées côté serveur ; cette hypothèse dérive à mesure que le site grandit.",
       "pinTitle": "Épinglez la version",
       "pinBody": "Une version flottante transforme la publication de quelqu’un d’autre en pipeline rouge sur un commit qui n’a rien touché, et le job ne vaut la peine que si rouge signifie que vous avez cassé quelque chose.",
       "exitTitle": "Codes de sortie",
@@ -234,6 +349,8 @@
     "resources": "Ressources",
     "project": "Projet",
     "license": "Sous licence MIT",
+    "copyright": "© {year} {domain}. Tous droits réservés.",
+    "packageLicense": "{name} est sous licence MIT",
     "builtBy": "Réalisé par {author}",
     "issuesNote": "Le dépôt GitHub est un miroir en lecture seule. Les tickets sont suivis sur GitLab.",
     "docs": "Documentation",
@@ -243,7 +360,9 @@
     "changelog": "Changelog",
     "npm": "Paquet npm",
     "github": "Miroir GitHub",
-    "legal": "Mentions légales"
+    "legalNotice": "Mentions légales",
+    "privacy": "Politique de confidentialité",
+    "cookies": "Politique relative aux cookies"
   },
   "legal": {
     "lastUpdated": "Dernière mise à jour {date}"

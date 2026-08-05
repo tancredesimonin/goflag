@@ -4,13 +4,12 @@ import { getTranslations } from "next-intl/server";
 const STEPS = [
   {
     key: "step1",
-    command:
-      "goflag https://example.com --static \\\n  --baseline .goflag/baseline.json --update-baseline",
+    command: "goflag https://example.com \\\n  --baseline .goflag/baseline.json --update-baseline",
   },
   {
     key: "step2",
     command:
-      "goflag http://localhost:3000 --static --no-external \\\n  --baseline .goflag/baseline.json --regressions-only",
+      "goflag http://localhost:3000 --no-external \\\n  --baseline .goflag/baseline.json --regressions-only",
   },
   {
     key: "step3",

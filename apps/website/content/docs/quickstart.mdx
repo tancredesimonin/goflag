@@ -14,7 +14,7 @@ exist precisely so you can gate a site that is not clean yet.
 Start with the entry page only, so you can read every finding:
 
 ```bash
-npx @goflag/cli https://example.com --static --depth 0
+npx @goflag/cli https://example.com --depth 0
 ```
 
 `--depth 0` audits the URL you named and follows nothing. This is the fastest way
@@ -23,7 +23,7 @@ to see whether the metadata rules agree with what you think your site declares.
 ## 2. Crawl the site
 
 ```bash
-npx @goflag/cli https://example.com --static --summary
+npx @goflag/cli https://example.com --summary
 ```
 
 `--summary` lists each distinct problem once, with a count and a sample of
@@ -38,6 +38,11 @@ Two flags are worth reaching for immediately:
   cap says so under `diagnostics`, rather than reporting a smaller number as if
   it were the whole site.
 
+One flag is worth knowing about but **not** reaching for yet: `--static` skips
+the Chromium fallback and makes the run several times faster, but it is only
+safe when you are certain every page renders its metadata on the server — see
+[Install](/docs/install#chromium).
+
 ## 3. Fix what is cheap, then capture a baseline
 
 Fix the errors that take a line of code — a missing canonical, a missing
@@ -46,7 +51,7 @@ everything still outstanding:
 
 ```bash
 mkdir -p .goflag
-goflag https://example.com --static \
+goflag https://example.com \
   --baseline .goflag/baseline.json --update-baseline
 ```
 
@@ -63,7 +68,7 @@ file.** It is the record of what you agreed to live with.
 ## 4. Gate on regressions
 
 ```bash
-goflag http://localhost:3000 --static --no-external \
+goflag http://localhost:3000 --no-external \
   --baseline .goflag/baseline.json --regressions-only
 ```
 

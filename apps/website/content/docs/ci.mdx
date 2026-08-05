@@ -28,8 +28,8 @@ seo:
     - corepack enable && pnpm install --frozen-lockfile
     - pnpm build
     - >
-      npx --yes "@goflag/cli@0.1.4" http://localhost:3000
-      --start "pnpm start" --static --no-external
+      npx --yes "@goflag/cli@__CLI_VERSION__" http://localhost:3000
+      --start "pnpm start" --no-external
       --baseline .goflag/baseline.json --regressions-only --max-debt 13
       --report goflag-report.json
   artifacts:
@@ -56,8 +56,8 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes "@goflag/cli@0.1.4" http://localhost:3000 \
-            --start "pnpm start" --static --no-external \
+          npx --yes "@goflag/cli@__CLI_VERSION__" http://localhost:3000 \
+            --start "pnpm start" --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 13
 ```
 
@@ -73,11 +73,7 @@ Use `--start-cwd` when the server has to run from somewhere other than the
 repository root, and raise `--start-timeout` (default `60000` ms) if the build
 warms slowly.
 
-## Why `--static --no-external`
-
-`--static` needs no browser, so the job runs on a plain Node image and cannot be
-slowed — or broken — by a Chromium download. On a server-rendered site it changes
-no finding.
+## Why `--no-external`
 
 `--no-external` skips off-origin links. Those are the links you cannot fix, and
 their failures are somebody else's outage. A gate that goes red because a third
@@ -86,18 +82,32 @@ schedule instead, where nobody is waiting on the result:
 
 ```yaml
 seo:external:
-  rule: schedule
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
   script:
-    - npx --yes "@goflag/cli@0.1.4" https://example.com --static --fail-on never --json > links.json
+    - npx --yes "@goflag/cli@__CLI_VERSION__" https://example.com --fail-on never --json > links.json
 ```
 
 `--fail-on never` collects findings without failing the pipeline, which is what
 you want for a report nobody is blocked on.
 
+## What about `--static`?
+
+The jobs above run without it, and that is deliberate. If a page's `<head>`
+looks empty, goflag re-renders it in Chromium — and when `playwright` is not
+installed in the image, it falls back to the static HTML and says so instead of
+failing, so a plain Node image still works.
+
+Pass `--static` only when you are certain every page emits its metadata on the
+server. It makes the job faster and rules out any browser involvement, but a
+single client-rendered route makes its findings misleading — and sites drift,
+one route at a time, without anything warning you. See
+[Install](/docs/install#chromium).
+
 ## Pin the version
 
 ```bash
-npx --yes "@goflag/cli@0.1.4" …
+npx --yes "@goflag/cli@__CLI_VERSION__" …
 ```
 
 A floating version turns somebody else's release into a red pipeline on a commit

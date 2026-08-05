@@ -3,7 +3,9 @@ import NextLink from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import GithubIcon from "@/assets/svg/github-icon";
+import { LocaleSwitcherSelect } from "@/components/site/locale-switcher";
 import { Logo } from "@/components/site/logo";
+import { ThemeToggleSelect } from "@/components/site/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "@/i18n/routing";
 import { PACKAGE, SITE } from "@/lib/constants";
@@ -17,7 +19,9 @@ export async function SiteFooter() {
     { label: t("rules"), href: "/docs/rules", localized: false },
     { label: t("ci"), href: "/docs/ci", localized: false },
     { label: t("changelog"), href: "/changelog", localized: true },
-    { label: t("legal"), href: "/legal", localized: true },
+    { label: t("legalNotice"), href: "/legal-notice", localized: true },
+    { label: t("privacy"), href: "/privacy-policy", localized: true },
+    { label: t("cookies"), href: "/cookies", localized: true },
   ];
 
   return (
@@ -79,11 +83,19 @@ export async function SiteFooter() {
 
         <Separator className="my-8" />
 
-        <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm sm:flex-row sm:justify-between">
+        <div className="text-muted-foreground flex flex-col items-center gap-4 text-sm sm:flex-row sm:justify-between">
           <p>
-            {t("license")} · {SITE.domain}
+            {t("copyright", { year: new Date().getFullYear(), domain: SITE.domain })}
+            <span className="text-muted-foreground/60 mx-2">·</span>
+            {t("packageLicense", { name: PACKAGE.name })}
           </p>
-          <p className="text-center sm:text-end">{t("issuesNote")}</p>
+          <div className="flex flex-col items-center gap-3 sm:items-end">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <LocaleSwitcherSelect />
+              <ThemeToggleSelect />
+            </div>
+            <p className="text-center sm:text-end">{t("issuesNote")}</p>
+          </div>
         </div>
       </div>
     </footer>

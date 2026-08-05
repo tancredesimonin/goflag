@@ -11,8 +11,11 @@ import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
  *
  * This is the same reading — flow, direction — from a dashed rule and a chevron
  * that sit in the grid, so the layout positions them and no number needs to agree
- * with any other number. It also does not animate, which is the standing rule on
- * this page: nothing here waits for JavaScript to become visible.
+ * with any other number.
+ *
+ * It does not animate, and that is now a local choice rather than a site rule:
+ * the first tab draws its connectors with `motion`. These four tabs are a
+ * reference diagram someone clicks into, so there is nothing here worth staging.
  */
 export function Connector() {
   return (

@@ -7,36 +7,43 @@ import { Mdx } from "@/components/docs/mdx";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
 interface PageProps {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }
 
-function findLegal(locale: string) {
-  return allLegals.find((doc) => doc.locale === locale && doc.slug === "legal");
+function findLegal(locale: string, slug: string) {
+  return allLegals.find((doc) => doc.locale === locale && doc.slug === slug);
+}
+
+export function generateStaticParams() {
+  return allLegals.map((page) => ({
+    locale: page.locale,
+    slug: page.slug,
+  }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { locale } = await params;
-  const doc = findLegal(locale);
+  const { locale, slug } = await params;
+  const doc = findLegal(locale, slug);
   if (!doc) return {};
+
+  const title = doc.seo?.title ?? doc.title;
+  const description = doc.seo?.description ?? doc.title;
 
   return buildPageMetadata({
     locale,
-    path: "/legal",
-    title: doc.title,
-    description: doc.description,
-    // Only the locales this document was actually translated into, so the
-    // alternates never point at a page that does not exist.
-    availableLocales: allLegals
-      .filter((entry) => entry.slug === "legal")
-      .map((entry) => entry.locale),
+    path: `/${slug}`,
+    title,
+    description,
+    absoluteTitle: Boolean(doc.seo?.title),
+    availableLocales: allLegals.filter((entry) => entry.slug === slug).map((entry) => entry.locale),
   });
 }
 
 export default async function LegalPage({ params }: PageProps) {
-  const { locale } = await params;
+  const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const doc = findLegal(locale);
+  const doc = findLegal(locale, slug);
   if (!doc) notFound();
 
   const t = await getTranslations("legal");

@@ -1,238 +1,223 @@
 /**
- * What the tool actually does, in five passes.
+ * The shape of the switcher under the headline: what goflag prevents, then the
+ * four checks. The words live in `messages/*.json` under `home.workflow`; this
+ * file holds only what is the same in every language.
  *
- * This is the hero's payload, so it is held to the same standard as the terminal
- * samples: every identifier, rule id, default and cap below is taken from
- * `packages/cli/src/lib/core/**` rather than written to sound plausible. A
- * diagram that flatters the engine would be the first thing the site says and
- * also the first thing it got wrong.
+ * The first tab and the other four are deliberately different shapes. Forcing one
+ * diagram on both was the mistake in the first draft: `input → check → output`
+ * describes how a thing works, and the opening tab has to answer why anyone
+ * should care before there is any interest in the how. So the first tab is two
+ * timelines of the same commit, and the other four keep the pipeline, because for
+ * them the pipeline is the honest description.
  *
- * Two deliberate omissions, because the engine does not do them: robots.txt is
- * only checked for a whole-site `Disallow: /` that contradicts pages serving
- * `<meta name="robots" content="index">`, not per-path, and nothing cross-checks
- * sitemap URLs against robots rules. Neither appears here.
+ * ## What may go in the copy
  *
- * Untranslated, on the same grounds as `terminal-samples.ts`: these are
- * identifiers, flags and printed output. The prose around them comes from
- * `messages/*.json`.
+ * Accuracy first: every identifier, rule id and count is read out of
+ * `packages/cli/src/lib/core` and `src/lib/rules`, not written to sound
+ * plausible. Nothing claims a capability the engine does not have — in
+ * particular robots.txt is only checked for a whole-site `Disallow: /` that
+ * contradicts pages asking to be indexed, never per path.
+ *
+ * Then brevity, which is the harder one. This has to be legible in about three
+ * seconds, so a stage gets one line about what it does and at most two about
+ * what comes out. The mechanism that earns trust — HEAD before GET, three
+ * requests per host, why `x-default` never fills a hole — is true, and it
+ * belongs further down the page where someone is reading rather than scanning.
+ *
+ * ## Literal or translated
+ *
+ * A string stays here, verbatim in every locale, when translating it would make
+ * it wrong: identifiers (`brokenLinks[]`), flags (`--locales …`), markup
+ * (`<head>`) and printed output (`[404] /ghost`). A French reader needs to
+ * recognise those in their own terminal, and `<head>` cannot go through
+ * `next-intl` anyway — ICU parses the angle brackets as tags and throws.
+ *
+ * Everything else is prose and belongs in the message files, keyed as
+ * `home.workflow.<flowId>.…`. The two are never mixed on one string: `titleLiteral`
+ * and a translated title are alternatives, and a row carries either `literal` or
+ * an `id`.
  */
 
-/** Where a stage sits in the pass: what it is handed, what it does, what it emits. */
+/** Where a stage sits: what it is handed, what it does, what it emits. */
 export type StageKind = "input" | "work" | "output";
 
-/**
- * A line inside a stage card. `tone` is the severity the CLI would print it at,
- * and it is the only colour in the diagram — see the note in `workflow-card`.
- */
-export interface StageRow {
-  text: string;
+export type StageRow = {
+  /** The severity the CLI would print this at. The only colour in the diagram. */
   tone?: "green" | "yellow" | "red";
   /** Rendered mono: an identifier, a flag, a status line. */
   code?: boolean;
-}
+  /** A caption under the results rather than one of them. No bullet. */
+  note?: boolean;
+} & (
+  | { id: string; literal?: never }
+  | {
+      literal: string;
+      id?: never;
+    }
+);
 
 export interface Stage {
   kind: StageKind;
-  title: string;
-  /** The file that does this, relative to `packages/cli/src`. Omitted when the stage is an artefact rather than a step. */
-  source?: string;
-  rows: StageRow[];
+  /** When absent, the title comes from `…stages.<kind>.title`. */
+  titleLiteral?: string;
+  rows: readonly StageRow[];
 }
 
-export type FlowIcon = "crawl" | "link" | "languages" | "tags" | "gate";
+export type StepIcon = "tag" | "ship" | "unseen" | "falling" | "flag" | "fix" | "clean";
 
-export interface Flow {
+/**
+ * One beat on a timeline. Its four strings — title, chip label, detail and the
+ * elapsed time that carries the whole argument — live under
+ * `…<trackId>.<stepId>`.
+ */
+export interface Step {
   id: string;
-  /** Tab label. */
-  name: string;
-  icon: FlowIcon;
-  /** The question this pass answers, in one line. */
-  question: string;
-  stages: [Stage, Stage, Stage];
+  icon: StepIcon;
 }
+
+export interface Track {
+  id: string;
+  /** `cost` is the timeline you are on today; `saved` is the one goflag puts you on. */
+  tone: "cost" | "saved";
+  /**
+   * Both tracks run the same number of beats, and they have to: the comparison
+   * is between two endings, not between a long story and a short one. Step three
+   * of one is someone asking why traffic fell and step three of the other is the
+   * page doing its job, in the same three moves.
+   */
+  steps: readonly [Step, Step, Step];
+}
+
+export type FlowIcon = "shield" | "link" | "languages" | "robots" | "tags";
+
+interface FlowBase {
+  id: string;
+  icon: FlowIcon;
+}
+
+export type Flow =
+  | (FlowBase & {
+      kind: "fork";
+      /** The one commit both tracks start from. Keyed as `…origin`. */
+      origin: Step;
+      tracks: readonly [Track, Track];
+    })
+  | (FlowBase & {
+      kind: "stages";
+      stages: readonly [Stage, Stage, Stage];
+    });
 
 export const FLOWS: readonly Flow[] = [
+  /**
+   * The same commit, on two timelines.
+   *
+   * Nothing in here names a flag, a format or a rule, because none of that is why
+   * anyone would want this. The argument is made by the shape: three beats on each
+   * track, aligned column for column, so the two endings sit side by side and the
+   * only variable is whether anything read the page before it shipped.
+   *
+   * The second track deliberately does not stop at the alert. Being told a CI step
+   * failed is a cost, not a benefit, and a diagram that ends there is selling the
+   * interruption rather than the outcome. It ends where the reader actually wants
+   * to be: the tag fixed, the page indexed, the shared link rendering its preview
+   * — all of it still on day 0.
+   */
   {
-    id: "crawl",
-    name: "Crawl",
-    icon: "crawl",
-    question: "Which pages exist, and did they answer?",
-    stages: [
+    id: "prevents",
+    icon: "shield",
+    kind: "fork",
+    origin: { id: "origin", icon: "tag" },
+    tracks: [
       {
-        kind: "input",
-        title: "One URL",
-        rows: [
-          { text: "https://example.com", code: true },
-          { text: "Sitemap: lines in robots.txt, then /sitemap.xml", code: true },
-          { text: "seeds bypass include and exclude globs" },
+        id: "without",
+        tone: "cost",
+        steps: [
+          { id: "shipped", icon: "ship" },
+          { id: "unnoticed", icon: "unseen" },
+          { id: "tooLate", icon: "falling" },
         ],
       },
       {
-        kind: "work",
-        title: "crawl",
-        source: "core/crawl.ts",
-        rows: [
-          { text: "breadth-first, same origin, depth 2", code: true },
-          { text: "hreflang → head-link → body-anchor", code: true },
-          { text: "four pages at a time, 200 page cap" },
-          { text: "static GET; Chromium only when the head is empty" },
-        ],
-      },
-      {
-        kind: "output",
-        title: "pages[] · unreachablePages[]",
-        rows: [
-          { text: "[500] /pricing", code: true, tone: "red" },
-          { text: "[network error] /legacy", code: true, tone: "red" },
-          { text: "escalated: headless — 3 pages", code: true },
+        id: "with",
+        tone: "saved",
+        steps: [
+          { id: "flagged", icon: "flag" },
+          { id: "fixed", icon: "fix" },
+          { id: "clean", icon: "clean" },
         ],
       },
     ],
   },
   {
     id: "links",
-    name: "Links",
     icon: "link",
-    question: "Does every link still lead somewhere?",
+    kind: "stages",
     stages: [
-      {
-        kind: "input",
-        title: "Crawled HTML",
-        rows: [
-          { text: "<a href> only; assets are opt-in", code: true },
-          { text: "resolved against <base href>", code: true },
-          { text: "each unique target probed once" },
-        ],
-      },
-      {
-        kind: "work",
-        title: "checkLink",
-        source: "core/links/check.ts",
-        rows: [
-          { text: "HEAD, then GET when HEAD is refused", code: true },
-          { text: "eight at a time, three per host" },
-          { text: "one retry on 429 and 5xx, honours Retry-After", code: true },
-          { text: "200 with a not-found body is a soft-404" },
-        ],
-      },
+      { kind: "input", titleLiteral: "Every <a href>", rows: [{ id: "crawled" }] },
+      { kind: "work", rows: [{ id: "deduped" }] },
       {
         kind: "output",
-        title: "brokenLinks[]",
+        titleLiteral: "brokenLinks[]",
         rows: [
-          { text: "[404] /ghost", code: true, tone: "red" },
-          { text: "[blocked 403] /members", code: true, tone: "yellow" },
-          { text: "[soft-404] /old-post", code: true, tone: "yellow" },
-          { text: "every row carries the page it was found on" },
+          { literal: "[404] /ghost", code: true, tone: "red" },
+          { literal: "[blocked 403] /members", code: true, tone: "yellow" },
+          { id: "mapped", note: true },
         ],
       },
     ],
   },
   {
     id: "i18n",
-    name: "Translations",
     icon: "languages",
-    question: "Is any locale quietly missing a page?",
+    kind: "stages",
     stages: [
-      {
-        kind: "input",
-        title: "Declared locales",
-        rows: [
-          { text: "--locales en,fr,es,pt-br", code: true },
-          { text: "or locale-shaped prefixes in the sitemap" },
-          { text: "never inferred from a URL that looks French" },
-        ],
-      },
-      {
-        kind: "work",
-        title: "buildI18nMatrix",
-        source: "core/i18n.ts",
-        rows: [
-          { text: "route × locale, one cell per page", code: true },
-          { text: "/fr/about → /about", code: true },
-          { text: "a hole is a route some locales have and others do not" },
-          { text: "x-default never fills one", code: true },
-        ],
-      },
+      { kind: "input", rows: [{ literal: "--locales en,fr,es,pt-br", code: true }] },
+      { kind: "work", rows: [{ id: "cells" }] },
       {
         kind: "output",
-        title: "missingTranslations",
+        titleLiteral: "missingTranslations",
         rows: [
-          { text: "/about — missing es (have en, fr)", code: true, tone: "yellow" },
-          { text: "missing-back-link", code: true, tone: "yellow" },
-          { text: "x-default-missing", code: true, tone: "yellow" },
+          { literal: "/about — missing es (has en, fr)", code: true, tone: "yellow" },
+          { id: "declared", note: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "robots",
+    icon: "robots",
+    kind: "stages",
+    stages: [
+      { kind: "input", rows: [{ id: "together" }] },
+      { kind: "work", rows: [{ id: "contradiction" }] },
+      {
+        kind: "output",
+        titleLiteral: "robots.blocks-site",
+        rows: [
+          { id: "wins", code: true, tone: "red" },
+          { id: "severity", note: true },
         ],
       },
     ],
   },
   {
     id: "metadata",
-    name: "Metadata",
     icon: "tags",
-    question: "Will a crawler read what you meant to publish?",
+    kind: "stages",
     stages: [
       {
         kind: "input",
-        title: "The <head>",
-        rows: [
-          { text: "title, description, canonical, viewport", code: true },
-          { text: "og:*, twitter:*, JSON-LD", code: true },
-          { text: "2xx HTML only; canonical duplicates dropped" },
-        ],
+        titleLiteral: "The <head>",
+        rows: [{ literal: "title, description, canonical, og:*", code: true }],
       },
-      {
-        kind: "work",
-        title: "lint · lintSite",
-        source: "core/lint.ts",
-        rows: [
-          { text: "11 rules on a page, 3 across the site" },
-          { text: "each one pure: Page → Issue[]", code: true },
-          { text: "a rule that throws reports itself, and the run goes on" },
-        ],
-      },
+      { kind: "work", rows: [{ id: "split" }] },
       {
         kind: "output",
-        title: "seoIssues[] · siteIssues[]",
+        titleLiteral: "seoIssues[]",
         rows: [
-          { text: "error title.missing", code: true, tone: "red" },
-          { text: "error hreflang.missing", code: true, tone: "red" },
-          { text: "warning description.length", code: true, tone: "yellow" },
-          { text: "each issue ships the fix as a snippet" },
-        ],
-      },
-    ],
-  },
-  {
-    id: "gate",
-    name: "The gate",
-    icon: "gate",
-    question: "Is this branch worse than the last one?",
-    stages: [
-      {
-        kind: "input",
-        title: "baseline.json",
-        rows: [
-          { text: "--baseline baseline.json --regressions-only", code: true },
-          { text: "written by --update-baseline, by the same command", code: true },
-          { text: "known findings are debt, not noise" },
-        ],
-      },
-      {
-        kind: "work",
-        title: "diffReports",
-        source: "report/diff.ts",
-        rows: [
-          { text: "findings matched by fingerprint, not by line", code: true },
-          { text: "added · resolved · unchanged", code: true },
-          { text: "--max-debt caps the total so debt can only shrink", code: true },
-        ],
-      },
-      {
-        kind: "output",
-        title: "exit code",
-        rows: [
-          { text: "0 — nothing new", code: true, tone: "green" },
-          { text: "1 — a regression, and which one", code: true, tone: "red" },
-          { text: "2 — goflag itself could not run", code: true },
+          { literal: "error title.missing", code: true, tone: "red" },
+          { literal: "warning description.length", code: true, tone: "yellow" },
+          { id: "snippet", note: true },
         ],
       },
     ],

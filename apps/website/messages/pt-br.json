@@ -24,15 +24,130 @@
   "home": {
     "hero": {
       "eyebrow": "MIT · Node {node} · sem conta, sem painel",
-      "title": "Ninguém verifica 400 páginas à mão.",
-      "lead": "Um hreflang que aponta para um 404. Um canonical que desindexou uma página em silêncio. Um robots.txt que contradiz cada meta tag do site. O goflag rastreia uma vez, julga o que encontrou e entrega um relatório JSON que você pode usar como gate no CI.",
+      "title": "Sua página está perfeita. O Google não a vê mais.",
+      "lead": "O <code>head</code> não aparece em lugar nenhum, e todas as suas tags de SEO vivem nele. O goflag as lê página por página e faz falhar uma etapa de CI antes que qualquer coisa chegue à produção.",
       "commandLabel": "Rode no seu site",
       "copy": "Copiar",
       "copied": "Copiado",
-      "expectRed": "Espere vermelho. Quase todo site que nunca foi auditado carrega um acúmulo de problemas — isso não é motivo para esperar até que ele esteja limpo.",
       "docsCta": "Leia a documentação",
       "rulesCta": "Veja todas as {count} regras",
-      "workflowLabel": "O que ele faz, em cinco passagens"
+      "workflowLabel": "Uma barreira, quatro verificações"
+    },
+    "workflow": {
+      "prevents": {
+        "name": "O que ele evita",
+        "origin": {
+          "title": "Uma tag muda.",
+          "label": "commit",
+          "detail": "Uma linha no head. A página continua renderizando perfeitamente.",
+          "time": "dia 0"
+        },
+        "without": {
+          "label": "Sem goflag",
+          "shipped": {
+            "title": "Vai para produção.",
+            "label": "publicado",
+            "detail": "Todos os testes verdes. Nada tinha motivo para falhar.",
+            "time": "dia 0"
+          },
+          "unnoticed": {
+            "title": "A página sai do índice.",
+            "label": "despercebido",
+            "detail": "Nada que você controla avisa.",
+            "time": "semanas depois"
+          },
+          "tooLate": {
+            "title": "Alguém pergunta por que o tráfego caiu.",
+            "label": "tarde demais",
+            "detail": "A essa altura ninguém lembra do commit.",
+            "time": "meses depois"
+          }
+        },
+        "with": {
+          "label": "Com goflag",
+          "flagged": {
+            "title": "A CI levanta a bandeira.",
+            "label": "detectado na CI",
+            "detail": "Cada página do build é lida, antes de qualquer coisa ser publicada.",
+            "time": "4 min depois"
+          },
+          "fixed": {
+            "title": "Uma pessoa ou um agente corrige.",
+            "label": "corrigido",
+            "detail": "O achado nomeia a página e a tag. Não há nada para investigar.",
+            "time": "minutos depois"
+          },
+          "clean": {
+            "title": "Vai para produção limpo.",
+            "label": "publicado limpo",
+            "detail": "Indexado sob o canonical certo, e todo link compartilhado renderiza seu cartão de prévia.",
+            "time": "ainda no dia 0"
+          }
+        }
+      },
+      "links": {
+        "name": "Links",
+        "question": "Todo link ainda leva a algum lugar?",
+        "stages": {
+          "input": {
+            "crawled": "em cada página rastreada"
+          },
+          "work": {
+            "title": "Uma requisição por destino",
+            "deduped": "deduplicado em todo o site"
+          },
+          "output": {
+            "mapped": "com a página que aponta para ele"
+          }
+        }
+      },
+      "i18n": {
+        "name": "Traduções",
+        "question": "Alguma locale perdeu uma página em silêncio?",
+        "stages": {
+          "input": {
+            "title": "As locales que você declara"
+          },
+          "work": {
+            "title": "Uma matriz rota × locale",
+            "cells": "uma célula por página, uma linha por rota"
+          },
+          "output": {
+            "declared": "lacunas declaradas são ignoradas, não reportadas"
+          }
+        }
+      },
+      "robots": {
+        "name": "robots.txt",
+        "question": "O site proíbe o que pede em outro lugar?",
+        "stages": {
+          "input": {
+            "title": "robots.txt, e suas tags meta",
+            "together": "lidos juntos, pela primeira vez"
+          },
+          "work": {
+            "title": "As duas não podem ser verdade",
+            "contradiction": "um site fechado a crawlers, servindo páginas que pedem indexação"
+          },
+          "output": {
+            "wins": "robots.txt vence, então a tag nunca é lida",
+            "severity": "um erro em produção, um aviso em staging"
+          }
+        }
+      },
+      "metadata": {
+        "name": "Metadados",
+        "question": "Um crawler vai ler o que você quis publicar?",
+        "stages": {
+          "work": {
+            "title": "14 regras",
+            "split": "11 por página, 3 no site inteiro"
+          },
+          "output": {
+            "snippet": "cinco delas trazem o trecho que corrige"
+          }
+        }
+      }
     },
     "checks": {
       "title": "Quatro coisas, verificadas direito",
@@ -55,7 +170,7 @@
       "metadata": {
         "title": "Metadados de SEO",
         "body": "Onze verificações no head de cada página: presença e comprimento de title e description, presença de canonical e se ele é absoluto, og:title, og:description, og:image, viewport e diretivas de robots contraditórias.",
-        "detail": "Cada achado vem com uma correção para o App Router."
+        "detail": "Cinco delas trazem o trecho de App Router que corrige o problema."
       }
     },
     "terminal": {
@@ -117,8 +232,8 @@
       "deployWhen": "Depois do deploy",
       "deployAgainst": "O ambiente em execução",
       "deployAnswers": "O que está sendo servido de fato está correto?",
-      "flagsTitle": "Por que --static --no-external",
-      "flagsBody": "--static não precisa de navegador, então o job roda em uma imagem Node comum e não pode ser atrasado pelo download do Chromium. --no-external ignora os links de outra origem, que são justamente os que você não pode corrigir e cujas falhas são a indisponibilidade de outra pessoa — um gate que fica vermelho porque um terceiro caiu ensina as pessoas a ignorá-lo. Audite links externos em uma execução agendada, onde ninguém está esperando.",
+      "flagsTitle": "Por que --no-external",
+      "flagsBody": "--no-external ignora os links de outra origem, que são justamente os que você não pode corrigir e cujas falhas são a indisponibilidade de outra pessoa — um gate que fica vermelho porque um terceiro caiu ensina as pessoas a ignorá-lo. Audite links externos em uma execução agendada, onde ninguém está esperando. Adicione --static apenas se tiver certeza de que cada página renderiza seus metadados no servidor; essa suposição deriva conforme o site cresce.",
       "pinTitle": "Fixe a versão",
       "pinBody": "Uma versão flutuante transforma o release de outra pessoa em um pipeline vermelho num commit que não mexeu em nada, e o job só vale a pena se vermelho significa que você quebrou algo.",
       "exitTitle": "Códigos de saída",
@@ -234,6 +349,8 @@
     "resources": "Recursos",
     "project": "Projeto",
     "license": "Licença MIT",
+    "copyright": "© {year} {domain}. Todos os direitos reservados.",
+    "packageLicense": "{name} é MIT",
     "builtBy": "Construído por {author}",
     "issuesNote": "O repositório no GitHub é um espelho somente leitura. As issues são acompanhadas no GitLab.",
     "docs": "Documentação",
@@ -243,7 +360,9 @@
     "changelog": "Changelog",
     "npm": "Pacote npm",
     "github": "Espelho no GitHub",
-    "legal": "Jurídico"
+    "legalNotice": "Avisos legais",
+    "privacy": "Política de privacidade",
+    "cookies": "Política de cookies"
   },
   "legal": {
     "lastUpdated": "Última atualização em {date}"

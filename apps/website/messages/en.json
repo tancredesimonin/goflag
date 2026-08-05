@@ -24,15 +24,130 @@
   "home": {
     "hero": {
       "eyebrow": "MIT · Node {node} · no account, no dashboard",
-      "title": "Nobody can check 400 pages by hand.",
-      "lead": "A hreflang pointing at a 404. A canonical that quietly de-indexed a page. A robots.txt that contradicts every meta tag on the site. goflag crawls once, judges what it found, and hands you a JSON report you can gate CI on.",
+      "title": "Your page is perfect. Google no longer sees it.",
+      "lead": "The <code>head</code> renders nowhere, and every SEO tag you have lives in it. goflag reads them page by page and fails a CI step before any of it reaches production.",
       "commandLabel": "Run it on your site",
       "copy": "Copy",
       "copied": "Copied",
-      "expectRed": "Expect it to be red. Almost every site that has never been audited carries a backlog — that is not a reason to wait until it is clean.",
       "docsCta": "Read the docs",
       "rulesCta": "See all {count} rules",
-      "workflowLabel": "What it does, in five passes"
+      "workflowLabel": "One gate, four checks"
+    },
+    "workflow": {
+      "prevents": {
+        "name": "What it prevents",
+        "origin": {
+          "title": "A tag changes.",
+          "label": "commit",
+          "detail": "One line in the head. The page still renders perfectly.",
+          "time": "day 0"
+        },
+        "without": {
+          "label": "Without goflag",
+          "shipped": {
+            "title": "It ships.",
+            "label": "shipped",
+            "detail": "Every test was green. Nothing had a reason to fail.",
+            "time": "day 0"
+          },
+          "unnoticed": {
+            "title": "The page leaves the index.",
+            "label": "unnoticed",
+            "detail": "Nothing you own says so.",
+            "time": "weeks later"
+          },
+          "tooLate": {
+            "title": "Someone asks why traffic fell.",
+            "label": "too late",
+            "detail": "By now nobody remembers the commit.",
+            "time": "months later"
+          }
+        },
+        "with": {
+          "label": "With goflag",
+          "flagged": {
+            "title": "CI raises the flag.",
+            "label": "caught in CI",
+            "detail": "Every page of the build is read, before any of it is deployed.",
+            "time": "4 min later"
+          },
+          "fixed": {
+            "title": "A developer or an agent fixes it.",
+            "label": "fixed",
+            "detail": "The finding names the page and the tag. There is nothing to investigate.",
+            "time": "minutes later"
+          },
+          "clean": {
+            "title": "It ships clean.",
+            "label": "shipped clean",
+            "detail": "Indexed under the right canonical, and every shared link renders its preview card.",
+            "time": "still day 0"
+          }
+        }
+      },
+      "links": {
+        "name": "Links",
+        "question": "Does every link still lead somewhere?",
+        "stages": {
+          "input": {
+            "crawled": "on every page it crawled"
+          },
+          "work": {
+            "title": "One request per target",
+            "deduped": "deduplicated across the whole site"
+          },
+          "output": {
+            "mapped": "with the page that links to it"
+          }
+        }
+      },
+      "i18n": {
+        "name": "Translations",
+        "question": "Has a locale quietly lost a page?",
+        "stages": {
+          "input": {
+            "title": "The locales you declare"
+          },
+          "work": {
+            "title": "A route × locale matrix",
+            "cells": "one cell per page, one row per route"
+          },
+          "output": {
+            "declared": "declared gaps are ignored, not reported"
+          }
+        }
+      },
+      "robots": {
+        "name": "robots.txt",
+        "question": "Does the site forbid what it asks for elsewhere?",
+        "stages": {
+          "input": {
+            "title": "robots.txt, and your meta tags",
+            "together": "read together, for once"
+          },
+          "work": {
+            "title": "Both cannot be true",
+            "contradiction": "a site closed to crawlers, serving pages that ask to be indexed"
+          },
+          "output": {
+            "wins": "robots.txt wins, so the tag is never read",
+            "severity": "an error in production, a warning on staging"
+          }
+        }
+      },
+      "metadata": {
+        "name": "Metadata",
+        "question": "Will a crawler read what you meant to publish?",
+        "stages": {
+          "work": {
+            "title": "14 rules",
+            "split": "11 on a page, 3 across the site"
+          },
+          "output": {
+            "snippet": "five of them carry the snippet that fixes them"
+          }
+        }
+      }
     },
     "checks": {
       "title": "Four things, checked properly",
@@ -55,7 +170,7 @@
       "metadata": {
         "title": "SEO metadata",
         "body": "Eleven checks on the head of every page: title and description presence and length, canonical presence and absoluteness, og:title, og:description, og:image, viewport, and contradictory robots directives.",
-        "detail": "Each finding carries an App Router fix."
+        "detail": "Five of them carry the App Router snippet that fixes them."
       }
     },
     "terminal": {
@@ -117,8 +232,8 @@
       "deployWhen": "After deploying",
       "deployAgainst": "The running environment",
       "deployAnswers": "Is what is actually serving correct?",
-      "flagsTitle": "Why --static --no-external",
-      "flagsBody": "--static needs no browser, so the job runs on a plain Node image and cannot be slowed by a Chromium download. --no-external skips off-origin links, which are the ones you cannot fix and whose failures are somebody else’s outage — a gate that goes red because a third party is down teaches people to ignore it. Audit external links on a schedule, where nobody is waiting.",
+      "flagsTitle": "Why --no-external",
+      "flagsBody": "--no-external skips off-origin links, which are the ones you cannot fix and whose failures are somebody else’s outage — a gate that goes red because a third party is down teaches people to ignore it. Audit external links on a schedule, where nobody is waiting. Add --static only if you are certain every page renders its metadata on the server; that assumption drifts as a site grows.",
       "pinTitle": "Pin the version",
       "pinBody": "A floating version turns somebody else’s release into a red pipeline on a commit that touched nothing, and the job is only worth having if red means you broke something.",
       "exitTitle": "Exit codes",
@@ -234,6 +349,8 @@
     "resources": "Resources",
     "project": "Project",
     "license": "MIT licensed",
+    "copyright": "© {year} {domain}. All rights reserved.",
+    "packageLicense": "{name} is MIT",
     "builtBy": "Built by {author}",
     "issuesNote": "The GitHub repository is a read-only mirror. Issues are tracked on GitLab.",
     "docs": "Documentation",
@@ -243,7 +360,9 @@
     "changelog": "Changelog",
     "npm": "npm package",
     "github": "GitHub mirror",
-    "legal": "Legal"
+    "legalNotice": "Legal notice",
+    "privacy": "Privacy policy",
+    "cookies": "Cookie policy"
   },
   "legal": {
     "lastUpdated": "Last updated {date}"

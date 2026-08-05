@@ -6,6 +6,7 @@
 export const SITE = {
   name: "goflag",
   domain: "goflag.tech",
+  email: "hello@goflag.tech",
   tagline: "Flags the site problems humans can't catch at scale.",
 } as const;
 

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { BracesIcon, CirclePlayIcon, FileInputIcon } from "lucide-react";
 
 import type { Stage, StageRow } from "@/lib/workflow";
@@ -12,6 +13,11 @@ import { cn } from "@/lib/utils";
  * spending those hues on "this is the middle step" would leave the actual
  * severities competing with decoration. The machinery is neutral; the only
  * colour in the diagram is a finding's own tone.
+ *
+ * The kind labels are the one set of words on the card that is not translated.
+ * `input` / `check` / `output` name the three beats of a pipeline, which is
+ * vocabulary a reader of this page already has in English whatever they read the
+ * rest of the site in.
  */
 const KIND = {
   input: { label: "input", icon: FileInputIcon },
@@ -31,7 +37,13 @@ const TONE_DOT = {
   red: "bg-flag-red",
 } as const;
 
-function Row({ row }: { row: StageRow }) {
+function Row({ row, text }: { row: StageRow; text: string }) {
+  // A caption about the results, not one of them. Losing the bullet is what
+  // separates the two: with one, the eye counts it as another finding.
+  if (row.note) {
+    return <li className="text-muted-foreground/80 pt-0.5 text-xs">{text}</li>;
+  }
+
   return (
     <li className="flex items-start gap-2">
       <span
@@ -47,13 +59,22 @@ function Row({ row }: { row: StageRow }) {
           row.tone ? TONE_TEXT[row.tone] : "text-muted-foreground",
         )}
       >
-        {row.text}
+        {text}
       </span>
     </li>
   );
 }
 
-export function WorkflowCard({ stage, className }: { stage: Stage; className?: string }) {
+export function WorkflowCard({
+  flowId,
+  stage,
+  className,
+}: {
+  flowId: string;
+  stage: Stage;
+  className?: string;
+}) {
+  const t = useTranslations(`home.workflow.${flowId}.stages.${stage.kind}`);
   const { label, icon: Icon } = KIND[stage.kind];
 
   return (
@@ -66,16 +87,11 @@ export function WorkflowCard({ stage, className }: { stage: Stage; className?: s
       </div>
 
       <div className="bg-card relative z-1 flex flex-1 flex-col gap-3 rounded-xl border p-4 shadow-sm">
-        <div className="flex flex-col gap-0.5">
-          <h3 className="font-mono text-sm font-medium">{stage.title}</h3>
-          {stage.source ? (
-            <p className="text-muted-foreground/70 font-mono text-[0.6875rem]">{stage.source}</p>
-          ) : null}
-        </div>
+        <h3 className="font-mono text-sm font-medium">{stage.titleLiteral ?? t("title")}</h3>
 
         <ul className="flex flex-col gap-2">
           {stage.rows.map((row) => (
-            <Row key={row.text} row={row} />
+            <Row key={row.literal ?? row.id} row={row} text={row.literal ?? t(row.id)} />
           ))}
         </ul>
       </div>

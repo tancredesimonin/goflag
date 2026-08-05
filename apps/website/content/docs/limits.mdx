@@ -66,10 +66,12 @@ labelled as heuristics in the [catalogue](/docs/rules), and a future version
 attaches a rigor level and a dated source to every rule so the ones resting on
 convention are visible as such.
 
-**Client-rendered metadata needs the browser path.** Without `--static`, a page
-with an empty-looking head is re-rendered in Chromium. With `--static`, it is
-judged as served — which is correct for a crawler, and misleading if you expected
-the runtime result.
+**Client-rendered metadata needs the browser path.** By default, a page with an
+empty-looking head is re-rendered in Chromium. With `--static`, it is judged as
+served — which is correct for a crawler, and misleading if you expected the
+runtime result. Only opt into `--static` when you are certain every page emits
+its metadata on the server, and re-check that assumption as the site grows: it
+drifts one route at a time, and nothing will warn you.
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
 known defects. That is what it is for. The output never says `clean` and always
@@ -82,10 +84,9 @@ if nobody reads it, the number does not help. See
 Capturing the first baselines on four production sites surfaced five ways goflag
 was wrong. Two are worth reading because they shaped the design:
 
-- The path segment `/cv` was read as **Chuvash** — a real ISO 639-1 code — and
-  invented 31 translation holes that never existed. This is why goflag no longer
-  guesses a locale axis: see
-  [Translations](/docs/i18n#where-the-locale-axis-comes-from).
+- The path segment `/cv` was read as a locale, inventing 31 translation holes
+  that never existed — the mistake that ended locale guessing. The full story is
+  in [Translations](/docs/i18n#the-bug-that-started-this).
 - A trailing slash was stripped before probing, which declared 159 working
   citation links dead and sent somebody to fix content that was already correct.
 
