@@ -1,0 +1,256 @@
+{
+  "nav": {
+    "docs": "Docs",
+    "rules": "Règles",
+    "changelog": "Changelog",
+    "github": "GitHub",
+    "npm": "npm",
+    "skipToContent": "Aller au contenu",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "toggleTheme": "Changer de thème",
+    "language": "Langue"
+  },
+  "meta": {
+    "home": {
+      "title": "goflag — les défauts de site invisibles à grande échelle",
+      "description": "Un CLI qui signale les liens morts, les pages de traduction manquantes, un robots.txt qui contredit vos pages et des métadonnées SEO mal configurées."
+    },
+    "changelog": {
+      "title": "Changelog",
+      "description": "Toutes les versions publiées de @goflag/cli, générées depuis l’historique des commits, avec les notes qui expliquent ce qu’une version change."
+    }
+  },
+  "home": {
+    "hero": {
+      "eyebrow": "MIT · Node {node} · aucun compte, aucun tableau de bord",
+      "title": "Personne ne peut vérifier 400 pages à la main.",
+      "lead": "Un hreflang qui pointe vers un 404. Un canonical qui a désindexé une page en silence. Un robots.txt qui contredit toutes les balises meta du site. goflag explore le site une fois, juge ce qu’il a trouvé, et vous rend un rapport JSON sur lequel vous pouvez bloquer votre CI.",
+      "commandLabel": "Lancez-le sur votre site",
+      "copy": "Copier",
+      "copied": "Copié",
+      "expectRed": "Attendez-vous à du rouge. Presque tous les sites qui n’ont jamais été audités traînent une dette — ce n’est pas une raison d’attendre que le site soit propre.",
+      "docsCta": "Lire la documentation",
+      "rulesCta": "Voir les {count} règles"
+    },
+    "checks": {
+      "title": "Quatre choses, vérifiées correctement",
+      "lead": "Volontairement restreint. Pas de tableau de bord, pas de système de configuration, pas de galerie d’aperçus sociaux — juste les constats, sous forme d’un rapport que vous pouvez rediriger dans un pipe, comparer ou utiliser comme garde-fou.",
+      "links": {
+        "title": "Liens morts",
+        "body": "Chaque lien de chaque page explorée, dédupliqué à l’échelle du site pour qu’un lien de pied de page présent sur 500 pages ne soit sondé qu’une fois. HEAD puis GET, chaînes et boucles de redirection, soft 404, et 403 anti-bot triés séparément des vraies pannes.",
+        "detail": "Rattachés aux pages qui les référencent."
+      },
+      "translations": {
+        "title": "Pages de traduction manquantes",
+        "body": "Une matrice route × locale amorcée depuis votre sitemap, et pas seulement depuis les liens — un site sans hreflang ne donne à un crawler de liens rien à suivre vers ses autres locales. Plus les manques de réciprocité, l’absence de x-default et les étiquettes de locale invalides.",
+        "detail": "Les manques volontaires se déclarent, ils ne se tolèrent pas."
+      },
+      "robots": {
+        "title": "Politique robots.txt",
+        "body": "Un site qui interdit l’exploration alors que ses pages demandent à être indexées. Les deux déclarations ne peuvent pas tenir ensemble, robots.txt gagne, et la balise meta n’est donc jamais lue.",
+        "detail": "Un avertissement en préproduction, une erreur en production."
+      },
+      "metadata": {
+        "title": "Métadonnées SEO",
+        "body": "Onze vérifications sur le head de chaque page : présence et longueur du title et de la description, présence du canonical et son caractère absolu, og:title, og:description, og:image, viewport, et directives robots contradictoires.",
+        "detail": "Chaque constat est accompagné d’un correctif App Router."
+      }
+    },
+    "terminal": {
+      "title": "Toute l’interface",
+      "lead": "Il n’y a pas d’interface à vous montrer. La sortie du terminal est un rendu du rapport JSON, et le JSON est la source de vérité.",
+      "tabs": {
+        "full": "Rapport complet",
+        "summary": "--summary",
+        "gate": "Garde-fou sur la baseline"
+      },
+      "caption": "Sortie réelle, remise en forme pour la page. La progression part sur stderr pour que stdout reste propre pour le rapport."
+    },
+    "invisible": {
+      "title": "Ce qu’un navigateur ne peut pas vous montrer",
+      "lead": "Chacun de ces cas s’affiche parfaitement. Le défaut se trouve dans la partie de la page que personne ne regarde, et le prix se paie dans un index de recherche que vous ne voyez jamais.",
+      "youSee": "Ce que vous voyez",
+      "crawlerSees": "Ce que voit un crawler",
+      "consequence": "Conséquence",
+      "one": {
+        "see": "Une page qui s’affiche exactement comme prévu.",
+        "consequence": "La page demande à être écartée au profit d’une autre. Elle le sera."
+      },
+      "two": {
+        "see": "Quatre locales, toutes accessibles.",
+        "consequence": "Chaque traduction concurrence les trois autres au lieu de se consolider avec elles."
+      },
+      "three": {
+        "see": "Un site de production en ligne, qui sert du trafic.",
+        "consequence": "Aucune page n’est jamais récupérée, donc la directive d’indexation présente sur chaque page n’est jamais lue."
+      }
+    },
+    "method": {
+      "title": "Bloquer sur les régressions, pas sur la perfection",
+      "lead": "Une exécution qui échoue au moindre constat est inutilisable sur un site qui n’est pas encore propre — alors on la désactive, ou on l’ignore en silence. Trois flags rendent le garde-fou tenable, et l’un d’eux fait vraiment diminuer la dette.",
+      "step1": {
+        "title": "Capturer une baseline",
+        "body": "Figez les constats du jour comme connus, pour que le garde-fou puisse demander si ce changement a aggravé les choses plutôt que si le site est parfait. Il affiche combien il en a repris comme acquis et le plafond à fixer ensuite. Committez le fichier."
+      },
+      "step2": {
+        "title": "Bloquer sur ce qui est nouveau",
+        "body": "Les constats sont appariés par empreinte, et les URL de pages sont normalisées en routes indépendantes de l’origine — une baseline capturée contre la production se compare donc proprement à une exécution contre localhost."
+      },
+      "step3": {
+        "title": "Abaisser le cliquet",
+        "body": "Corrigez un constat, baissez --max-debt de un, committez les deux. C’est la seule partie qui fait diminuer la dette ; sans elle, une baseline se fossilise derrière un build qui passe."
+      },
+      "honestyTitle": "Ce mode fait passer des builds sur des sites qui ont des défauts connus",
+      "honestyBody": "C’est précisément à cela qu’il sert, et pourquoi il faut le demander nommément — --baseline seul est une erreur. La sortie ne dit jamais que c’est propre et ne passe jamais au vert tant que des constats restent en suspens. Elle dit combien on en laisse passer, et quel âge a la baseline."
+    },
+    "ci": {
+      "title": "En CI",
+      "lead": "Deux moments méritent un audit, et ils répondent à des questions différentes. Aucun ne remplace l’autre : seule l’exécution sur l’environnement déployé voit ce que celui-ci injecte.",
+      "whenHeader": "Quand",
+      "againstHeader": "Contre",
+      "answersHeader": "Répond à",
+      "mrWhen": "Sur la merge request",
+      "mrAgainst": "Le build de la branche elle-même, démarré par --start",
+      "mrAnswers": "Ce changement provoque-t-il une régression ?",
+      "deployWhen": "Après le déploiement",
+      "deployAgainst": "L’environnement en cours d’exécution",
+      "deployAnswers": "Ce qui est réellement servi est-il correct ?",
+      "flagsTitle": "Pourquoi --static --no-external",
+      "flagsBody": "--static n’a besoin d’aucun navigateur : le job tourne donc sur une simple image Node et ne peut pas être ralenti par un téléchargement de Chromium. --no-external ignore les liens hors origine, ceux que vous ne pouvez pas corriger et dont les pannes sont celles de quelqu’un d’autre — un garde-fou qui passe au rouge parce qu’un tiers est tombé apprend aux gens à l’ignorer. Auditez les liens externes sur une exécution planifiée, quand personne n’attend.",
+      "pinTitle": "Épinglez la version",
+      "pinBody": "Une version flottante transforme la publication de quelqu’un d’autre en pipeline rouge sur un commit qui n’a rien touché, et le job ne vaut la peine que si rouge signifie que vous avez cassé quelque chose.",
+      "exitTitle": "Codes de sortie",
+      "exitCodeHeader": "Code",
+      "exitMeaningHeader": "Signification"
+    },
+    "proof": {
+      "title": "Construit en auditant mes propres sites",
+      "lead": "Il n’y a pas de mur de logos ici, parce qu’il n’y a pas de logos. goflag existe parce que quatre sites que j’exploite en avaient besoin, et chaque chiffre ci-dessous est mesuré plutôt qu’estimé.",
+      "stat1": "sites sous garde-fou en CI",
+      "stat2": "pages auditées en {duration}",
+      "stat3": "tests dans le CLI",
+      "stat4": "faux positifs trouvés et éliminés",
+      "storyTitle": "Le bug qu’il a été construit pour corriger était le sien",
+      "storyBody": "La première version signalait zéro traduction manquante sur un site à quatre locales qui ne portait pas une seule balise hreflang. L’axe des locales était déduit des alternates que les pages déclaraient — un site muet n’avait donc qu’une seule colonne, et chaque vérification passait à vide.",
+      "storyPunch": "goflag détectait l’absence de hreflang en lisant le hreflang.",
+      "fpTitle": "Cinq faux positifs, publiés plutôt qu’enterrés",
+      "fpBody": "La capture des premières baselines a mis au jour cinq façons dont l’outil se trompait. La pire lisait le segment de chemin /cv comme du tchouvache — un vrai code ISO 639-1 — et inventait 31 trous de traduction qui n’ont jamais existé. Une autre retirait un slash final avant de sonder un lien et déclarait mortes 159 citations qui fonctionnaient, ce qui a envoyé quelqu’un corriger du contenu déjà correct.",
+      "fpPunch": "Ils sont corrigés, et ils expliquent pourquoi goflag refuse désormais de deviner le moindre axe de locales : sans sitemap et sans --locales, il signale les préfixes qu’il a vus avec les preuves de chacun, et désactive les vérifications i18n."
+    },
+    "not": {
+      "title": "Ce que goflag n’est pas",
+      "lead": "Savoir vite que ce n’est pas le bon outil vous vaut mieux qu’une longue évaluation.",
+      "items": {
+        "dashboard": "Pas de tableau de bord hébergé, et rien où se connecter",
+        "account": "Pas de compte, pas de clé d’API, pas de siège",
+        "rank": "Pas de suivi de positions, pas de recherche de mots-clés",
+        "vitals": "Pas de Core Web Vitals, pas de score Lighthouse",
+        "score": "Pas de note sur 100",
+        "config": "Pas de fichier de configuration à apprendre",
+        "gallery": "Pas de galerie d’aperçus sociaux",
+        "telemetry": "Pas de télémétrie — rien ne quitte votre machine à part les requêtes vers le site que vous avez nommé"
+      },
+      "closing": "Une commande, un rapport JSON, un code de sortie. Si ce que vous voulez est un chiffre à optimiser, ce n’est pas le bon outil : une note invite à optimiser la note."
+    },
+    "rules": {
+      "title": "Le catalogue de règles",
+      "lead": "Onze règles par page et trois à l’échelle du site. Chaque constat nomme la règle qui l’a produit, pour qu’un rapport puisse être discuté.",
+      "idHeader": "Règle",
+      "severityHeader": "Sévérité",
+      "checksHeader": "Ce qu’elle vérifie",
+      "scopePage": "page",
+      "scopeSite": "site",
+      "honestyTitle": "Les seuils de longueur sont des heuristiques, et sont annoncés comme tels",
+      "honestyBody": "Rien dans le catalogue ne cite encore de spécification. La phase 3 du plan donne à chaque règle un niveau de rigueur et une source datée ; en attendant, traitez les fenêtres de longueur du title et de la description comme les conventions qu’elles sont, et non comme quelque chose de normatif.",
+      "cta": "Lire le catalogue complet"
+    },
+    "faq": {
+      "title": "Des questions qui méritent une réponse avant d’installer",
+      "source": {
+        "q": "A-t-il besoin d’accéder à mon code source ?",
+        "a": "Non. Il a besoin d’une URL. goflag lit ce que lit un crawler, ce qui explique aussi pourquoi il attrape des choses qu’un build local ne peut pas vous montrer — la vraie URL de base, ce que le proxy sert pour robots.txt, les redirections."
+      },
+      "next": {
+        "q": "Est-ce que ça fonctionne en dehors de Next.js ?",
+        "a": "Les vérifications, oui : elles jugent du HTML, et le HTML est le HTML. Les extraits de correctif attachés aux constats supposent le Next.js App Router, et le disent. Rien ne casse sur un site Rails ou Astro ; vous obtenez simplement le constat sans le remède prêt à coller."
+      },
+      "chromium": {
+        "q": "Ai-je besoin de Chromium ?",
+        "a": "Seulement sans --static. Par défaut, une page dont le head paraît vide — pas de title, pas de description, pas de canonical, pas d’Open Graph, pas de JSON-LD — est réaffichée dans un Chromium headless pour qu’une application rendue côté client ne soit pas signalée comme dépourvue de tout. --static désactive cela, y compris la détection, et ne télécharge jamais de navigateur. playwright est une peer dependency optionnelle, donc rien n’est installé sans que vous le demandiez."
+      },
+      "privacy": {
+        "q": "Qu’est-ce qui quitte ma machine ?",
+        "a": "Les requêtes HTTP vers le site que vous avez nommé, et rien d’autre. Pas de télémétrie, pas de compte, pas d’envoi. Le rapport est écrit sur votre disque ou sur votre stdout."
+      },
+      "free": {
+        "q": "Combien ça coûte ?",
+        "a": "Rien. MIT."
+      },
+      "zerox": {
+        "q": "Pourquoi est-il encore en 0.x ?",
+        "a": "Parce que l’API va encore bouger. Il a été extrait de quatre sites que j’exploite plutôt que conçu dans l’abstrait, et prétendre le contraire serait exactement le genre d’affirmation que cet outil existe pour attraper."
+      },
+      "scale": {
+        "q": "Va-t-il aller au bout sur un gros site ?",
+        "a": "Le plus gros site sur lequel il sert de garde-fou fait {pages} pages et prend environ {duration} avec --static --no-external. --max-pages limite l’exploration, --include et --exclude la restreignent, et une exécution qui a atteint une limite le dit dans les diagnostics plutôt que d’annoncer un nombre plus petit comme s’il s’agissait du site entier."
+      }
+    },
+    "close": {
+      "title": "Pointez-le vers votre site.",
+      "lead": "Une commande, aucune installation, rien à quoi s’inscrire. Puis lisez les cinq étapes qui vous mènent d’un premier passage rouge à un garde-fou auquel vous faites confiance.",
+      "quickstart": "Démarrage rapide",
+      "rules": "Catalogue de règles",
+      "changelog": "Changelog"
+    }
+  },
+  "changelog": {
+    "title": "Changelog",
+    "lead": "Toutes les versions publiées de {package}. Les entrées sont générées depuis l’historique des commits, cette page ne peut donc pas s’écarter de ce qui a réellement été publié.",
+    "currentVersion": "Version actuelle",
+    "released": "Publiée le",
+    "installPinned": "Épingler cette version",
+    "filterAll": "Tout",
+    "filterFeatures": "Fonctionnalités",
+    "filterFixes": "Corrections",
+    "filterDocs": "Docs",
+    "noEntries": "Aucune entrée de ce type dans cette version.",
+    "viewCommit": "Voir le commit",
+    "viewDiff": "Comparer avec la version précédente",
+    "onNpm": "Voir sur npm",
+    "sections": {
+      "features": "Fonctionnalités",
+      "fixes": "Corrections de bugs",
+      "docs": "Documentation",
+      "other": "Autres changements"
+    },
+    "pinTitle": "Épinglez la version sur laquelle vous bloquez",
+    "pinBody": "Une version flottante transforme la publication de quelqu’un d’autre en pipeline rouge sur un commit qui n’a rien touché."
+  },
+  "footer": {
+    "tagline": "Signale les problèmes de site qu’aucun humain ne repère à grande échelle.",
+    "product": "Produit",
+    "resources": "Ressources",
+    "project": "Projet",
+    "license": "Sous licence MIT",
+    "builtBy": "Réalisé par {author}",
+    "issuesNote": "Le dépôt GitHub est un miroir en lecture seule. Les tickets sont suivis sur GitLab.",
+    "docs": "Documentation",
+    "quickstart": "Démarrage rapide",
+    "rules": "Catalogue de règles",
+    "ci": "Recettes CI",
+    "changelog": "Changelog",
+    "npm": "Paquet npm",
+    "github": "Miroir GitHub",
+    "legal": "Mentions légales"
+  },
+  "legal": {
+    "lastUpdated": "Dernière mise à jour {date}"
+  },
+  "notFound": {
+    "title": "404",
+    "lead": "Cette page n’existe pas. Si un lien de ce site vous a amené ici, c’est un lien mort — et il existe un outil pour cela.",
+    "home": "Retour à la page d’accueil",
+    "irony": "Oui, l’ironie est notée. Ce site est audité par goflag dans son propre pipeline ; un 404 accessible depuis un lien ferait échouer ce build."
+  }
+}

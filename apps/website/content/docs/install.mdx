@@ -1,0 +1,92 @@
+---
+title: Install
+description: Run goflag once with npx, or add it as a pinned dev dependency. Node 20.11 or newer, and Chromium only if you ask for it.
+group: start
+order: 2
+---
+
+## Requirements
+
+Node `>=20.11`. Nothing else is mandatory.
+
+## Run it once
+
+You do not have to install anything to try it:
+
+```bash
+npx @goflag/cli https://example.com
+```
+
+The binary is called `goflag`, so once it is on your `PATH` — locally or in a
+project — every example in these docs works verbatim.
+
+## Add it to a project
+
+```bash
+pnpm add -D @goflag/cli
+# npm install --save-dev @goflag/cli
+# yarn add -D @goflag/cli
+```
+
+Then wire it to a script, so the flags live in the repository rather than in
+somebody's shell history:
+
+```json title="package.json"
+{
+  "scripts": {
+    "seo": "goflag http://localhost:3000 --start \"pnpm start\" --static --no-external"
+  }
+}
+```
+
+`--start` boots the command, waits for the URL to answer, audits, then stops it
+again — see [CI](/docs/ci).
+
+## Pin the version you gate on
+
+In a pipeline, do not float:
+
+```bash
+npx --yes "@goflag/cli@0.1.4" https://example.com --static
+```
+
+A floating version turns somebody else's release into a red pipeline on a commit
+that touched nothing, and the job is only worth having if red means _you_ broke
+something.
+
+## Chromium
+
+By default, a page whose `<head>` looks empty — no title, no description, no
+canonical, no Open Graph, no JSON-LD — is re-rendered in headless Chromium, so a
+client-rendered application is not reported as missing everything it actually
+declares at runtime.
+
+That path needs `playwright`, which is an **optional peer dependency**: nothing
+is downloaded unless you ask for it.
+
+```bash
+pnpm add -D playwright
+pnpm exec playwright install chromium
+```
+
+If you never want a browser involved, pass `--static`. It turns off both the
+re-render and the detection that triggers it, and never downloads anything:
+
+```bash
+goflag https://example.com --static
+```
+
+For a server-rendered site — Next.js App Router included, as long as the
+metadata is emitted on the server — `--static` costs you nothing and makes the
+run several times faster. It is the right default in CI.
+
+## Verify the install
+
+```bash
+goflag --version
+goflag --help
+```
+
+Both exit `0`. If `goflag https://example.com` exits `1`, that is not an
+installation problem: `1` means findings were reported. See
+[exit codes](/docs/cli#exit-codes).

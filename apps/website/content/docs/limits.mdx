@@ -1,0 +1,100 @@
+---
+title: Limits
+description: The engine's hard caps, what goflag deliberately does not check, and the failure modes worth knowing about before you trust a green run.
+group: reference
+order: 4
+---
+
+A tool that only documents what it catches is not honest about what it misses.
+
+## Engine caps
+
+These are compiled in, not configurable. They exist so a run on a large site
+finishes rather than melting somebody's laptop or somebody's origin.
+
+| Limit                       | Value                       |
+| --------------------------- | --------------------------- |
+| Pages inspected in parallel | 4                           |
+| Pages scanned for links     | 500                         |
+| Unique link targets probed  | 10,000                      |
+| Link probes in parallel     | 8 overall, 3 per host       |
+| Redirect hops followed      | 10, then reported as a loop |
+
+The user-facing caps you _can_ move are `--max-pages` (default `200`) and
+`--depth` (default `2`). When any cap cuts a crawl short, `diagnostics.truncated`
+is `true` and the terminal prints `note: results truncated by a page/link cap`.
+**A truncated report is a report about part of your site**, and a green verdict on
+one means very little.
+
+## What goflag does not check
+
+Not oversights — decisions:
+
+- **Performance.** No Core Web Vitals, no Lighthouse score, no bundle analysis.
+  Different tools, different failure modes, and both already well served.
+- **Accessibility.** Nothing here is an a11y audit. `axe` and friends do that
+  properly.
+- **Content quality.** No keyword analysis, no readability score, no rank
+  tracking, no competitor comparison.
+- **Structured data validity.** JSON-LD presence is used as a signal that a page's
+  head is not empty. Its _correctness_ is not judged.
+- **Images.** No `alt` audit, no weight checks, no format advice.
+- **JavaScript errors.** The headless path renders a page; it does not report what
+  the console said while doing it.
+- **Anything requiring authentication.** goflag sends no credentials and has
+  nowhere to put them. It audits what an anonymous crawler sees, which is also the
+  point.
+
+## Failure modes worth knowing
+
+**Rate limiting looks like breakage.** A site that answers `429` under a crawl
+produces link findings that say more about the crawl than about the links.
+`--timeout` and a smaller `--max-pages` help; auditing your own origin from CI
+usually avoids it entirely.
+
+**Anti-bot filters return 403.** These are triaged apart from real breakage — the
+verdict is `blocked`, not `broken`, and it appears in `warnings` — but a heavily
+protected third party can still produce noise. This is one reason `--no-external`
+belongs in a CI gate.
+
+**Soft 404s are detected heuristically.** A page that returns `200` while saying
+"not found" is caught by pattern, not by proof. False negatives exist.
+
+**The length thresholds are conventions, not specifications.** `title.length` and
+`description.length` cite no standard, because there is none to cite. They are
+labelled as heuristics in the [catalogue](/docs/rules), and a future version
+attaches a rigor level and a dated source to every rule so the ones resting on
+convention are visible as such.
+
+**Client-rendered metadata needs the browser path.** Without `--static`, a page
+with an empty-looking head is re-rendered in Chromium. With `--static`, it is
+judged as served — which is correct for a crawler, and misleading if you expected
+the runtime result.
+
+**A baseline can hide a lot.** `--regressions-only` passes builds on sites with
+known defects. That is what it is for. The output never says `clean` and always
+prints how many findings are being let through and how old the baseline is — but
+if nobody reads it, the number does not help. See
+[baseline gating](/docs/ci/baseline).
+
+## Known false positives, and why they are documented
+
+Capturing the first baselines on four production sites surfaced five ways goflag
+was wrong. Two are worth reading because they shaped the design:
+
+- The path segment `/cv` was read as **Chuvash** — a real ISO 639-1 code — and
+  invented 31 translation holes that never existed. This is why goflag no longer
+  guesses a locale axis: see
+  [Translations](/docs/i18n#where-the-locale-axis-comes-from).
+- A trailing slash was stripped before probing, which declared 159 working
+  citation links dead and sent somebody to fix content that was already correct.
+
+All five are fixed. They are published rather than buried because a tool that
+reports defects has to be auditable itself, and because the second one cost
+somebody an afternoon.
+
+## Reporting a wrong finding
+
+A finding you believe is wrong is worth an issue: include the URL, the rule id,
+and the `--json` output for that page. `id` is stable, so a report from three
+weeks ago still identifies the same finding today.

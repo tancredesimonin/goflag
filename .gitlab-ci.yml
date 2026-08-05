@@ -115,6 +115,14 @@ format-check:
 build:
   stage: verify
   <<: *pnpm
+  variables:
+    # `apps/website` refuses to build without this whenever `CI` or
+    # `APP_ENV=production` is set, which is the guard working as intended: the URL
+    # is baked into canonicals, hreflang and OG tags, so a build that silently
+    # fell back to localhost would ship a site that de-indexes itself. Locally the
+    # fallback applies and `pnpm build` passes, so this job was the first place
+    # the requirement could bite.
+    NEXT_PUBLIC_WEBSITE_FRONTEND_URL: "https://goflag.tech"
   script:
     - pnpm build
 
