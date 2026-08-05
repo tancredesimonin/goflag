@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — los defectos de un sitio invisibles a escala",
+      "title": "goflag — una CLI que señala en CI los defectos invisibles de un sitio",
       "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."
     },
     "changelog": {
@@ -23,14 +23,10 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "MIT · Node {node} · sin cuenta, sin panel",
       "title": "Su página es perfecta. Google ya no la ve.",
-      "lead": "El <code>head</code> no se muestra en ninguna parte, y todas sus etiquetas SEO viven ahí. goflag las lee página por página y hace fallar un paso de CI antes de que nada llegue a producción.",
-      "commandLabel": "Ejecútelo en su sitio",
+      "lead": "goflag es una CLI que lee su sitio como lo lee un rastreador, y hace fallar un paso de CI antes de que un defecto invisible llegue a producción.",
       "copy": "Copiar",
       "copied": "Copiado",
-      "docsCta": "Leer la documentación",
-      "rulesCta": "Ver las {count} reglas",
       "workflowLabel": "Una barrera, cuatro comprobaciones"
     },
     "workflow": {
@@ -39,7 +35,6 @@
         "origin": {
           "title": "Cambia una etiqueta.",
           "label": "commit",
-          "detail": "Una línea en el head. La página se sigue viendo perfecta.",
           "time": "día 0"
         },
         "without": {
@@ -47,19 +42,16 @@
           "shipped": {
             "title": "Se despliega.",
             "label": "desplegado",
-            "detail": "Todas las pruebas en verde. Nada tenía motivo para fallar.",
             "time": "día 0"
           },
           "unnoticed": {
             "title": "La página sale del índice.",
             "label": "inadvertido",
-            "detail": "Nada de lo que usted controla lo dice.",
             "time": "semanas después"
           },
           "tooLate": {
             "title": "Alguien pregunta por qué cayó el tráfico.",
             "label": "demasiado tarde",
-            "detail": "A estas alturas nadie recuerda el commit.",
             "time": "meses después"
           }
         },
@@ -68,19 +60,16 @@
           "flagged": {
             "title": "La CI da la alerta.",
             "label": "detectado en CI",
-            "detail": "Cada página del build se lee, antes de desplegar nada.",
             "time": "4 min después"
           },
           "fixed": {
             "title": "Un desarrollador o un agente lo corrige.",
             "label": "corregido",
-            "detail": "El hallazgo nombra la página y la etiqueta. No hay nada que investigar.",
             "time": "minutos después"
           },
           "clean": {
             "title": "Se despliega limpio.",
             "label": "desplegado limpio",
-            "detail": "Indexado bajo el canonical correcto, y cada enlace compartido muestra su tarjeta de vista previa.",
             "time": "todavía el día 0"
           }
         }
@@ -140,48 +129,24 @@
         "question": "¿Leerá un crawler lo que usted quiso publicar?",
         "stages": {
           "work": {
-            "title": "14 reglas",
-            "split": "11 por página, 3 en todo el sitio"
+            "title": "Presencia, longitud, contradicciones",
+            "split": "comprobadas en cada página, y en todo el sitio"
           },
           "output": {
-            "snippet": "cinco de ellas incluyen el fragmento que lo corrige"
+            "snippet": "con la corrección lista para pegar, cuando existe"
           }
         }
       }
     },
-    "checks": {
-      "title": "Cuatro cosas, comprobadas como es debido",
-      "lead": "Deliberadamente pequeño. Sin panel, sin sistema de configuración, sin galería de vistas previas para redes sociales: solo los hallazgos, en un informe que se puede canalizar, comparar o usar como barrera.",
-      "links": {
-        "title": "Enlaces rotos",
-        "body": "Todos los enlaces de todas las páginas rastreadas, deduplicados de forma global para que un enlace del pie presente en 500 páginas se sondee una sola vez. HEAD y luego GET, cadenas y bucles de redirección, 404 encubiertos y 403 antibot clasificados aparte de las roturas reales.",
-        "detail": "Asociados de vuelta a las páginas que los referencian."
-      },
-      "translations": {
-        "title": "Páginas de traducción que faltan",
-        "body": "Una matriz route × locale construida a partir de su sitemap, no solo de los enlaces: un sitio sin hreflang no le da a un rastreador de enlaces nada que seguir hacia sus demás idiomas. Además, fallos de reciprocidad, x-default ausente y etiquetas de idioma no válidas.",
-        "detail": "Los huecos deliberados se declaran, no se toleran."
-      },
-      "robots": {
-        "title": "Política de robots.txt",
-        "body": "Un sitio que prohíbe el rastreo mientras sus páginas piden ser indexadas. Las dos declaraciones no pueden sostenerse a la vez, gana robots.txt y por eso la etiqueta meta no llega ni a leerse.",
-        "detail": "Una advertencia en preproducción, un error en producción."
-      },
-      "metadata": {
-        "title": "Metadatos SEO",
-        "body": "Once comprobaciones sobre el head de cada página: presencia y longitud del título y de la descripción, presencia del canonical y si es absoluto, og:title, og:description, og:image, viewport y directivas robots contradictorias.",
-        "detail": "Cinco de ellas incluyen el fragmento de App Router que lo corrige."
-      }
-    },
     "terminal": {
       "title": "Toda la interfaz",
-      "lead": "No hay ninguna interfaz gráfica que mostrarle. La salida del terminal es una representación del informe JSON, y el JSON es la fuente de la verdad.",
+      "lead": "El informe JSON es la interfaz: canalícelo a sus scripts, compárelo entre ejecuciones, condicione la CI con él o déselo a leer a un agente de IA. La salida del terminal es una representación de él.",
       "tabs": {
         "full": "Informe completo",
         "summary": "--summary",
         "gate": "Barrera con línea base"
       },
-      "caption": "Salida real, reformateada para esta página. El progreso va a stderr para que stdout quede limpio para el informe."
+      "caption": "Salida real; solo se ajusta el espaciado para esta página. El progreso va a stderr para que stdout quede limpio para el informe."
     },
     "invisible": {
       "title": "Lo que un navegador no puede mostrarle",
@@ -207,7 +172,7 @@
       "lead": "Una ejecución que falla ante cualquier hallazgo es inservible en un sitio que todavía no está limpio: acaba desactivada, o ignorada sin decirlo. Tres opciones hacen que la barrera sea sostenible, y una de ellas es la que de verdad reduce la deuda acumulada.",
       "step1": {
         "title": "Capture una línea base",
-        "body": "Congele los hallazgos de hoy como conocidos, para que la barrera pueda preguntar si este cambio ha empeorado las cosas en lugar de si el sitio es perfecto. Imprime cuántos ha dejado pasar como preexistentes y el techo que conviene fijar a continuación. Haga commit del archivo."
+        "body": "Congele los hallazgos de hoy como conocidos, para que la barrera pueda preguntar si este cambio ha empeorado las cosas en lugar de si el sitio es perfecto. La salida nunca dice que el sitio esté limpio mientras queden hallazgos pendientes — dice cuántos se están dejando pasar."
       },
       "step2": {
         "title": "Bloquee solo por lo nuevo",
@@ -215,14 +180,12 @@
       },
       "step3": {
         "title": "Baje el tope, un diente cada vez",
-        "body": "Corrija un hallazgo, baje --max-debt en uno y haga commit de las dos cosas. Es la única parte que hace que la deuda disminuya; sin ella, una línea base se fosiliza detrás de una build que pasa."
-      },
-      "honestyTitle": "Este modo da por buenas las builds de sitios con defectos conocidos",
-      "honestyBody": "Para eso existe, y por eso hay que pedirlo por su nombre: --baseline por sí solo es un error. La salida nunca dice que el sitio esté limpio ni se pone en verde mientras queden hallazgos pendientes. Dice cuántos se están dejando pasar y qué antigüedad tiene la línea base."
+        "body": "Corrija un hallazgo, baje --max-debt en uno y haga commit de las dos cosas — sin esto, una línea base se fosiliza detrás de una build que pasa."
+      }
     },
     "ci": {
       "title": "En CI",
-      "lead": "Hay dos momentos que merece la pena auditar, y responden a preguntas distintas. Ninguno sustituye al otro: solo la ejecución contra el despliegue ve lo que inyecta el entorno.",
+      "lead": "Hay dos momentos que merece la pena auditar, y responden a preguntas distintas.",
       "whenHeader": "Cuándo",
       "againstHeader": "Contra qué",
       "answersHeader": "Qué responde",
@@ -232,57 +195,23 @@
       "deployWhen": "Después de desplegar",
       "deployAgainst": "El entorno en ejecución",
       "deployAnswers": "¿Es correcto lo que se está sirviendo de verdad?",
-      "flagsTitle": "Por qué --no-external",
-      "flagsBody": "--no-external omite los enlaces externos al origen, que son los que usted no puede arreglar y cuyos fallos son la caída de otra persona: una barrera que se pone en rojo porque un tercero está caído enseña a la gente a ignorarla. Audite los enlaces externos en una tarea programada, donde nadie está esperando. Añada --static solo si está seguro de que cada página genera sus metadatos en el servidor; esa suposición se desvía a medida que el sitio crece.",
-      "pinTitle": "Fije la versión",
-      "pinBody": "Una versión flotante convierte la publicación de otra persona en una pipeline en rojo sobre un commit que no tocó nada, y el job solo merece la pena si el rojo significa que usted ha roto algo.",
-      "exitTitle": "Códigos de salida",
-      "exitCodeHeader": "Código",
-      "exitMeaningHeader": "Significado"
+      "detail": "Las opciones que conviene conocer — --no-external, fijar la versión, los códigos de salida — caben en tres secciones cortas de la documentación.",
+      "docsCta": "Ver las recetas de CI"
     },
     "proof": {
       "title": "Construido auditando mis propios sitios",
-      "lead": "Aquí no hay un muro de logotipos, porque no hay logotipos. goflag existe porque cuatro sitios que gestiono lo necesitaban, y todas las cifras de abajo están medidas, no estimadas.",
+      "lead": "goflag existe porque cuatro sitios que gestiono lo necesitaban — este incluido: goflag.tech está protegido por su propia auditoría en CI, y un merge que la rompe no se fusiona. Todas las cifras de abajo están medidas, no estimadas.",
       "stat1": "sitios con barrera en CI",
       "stat2": "páginas auditadas en {duration}",
-      "stat3": "tests en la CLI",
-      "stat4": "falsos positivos encontrados y eliminados",
-      "storyTitle": "El fallo que vino a corregir era el suyo propio",
-      "storyBody": "La primera versión informó de cero traducciones ausentes en un sitio de cuatro idiomas que no llevaba ni una sola etiqueta hreflang. El eje de idiomas se derivaba de los alternates que declaraban las páginas: un sitio que no declaraba nada tenía exactamente una columna, y todas las comprobaciones pasaban en vacío.",
-      "storyPunch": "goflag detectaba la ausencia de hreflang leyendo el hreflang.",
-      "fpTitle": "Cinco falsos positivos, publicados en lugar de enterrados",
-      "fpBody": "Capturar las primeras líneas base sacó a la luz cinco formas en que la herramienta se equivocaba. La peor leía el segmento de ruta /cv como chuvasio —un código ISO 639-1 real— e inventaba 31 huecos de traducción que nunca existieron. Otra quitaba la barra final antes de sondear un enlace y declaraba muertas 159 citas que funcionaban, lo que llevó a alguien a corregir contenido que ya era correcto.",
-      "fpPunch": "Están corregidos, y son la razón de que goflag ahora se niegue del todo a adivinar un eje de idiomas: sin sitemap y sin --locales, informa de los prefijos que ha visto con la evidencia de cada uno, y desactiva las comprobaciones de i18n."
+      "stat3": "tests en la CLI"
     },
     "not": {
       "title": "Lo que goflag no es",
-      "lead": "Saber pronto que esta no es la herramienta que busca vale más que una evaluación larga.",
-      "items": {
-        "dashboard": "Sin panel alojado, y nada en lo que iniciar sesión",
-        "account": "Sin cuenta, sin clave de API, sin licencias por usuario",
-        "rank": "Sin seguimiento de posiciones ni investigación de palabras clave",
-        "vitals": "Sin Core Web Vitals, sin puntuación de Lighthouse",
-        "score": "Sin nota sobre 100",
-        "config": "Sin archivo de configuración que aprender",
-        "gallery": "Sin galería de vistas previas para redes sociales",
-        "telemetry": "Sin telemetría: de su máquina no sale nada más que las peticiones al sitio que usted ha indicado"
-      },
-      "closing": "Un comando, un informe JSON, un código de salida. Si lo que quiere es una cifra que optimizar, esta es la herramienta equivocada: una puntuación invita a optimizar la puntuación."
-    },
-    "rules": {
-      "title": "El catálogo de reglas",
-      "lead": "Once reglas por página y tres para todo el sitio. Cada hallazgo nombra la regla que lo ha producido, de modo que un informe se puede discutir.",
-      "idHeader": "Regla",
-      "severityHeader": "Gravedad",
-      "checksHeader": "Qué comprueba",
-      "scopePage": "página",
-      "scopeSite": "sitio",
-      "honestyTitle": "Los umbrales de longitud son heurísticas, y están etiquetados como tales",
-      "honestyBody": "Todavía nada del catálogo cita una especificación. La fase 3 del plan da a cada regla un nivel de rigor y una fuente con fecha; hasta que eso llegue, trate los rangos de título y de descripción como las convenciones que son, y no como algo normativo.",
-      "cta": "Leer el catálogo completo"
+      "closing": "Un comando, un informe JSON, un código de salida. Si lo que quiere es una cifra que optimizar, esta es la herramienta equivocada: una puntuación invita a optimizar la puntuación.",
+      "versus": "Si quiere un rastreador de escritorio con interfaz, existe Screaming Frog; si solo busca enlaces rotos, lychee es más rápido. goflag sirve para condicionar una build a lo que lee un rastreador."
     },
     "faq": {
-      "title": "Preguntas que conviene responder antes de instalar",
+      "title": "Antes de instalar",
       "source": {
         "q": "¿Necesita acceso a mi código fuente?",
         "a": "No. Necesita una URL. goflag lee lo que lee un rastreador, que es también la razón de que detecte cosas que una build local no puede mostrarle: la URL base real, lo que sirva el proxy para robots.txt, las redirecciones."
@@ -293,19 +222,15 @@
       },
       "chromium": {
         "q": "¿Necesito Chromium?",
-        "a": "Solo sin --static. Por defecto, una página cuyo head parece vacío —sin título, sin descripción, sin canonical, sin Open Graph, sin JSON-LD— se vuelve a renderizar en Chromium en modo headless, para que una aplicación renderizada en el cliente no aparezca como si le faltara todo. --static desactiva eso, incluida la detección, y nunca descarga un navegador. playwright es una peer dependency opcional, así que no se instala nada a menos que lo pida."
+        "a": "Solo sin --static. Una página cuyo head parece vacío se vuelve a renderizar en Chromium en modo headless, para que una aplicación renderizada en el cliente no aparezca como si le faltara todo; --static desactiva eso y nunca descarga un navegador."
       },
       "privacy": {
         "q": "¿Qué sale de mi máquina?",
-        "a": "Las peticiones HTTP al sitio que usted haya indicado, y nada más. Sin telemetría, sin cuenta, sin subidas. El informe se escribe en su disco o en su stdout."
+        "a": "Las peticiones HTTP al sitio que usted haya indicado, y nada más. El informe se escribe en su disco o en su stdout."
       },
       "free": {
         "q": "¿Cuánto cuesta?",
         "a": "Nada. MIT."
-      },
-      "zerox": {
-        "q": "¿Por qué sigue en 0.x?",
-        "a": "Porque la API todavía va a cambiar. Se extrajo de cuatro sitios que gestiono en lugar de diseñarse en abstracto, y afirmar lo contrario sería justo el tipo de afirmación que esta herramienta existe para detectar."
       },
       "scale": {
         "q": "¿Termina en un sitio grande?",
@@ -314,9 +239,8 @@
     },
     "close": {
       "title": "Apúntelo a su sitio.",
-      "lead": "Un comando, sin instalación, nada a lo que registrarse. Después, lea los cinco pasos que llevan de una primera ejecución en rojo a una barrera en la que confiar.",
+      "lead": "El inicio rápido le lleva de una primera ejecución en rojo a una barrera en la que confiar.",
       "quickstart": "Inicio rápido",
-      "rules": "Catálogo de reglas",
       "changelog": "Registro de cambios"
     }
   },
@@ -339,9 +263,7 @@
       "fixes": "Correcciones de fallos",
       "docs": "Documentación",
       "other": "Otros cambios"
-    },
-    "pinTitle": "Fije la versión con la que bloquea",
-    "pinBody": "Una versión flotante convierte la publicación de otra persona en una pipeline en rojo sobre un commit que no tocó nada."
+    }
   },
   "footer": {
     "tagline": "Señala los problemas de un sitio que nadie puede detectar a escala.",

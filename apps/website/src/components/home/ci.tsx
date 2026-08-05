@@ -1,26 +1,22 @@
+import { ArrowRightIcon } from "lucide-react";
+import NextLink from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { EXIT_CODES } from "@/lib/cli-reference";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-const TONE = {
-  green: "text-flag-green",
-  yellow: "text-flag-yellow",
-  red: "text-flag-red",
-} as const;
-
+/**
+ * Deliberately short. The flags, the version pinning argument and the exit
+ * codes used to live here; they are reference material, and reference material
+ * on a landing page is a section the reader has to scroll past. The two-moment
+ * table stays because it sells the two use cases; everything else is one line
+ * and a link into the CI recipes.
+ */
 export async function Ci() {
   const t = await getTranslations("home.ci");
 
   const moments = [
     { when: t("mrWhen"), against: t("mrAgainst"), answers: t("mrAnswers") },
     { when: t("deployWhen"), against: t("deployAgainst"), answers: t("deployAnswers") },
-  ];
-
-  const notes = [
-    { title: t("flagsTitle"), body: t("flagsBody") },
-    { title: t("pinTitle"), body: t("pinBody") },
   ];
 
   return (
@@ -60,32 +56,14 @@ export async function Ci() {
           </table>
         </div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          {notes.map((note) => (
-            <Card key={note.title}>
-              <CardContent className="space-y-2">
-                <h3 className="font-mono text-sm font-semibold">{note.title}</h3>
-                <p className="text-muted-foreground text-[0.9375rem] leading-relaxed">
-                  {note.body}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <p className="text-muted-foreground mt-6">{t("detail")}</p>
 
-        <div className="mt-8">
-          <h3 className="mb-4 font-semibold">{t("exitTitle")}</h3>
-          <dl className="divide-y rounded-lg border">
-            {EXIT_CODES.map((exit) => (
-              <div key={exit.code} className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:gap-6">
-                <dt className={cn("shrink-0 font-mono text-sm font-semibold", TONE[exit.tone])}>
-                  {exit.code} · {exit.label}
-                </dt>
-                <dd className="text-muted-foreground text-[0.9375rem]">{exit.meaning}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <Button variant="ghost" className="group mt-2 -ml-4" asChild>
+          <NextLink href="/docs/ci">
+            {t("docsCta")}
+            <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          </NextLink>
+        </Button>
       </div>
     </section>
   );

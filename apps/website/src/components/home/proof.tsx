@@ -12,12 +12,6 @@ export async function Proof() {
       label: t("stat2", { duration: PROOF.largestSiteDuration }),
     },
     { value: String(PROOF.tests), label: t("stat3") },
-    { value: String(PROOF.falsePositivesFound), label: t("stat4") },
-  ];
-
-  const stories = [
-    { title: t("storyTitle"), body: t("storyBody"), punch: t("storyPunch") },
-    { title: t("fpTitle"), body: t("fpBody"), punch: t("fpPunch") },
   ];
 
   return (
@@ -28,7 +22,7 @@ export async function Proof() {
           <p className="text-muted-foreground text-lg">{t("lead")}</p>
         </div>
 
-        <dl className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+        <dl className="grid gap-6 sm:grid-cols-3">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-background rounded-lg border p-5">
               <dt className="sr-only">{stat.label}</dt>
@@ -41,21 +35,6 @@ export async function Proof() {
             </div>
           ))}
         </dl>
-
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          {stories.map((story) => (
-            <div
-              key={story.title}
-              className="reveal bg-background flex h-full flex-col gap-3 rounded-lg border p-6"
-            >
-              <h3 className="text-lg font-semibold">{story.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{story.body}</p>
-              <p className="border-flag-red/50 mt-auto border-l-2 pl-4 font-mono text-sm leading-relaxed">
-                {story.punch}
-              </p>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );

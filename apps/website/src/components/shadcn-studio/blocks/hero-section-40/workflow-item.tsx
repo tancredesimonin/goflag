@@ -50,7 +50,9 @@ export function WorkflowItem({
   label: string;
   icon: LucideIcon;
   title: string;
-  description: string;
+  /** One line of prose under the title. The prevents diagram omits it in
+   *  favour of a small visual mockup passed as `children`. */
+  description?: string;
   time: string;
   delay?: number;
   className?: string;
@@ -87,7 +89,9 @@ export function WorkflowItem({
           </span>
         </div>
 
-        <p className="text-muted-foreground text-xs leading-snug text-balance">{description}</p>
+        {description ? (
+          <p className="text-muted-foreground text-xs leading-snug text-balance">{description}</p>
+        ) : null}
 
         {children}
       </div>

@@ -99,10 +99,8 @@ installed in the image, it falls back to the static HTML and says so instead of
 failing, so a plain Node image still works.
 
 Pass `--static` only when you are certain every page emits its metadata on the
-server. It makes the job faster and rules out any browser involvement, but a
-single client-rendered route makes its findings misleading — and sites drift,
-one route at a time, without anything warning you. See
-[Install](/docs/install#chromium).
+server — [Install](/docs/install#chromium) covers why that is rarer than it
+sounds.
 
 ## Pin the version
 
@@ -110,20 +108,16 @@ one route at a time, without anything warning you. See
 npx --yes "@goflag/cli@__CLI_VERSION__" …
 ```
 
-A floating version turns somebody else's release into a red pipeline on a commit
-that touched nothing. Bump it deliberately, read the [changelog](/changelog), and
+Why pinning matters is covered in [Install](/docs/install#pin-the-version-you-gate-on).
+The CI-specific part: bump deliberately, read the [changelog](/changelog), and
 re-capture the baseline in the same merge request if the bump moves findings.
 
 ## Exit codes
 
-| Code | Meaning                                                                                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------ |
-| `0`  | No findings at or above `--fail-on`. Also returned by `--update-baseline`, `--help` and `--version`.                     |
-| `1`  | Findings at or above `--fail-on`, a new regression against a baseline, or `--max-debt` exceeded. This is the gate.       |
-| `2`  | The run itself failed — bad arguments, the entry URL unreachable, `--start` never came up. Not a verdict about the site. |
-
-Treat `2` as a broken job, not as a red site. It means goflag never got to
-judge anything.
+`0` is clean, `1` is the gate — findings at or above `--fail-on`, a regression,
+or `--max-debt` exceeded — and `2` means the run itself failed. Treat `2` as a
+broken job, not as a red site: goflag never got to judge anything. The full
+table is in the [CLI reference](/docs/cli#exit-codes).
 
 ## Keep the JSON
 
