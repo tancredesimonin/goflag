@@ -32,7 +32,10 @@ export async function NotThis() {
           ))}
         </ul>
 
-        <p className="mt-10 max-w-3xl border-l-2 pl-4 leading-relaxed">{t("closing")}</p>
+        <div className="mt-10 max-w-3xl space-y-4 border-l-2 pl-4 leading-relaxed">
+          <p>{t("closing")}</p>
+          <p className="text-muted-foreground">{t("versus")}</p>
+        </div>
       </div>
     </section>
   );

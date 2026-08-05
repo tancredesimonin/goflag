@@ -38,9 +38,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <>
       <HeroWorkflow />
+      <Invisible />
       <Checks />
       <Output />
-      <Invisible />
       <Method />
       <Ci />
       <Proof />

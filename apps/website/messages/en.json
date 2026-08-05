@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — the site problems humans can’t catch at scale",
+      "title": "goflag — a CLI that flags invisible site defects in CI",
       "description": "A CLI that reports broken links, missing translation pages, a robots.txt that contradicts your pages, and misconfigured SEO metadata. JSON-first, MIT."
     },
     "changelog": {
@@ -25,10 +25,12 @@
     "hero": {
       "eyebrow": "MIT · Node {node} · no account, no dashboard",
       "title": "Your page is perfect. Google no longer sees it.",
-      "lead": "The <code>head</code> renders nowhere, and every SEO tag you have lives in it. goflag reads them page by page and fails a CI step before any of it reaches production.",
+      "lead": "goflag is a CLI that reads your site the way a crawler does — links, translations, robots.txt, metadata — and fails a CI step before an invisible defect ships.",
       "commandLabel": "Run it on your site",
       "copy": "Copy",
       "copied": "Copied",
+      "timeToValue": "One command, no install. First report in about a minute.",
+      "expectRed": "Expect red on the first run — every unaudited site carries a backlog. The baseline gate exists so you can start today and shrink it, not wait until the site is clean.",
       "docsCta": "Read the docs",
       "rulesCta": "See all {count} rules",
       "workflowLabel": "One gate, four checks"
@@ -154,12 +156,12 @@
       "lead": "Deliberately small. No dashboard, no config system, no social-preview gallery — just the findings, as a report you can pipe, diff or gate on.",
       "links": {
         "title": "Broken links",
-        "body": "Every link on every crawled page, deduplicated globally so a footer link on 500 pages is probed once. HEAD then GET, redirect chains and loops, soft 404s, and anti-bot 403s triaged apart from real breakage.",
+        "body": "Every link on every page, probed once — a footer link on 500 pages costs one request. Soft 404s and anti-bot 403s are triaged apart from real breakage.",
         "detail": "Mapped back to the pages that reference them."
       },
       "translations": {
         "title": "Missing translation pages",
-        "body": "A route × locale matrix seeded from your sitemap, not only from links — a site with no hreflang gives a link crawler nothing to follow into its other locales. Plus reciprocity gaps, missing x-default and invalid locale tags.",
+        "body": "A route × locale matrix seeded from your sitemap, so even a site with no hreflang gets its locales checked. It also catches reciprocity gaps, missing x-default and invalid locale tags.",
         "detail": "Deliberate gaps are declared, not tolerated."
       },
       "robots": {
@@ -169,7 +171,7 @@
       },
       "metadata": {
         "title": "SEO metadata",
-        "body": "Eleven checks on the head of every page: title and description presence and length, canonical presence and absoluteness, og:title, og:description, og:image, viewport, and contradictory robots directives.",
+        "body": "Eleven checks on the head of every page — title, description, canonical, Open Graph, viewport, robots — for presence, length, absoluteness and contradictions.",
         "detail": "Five of them carry the App Router snippet that fixes them."
       }
     },
@@ -181,7 +183,7 @@
         "summary": "--summary",
         "gate": "Baseline gate"
       },
-      "caption": "Real output, reformatted for the page. Progress goes to stderr so stdout stays clean for the report."
+      "caption": "Real output; only the spacing is adjusted for the page. Progress goes to stderr so stdout stays clean for the report."
     },
     "invisible": {
       "title": "What a browser cannot show you",
@@ -232,27 +234,19 @@
       "deployWhen": "After deploying",
       "deployAgainst": "The running environment",
       "deployAnswers": "Is what is actually serving correct?",
-      "flagsTitle": "Why --no-external",
-      "flagsBody": "--no-external skips off-origin links, which are the ones you cannot fix and whose failures are somebody else’s outage — a gate that goes red because a third party is down teaches people to ignore it. Audit external links on a schedule, where nobody is waiting. Add --static only if you are certain every page renders its metadata on the server; that assumption drifts as a site grows.",
-      "pinTitle": "Pin the version",
-      "pinBody": "A floating version turns somebody else’s release into a red pipeline on a commit that touched nothing, and the job is only worth having if red means you broke something.",
-      "exitTitle": "Exit codes",
-      "exitCodeHeader": "Code",
-      "exitMeaningHeader": "Meaning"
+      "detail": "The flags worth knowing — --no-external, version pinning, exit codes — are three short sections in the docs.",
+      "docsCta": "See the CI recipes"
     },
     "proof": {
       "title": "Built by auditing my own sites",
-      "lead": "There is no logo wall here, because there are no logos. goflag exists because four sites I run needed it, and every number below is measured rather than estimated.",
+      "lead": "There is no logo wall here, because there are no logos. goflag exists because four sites I run needed it — this one included: goflag.tech is gated by its own audit in CI, and a merge that breaks it does not land. Every number below is measured, not estimated.",
       "stat1": "sites gated in CI",
       "stat2": "pages audited in {duration}",
       "stat3": "tests in the CLI",
-      "stat4": "false positives found and killed",
+      "stat4": "rules, each with its own doc page",
       "storyTitle": "The bug it was built to fix was its own",
       "storyBody": "The first version reported zero missing translations on a four-locale site that carried not a single hreflang tag. The locale axis was derived from the alternates the pages declared — so a silent site had exactly one column, and every check passed vacuously.",
-      "storyPunch": "goflag was detecting the absence of hreflang by reading the hreflang.",
-      "fpTitle": "Five false positives, published rather than buried",
-      "fpBody": "Capturing the first baselines surfaced five ways the tool was wrong. The worst read the path segment /cv as Chuvash — a real ISO 639-1 code — and invented 31 translation holes that never existed. Another stripped a trailing slash before probing a link and declared 159 working citations dead, which sent someone to fix content that was already correct.",
-      "fpPunch": "They are fixed, and they are why goflag now refuses to guess a locale axis at all: with no sitemap and no --locales, it reports the prefixes it saw with the evidence for each, and turns the i18n checks off."
+      "storyPunch": "goflag was detecting the absence of hreflang by reading the hreflang."
     },
     "not": {
       "title": "What goflag is not",
@@ -267,7 +261,8 @@
         "gallery": "No social-preview gallery",
         "telemetry": "No telemetry — nothing leaves your machine but requests to the site you named"
       },
-      "closing": "One command, a JSON report, an exit code. If what you want is a number to optimise, this is the wrong tool: a score invites optimising the score."
+      "closing": "One command, a JSON report, an exit code. If what you want is a number to optimise, this is the wrong tool: a score invites optimising the score.",
+      "versus": "If you want a desktop crawler with a UI, Screaming Frog exists; if you only want dead links, lychee is faster. goflag is for gating a build on what a crawler reads — including the route × locale matrix neither of them checks."
     },
     "rules": {
       "title": "The rule catalogue",
@@ -278,7 +273,7 @@
       "scopePage": "page",
       "scopeSite": "site",
       "honestyTitle": "The length thresholds are heuristics, and are labelled as such",
-      "honestyBody": "Nothing in the catalogue yet cites a specification. Phase 3 of the plan gives every rule a rigor level and a dated source; until that lands, treat the title and description windows as the conventions they are rather than as anything normative.",
+      "honestyBody": "The title and description length windows are conventions, not specification — and the output labels them as heuristics rather than presenting them as normative.",
       "cta": "Read the full catalogue"
     },
     "faq": {
@@ -305,7 +300,7 @@
       },
       "zerox": {
         "q": "Why is it still 0.x?",
-        "a": "Because the API will still move. It was extracted from four sites I run rather than designed in the abstract, and pretending otherwise would be the kind of claim this tool exists to catch."
+        "a": "Because the API will still move. goflag was extracted from four production sites rather than designed in the abstract, and the version number should say so."
       },
       "scale": {
         "q": "Will it finish on a large site?",
@@ -314,7 +309,7 @@
     },
     "close": {
       "title": "Point it at your site.",
-      "lead": "One command, no install, nothing to sign up for. Then read the five steps that take you from a red first run to a gate you trust.",
+      "lead": "One command, no install, nothing to sign up for. Then the quickstart takes you in five steps from a red first run to a gate you trust.",
       "quickstart": "Quickstart",
       "rules": "Rule catalogue",
       "changelog": "Changelog"

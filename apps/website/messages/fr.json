@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — les défauts de site invisibles à grande échelle",
+      "title": "goflag — un CLI qui signale en CI les défauts invisibles d’un site",
       "description": "Un CLI qui signale les liens morts, les pages de traduction manquantes, un robots.txt qui contredit vos pages et des métadonnées SEO mal configurées."
     },
     "changelog": {
@@ -25,10 +25,12 @@
     "hero": {
       "eyebrow": "MIT · Node {node} · aucun compte, aucun tableau de bord",
       "title": "Votre page est parfaite. Google ne la voit plus.",
-      "lead": "Le <code>head</code> ne s’affiche nulle part, et toutes vos balises SEO y vivent. goflag les lit page par page et fait échouer une étape de CI avant la mise en production.",
+      "lead": "goflag est un CLI qui lit votre site comme un crawler le lit — liens, traductions, robots.txt, métadonnées — et fait échouer une étape de CI avant qu’un défaut invisible ne parte en production.",
       "commandLabel": "Lancez-le sur votre site",
       "copy": "Copier",
       "copied": "Copié",
+      "timeToValue": "Une commande, rien à installer. Premier rapport en une minute environ.",
+      "expectRed": "Attendez-vous à du rouge au premier passage — tout site jamais audité traîne une dette. La baseline existe pour commencer aujourd’hui et la réduire, pas pour attendre que le site soit propre.",
       "docsCta": "Lire la documentation",
       "rulesCta": "Voir les {count} règles",
       "workflowLabel": "Une barrière, quatre contrôles"
@@ -154,12 +156,12 @@
       "lead": "Volontairement restreint. Pas de tableau de bord, pas de système de configuration, pas de galerie d’aperçus sociaux — juste les constats, sous forme d’un rapport que vous pouvez rediriger dans un pipe, comparer ou utiliser comme garde-fou.",
       "links": {
         "title": "Liens morts",
-        "body": "Chaque lien de chaque page explorée, dédupliqué à l’échelle du site pour qu’un lien de pied de page présent sur 500 pages ne soit sondé qu’une fois. HEAD puis GET, chaînes et boucles de redirection, soft 404, et 403 anti-bot triés séparément des vraies pannes.",
+        "body": "Chaque lien de chaque page, sondé une seule fois — un lien de pied de page présent sur 500 pages ne coûte qu’une requête. Les soft 404 et les 403 anti-bot sont triés séparément des vraies pannes.",
         "detail": "Rattachés aux pages qui les référencent."
       },
       "translations": {
         "title": "Pages de traduction manquantes",
-        "body": "Une matrice route × locale amorcée depuis votre sitemap, et pas seulement depuis les liens — un site sans hreflang ne donne à un crawler de liens rien à suivre vers ses autres locales. Plus les manques de réciprocité, l’absence de x-default et les étiquettes de locale invalides.",
+        "body": "Une matrice route × locale amorcée depuis votre sitemap : même un site sans hreflang voit ses locales vérifiées. Elle attrape aussi les manques de réciprocité, l’absence de x-default et les étiquettes de locale invalides.",
         "detail": "Les manques volontaires se déclarent, ils ne se tolèrent pas."
       },
       "robots": {
@@ -169,7 +171,7 @@
       },
       "metadata": {
         "title": "Métadonnées SEO",
-        "body": "Onze vérifications sur le head de chaque page : présence et longueur du title et de la description, présence du canonical et son caractère absolu, og:title, og:description, og:image, viewport, et directives robots contradictoires.",
+        "body": "Onze vérifications sur le head de chaque page — title, description, canonical, Open Graph, viewport, robots — pour la présence, la longueur, le caractère absolu et les contradictions.",
         "detail": "Cinq d’entre elles embarquent le correctif App Router."
       }
     },
@@ -181,7 +183,7 @@
         "summary": "--summary",
         "gate": "Garde-fou sur la baseline"
       },
-      "caption": "Sortie réelle, remise en forme pour la page. La progression part sur stderr pour que stdout reste propre pour le rapport."
+      "caption": "Sortie réelle ; seul l’espacement est ajusté pour la page. La progression part sur stderr pour que stdout reste propre pour le rapport."
     },
     "invisible": {
       "title": "Ce qu’un navigateur ne peut pas vous montrer",
@@ -232,27 +234,19 @@
       "deployWhen": "Après le déploiement",
       "deployAgainst": "L’environnement en cours d’exécution",
       "deployAnswers": "Ce qui est réellement servi est-il correct ?",
-      "flagsTitle": "Pourquoi --no-external",
-      "flagsBody": "--no-external ignore les liens hors origine, ceux que vous ne pouvez pas corriger et dont les pannes sont celles de quelqu’un d’autre — un garde-fou qui passe au rouge parce qu’un tiers est tombé apprend aux gens à l’ignorer. Auditez les liens externes sur une exécution planifiée, quand personne n’attend. N’ajoutez --static que si vous êtes certain que chaque page rend ses métadonnées côté serveur ; cette hypothèse dérive à mesure que le site grandit.",
-      "pinTitle": "Épinglez la version",
-      "pinBody": "Une version flottante transforme la publication de quelqu’un d’autre en pipeline rouge sur un commit qui n’a rien touché, et le job ne vaut la peine que si rouge signifie que vous avez cassé quelque chose.",
-      "exitTitle": "Codes de sortie",
-      "exitCodeHeader": "Code",
-      "exitMeaningHeader": "Signification"
+      "detail": "Les flags à connaître — --no-external, l’épinglage de version, les codes de sortie — tiennent en trois courtes sections de la documentation.",
+      "docsCta": "Voir les recettes CI"
     },
     "proof": {
       "title": "Construit en auditant mes propres sites",
-      "lead": "Il n’y a pas de mur de logos ici, parce qu’il n’y a pas de logos. goflag existe parce que quatre sites que j’exploite en avaient besoin, et chaque chiffre ci-dessous est mesuré plutôt qu’estimé.",
+      "lead": "Il n’y a pas de mur de logos ici, parce qu’il n’y a pas de logos. goflag existe parce que quatre sites que j’exploite en avaient besoin — celui-ci compris : goflag.tech est gardé par son propre audit en CI, et un merge qui le casse ne passe pas. Chaque chiffre ci-dessous est mesuré, pas estimé.",
       "stat1": "sites sous garde-fou en CI",
       "stat2": "pages auditées en {duration}",
       "stat3": "tests dans le CLI",
-      "stat4": "faux positifs trouvés et éliminés",
+      "stat4": "règles, chacune avec sa page de doc",
       "storyTitle": "Le bug qu’il a été construit pour corriger était le sien",
       "storyBody": "La première version signalait zéro traduction manquante sur un site à quatre locales qui ne portait pas une seule balise hreflang. L’axe des locales était déduit des alternates que les pages déclaraient — un site muet n’avait donc qu’une seule colonne, et chaque vérification passait à vide.",
-      "storyPunch": "goflag détectait l’absence de hreflang en lisant le hreflang.",
-      "fpTitle": "Cinq faux positifs, publiés plutôt qu’enterrés",
-      "fpBody": "La capture des premières baselines a mis au jour cinq façons dont l’outil se trompait. La pire lisait le segment de chemin /cv comme du tchouvache — un vrai code ISO 639-1 — et inventait 31 trous de traduction qui n’ont jamais existé. Une autre retirait un slash final avant de sonder un lien et déclarait mortes 159 citations qui fonctionnaient, ce qui a envoyé quelqu’un corriger du contenu déjà correct.",
-      "fpPunch": "Ils sont corrigés, et ils expliquent pourquoi goflag refuse désormais de deviner le moindre axe de locales : sans sitemap et sans --locales, il signale les préfixes qu’il a vus avec les preuves de chacun, et désactive les vérifications i18n."
+      "storyPunch": "goflag détectait l’absence de hreflang en lisant le hreflang."
     },
     "not": {
       "title": "Ce que goflag n’est pas",
@@ -267,7 +261,8 @@
         "gallery": "Pas de galerie d’aperçus sociaux",
         "telemetry": "Pas de télémétrie — rien ne quitte votre machine à part les requêtes vers le site que vous avez nommé"
       },
-      "closing": "Une commande, un rapport JSON, un code de sortie. Si ce que vous voulez est un chiffre à optimiser, ce n’est pas le bon outil : une note invite à optimiser la note."
+      "closing": "Une commande, un rapport JSON, un code de sortie. Si ce que vous voulez est un chiffre à optimiser, ce n’est pas le bon outil : une note invite à optimiser la note.",
+      "versus": "Si vous voulez un crawler de bureau avec une interface, Screaming Frog existe ; si vous ne cherchez que les liens morts, lychee est plus rapide. goflag sert à conditionner un build sur ce qu’un crawler lit — y compris la matrice route × locale qu’aucun des deux ne vérifie."
     },
     "rules": {
       "title": "Le catalogue de règles",
@@ -278,7 +273,7 @@
       "scopePage": "page",
       "scopeSite": "site",
       "honestyTitle": "Les seuils de longueur sont des heuristiques, et sont annoncés comme tels",
-      "honestyBody": "Rien dans le catalogue ne cite encore de spécification. La phase 3 du plan donne à chaque règle un niveau de rigueur et une source datée ; en attendant, traitez les fenêtres de longueur du title et de la description comme les conventions qu’elles sont, et non comme quelque chose de normatif.",
+      "honestyBody": "Les fenêtres de longueur du title et de la description sont des conventions, pas une spécification — et la sortie les étiquette comme des heuristiques plutôt que de les présenter comme normatives.",
       "cta": "Lire le catalogue complet"
     },
     "faq": {
@@ -305,7 +300,7 @@
       },
       "zerox": {
         "q": "Pourquoi est-il encore en 0.x ?",
-        "a": "Parce que l’API va encore bouger. Il a été extrait de quatre sites que j’exploite plutôt que conçu dans l’abstrait, et prétendre le contraire serait exactement le genre d’affirmation que cet outil existe pour attraper."
+        "a": "Parce que l’API va encore bouger. goflag a été extrait de quatre sites en production plutôt que conçu dans l’abstrait, et le numéro de version doit le dire."
       },
       "scale": {
         "q": "Va-t-il aller au bout sur un gros site ?",
@@ -314,7 +309,7 @@
     },
     "close": {
       "title": "Pointez-le vers votre site.",
-      "lead": "Une commande, aucune installation, rien à quoi s’inscrire. Puis lisez les cinq étapes qui vous mènent d’un premier passage rouge à un garde-fou auquel vous faites confiance.",
+      "lead": "Une commande, aucune installation, rien à quoi s’inscrire. Ensuite, le démarrage rapide vous mène en cinq étapes d’un premier passage rouge à un garde-fou auquel vous faites confiance.",
       "quickstart": "Démarrage rapide",
       "rules": "Catalogue de règles",
       "changelog": "Changelog"

@@ -14,7 +14,7 @@ export async function Output() {
   ];
 
   return (
-    <section className="bg-muted/40 border-y py-16 sm:py-20 lg:py-24">
+    <section className="py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 max-w-3xl space-y-4">
           <h2 className="text-3xl font-semibold text-balance md:text-4xl">{t("title")}</h2>

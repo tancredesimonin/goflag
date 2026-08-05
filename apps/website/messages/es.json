@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — los defectos de un sitio invisibles a escala",
+      "title": "goflag — una CLI que señala en CI los defectos invisibles de un sitio",
       "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."
     },
     "changelog": {
@@ -25,10 +25,12 @@
     "hero": {
       "eyebrow": "MIT · Node {node} · sin cuenta, sin panel",
       "title": "Su página es perfecta. Google ya no la ve.",
-      "lead": "El <code>head</code> no se muestra en ninguna parte, y todas sus etiquetas SEO viven ahí. goflag las lee página por página y hace fallar un paso de CI antes de que nada llegue a producción.",
+      "lead": "goflag es una CLI que lee su sitio como lo lee un rastreador — enlaces, traducciones, robots.txt, metadatos — y hace fallar un paso de CI antes de que un defecto invisible llegue a producción.",
       "commandLabel": "Ejecútelo en su sitio",
       "copy": "Copiar",
       "copied": "Copiado",
+      "timeToValue": "Un comando, sin instalación. Primer informe en un minuto aproximadamente.",
+      "expectRed": "Espere rojo en la primera ejecución — todo sitio que nunca se ha auditado arrastra una deuda. La línea base existe para empezar hoy y reducirla, no para esperar a que el sitio esté limpio.",
       "docsCta": "Leer la documentación",
       "rulesCta": "Ver las {count} reglas",
       "workflowLabel": "Una barrera, cuatro comprobaciones"
@@ -154,12 +156,12 @@
       "lead": "Deliberadamente pequeño. Sin panel, sin sistema de configuración, sin galería de vistas previas para redes sociales: solo los hallazgos, en un informe que se puede canalizar, comparar o usar como barrera.",
       "links": {
         "title": "Enlaces rotos",
-        "body": "Todos los enlaces de todas las páginas rastreadas, deduplicados de forma global para que un enlace del pie presente en 500 páginas se sondee una sola vez. HEAD y luego GET, cadenas y bucles de redirección, 404 encubiertos y 403 antibot clasificados aparte de las roturas reales.",
+        "body": "Todos los enlaces de todas las páginas, sondeados una sola vez — un enlace del pie presente en 500 páginas cuesta una única petición. Los 404 encubiertos y los 403 antibot se clasifican aparte de las roturas reales.",
         "detail": "Asociados de vuelta a las páginas que los referencian."
       },
       "translations": {
         "title": "Páginas de traducción que faltan",
-        "body": "Una matriz route × locale construida a partir de su sitemap, no solo de los enlaces: un sitio sin hreflang no le da a un rastreador de enlaces nada que seguir hacia sus demás idiomas. Además, fallos de reciprocidad, x-default ausente y etiquetas de idioma no válidas.",
+        "body": "Una matriz route × locale construida a partir de su sitemap: incluso un sitio sin hreflang ve comprobados sus idiomas. También detecta fallos de reciprocidad, x-default ausente y etiquetas de idioma no válidas.",
         "detail": "Los huecos deliberados se declaran, no se toleran."
       },
       "robots": {
@@ -169,7 +171,7 @@
       },
       "metadata": {
         "title": "Metadatos SEO",
-        "body": "Once comprobaciones sobre el head de cada página: presencia y longitud del título y de la descripción, presencia del canonical y si es absoluto, og:title, og:description, og:image, viewport y directivas robots contradictorias.",
+        "body": "Once comprobaciones sobre el head de cada página — título, descripción, canonical, Open Graph, viewport, robots — para presencia, longitud, carácter absoluto y contradicciones.",
         "detail": "Cinco de ellas incluyen el fragmento de App Router que lo corrige."
       }
     },
@@ -181,7 +183,7 @@
         "summary": "--summary",
         "gate": "Barrera con línea base"
       },
-      "caption": "Salida real, reformateada para esta página. El progreso va a stderr para que stdout quede limpio para el informe."
+      "caption": "Salida real; solo se ajusta el espaciado para esta página. El progreso va a stderr para que stdout quede limpio para el informe."
     },
     "invisible": {
       "title": "Lo que un navegador no puede mostrarle",
@@ -232,27 +234,19 @@
       "deployWhen": "Después de desplegar",
       "deployAgainst": "El entorno en ejecución",
       "deployAnswers": "¿Es correcto lo que se está sirviendo de verdad?",
-      "flagsTitle": "Por qué --no-external",
-      "flagsBody": "--no-external omite los enlaces externos al origen, que son los que usted no puede arreglar y cuyos fallos son la caída de otra persona: una barrera que se pone en rojo porque un tercero está caído enseña a la gente a ignorarla. Audite los enlaces externos en una tarea programada, donde nadie está esperando. Añada --static solo si está seguro de que cada página genera sus metadatos en el servidor; esa suposición se desvía a medida que el sitio crece.",
-      "pinTitle": "Fije la versión",
-      "pinBody": "Una versión flotante convierte la publicación de otra persona en una pipeline en rojo sobre un commit que no tocó nada, y el job solo merece la pena si el rojo significa que usted ha roto algo.",
-      "exitTitle": "Códigos de salida",
-      "exitCodeHeader": "Código",
-      "exitMeaningHeader": "Significado"
+      "detail": "Las opciones que conviene conocer — --no-external, fijar la versión, los códigos de salida — caben en tres secciones cortas de la documentación.",
+      "docsCta": "Ver las recetas de CI"
     },
     "proof": {
       "title": "Construido auditando mis propios sitios",
-      "lead": "Aquí no hay un muro de logotipos, porque no hay logotipos. goflag existe porque cuatro sitios que gestiono lo necesitaban, y todas las cifras de abajo están medidas, no estimadas.",
+      "lead": "Aquí no hay un muro de logotipos, porque no hay logotipos. goflag existe porque cuatro sitios que gestiono lo necesitaban — este incluido: goflag.tech está protegido por su propia auditoría en CI, y un merge que la rompe no se fusiona. Todas las cifras de abajo están medidas, no estimadas.",
       "stat1": "sitios con barrera en CI",
       "stat2": "páginas auditadas en {duration}",
       "stat3": "tests en la CLI",
-      "stat4": "falsos positivos encontrados y eliminados",
+      "stat4": "reglas, cada una con su página de documentación",
       "storyTitle": "El fallo que vino a corregir era el suyo propio",
       "storyBody": "La primera versión informó de cero traducciones ausentes en un sitio de cuatro idiomas que no llevaba ni una sola etiqueta hreflang. El eje de idiomas se derivaba de los alternates que declaraban las páginas: un sitio que no declaraba nada tenía exactamente una columna, y todas las comprobaciones pasaban en vacío.",
-      "storyPunch": "goflag detectaba la ausencia de hreflang leyendo el hreflang.",
-      "fpTitle": "Cinco falsos positivos, publicados en lugar de enterrados",
-      "fpBody": "Capturar las primeras líneas base sacó a la luz cinco formas en que la herramienta se equivocaba. La peor leía el segmento de ruta /cv como chuvasio —un código ISO 639-1 real— e inventaba 31 huecos de traducción que nunca existieron. Otra quitaba la barra final antes de sondear un enlace y declaraba muertas 159 citas que funcionaban, lo que llevó a alguien a corregir contenido que ya era correcto.",
-      "fpPunch": "Están corregidos, y son la razón de que goflag ahora se niegue del todo a adivinar un eje de idiomas: sin sitemap y sin --locales, informa de los prefijos que ha visto con la evidencia de cada uno, y desactiva las comprobaciones de i18n."
+      "storyPunch": "goflag detectaba la ausencia de hreflang leyendo el hreflang."
     },
     "not": {
       "title": "Lo que goflag no es",
@@ -267,7 +261,8 @@
         "gallery": "Sin galería de vistas previas para redes sociales",
         "telemetry": "Sin telemetría: de su máquina no sale nada más que las peticiones al sitio que usted ha indicado"
       },
-      "closing": "Un comando, un informe JSON, un código de salida. Si lo que quiere es una cifra que optimizar, esta es la herramienta equivocada: una puntuación invita a optimizar la puntuación."
+      "closing": "Un comando, un informe JSON, un código de salida. Si lo que quiere es una cifra que optimizar, esta es la herramienta equivocada: una puntuación invita a optimizar la puntuación.",
+      "versus": "Si quiere un rastreador de escritorio con interfaz, existe Screaming Frog; si solo busca enlaces rotos, lychee es más rápido. goflag sirve para condicionar una build a lo que lee un rastreador — incluida la matriz route × locale que ninguno de los dos comprueba."
     },
     "rules": {
       "title": "El catálogo de reglas",
@@ -278,7 +273,7 @@
       "scopePage": "página",
       "scopeSite": "sitio",
       "honestyTitle": "Los umbrales de longitud son heurísticas, y están etiquetados como tales",
-      "honestyBody": "Todavía nada del catálogo cita una especificación. La fase 3 del plan da a cada regla un nivel de rigor y una fuente con fecha; hasta que eso llegue, trate los rangos de título y de descripción como las convenciones que son, y no como algo normativo.",
+      "honestyBody": "Los rangos de longitud del título y de la descripción son convenciones, no una especificación — y la salida los etiqueta como heurísticas en lugar de presentarlos como algo normativo.",
       "cta": "Leer el catálogo completo"
     },
     "faq": {
@@ -305,7 +300,7 @@
       },
       "zerox": {
         "q": "¿Por qué sigue en 0.x?",
-        "a": "Porque la API todavía va a cambiar. Se extrajo de cuatro sitios que gestiono en lugar de diseñarse en abstracto, y afirmar lo contrario sería justo el tipo de afirmación que esta herramienta existe para detectar."
+        "a": "Porque la API todavía va a cambiar. goflag se extrajo de cuatro sitios en producción en lugar de diseñarse en abstracto, y el número de versión debe decirlo."
       },
       "scale": {
         "q": "¿Termina en un sitio grande?",
@@ -314,7 +309,7 @@
     },
     "close": {
       "title": "Apúntelo a su sitio.",
-      "lead": "Un comando, sin instalación, nada a lo que registrarse. Después, lea los cinco pasos que llevan de una primera ejecución en rojo a una barrera en la que confiar.",
+      "lead": "Un comando, sin instalación, nada a lo que registrarse. Después, el inicio rápido le lleva en cinco pasos de una primera ejecución en rojo a una barrera en la que confiar.",
       "quickstart": "Inicio rápido",
       "rules": "Catálogo de reglas",
       "changelog": "Registro de cambios"

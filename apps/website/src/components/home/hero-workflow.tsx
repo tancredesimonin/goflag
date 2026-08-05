@@ -68,9 +68,15 @@ export async function HeroWorkflow() {
               </NextLink>
             </Button>
           </div>
+
+          <p className="text-muted-foreground text-sm">{t("timeToValue")}</p>
         </div>
 
         <WorkflowTabs label={t("workflowLabel")} />
+
+        <p className="text-muted-foreground border-flag-yellow/60 mx-auto max-w-2xl border-l-2 pl-4 text-sm">
+          {t("expectRed")}
+        </p>
       </div>
     </section>
   );
