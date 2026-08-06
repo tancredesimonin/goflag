@@ -259,6 +259,41 @@ extraire un paquet pour ça recréerait le problème que I4 prétend éviter.
 | **N-4** | Publication `@goflag/next@0.1.0`                                                                                                                                                                                                 | ⬜          |
 | hors v0 | `.goflag/routes.json` (5.2/5.3), `llms.txt` (phase 6), `tancrede` / `tancredo` / `openfinanceguide` (5.1)                                                                                                                        | ⬜          |
 
+### Ce que N-3 a réellement produit
+
+Le test d'ergonomie a rempli son office : **stereo-house passe de 224 à 123
+lignes dans `src/`, solde −101**, et goflag rapporte **exactement les mêmes 39
+findings avant et après** — 42 pages, 0 lien cassé, 3 trous, 38 problèmes SEO,
+0 problème de site, même axe de locales. Aucun ajout, aucun retrait.
+
+Mais le vrai produit de la phase, ce sont les quatre choses que seul un site
+non-consanguin pouvait révéler :
+
+| Trouvé                                   | Conséquence                                               |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `lastModified` par entrée, et par locale | ajouté ; une traduction est éditée son propre jour        |
+| `changeFrequency` / `priority`           | ajoutés ; refuser aurait forcé un sitemap écrit à la main |
+| `robots({ disallow })`                   | ajouté ; `/api/` doit rester hors du crawl                |
+| La lib **re-cassait** `pt-br` en `pt-BR` | corrigé ; elle valide le tag, elle ne le réécrit pas      |
+
+Le dernier est le plus instructif : il produisait un faux positif — « missing
+pt-BR » sur un site qui sert déjà cette langue. Une bibliothèque qui reformate
+l'identifiant du site fabrique un désaccord entre l'URL et le tag, et l'auditeur
+le rapporte. Il a aussi révélé un **défaut symétrique dans le CLI** : goflag
+compare les tags de locale de façon sensible à la casse, donc tout site écrivant
+`hreflang="pt-BR"` au-dessus d'URL en `/pt-br/` — ce que Next et next-intl
+produisent par défaut — gagne une locale fantôme sur son axe. À corriger dans
+`packages/cli`.
+
+### L'ordre du plan était faux
+
+N-3 avant N-4 ne tient pas pour un consommateur **hors du dépôt**. La migration
+est écrite, vérifiée et commitée sur `feat/goflag-next-migration`, mais elle ne
+peut pas être complétée : le hook de pre-commit de stereo-house refuse — à
+raison — un `package.json` qui ne s'installe pas, et `@goflag/next` n'existe pas
+sur npm. La validation a donc dû passer par un tarball `pnpm pack` installé à la
+main. **N-4 est désormais bloquant** pour tout consommateur externe.
+
 ### Deux écarts assumés, décidés en écrivant le code
 
 **`staticParams` et `href` ne sont pas livrés.** La forme des paramètres est une
