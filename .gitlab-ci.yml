@@ -62,6 +62,21 @@ variables:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
+# `test:unit` runs both packages, so it must fire when either one moves. Kept
+# separate from `.cli_changes` above: that one gates the jobs that boot HTTP
+# servers and Chromium, which only the CLI has.
+.pkg_changes: &pkg_changes
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - packages/**/*
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
 # The cache lives here rather than in `default:` on purpose. Every job in this
 # file pulls in this anchor, so they all still get it; the jobs that come from
 # the security include do not, which is what the two `cache: {}` overrides used
@@ -128,7 +143,7 @@ build:
 
 test:unit:
   stage: test
-  <<: [*pnpm, *cli_changes]
+  <<: [*pnpm, *pkg_changes]
   script:
     - pnpm test:unit
 
@@ -204,6 +219,50 @@ test:package:
     - ./node_modules/.bin/goflag --version
     - ./node_modules/.bin/goflag --help > /dev/null
 
+# Same reasoning as `test:package`, for the library: the tarball is what a site
+# receives, and none of `files`, `exports` or the peer declaration is exercised
+# by the workspace. `next` is a real peer rather than an optional one — a
+# project installing this without Next has made a mistake worth surfacing — so
+# npm pulls it in here, which is also what proves the peer range resolves.
+test:package:next:
+  stage: test
+  <<: [*pnpm, *pkg_changes]
+  script:
+    - pnpm --filter @goflag/next build
+    - TARBALL="$(cd packages/next && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - echo "packed $TARBALL"
+
+    # The npm page and the licence. Unlike the CLI these are committed rather
+    # than staged by `prepack`: this package has its own README, and the script
+    # that stages the repository one would overwrite it.
+    - tar -tzf "$TARBALL" > next-tarball-contents.txt
+    - grep -qx 'package/README.md' next-tarball-contents.txt
+    - grep -qx 'package/LICENSE' next-tarball-contents.txt
+
+    - mkdir -p /tmp/goflag-next-install && cd /tmp/goflag-next-install
+    - npm init -y > /dev/null
+    - npm install "$TARBALL"
+
+    # Imported, not just resolved. A broken `exports` map installs fine and
+    # fails at the first import, which is a site's build rather than ours.
+    - |
+      node --input-type=module -e "
+        import { defineSite } from '@goflag/next';
+        const site = defineSite({
+          baseUrl: 'https://example.com',
+          name: 'example',
+          locales: ['en-US'],
+          defaultLocale: 'en-US',
+          indexable: true,
+        });
+        const routes = site.routes({ home: { path: '' } });
+        const [row] = routes.sitemap();
+        if (row.url !== 'https://example.com/en-US') {
+          throw new Error('unexpected sitemap row: ' + row.url);
+        }
+        console.log('imported and rendered from the tarball');
+      "
+
 # Publishing happens on a tag and nowhere else: a version is a promise, and
 # `develop` makes no promises. Tags come from `pnpm release`
 # (commit-and-tag-version), which bumps package.json and tags in one step.
@@ -213,11 +272,14 @@ test:package:
 # the token GitLab mints below for the right to publish this one package. There
 # is nothing left in CI worth stealing: no NPM_TOKEN, nothing to rotate, and
 # nothing that keeps working if it leaks.
+# One job per package, keyed on the tag namespace. `if: $CI_COMMIT_TAG` alone
+# would fire both on either tag, and each would then fail its own version check
+# — a red pipeline on a release that actually succeeded.
 publish:npm:
   stage: release
   <<: *pnpm
   rules:
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
   id_tokens:
     NPM_ID_TOKEN:
       # npm rejects any other audience. This is the whole handshake.
@@ -236,6 +298,31 @@ publish:npm:
     # No --provenance: npm only attests public repositories, and this one is
     # private — asking for it would fail the job rather than skip the signature.
     - cd packages/cli && npm publish --access public
+
+# The same handshake for the library, on its own tag namespace.
+#
+# npm binds a trusted publisher to a package, a project and a CI file path, so
+# this needs its own entry in the package settings on npmjs.com — same project
+# and same file as the CLI, different package. And it cannot be created before
+# the package exists: npm has nothing to attach the publisher to, and a granular
+# token does not help because those only restrict to packages already
+# published. The first `@goflag/next` version therefore goes out by hand.
+publish:next:
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^next-v[0-9]/
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+  script:
+    - PKG_VERSION="$(node -p "require('./packages/next/package.json').version")"
+    - |
+      if [ "$CI_COMMIT_TAG" != "next-v$PKG_VERSION" ]; then
+        echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
+        exit 1
+      fi
+    - cd packages/next && npm publish --access public
 
 # Merging develop into main is the decision to publish. This job turns that
 # merge into a version and a tag; `publish:npm` above turns the tag into a
@@ -264,54 +351,83 @@ release:
     # a branch to commit onto.
     - git checkout -B main "$CI_COMMIT_SHA"
 
-    # A merge to main is not always a release. Docs, chores and refactors are
-    # merged too, and publishing on those would spend a version number on
-    # nothing — then open a merge request on every consuming site to pin it.
+    # Two packages, one job. Two jobs would race: each pushes a release commit
+    # to main, and the second would be rejected as non-fast-forward — or worse,
+    # succeed after a fetch and publish a tag for a tree the first job never
+    # saw. One job, both packages, one push at the end.
     #
-    # Written to a file rather than piped into `grep -q`. Under the runner's
-    # `pipefail`, grep exits at the first match, `git log` takes SIGPIPE, and
-    # the pipeline reports 141 — so `if !` reads a match as "found nothing".
-    # That inverts the guard exactly when there is something to release, which
-    # is how v0.1.1 was skipped.
-    - LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-    - RANGE="${LAST_TAG:+$LAST_TAG..HEAD}"
-    # Outside the working tree: commit-and-tag-version commits right after, and
-    # a stray file next to package.json is one `git add -A` away from shipping.
-    - git log --format=%B $RANGE > /tmp/release-range.txt
+    # Everything below is the single-package logic, unchanged and parameterised.
+    # `return` rather than `exit`: a package with nothing to release must not
+    # end the job for the other one.
+    - RELEASED=""
     - |
-      if ! grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE' /tmp/release-range.txt; then
-        echo "No feat/fix/perf/breaking commit since ${LAST_TAG:-the first commit} — nothing to release."
+      release_one() {
+        NAME="$1"; FILTER="$2"; MATCH="$3"; MANIFEST="$4"; shift 4
+
+        # Per-namespace: a bare `git describe` would answer with whichever tag
+        # is most recent across both packages, and diff against a range that
+        # has nothing to do with this one.
+        LAST_TAG="$(git describe --tags --abbrev=0 --match "$MATCH" 2>/dev/null || true)"
+        RANGE="${LAST_TAG:+$LAST_TAG..HEAD}"
+
+        # A merge to main is not always a release. Docs, chores and refactors
+        # are merged too, and publishing on those would spend a version number
+        # on nothing — then open a merge request on every consuming site to pin
+        # it.
+        #
+        # Written to a file rather than piped into `grep -q`. Under the
+        # runner's `pipefail`, grep exits at the first match, `git log` takes
+        # SIGPIPE, and the pipeline reports 141 — so `if !` reads a match as
+        # "found nothing". That inverts the guard exactly when there is
+        # something to release, which is how v0.1.1 was skipped.
+        #
+        # Outside the working tree: commit-and-tag-version commits right after,
+        # and a stray file next to package.json is one `git add -A` away from
+        # shipping.
+        git log --format=%B $RANGE > /tmp/release-range.txt
+        if ! grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE' /tmp/release-range.txt; then
+          echo "$NAME: no feat/fix/perf/breaking commit since ${LAST_TAG:-the first commit} — nothing to release."
+          return 0
+        fi
+
+        # And the commit type is not enough. `fix(ci)` and `fix(deps)` are
+        # honest conventional-commit fixes that change nothing a consumer can
+        # install — three of the four versions tagged on 2026-08-02 were
+        # exactly that, each spending a number and queueing a merge request on
+        # every consuming site.
+        #
+        # So: did the published surface move? That is `src`, the manifest, and
+        # the files that reach the tarball. `dist/` is not listed because it is
+        # built from `src` and never committed.
+        #
+        # Skipped when no tag exists: a first release has nothing to diff
+        # against and should always go out.
+        if [ -n "$LAST_TAG" ]; then
+          git diff --name-only "$LAST_TAG..HEAD" -- "$@" > /tmp/release-paths.txt
+          if [ ! -s /tmp/release-paths.txt ]; then
+            echo "$NAME: nothing under the published surface changed since $LAST_TAG — nothing to release."
+            echo "  (the files that reach the tarball: $*)"
+            return 0
+          fi
+          echo "$NAME: published surface changed:"
+          sed 's/^/  /' /tmp/release-paths.txt
+        fi
+
+        pnpm --filter "$FILTER" release
+        echo "releasing $NAME $(node -p "require('./$MANIFEST').version")"
+        RELEASED="yes"
+      }
+
+    - release_one "@goflag/cli" "@goflag/cli" "v[0-9]*" "packages/cli/package.json"
+      packages/cli/src packages/cli/package.json README.md LICENSE
+    - release_one "@goflag/next" "@goflag/next" "next-v[0-9]*" "packages/next/package.json"
+      packages/next/src packages/next/package.json packages/next/README.md packages/next/LICENSE
+
+    - |
+      if [ -z "$RELEASED" ]; then
+        echo "Nothing to release."
         exit 0
       fi
-
-    # And the commit type is not enough. `fix(ci)` and `fix(deps)` are honest
-    # conventional-commit fixes that change nothing a consumer can install —
-    # three of the four versions tagged on 2026-08-02 were exactly that, each
-    # spending a number and queueing a merge request on every consuming site.
-    #
-    # So: did the published surface move? That is `src`, the manifest, and the
-    # two files `prepack` stages into the tarball. `dist/` is not listed
-    # because it is built from `src` and never committed.
-    #
-    # Skipped when no tag exists: the first release has nothing to diff against
-    # and should always go out.
-    - |
-      if [ -n "$LAST_TAG" ]; then
-        git diff --name-only "$LAST_TAG..HEAD" -- \
-          packages/cli/src packages/cli/package.json README.md LICENSE \
-          > /tmp/release-paths.txt
-        if [ ! -s /tmp/release-paths.txt ]; then
-          echo "Nothing under the published surface changed since $LAST_TAG — nothing to release."
-          echo "(src, package.json, README, LICENSE — the files that reach the tarball)"
-          exit 0
-        fi
-        echo "published surface changed:"
-        sed 's/^/  /' /tmp/release-paths.txt
-      fi
-
-    - pnpm --filter @goflag/cli release
-    - VERSION="$(node -p "require('./packages/cli/package.json').version")"
-    - echo "releasing v$VERSION"
 
     # Tag last-ish: pushing the branch and the tag together means the tag
     # pipeline (which publishes) only ever sees a commit that is already on main.

@@ -9,7 +9,7 @@
     "start": "next start --port 3004",
     "clean": "rm -rf .next .content-collections",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "content-collections build && tsc --noEmit",
+    "typecheck": "pnpm --filter @goflag/next build && content-collections build && tsc --noEmit",
     "test": "content-collections build && vitest run",
     "test:unit": "content-collections build && vitest run",
     "test:watch": "vitest",

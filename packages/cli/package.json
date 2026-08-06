@@ -17,7 +17,7 @@
     "ci"
   ],
   "license": "MIT",
-  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
@@ -61,7 +61,7 @@
     "validate:sources": "tsx scripts/validate-sources.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
-    "release": "commit-and-tag-version"
+    "release": "commit-and-tag-version --path ."
   },
   "dependencies": {
     "cheerio": "^1.2.0"

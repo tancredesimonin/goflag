@@ -190,6 +190,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^2.1.8
         version: 2.1.9(supports-color@7.2.0)(vitest@2.1.9(@types/node@22.20.1)(lightningcss@1.33.0)(supports-color@7.2.0))
+      commit-and-tag-version:
+        specifier: ^12.5.0
+        version: 12.7.3
       next:
         specifier: 16.2.12
         version: 16.2.12(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
