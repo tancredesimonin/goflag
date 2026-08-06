@@ -1,0 +1,22 @@
+# Rebuilt inside the image, or irrelevant to it.
+node_modules
+**/node_modules
+.next
+**/.next
+**/.content-collections
+**/dist
+coverage
+**/coverage
+test-results
+playwright-report
+.git
+.goflag
+
+# Secrets never enter the build context.
+.env
+.env.*
+
+# Deliberately not `*.md`: the site's content is MDX under apps/website/content,
+# and the changelog page reads packages/cli/CHANGELOG.md at build time. Both
+# would disappear from the context and the build would fail — or worse, succeed
+# with an empty changelog.
