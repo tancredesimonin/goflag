@@ -8,10 +8,10 @@ order: 1
 
 goflag crawls a site you name by URL and reports four classes of defect:
 
-- **Broken links** — every link on every crawled page, probed and triaged.
-- **Missing translation pages** — a route that exists in one locale and not in another, plus the `hreflang` declarations that are supposed to tie them together.
-- **A `robots.txt` that contradicts the pages it serves** — a site that forbids crawling while every page asks to be indexed.
-- **Missing or misconfigured SEO metadata** — a battery of checks on the `<head>` of every page, each one listed in the [rule catalogue](/docs/rules).
+- **Broken links**: every link on every crawled page, probed and triaged.
+- **Missing translation pages**: a route that exists in one locale and not in another, plus the `hreflang` declarations that are supposed to tie them together.
+- **A `robots.txt` that contradicts the pages it serves**: a site that forbids crawling while every page asks to be indexed.
+- **Missing or misconfigured SEO metadata**: a battery of checks on the `<head>` of every page, each one listed in the [rule catalogue](/docs/rules).
 
 It needs a URL and nothing else. No account, no API key, no configuration file, no access to your source code.
 
@@ -29,7 +29,7 @@ the whole job.
 goflag has no dashboard, no hosted service, and no score out of 100. It sends
 nothing anywhere: the only network traffic it generates is requests to the site
 you named. Findings name the rule that produced them, so a report can be argued
-with instead of chased — and the list of what goflag deliberately does not
+with instead of chased, and the list of what goflag deliberately does not
 check is in [Limits](/docs/limits#what-goflag-does-not-check).
 
 ## The report is the product
@@ -40,21 +40,14 @@ The terminal output is a rendering of a JSON document, not the other way round.
 goflag https://example.com --json > report.json
 ```
 
-That document has a stable shape — see [the report reference](/docs/report) —
+That document has a stable shape (see [the report reference](/docs/report)),
 and everything else in the tool is built on it: the summary view, the diff
 against a baseline, the exit code. If you want to feed findings to something
 other than a person, read the JSON and ignore the terminal entirely.
 
 ## Where to go next
 
-- [Install](/docs/install) — one command, or a pinned dev dependency.
-- [Quickstart](/docs/quickstart) — from a first red run to a gate you trust, in five steps.
-- [Rule catalogue](/docs/rules) — every rule, what it checks, and why it matters.
-- [CLI reference](/docs/cli) — every flag, its default, and what it changes.
-
-## Status
-
-goflag is `0.x`. The checks are stable enough to gate four production sites; the
-flag surface and the JSON shape still move between minor versions. Pin the
-version you gate on — see [CI](/docs/ci) — and read the
-[changelog](/changelog) before you bump it.
+- [Install](/docs/install): one command, or a pinned dev dependency.
+- [Quickstart](/docs/quickstart): from a first red run to a gate you trust, in five steps.
+- [Rule catalogue](/docs/rules): every rule, what it checks, and why it matters.
+- [CLI reference](/docs/cli): every flag, its default, and what it changes.

@@ -10,9 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Connector } from "@/components/home/workflow/connector";
+import { CheckFlow } from "@/components/home/workflow/check-flows";
 import { PreventsFlow } from "@/components/home/workflow/prevents-flow";
-import { WorkflowCard } from "@/components/home/workflow/workflow-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FLOWS, type FlowIcon } from "@/lib/workflow";
 
@@ -67,18 +66,7 @@ export function WorkflowTabs({ label }: { label: string }) {
                 {t(`${flow.id}.question`)}
               </p>
 
-              {/* Three columns and two gaps, so the connectors are laid out rather
-                  than positioned. Stretched, so the cards in a row share a height.
-                  The connector columns are given a width rather than sized to their
-                  content: `auto` collapses to the chevron and the rule leading up to
-                  it disappears. */}
-              <div className="grid items-stretch gap-x-2 lg:grid-cols-[1fr_3rem_1fr_3rem_1fr]">
-                <WorkflowCard flowId={flow.id} stage={flow.stages[0]} />
-                <Connector />
-                <WorkflowCard flowId={flow.id} stage={flow.stages[1]} />
-                <Connector />
-                <WorkflowCard flowId={flow.id} stage={flow.stages[2]} />
-              </div>
+              <CheckFlow id={flow.id} />
             </>
           )}
         </TabsContent>

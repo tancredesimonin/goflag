@@ -1,6 +1,6 @@
 ---
 title: The JSON report
-description: The shape of the document every other view is derived from — findings, the locale axis, diagnostics, and the fields worth reading first.
+description: The shape of the document every other view is derived from: findings, the locale axis, diagnostics, and the fields worth reading first.
 navTitle: JSON report
 group: reference
 order: 3
@@ -31,13 +31,27 @@ goflag https://example.com --report report.json   # also prints the terminal vie
     "unreachablePages": 0,
     "verdict": "red"
   },
-  "localeAxis": { "locales": ["en", "fr", "de"], "source": "sitemap", "multilingual": true },
-  // The collections are elided here for space — in a real report the counts
+  "localeAxis": {
+    "locales": ["en", "fr", "de"],
+    "source": "sitemap",
+    "multilingual": true
+  },
+  // The collections are elided here for space; in a real report the counts
   // in `summary` always match them, and `pages` has one entry per crawled page.
-  "pages": [{ "url": "https://example.com/", "status": 200, "locale": null } /* … ×128 */],
+  "pages": [
+    {
+      "url": "https://example.com/",
+      "status": 200,
+      "locale": null
+    }
+    /* … ×128 */
+  ],
   "unreachablePages": [],
   "brokenLinks": [/* 3 entries */],
-  "missingTranslations": { "holes": [/* 2 entries */], "reciprocity": [] },
+  "missingTranslations": {
+    "holes": [/* 2 entries */],
+    "reciprocity": []
+  },
   "seoIssues": [/* 14 entries */],
   "siteIssues": [/* 1 entry */],
   "diagnostics": {
@@ -71,7 +85,7 @@ only, `green` means nothing at all.
 `id` is the **fingerprint**: stable across runs, across environments, and across
 message rewordings. It is what [baseline gating](/docs/ci/baseline) matches on,
 and what you should key on if you store findings anywhere yourself. Do not parse
-it — treat it as opaque.
+it; treat it as opaque.
 
 `why` and `fix` are present when the rule offers them. `fix` assumes the Next.js
 App Router and says so; the finding is still correct on any stack.
@@ -82,10 +96,10 @@ App Router and says so; the finding is still correct on any stack.
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `brokenLinks`                     | One entry per (page, target) pair, with `status`, `verdict` and a human `reason`. A footer link on 500 pages is probed once but reported per referring page. |
 | `unreachablePages`                | Crawled pages that answered non-2xx. `status: 0` means a network error rather than an HTTP status.                                                           |
-| `missingTranslations.holes`       | `{ route, presentLocales, missingLocales }` — a route served in some locales and not others.                                                                 |
+| `missingTranslations.holes`       | `{ route, presentLocales, missingLocales }`: a route served in some locales and not others.                                                                  |
 | `missingTranslations.reciprocity` | hreflang findings: `missing-back-link`, `x-default-missing`, `locale.invalid`, `self-mismatch`.                                                              |
 | `seoIssues`                       | Per-page findings from the [page rule registry](/docs/rules).                                                                                                |
-| `siteIssues`                      | Cross-page findings — same shape as `seoIssues`, but a statement about the whole site, so fixing one usually fixes a whole column.                           |
+| `siteIssues`                      | Cross-page findings: same shape as `seoIssues`, but a statement about the whole site, so fixing one usually fixes a whole column.                            |
 
 ## `localeAxis`
 
@@ -123,7 +137,7 @@ The field to read before you trust a count.
 | `truncated`                     | `true` when a page or link cap cut the crawl short. **A report with `truncated: true` is a report about part of your site.**                                                                                   |
 | `warnings`                      | Non-fatal problems, in prose: a link blocked by an anti-bot filter, a sitemap that would not parse.                                                                                                            |
 | `ignoredHoles`                  | Translation gaps suppressed by `--ignore-holes`. A suppression cannot hide how much it is hiding.                                                                                                              |
-| `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page — the site's own statement that they are duplicates. Reported so a shrinking finding count is explicable. |
+| `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page (the site's own statement that they are duplicates). Reported so a shrinking finding count is explicable. |
 | `sitemap`                       | `{ found, sitemapUrl, urlCount, uncrawled }`. `uncrawled` counts URLs the sitemap declared that the crawl never reached, which is usually a linking problem.                                                   |
 
 ## Stability

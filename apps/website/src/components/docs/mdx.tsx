@@ -3,6 +3,7 @@ import { InfoIcon, LightbulbIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -69,11 +70,18 @@ function Anchor({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">
 const components = {
   Callout,
   SiteEmail,
+  PackageManagerCode,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">
-      <table className="m-0 w-full text-sm" {...props} />
+      <table className="m-0 w-max min-w-full text-sm" {...props} />
     </div>
+  ),
+  th: ({ className, ...props }: ComponentPropsWithoutRef<"th">) => (
+    <th className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props} />
+  ),
+  td: ({ className, ...props }: ComponentPropsWithoutRef<"td">) => (
+    <td className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props} />
   ),
 };
 

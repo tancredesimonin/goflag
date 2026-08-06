@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // The rule id is the thing people search for and the thing a report prints,
     // so it leads. Appending the summary pushed every one of these past the
     // 60-character window the tool itself reports on.
-    title: `${rule.id} — goflag rule`,
+    title: `${rule.id}: goflag rule`,
     absoluteTitle: true,
     // Summary then reason: three of the summaries are short enough on their own
     // to fall under the 50-character floor the tool also reports on.

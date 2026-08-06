@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — uma CLI que sinaliza no CI os defeitos invisíveis de um site",
+      "title": "goflag: uma CLI que sinaliza no CI os defeitos invisíveis de um site",
       "description": "Uma CLI que reporta links quebrados, páginas de tradução ausentes, um robots.txt que contradiz suas páginas e metadados de SEO mal configurados."
     },
     "changelog": {
@@ -76,66 +76,19 @@
       },
       "links": {
         "name": "Links",
-        "question": "Todo link ainda leva a algum lugar?",
-        "stages": {
-          "input": {
-            "crawled": "em cada página rastreada"
-          },
-          "work": {
-            "title": "Uma requisição por destino",
-            "deduped": "deduplicado em todo o site"
-          },
-          "output": {
-            "mapped": "com a página que aponta para ele"
-          }
-        }
+        "question": "Todo link ainda leva a algum lugar?"
       },
       "i18n": {
         "name": "Traduções",
-        "question": "Alguma locale perdeu uma página em silêncio?",
-        "stages": {
-          "input": {
-            "title": "As locales que você declara"
-          },
-          "work": {
-            "title": "Uma matriz rota × locale",
-            "cells": "uma célula por página, uma linha por rota"
-          },
-          "output": {
-            "declared": "lacunas declaradas são ignoradas, não reportadas"
-          }
-        }
+        "question": "Alguma locale perdeu uma página em silêncio?"
       },
       "robots": {
         "name": "robots.txt",
-        "question": "O site proíbe o que pede em outro lugar?",
-        "stages": {
-          "input": {
-            "title": "robots.txt, e suas tags meta",
-            "together": "lidos juntos, pela primeira vez"
-          },
-          "work": {
-            "title": "As duas não podem ser verdade",
-            "contradiction": "um site fechado a crawlers, servindo páginas que pedem indexação"
-          },
-          "output": {
-            "wins": "robots.txt vence, então a tag nunca é lida",
-            "severity": "um erro em produção, um aviso em staging"
-          }
-        }
+        "question": "O site proíbe o que pede em outro lugar?"
       },
       "metadata": {
         "name": "Metadados",
-        "question": "Um crawler vai ler o que você quis publicar?",
-        "stages": {
-          "work": {
-            "title": "Presença, comprimento, contradições",
-            "split": "verificadas em cada página, e no site inteiro"
-          },
-          "output": {
-            "snippet": "com a correção pronta para colar, quando existe"
-          }
-        }
+        "question": "Um crawler vai ler o que você quis publicar?"
       }
     },
     "terminal": {
@@ -169,18 +122,18 @@
     },
     "method": {
       "title": "Faça o gate nas regressões, não na perfeição",
-      "lead": "Uma execução que falha diante de qualquer achado é inutilizável em um site que ainda não está limpo — então ela é desligada, ou ignorada em silêncio. Três flags tornam o gate sustentável, e uma delas faz o acúmulo realmente diminuir.",
+      "lead": "Uma execução que falha diante de qualquer achado é inutilizável em um site que ainda não está limpo, então ela é desligada, ou ignorada em silêncio. Três flags tornam o gate sustentável, e uma delas faz o acúmulo realmente diminuir.",
       "step1": {
         "title": "Capture um baseline",
-        "body": "Congele os achados de hoje como conhecidos, para que o gate pergunte se esta mudança piorou as coisas em vez de perguntar se o site está perfeito. A saída nunca diz que está limpo enquanto houver achados em aberto — ela diz quantos estão sendo deixados passar."
+        "body": "Congele os achados de hoje como conhecidos, para que o gate pergunte se esta mudança piorou as coisas em vez de perguntar se o site está perfeito. A saída nunca diz que está limpo enquanto houver achados em aberto; ela diz quantos estão sendo deixados passar."
       },
       "step2": {
         "title": "Faça o gate no que é novo",
-        "body": "Os achados são casados por fingerprint, e as URLs das páginas são normalizadas para rotas independentes de origem — assim, um baseline capturado contra produção se compara sem ruído com uma execução contra localhost."
+        "body": "Os achados são casados por fingerprint, e as URLs das páginas são normalizadas para rotas independentes de origem, assim um baseline capturado contra produção se compara sem ruído com uma execução contra localhost."
       },
       "step3": {
         "title": "Baixe a catraca",
-        "body": "Corrija um achado, reduza --max-debt em um, faça commit dos dois — sem isso, um baseline fossiliza atrás de um build que passa."
+        "body": "Corrija um achado, reduza --max-debt em um, faça commit dos dois. Sem isso, um baseline fossiliza atrás de um build que passa."
       }
     },
     "ci": {
@@ -195,12 +148,12 @@
       "deployWhen": "Depois do deploy",
       "deployAgainst": "O ambiente em execução",
       "deployAnswers": "O que está sendo servido de fato está correto?",
-      "detail": "As flags que valem conhecer — --no-external, fixar a versão, os códigos de saída — cabem em três seções curtas da documentação.",
+      "detail": "As flags que valem conhecer (--no-external, fixar a versão, os códigos de saída) cabem em três seções curtas da documentação.",
       "docsCta": "Ver as receitas de CI"
     },
     "proof": {
       "title": "Construído auditando meus próprios sites",
-      "lead": "O goflag existe porque quatro sites que eu mantenho precisavam dele — este incluído: goflag.tech é protegido pela sua própria auditoria no CI, e um merge que a quebra não passa. Cada número abaixo é medido, não estimado.",
+      "lead": "O goflag existe porque quatro sites que eu mantenho precisavam dele, este incluído: goflag.tech é protegido pela sua própria auditoria no CI, e um merge que a quebra não passa. Cada número abaixo é medido, não estimado.",
       "stat1": "sites com gate no CI",
       "stat2": "páginas auditadas em {duration}",
       "stat3": "testes na CLI"
@@ -214,7 +167,7 @@
       "title": "Antes de instalar",
       "source": {
         "q": "Ele precisa de acesso ao meu código-fonte?",
-        "a": "Não. Ele precisa de uma URL. O goflag lê o que um rastreador lê, e é também por isso que ele pega coisas que um build local não mostra — a URL base real, o que o proxy serve como robots.txt, os redirecionamentos."
+        "a": "Não. Ele precisa de uma URL. O goflag lê o que um rastreador lê, e é também por isso que ele pega coisas que um build local não mostra: a URL base real, o que o proxy serve como robots.txt, os redirecionamentos."
       },
       "next": {
         "q": "Ele funciona fora do Next.js?",
@@ -291,7 +244,7 @@
   },
   "notFound": {
     "title": "404",
-    "lead": "Esta página não existe. Se um link deste site trouxe você até aqui, isso é um link quebrado — e existe uma ferramenta para isso.",
+    "lead": "Esta página não existe. Se um link deste site trouxe você até aqui, isso é um link quebrado, e existe uma ferramenta para isso.",
     "home": "Voltar para a página inicial",
     "irony": "Sim, a ironia está registrada. O site é auditado pelo goflag no próprio pipeline; um 404 alcançável a partir de um link faria aquele build falhar."
   }

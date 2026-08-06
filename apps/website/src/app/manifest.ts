@@ -10,7 +10,7 @@ import { SITE } from "@/lib/constants";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${SITE.name} — ${SITE.tagline}`,
+    name: `${SITE.name}: ${SITE.tagline}`,
     short_name: SITE.name,
     description: SITE.tagline,
     start_url: `/${defaultLocale}`,

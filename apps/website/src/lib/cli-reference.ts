@@ -105,7 +105,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
     id: "gate",
     title: "The gate",
     intro:
-      "A plain run fails on any finding, which is unusable on a site that is not clean yet — so it gets switched off. These flags make the gate ask whether a change made things worse.",
+      "A plain run fails on any finding, which is unusable on a site that is not clean yet, so it gets switched off. These flags make the gate ask whether a change made things worse.",
     flags: [
       {
         flag: "--fail-on <level>",
@@ -121,7 +121,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
         flag: "--regressions-only",
         requires: "--baseline",
         description:
-          "Fail only on findings that are new relative to the baseline. Known findings stop blocking the build, so a passing run no longer means a clean site — and the output never claims otherwise.",
+          "Fail only on findings that are new relative to the baseline. Known findings stop blocking the build, so a passing run no longer means a clean site, and the output never claims otherwise.",
       },
       {
         flag: "--update-baseline",
@@ -169,7 +169,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
       {
         flag: "--static",
         description:
-          "Static HTML only; never launch headless Chromium, and skip the detection that would. Only safe when every page emits its metadata on the server — an assumption that drifts as a site grows. A client-rendered page is then judged on its unhydrated shell.",
+          "Static HTML only; never launch headless Chromium, and skip the detection that would. Only safe when every page emits its metadata on the server, an assumption that drifts as a site grows. A client-rendered page is then judged on its unhydrated shell.",
       },
       {
         flag: "--no-external",

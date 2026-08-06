@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — un CLI qui signale en CI les défauts invisibles d’un site",
+      "title": "goflag: un CLI qui signale en CI les défauts invisibles d’un site",
       "description": "Un CLI qui signale les liens morts, les pages de traduction manquantes, un robots.txt qui contredit vos pages et des métadonnées SEO mal configurées."
     },
     "changelog": {
@@ -76,66 +76,19 @@
       },
       "links": {
         "name": "Liens",
-        "question": "Chaque lien mène-t-il encore quelque part ?",
-        "stages": {
-          "input": {
-            "crawled": "sur chaque page explorée"
-          },
-          "work": {
-            "title": "Une requête par cible",
-            "deduped": "dédupliqué à l’échelle du site"
-          },
-          "output": {
-            "mapped": "avec la page qui le référence"
-          }
-        }
+        "question": "Chaque lien mène-t-il encore quelque part ?"
       },
       "i18n": {
         "name": "Traductions",
-        "question": "Une locale a-t-elle perdu une page en silence ?",
-        "stages": {
-          "input": {
-            "title": "Les locales que vous déclarez"
-          },
-          "work": {
-            "title": "Une matrice route × locale",
-            "cells": "une case par page, une ligne par route"
-          },
-          "output": {
-            "declared": "les manques déclarés sont ignorés, pas signalés"
-          }
-        }
+        "question": "Une locale a-t-elle perdu une page en silence ?"
       },
       "robots": {
         "name": "robots.txt",
-        "question": "Le site interdit-il ce qu’il réclame ailleurs ?",
-        "stages": {
-          "input": {
-            "title": "robots.txt, et vos balises meta",
-            "together": "lus ensemble, pour une fois"
-          },
-          "work": {
-            "title": "Les deux ne peuvent pas être vrais",
-            "contradiction": "un site fermé aux crawlers, qui sert des pages demandant à être indexées"
-          },
-          "output": {
-            "wins": "robots.txt gagne, la balise n’est donc jamais lue",
-            "severity": "une erreur en production, un avertissement en préproduction"
-          }
-        }
+        "question": "Le site interdit-il ce qu’il réclame ailleurs ?"
       },
       "metadata": {
         "name": "Métadonnées",
-        "question": "Un crawler lira-t-il ce que vous vouliez publier ?",
-        "stages": {
-          "work": {
-            "title": "Présence, longueur, contradictions",
-            "split": "vérifiées sur chaque page, et à l’échelle du site"
-          },
-          "output": {
-            "snippet": "avec le correctif prêt à coller, quand il existe"
-          }
-        }
+        "question": "Un crawler lira-t-il ce que vous vouliez publier ?"
       }
     },
     "terminal": {
@@ -169,18 +122,18 @@
     },
     "method": {
       "title": "Bloquer sur les régressions, pas sur la perfection",
-      "lead": "Une exécution qui échoue au moindre constat est inutilisable sur un site qui n’est pas encore propre — alors on la désactive, ou on l’ignore en silence. Trois flags rendent le garde-fou tenable, et l’un d’eux fait vraiment diminuer la dette.",
+      "lead": "Une exécution qui échoue au moindre constat est inutilisable sur un site qui n’est pas encore propre, alors on la désactive, ou on l’ignore en silence. Trois flags rendent le garde-fou tenable, et l’un d’eux fait vraiment diminuer la dette.",
       "step1": {
         "title": "Capturer une baseline",
-        "body": "Figez les constats du jour comme connus, pour que le garde-fou puisse demander si ce changement a aggravé les choses plutôt que si le site est parfait. La sortie ne dit jamais que c’est propre tant que des constats restent en suspens — elle dit combien on en laisse passer."
+        "body": "Figez les constats du jour comme connus, pour que le garde-fou puisse demander si ce changement a aggravé les choses plutôt que si le site est parfait. La sortie ne dit jamais que c’est propre tant que des constats restent en suspens; elle dit combien on en laisse passer."
       },
       "step2": {
         "title": "Bloquer sur ce qui est nouveau",
-        "body": "Les constats sont appariés par empreinte, et les URL de pages sont normalisées en routes indépendantes de l’origine — une baseline capturée contre la production se compare donc proprement à une exécution contre localhost."
+        "body": "Les constats sont appariés par empreinte, et les URL de pages sont normalisées en routes indépendantes de l’origine: une baseline capturée contre la production se compare donc proprement à une exécution contre localhost."
       },
       "step3": {
         "title": "Abaisser le cliquet",
-        "body": "Corrigez un constat, baissez --max-debt de un, committez les deux — sans cela, une baseline se fossilise derrière un build qui passe."
+        "body": "Corrigez un constat, baissez --max-debt de un, committez les deux. Sans cela, une baseline se fossilise derrière un build qui passe."
       }
     },
     "ci": {
@@ -195,12 +148,12 @@
       "deployWhen": "Après le déploiement",
       "deployAgainst": "L’environnement en cours d’exécution",
       "deployAnswers": "Ce qui est réellement servi est-il correct ?",
-      "detail": "Les flags à connaître — --no-external, l’épinglage de version, les codes de sortie — tiennent en trois courtes sections de la documentation.",
+      "detail": "Les flags à connaître (--no-external, l’épinglage de version, les codes de sortie) tiennent en trois courtes sections de la documentation.",
       "docsCta": "Voir les recettes CI"
     },
     "proof": {
       "title": "Construit en auditant mes propres sites",
-      "lead": "goflag existe parce que quatre sites que j’exploite en avaient besoin — celui-ci compris : goflag.tech est gardé par son propre audit en CI, et un merge qui le casse ne passe pas. Chaque chiffre ci-dessous est mesuré, pas estimé.",
+      "lead": "goflag existe parce que quatre sites que j’exploite en avaient besoin, celui-ci compris: goflag.tech est gardé par son propre audit en CI, et un merge qui le casse ne passe pas. Chaque chiffre ci-dessous est mesuré, pas estimé.",
       "stat1": "sites sous garde-fou en CI",
       "stat2": "pages auditées en {duration}",
       "stat3": "tests dans le CLI"
@@ -214,7 +167,7 @@
       "title": "Avant d’installer",
       "source": {
         "q": "A-t-il besoin d’accéder à mon code source ?",
-        "a": "Non. Il a besoin d’une URL. goflag lit ce que lit un crawler, ce qui explique aussi pourquoi il attrape des choses qu’un build local ne peut pas vous montrer — la vraie URL de base, ce que le proxy sert pour robots.txt, les redirections."
+        "a": "Non. Il a besoin d’une URL. goflag lit ce que lit un crawler, ce qui explique aussi pourquoi il attrape des choses qu’un build local ne peut pas vous montrer: la vraie URL de base, ce que le proxy sert pour robots.txt, les redirections."
       },
       "next": {
         "q": "Est-ce que ça fonctionne en dehors de Next.js ?",
@@ -291,7 +244,7 @@
   },
   "notFound": {
     "title": "404",
-    "lead": "Cette page n’existe pas. Si un lien de ce site vous a amené ici, c’est un lien mort — et il existe un outil pour cela.",
+    "lead": "Cette page n’existe pas. Si un lien de ce site vous a amené ici, c’est un lien mort, et il existe un outil pour cela.",
     "home": "Retour à la page d’accueil",
     "irony": "Oui, l’ironie est notée. Ce site est audité par goflag dans son propre pipeline ; un 404 accessible depuis un lien ferait échouer ce build."
   }

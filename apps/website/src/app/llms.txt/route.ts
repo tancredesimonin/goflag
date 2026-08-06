@@ -44,7 +44,7 @@ export function GET() {
   lines.push("");
   for (const rule of ALL_RULES) {
     lines.push(
-      `- [${rule.id}](${base}/docs/rules/${rule.id}): ${rule.severity}, ${rule.scope}-scoped — ${rule.summary.replace(/`/g, "")}`,
+      `- [${rule.id}](${base}/docs/rules/${rule.id}): ${rule.severity}, ${rule.scope}-scoped. ${rule.summary.replace(/`/g, "")}`,
     );
   }
   lines.push("");
