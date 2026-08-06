@@ -12,13 +12,13 @@
 
 ## 0. Ce que ce plan tranche
 
-| #      | Décision                                                                                     |
-| ------ | -------------------------------------------------------------------------------------------- |
+| #      | Décision                                                                                             |
+| ------ | ---------------------------------------------------------------------------------------------------- |
 | **D1** | `@goflag/og` est un **paquet à part**, à cœur **sans moteur de rendu** — agnostique par construction |
-| **D2** | L'image se rend **au build**, pas en route dynamique ni en asset dessiné à la main            |
-| **D3** | Un **gabarit par défaut piloté par tokens**, pas une galerie de gabarits                      |
-| **D4** | Les **illustrations de contenu** (blog, LinkedIn, vidéo) ne rentrent pas dans goflag           |
-| **D5** | L'OG entre d'abord par les **règles**, pas par la lib — l'auditeur avant l'outil               |
+| **D2** | L'image se rend **au build**, pas en route dynamique ni en asset dessiné à la main                   |
+| **D3** | Un **gabarit par défaut piloté par tokens**, pas une galerie de gabarits                             |
+| **D4** | Les **illustrations de contenu** (blog, LinkedIn, vidéo) ne rentrent pas dans goflag                 |
+| **D5** | L'OG entre d'abord par les **règles**, pas par la lib — l'auditeur avant l'outil                     |
 
 ---
 
@@ -78,12 +78,12 @@ Router »), pas une décision prise. Elle est reprise ici, et renversée.
 
 Presque rien. Une image OG, c'est trois choses distinctes :
 
-| Brique                            | Liée au framework ? | Taille    |
-| --------------------------------- | ------------------- | --------- |
-| Le gabarit (arbre JSX + styles)   | non                 | l'essentiel |
-| La dégression de taille, l'alt, les tokens | non        | l'essentiel |
-| Le **rendu** (JSX → SVG → PNG)    | non, mais coûteux   | satori + resvg |
-| La **convention de fichier** (`opengraph-image.tsx`, `generateImageMetadata`) | oui | ~30 lignes |
+| Brique                                                                        | Liée au framework ? | Taille         |
+| ----------------------------------------------------------------------------- | ------------------- | -------------- |
+| Le gabarit (arbre JSX + styles)                                               | non                 | l'essentiel    |
+| La dégression de taille, l'alt, les tokens                                    | non                 | l'essentiel    |
+| Le **rendu** (JSX → SVG → PNG)                                                | non, mais coûteux   | satori + resvg |
+| La **convention de fichier** (`opengraph-image.tsx`, `generateImageMetadata`) | oui                 | ~30 lignes     |
 
 Un arbre JSX est un objet nu — `{ type, props }`. Satori le mange ; `next/og`,
 qui embarque satori, aussi. Donc la portabilité ne demande pas de porter le
@@ -221,12 +221,12 @@ que l'argument Astro.
 `apps/website` a déjà écrit tout ça à la main. C'est OG-0, livré — mais sur le
 site du produit, pas sur stereo-house comme le plan le prévoyait.
 
-| Fichier                                | Lignes | Contenu                                          |
-| -------------------------------------- | ------ | ------------------------------------------------ |
-| `src/lib/seo/og.tsx`                   | 100    | le gabarit : terminal sombre, logo, titre, pastilles |
-| `src/app/[locale]/opengraph-image.tsx` | 12     | home, titre traduit via `next-intl`              |
+| Fichier                                | Lignes | Contenu                                                |
+| -------------------------------------- | ------ | ------------------------------------------------------ |
+| `src/lib/seo/og.tsx`                   | 100    | le gabarit : terminal sombre, logo, titre, pastilles   |
+| `src/app/[locale]/opengraph-image.tsx` | 12     | home, titre traduit via `next-intl`                    |
 | 4 autres `opengraph-image.tsx`         | ~48    | changelog, slug, docs/cli, docs/rules, docs/rules/[id] |
-| `src/app/og/docs/[...slug]/route.tsx`  | 29     | contournement du catch-all                       |
+| `src/app/og/docs/[...slug]/route.tsx`  | 29     | contournement du catch-all                             |
 
 ### Ce qu'il prouve
 
@@ -238,12 +238,12 @@ redécouvrir sur cinq sites, et donc exactement ce qui justifie la lib.
 
 ### Ce qu'il n'a pas — et que goflag saurait reprocher
 
-| Manque                                                       | Règle concernée                            |
-| ------------------------------------------------------------ | ------------------------------------------ |
-| Aucun `alt` : les fichiers exportent `size` et `contentType`, jamais `alt` ni `generateImageMetadata` | `og.image.alt` (à écrire, §7) |
-| Le titre n'est **pas** dégressé — `fontSize: 66` en dur, seul le sous-titre est coupé à 160 | aucune ; c'est le trou du §4.2 |
+| Manque                                                                                                     | Règle concernée                              |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Aucun `alt` : les fichiers exportent `size` et `contentType`, jamais `alt` ni `generateImageMetadata`      | `og.image.alt` (à écrire, §7)                |
+| Le titre n'est **pas** dégressé — `fontSize: 66` en dur, seul le sous-titre est coupé à 160                | aucune ; c'est le trou du §4.2               |
 | Aucune fonte chargée : rendu à la fonte ambiante, donc `fontWeight: 600` n'a pas de fonte grasse à trouver | aucune ; documenté et assumé dans le fichier |
-| Couleurs en hex dupliquées depuis le thème Tailwind, avec un commentaire pour l'expliquer | aucune ; c'est ce que les tokens résolvent |
+| Couleurs en hex dupliquées depuis le thème Tailwind, avec un commentaire pour l'expliquer                  | aucune ; c'est ce que les tokens résolvent   |
 
 Le premier est le plus parlant : **le site de goflag échouerait à une règle OG
 que goflag n'a pas encore écrite.** C'est le bon ordre — D5, la règle avant
@@ -260,12 +260,14 @@ import { defineOg } from "@goflag/og";
 
 export const og = defineOg({
   tokens: {
-    bg, fg, accent,              // 3 couleurs, pas 5
-    font: { regular, bold },     // buffers TTF/OTF fournis par le site
-    logo,                        // data URI ou buffer
+    bg,
+    fg,
+    accent, // 3 couleurs, pas 5
+    font: { regular, bold }, // buffers TTF/OTF fournis par le site
+    logo, // data URI ou buffer
   },
-  fallback: "/og-default.png",   // routes sans image dédiée
-  fit: { scale: { de: 0.85 } },  // surcharge des facteurs par locale
+  fallback: "/og-default.png", // routes sans image dédiée
+  fit: { scale: { de: 0.85 } }, // surcharge des facteurs par locale
 });
 ```
 
@@ -287,7 +289,7 @@ const image = ogImage(og, async ({ params }) => {
     title: capsule.title,
     meta: formatDate(capsule.date, params.locale),
     alt: t("og.alt", { title: capsule.title }), // traduit
-    background: capsule.cover,                  // optionnel
+    background: capsule.cover, // optionnel
   };
 });
 
@@ -378,16 +380,16 @@ texte sur une zone chargée sans voile.
 
 ## 10. Phasage
 
-| Étape    | Contenu                                                                                                 | Dépend de |
-| -------- | ------------------------------------------------------------------------------------------------------- | --------- |
-| **OG-0** | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                          | —         |
-| **OG-1** | Les 6 règles du §7 dans le catalogue sourcé. `og.image.alt` fait alors échouer le site de goflag : le corriger sur place | catalogue |
+| Étape    | Contenu                                                                                                                                                                     | Dépend de |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **OG-0** | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                             | —         |
+| **OG-1** | Les 6 règles du §7 dans le catalogue sourcé. `og.image.alt` fait alors échouer le site de goflag : le corriger sur place                                                    | catalogue |
 | **OG-2** | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction | OG-1      |
-| **OG-3** | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent           | OG-2      |
-| **OG-4** | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait)                       | OG-3      |
-| **OG-5** | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                         | OG-4, N-2 |
-| hors     | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                        | —         |
-| hors     | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                  | —         |
+| **OG-3** | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent                                                                               | OG-2      |
+| **OG-4** | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait)                                                                                           | OG-3      |
+| **OG-5** | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                             | OG-4, N-2 |
+| hors     | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                            | —         |
+| hors     | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                      | —         |
 
 **OG-1 avant tout le reste.** D5 : la règle avant l'outil. Aujourd'hui le site
 de goflag ne déclare aucun `og:image:alt` et rien ne le lui reproche — écrire la
