@@ -3,7 +3,7 @@
 > **A lean CLI that flags the site problems humans can't catch at scale.**
 > Point it at a URL and get four things: broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.
 
-[![node](https://img.shields.io/badge/node-%3E%3D20.11-339933?logo=nodedotjs&logoColor=white)](./package.json)
+[![node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](./package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
 Goflag crawls a site once and judges what it found. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
@@ -36,7 +36,7 @@ fine one.
 
 ## Install
 
-Requires Node `>=20.11`.
+Requires Node `>=22`.
 
 ```sh
 npx @goflag/cli https://example.com          # one-off, nothing installed

@@ -36,7 +36,7 @@ plumbing, not code that ships.
 
 ## Toolchain
 
-- Node `>=20.11` (`engines`); `.nvmrc` pins `24.18.1`.
+- Node `>=22` (`engines`); `.nvmrc` pins `24.18.1`.
 - Repo pins **`pnpm@11.18.0`** via `packageManager`. Use
   `corepack enable && corepack prepare pnpm@11.18.0 --activate`.
 - Headless SPA tests need Chromium. `playwright` is a devDependency of the CLI
