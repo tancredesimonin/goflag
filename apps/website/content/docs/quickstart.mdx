@@ -6,7 +6,7 @@ order: 3
 ---
 
 Expect the first run to be red. Almost every site that has never been audited
-carries a backlog. That is not a reason to wait until it is clean — steps 3 to 5
+carries a backlog. That is not a reason to wait until it is clean: steps 3 to 5
 exist precisely so you can gate a site that is not clean yet.
 
 ## 1. Look at one page
@@ -14,7 +14,7 @@ exist precisely so you can gate a site that is not clean yet.
 Start with the entry page only, so you can read every finding:
 
 ```bash
-npx @goflag/cli https://example.com --depth 0
+pnpm dlx @goflag/cli https://example.com --depth 0
 ```
 
 `--depth 0` audits the URL you named and follows nothing. This is the fastest way
@@ -23,7 +23,7 @@ to see whether the metadata rules agree with what you think your site declares.
 ## 2. Crawl the site
 
 ```bash
-npx @goflag/cli https://example.com --summary
+pnpm dlx @goflag/cli https://example.com --summary
 ```
 
 `--summary` lists each distinct problem once, with a count and a sample of
@@ -32,7 +32,7 @@ with a real backlog it is the only readable view.
 
 Two flags are worth reaching for immediately:
 
-- `--no-external` skips off-origin links — the ones you cannot fix. [CI](/docs/ci)
+- `--no-external` skips off-origin links, the ones you cannot fix. [CI](/docs/ci)
   explains why they never belong in a gate.
 - `--max-pages 50` caps the crawl while you are still exploring. A run that hit a
   cap says so under `diagnostics`, rather than reporting a smaller number as if
@@ -40,11 +40,11 @@ Two flags are worth reaching for immediately:
 
 One flag is worth knowing about but **not** reaching for yet: `--static` makes
 the run several times faster and is only safe on fully server-rendered
-metadata — see [Install](/docs/install#chromium).
+metadata. See [Install](/docs/install#chromium).
 
 ## 3. Fix what is cheap, then capture a baseline
 
-Fix the errors that take a line of code — a missing canonical, a missing
+Fix the errors that take a line of code: a missing canonical, a missing
 `og:image`, a `<title>` that never made it out of a template. Then freeze
 everything still outstanding:
 
@@ -66,8 +66,8 @@ goflag http://localhost:3000 --no-external \
 ```
 
 Only findings that are **new** relative to the baseline fail the build. Matching
-survives the environment change — a baseline captured against production gates a
-run against `localhost` — and [Baseline gating](/docs/ci/baseline) explains how.
+survives the environment change (a baseline captured against production gates a
+run against `localhost`), and [Baseline gating](/docs/ci/baseline) explains how.
 
 The output never goes green while findings are outstanding; it says how many are
 being let through and how old the baseline is:
@@ -85,12 +85,12 @@ Fix one finding, drop the ceiling by one, commit both:
 goflag … --baseline .goflag/baseline.json --regressions-only --max-debt 12
 ```
 
-`--max-debt` fails the build when the total number of findings — new or known —
+`--max-debt` fails the build when the total number of findings (new or known)
 exceeds the budget. This is the only part of the loop that makes the backlog
 shrink; without it a baseline fossilises behind a build that keeps passing.
 
 ## Then
 
-- [CI](/docs/ci) — the two moments worth auditing, and why the flags differ.
-- [Baseline gating](/docs/ci/baseline) — fingerprints, route normalisation, and how to accept a finding on purpose.
-- [Rule catalogue](/docs/rules) — what each finding means and how to fix it.
+- [CI](/docs/ci): the two moments worth auditing, and why the flags differ.
+- [Baseline gating](/docs/ci/baseline): fingerprints, route normalisation, and how to accept a finding on purpose.
+- [Rule catalogue](/docs/rules): what each finding means and how to fix it.

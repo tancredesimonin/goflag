@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — una CLI que señala en CI los defectos invisibles de un sitio",
+      "title": "goflag: una CLI que señala en CI los defectos invisibles de un sitio",
       "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."
     },
     "changelog": {
@@ -76,66 +76,19 @@
       },
       "links": {
         "name": "Enlaces",
-        "question": "¿Cada enlace sigue llevando a alguna parte?",
-        "stages": {
-          "input": {
-            "crawled": "en cada página explorada"
-          },
-          "work": {
-            "title": "Una petición por destino",
-            "deduped": "deduplicado en todo el sitio"
-          },
-          "output": {
-            "mapped": "con la página que lo enlaza"
-          }
-        }
+        "question": "¿Cada enlace sigue llevando a alguna parte?"
       },
       "i18n": {
         "name": "Traducciones",
-        "question": "¿Alguna locale ha perdido una página en silencio?",
-        "stages": {
-          "input": {
-            "title": "Las locales que usted declara"
-          },
-          "work": {
-            "title": "Una matriz ruta × locale",
-            "cells": "una celda por página, una fila por ruta"
-          },
-          "output": {
-            "declared": "los huecos declarados se ignoran, no se reportan"
-          }
-        }
+        "question": "¿Alguna locale ha perdido una página en silencio?"
       },
       "robots": {
         "name": "robots.txt",
-        "question": "¿El sitio prohíbe lo que pide en otra parte?",
-        "stages": {
-          "input": {
-            "title": "robots.txt, y sus etiquetas meta",
-            "together": "leídos juntos, por una vez"
-          },
-          "work": {
-            "title": "Ambas no pueden ser ciertas",
-            "contradiction": "un sitio cerrado a los crawlers, sirviendo páginas que piden ser indexadas"
-          },
-          "output": {
-            "wins": "robots.txt gana, así que la etiqueta nunca se lee",
-            "severity": "un error en producción, un aviso en preproducción"
-          }
-        }
+        "question": "¿El sitio prohíbe lo que pide en otra parte?"
       },
       "metadata": {
         "name": "Metadatos",
-        "question": "¿Leerá un crawler lo que usted quiso publicar?",
-        "stages": {
-          "work": {
-            "title": "Presencia, longitud, contradicciones",
-            "split": "comprobadas en cada página, y en todo el sitio"
-          },
-          "output": {
-            "snippet": "con la corrección lista para pegar, cuando existe"
-          }
-        }
+        "question": "¿Leerá un crawler lo que usted quiso publicar?"
       }
     },
     "terminal": {
@@ -172,7 +125,7 @@
       "lead": "Una ejecución que falla ante cualquier hallazgo es inservible en un sitio que todavía no está limpio: acaba desactivada, o ignorada sin decirlo. Tres opciones hacen que la barrera sea sostenible, y una de ellas es la que de verdad reduce la deuda acumulada.",
       "step1": {
         "title": "Capture una línea base",
-        "body": "Congele los hallazgos de hoy como conocidos, para que la barrera pueda preguntar si este cambio ha empeorado las cosas en lugar de si el sitio es perfecto. La salida nunca dice que el sitio esté limpio mientras queden hallazgos pendientes — dice cuántos se están dejando pasar."
+        "body": "Congele los hallazgos de hoy como conocidos, para que la barrera pueda preguntar si este cambio ha empeorado las cosas en lugar de si el sitio es perfecto. La salida nunca dice que el sitio esté limpio mientras queden hallazgos pendientes; dice cuántos se están dejando pasar."
       },
       "step2": {
         "title": "Bloquee solo por lo nuevo",
@@ -180,7 +133,7 @@
       },
       "step3": {
         "title": "Baje el tope, un diente cada vez",
-        "body": "Corrija un hallazgo, baje --max-debt en uno y haga commit de las dos cosas — sin esto, una línea base se fosiliza detrás de una build que pasa."
+        "body": "Corrija un hallazgo, baje --max-debt en uno y haga commit de las dos cosas. Sin esto, una línea base se fosiliza detrás de una build que pasa."
       }
     },
     "ci": {
@@ -195,12 +148,12 @@
       "deployWhen": "Después de desplegar",
       "deployAgainst": "El entorno en ejecución",
       "deployAnswers": "¿Es correcto lo que se está sirviendo de verdad?",
-      "detail": "Las opciones que conviene conocer — --no-external, fijar la versión, los códigos de salida — caben en tres secciones cortas de la documentación.",
+      "detail": "Las opciones que conviene conocer (--no-external, fijar la versión, los códigos de salida) caben en tres secciones cortas de la documentación.",
       "docsCta": "Ver las recetas de CI"
     },
     "proof": {
       "title": "Construido auditando mis propios sitios",
-      "lead": "goflag existe porque cuatro sitios que gestiono lo necesitaban — este incluido: goflag.tech está protegido por su propia auditoría en CI, y un merge que la rompe no se fusiona. Todas las cifras de abajo están medidas, no estimadas.",
+      "lead": "goflag existe porque cuatro sitios que gestiono lo necesitaban, este incluido: goflag.tech está protegido por su propia auditoría en CI, y un merge que la rompe no se fusiona. Todas las cifras de abajo están medidas, no estimadas.",
       "stat1": "sitios con barrera en CI",
       "stat2": "páginas auditadas en {duration}",
       "stat3": "tests en la CLI"

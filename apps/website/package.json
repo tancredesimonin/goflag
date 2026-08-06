@@ -2,7 +2,7 @@
   "name": "@goflag/website",
   "version": "0.0.0",
   "private": true,
-  "description": "goflag.tech — the landing page, documentation and changelog for @goflag/cli.",
+  "description": "goflag.tech: the landing page, documentation and changelog for @goflag/cli.",
   "scripts": {
     "dev": "next dev --port 3004",
     "build": "next build",

@@ -10,7 +10,7 @@ A tool that only documents what it catches is not honest about what it misses.
 ## Engine caps
 
 These are compiled in, not configurable. They exist so a run on a large site
-finishes rather than melting somebody's laptop or somebody's origin — the
+finishes rather than melting somebody's laptop or somebody's origin. The
 values are listed in the [CLI reference](/docs/cli#engine-limits).
 
 The user-facing caps you _can_ move are `--max-pages` (default `200`) and
@@ -21,7 +21,7 @@ one means very little.
 
 ## What goflag does not check
 
-Not oversights — decisions:
+These are decisions, not oversights:
 
 - **Performance.** No Core Web Vitals, no Lighthouse score, no bundle analysis.
   Different tools, different failure modes, and both already well served.
@@ -45,8 +45,8 @@ produces link findings that say more about the crawl than about the links.
 `--timeout` and a smaller `--max-pages` help; auditing your own origin from CI
 usually avoids it entirely.
 
-**Anti-bot filters return 403.** These are triaged apart from real breakage — the
-verdict is `blocked`, not `broken`, and it appears in `warnings` — but a heavily
+**Anti-bot filters return 403.** These are triaged apart from real breakage: the
+verdict is `blocked`, not `broken`, and it appears in `warnings`. A heavily
 protected third party can still produce noise. This is one reason `--no-external`
 belongs in a CI gate.
 
@@ -59,12 +59,12 @@ labelled as heuristics in the [catalogue](/docs/rules).
 
 **Client-rendered metadata needs the browser path.** By default, a page with an
 empty-looking head is re-rendered in Chromium. With `--static`, it is judged as
-served — which is correct for a crawler, and misleading if you expected the
+served, which is correct for a crawler, and misleading if you expected the
 runtime result. See [Install](/docs/install#chromium) before opting in.
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
 known defects. That is what it is for. The output never says `clean` and always
-prints how many findings are being let through and how old the baseline is — but
+prints how many findings are being let through and how old the baseline is, but
 if nobody reads it, the number does not help. See
 [baseline gating](/docs/ci/baseline).
 
@@ -73,7 +73,7 @@ if nobody reads it, the number does not help. See
 Capturing the first baselines on four production sites surfaced five ways goflag
 was wrong. Two are worth reading because they shaped the design:
 
-- The path segment `/cv` was read as a locale — the mistake that ended locale
+- The path segment `/cv` was read as a locale, the mistake that ended locale
   guessing. The full story is in
   [Translations](/docs/i18n#the-bug-that-started-this).
 - A trailing slash was stripped before probing, which declared 159 working

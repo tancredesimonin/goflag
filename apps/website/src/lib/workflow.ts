@@ -1,74 +1,22 @@
 /**
  * The shape of the switcher under the headline: what goflag prevents, then the
- * four checks. The words live in `messages/*.json` under `home.workflow`; this
- * file holds only what is the same in every language.
+ * four checks.
  *
- * The first tab and the other four are deliberately different shapes. Forcing one
- * diagram on both was the mistake in the first draft: `input → check → output`
- * describes how a thing works, and the opening tab has to answer why anyone
- * should care before there is any interest in the how. So the first tab is two
- * timelines of the same commit, and the other four keep the pipeline, because for
- * them the pipeline is the honest description.
- *
- * ## What may go in the copy
- *
- * Accuracy first: every identifier, rule id and count is read out of
- * `packages/cli/src/lib/core` and `src/lib/rules`, not written to sound
- * plausible. Nothing claims a capability the engine does not have — in
- * particular robots.txt is only checked for a whole-site `Disallow: /` that
- * contradicts pages asking to be indexed, never per path.
- *
- * Then brevity, which is the harder one. This has to be legible in about three
- * seconds, so a stage gets one line about what it does and at most two about
- * what comes out. The mechanism that earns trust — HEAD before GET, three
- * requests per host, why `x-default` never fills a hole — is true, and it
- * belongs further down the page where someone is reading rather than scanning.
- *
- * ## Literal or translated
- *
- * A string stays here, verbatim in every locale, when translating it would make
- * it wrong: identifiers (`brokenLinks[]`), flags (`--locales …`), markup
- * (`<head>`) and printed output (`[404] /ghost`). A French reader needs to
- * recognise those in their own terminal, and `<head>` cannot go through
- * `next-intl` anyway — ICU parses the angle brackets as tags and throws.
- *
- * Everything else is prose and belongs in the message files, keyed as
- * `home.workflow.<flowId>.…`. The two are never mixed on one string: `titleLiteral`
- * and a translated title are alternatives, and a row carries either `literal` or
- * an `id`.
+ * The first tab and the other four are deliberately different shapes. The
+ * opening tab has to answer why anyone should care, so it is two timelines of
+ * the same commit; its prose lives in `messages/*.json` under
+ * `home.workflow.prevents`. The four check tabs are drawings of the checks
+ * themselves — a matrix with a hole, two files that contradict each other —
+ * and their content is literal in every locale (identifiers, rule ids,
+ * printed output), so it lives in `check-flows.tsx` rather than here or in the
+ * message catalogues. Only each tab's name and question are translated.
  */
-
-/** Where a stage sits: what it is handed, what it does, what it emits. */
-export type StageKind = "input" | "work" | "output";
-
-export type StageRow = {
-  /** The severity the CLI would print this at. The only colour in the diagram. */
-  tone?: "green" | "yellow" | "red";
-  /** Rendered mono: an identifier, a flag, a status line. */
-  code?: boolean;
-  /** A caption under the results rather than one of them. No bullet. */
-  note?: boolean;
-} & (
-  | { id: string; literal?: never }
-  | {
-      literal: string;
-      id?: never;
-    }
-);
-
-export interface Stage {
-  kind: StageKind;
-  /** When absent, the title comes from `…stages.<kind>.title`. */
-  titleLiteral?: string;
-  rows: readonly StageRow[];
-}
 
 export type StepIcon = "tag" | "ship" | "unseen" | "falling" | "flag" | "fix" | "clean";
 
 /**
- * One beat on a timeline. Its four strings — title, chip label, detail and the
- * elapsed time that carries the whole argument — live under
- * `…<trackId>.<stepId>`.
+ * One beat on a timeline. Its strings — title, chip label and the elapsed
+ * time that carries the whole argument — live under `…<trackId>.<stepId>`.
  */
 export interface Step {
   id: string;
@@ -90,21 +38,23 @@ export interface Track {
 
 export type FlowIcon = "shield" | "link" | "languages" | "robots" | "tags";
 
+export type CheckFlowId = "links" | "i18n" | "robots" | "metadata";
+
 interface FlowBase {
-  id: string;
   icon: FlowIcon;
 }
 
 export type Flow =
   | (FlowBase & {
+      id: "prevents";
       kind: "fork";
       /** The one commit both tracks start from. Keyed as `…origin`. */
       origin: Step;
       tracks: readonly [Track, Track];
     })
   | (FlowBase & {
-      kind: "stages";
-      stages: readonly [Stage, Stage, Stage];
+      id: CheckFlowId;
+      kind: "check";
     });
 
 export const FLOWS: readonly Flow[] = [
@@ -148,78 +98,8 @@ export const FLOWS: readonly Flow[] = [
       },
     ],
   },
-  {
-    id: "links",
-    icon: "link",
-    kind: "stages",
-    stages: [
-      { kind: "input", titleLiteral: "Every <a href>", rows: [{ id: "crawled" }] },
-      { kind: "work", rows: [{ id: "deduped" }] },
-      {
-        kind: "output",
-        titleLiteral: "brokenLinks[]",
-        rows: [
-          { literal: "[404] /ghost", code: true, tone: "red" },
-          { literal: "[blocked 403] /members", code: true, tone: "yellow" },
-          { id: "mapped", note: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: "i18n",
-    icon: "languages",
-    kind: "stages",
-    stages: [
-      { kind: "input", rows: [{ literal: "--locales en,fr,es,pt-br", code: true }] },
-      { kind: "work", rows: [{ id: "cells" }] },
-      {
-        kind: "output",
-        titleLiteral: "missingTranslations",
-        rows: [
-          { literal: "/about — missing es (has en, fr)", code: true, tone: "yellow" },
-          { id: "declared", note: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: "robots",
-    icon: "robots",
-    kind: "stages",
-    stages: [
-      { kind: "input", rows: [{ id: "together" }] },
-      { kind: "work", rows: [{ id: "contradiction" }] },
-      {
-        kind: "output",
-        titleLiteral: "robots.blocks-site",
-        rows: [
-          { id: "wins", code: true, tone: "red" },
-          { id: "severity", note: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: "metadata",
-    icon: "tags",
-    kind: "stages",
-    stages: [
-      {
-        kind: "input",
-        titleLiteral: "The <head>",
-        rows: [{ literal: "title, description, canonical, og:*", code: true }],
-      },
-      { kind: "work", rows: [{ id: "split" }] },
-      {
-        kind: "output",
-        titleLiteral: "seoIssues[]",
-        rows: [
-          { literal: "error title.missing", code: true, tone: "red" },
-          { literal: "warning description.length", code: true, tone: "yellow" },
-          { id: "snippet", note: true },
-        ],
-      },
-    ],
-  },
+  { id: "links", icon: "link", kind: "check" },
+  { id: "i18n", icon: "languages", kind: "check" },
+  { id: "robots", icon: "robots", kind: "check" },
+  { id: "metadata", icon: "tags", kind: "check" },
 ] as const;

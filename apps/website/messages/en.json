@@ -13,7 +13,7 @@
   },
   "meta": {
     "home": {
-      "title": "goflag — a CLI that flags invisible site defects in CI",
+      "title": "goflag: a CLI that flags invisible site defects in CI",
       "description": "A CLI that reports broken links, missing translation pages, a robots.txt that contradicts your pages, and misconfigured SEO metadata. JSON-first, MIT."
     },
     "changelog": {
@@ -76,66 +76,19 @@
       },
       "links": {
         "name": "Links",
-        "question": "Does every link still lead somewhere?",
-        "stages": {
-          "input": {
-            "crawled": "on every page it crawled"
-          },
-          "work": {
-            "title": "One request per target",
-            "deduped": "deduplicated across the whole site"
-          },
-          "output": {
-            "mapped": "with the page that links to it"
-          }
-        }
+        "question": "Does every link still lead somewhere?"
       },
       "i18n": {
         "name": "Translations",
-        "question": "Has a locale quietly lost a page?",
-        "stages": {
-          "input": {
-            "title": "The locales you declare"
-          },
-          "work": {
-            "title": "A route × locale matrix",
-            "cells": "one cell per page, one row per route"
-          },
-          "output": {
-            "declared": "declared gaps are ignored, not reported"
-          }
-        }
+        "question": "Has a locale quietly lost a page?"
       },
       "robots": {
         "name": "robots.txt",
-        "question": "Does the site forbid what it asks for elsewhere?",
-        "stages": {
-          "input": {
-            "title": "robots.txt, and your meta tags",
-            "together": "read together, for once"
-          },
-          "work": {
-            "title": "Both cannot be true",
-            "contradiction": "a site closed to crawlers, serving pages that ask to be indexed"
-          },
-          "output": {
-            "wins": "robots.txt wins, so the tag is never read",
-            "severity": "an error in production, a warning on staging"
-          }
-        }
+        "question": "Does the site forbid what it asks for elsewhere?"
       },
       "metadata": {
         "name": "Metadata",
-        "question": "Will a crawler read what you meant to publish?",
-        "stages": {
-          "work": {
-            "title": "Presence, length, contradictions",
-            "split": "checked on every page, and across the site"
-          },
-          "output": {
-            "snippet": "with the copy-paste fix, when one exists"
-          }
-        }
+        "question": "Will a crawler read what you meant to publish?"
       }
     },
     "terminal": {
@@ -169,18 +122,18 @@
     },
     "method": {
       "title": "Gate on regressions, not on perfection",
-      "lead": "A run that fails on any finding is unusable on a site that is not clean yet — so it gets switched off, or quietly ignored. Three flags make the gate tenable, and one of them makes the backlog actually shrink.",
+      "lead": "A run that fails on any finding is unusable on a site that is not clean yet, so it gets switched off, or quietly ignored. Three flags make the gate tenable, and one of them makes the backlog actually shrink.",
       "step1": {
         "title": "Capture a baseline",
-        "body": "Freeze today’s findings as known, so the gate can ask whether this change made things worse instead of whether the site is perfect. The output never says clean while findings are outstanding — it says how many are being let through."
+        "body": "Freeze today’s findings as known, so the gate can ask whether this change made things worse instead of whether the site is perfect. The output never says clean while findings are outstanding; it says how many are being let through."
       },
       "step2": {
         "title": "Gate on what is new",
-        "body": "Findings are matched by fingerprint, and page URLs are normalised to origin-independent routes — so a baseline captured against production compares cleanly with a run against localhost."
+        "body": "Findings are matched by fingerprint, and page URLs are normalised to origin-independent routes, so a baseline captured against production compares cleanly with a run against localhost."
       },
       "step3": {
         "title": "Lower the ratchet",
-        "body": "Fix a finding, drop --max-debt by one, commit both — without this, a baseline fossilises behind a build that passes."
+        "body": "Fix a finding, drop --max-debt by one, commit both. Without this, a baseline fossilises behind a build that passes."
       }
     },
     "ci": {
@@ -195,12 +148,12 @@
       "deployWhen": "After deploying",
       "deployAgainst": "The running environment",
       "deployAnswers": "Is what is actually serving correct?",
-      "detail": "The flags worth knowing — --no-external, version pinning, exit codes — are three short sections in the docs.",
+      "detail": "The flags worth knowing (--no-external, version pinning, exit codes) are three short sections in the docs.",
       "docsCta": "See the CI recipes"
     },
     "proof": {
       "title": "Built by auditing my own sites",
-      "lead": "goflag exists because four sites I run needed it — this one included: goflag.tech is gated by its own audit in CI, and a merge that breaks it does not land. Every number below is measured, not estimated.",
+      "lead": "goflag exists because four sites I run needed it, this one included: goflag.tech is gated by its own audit in CI, and a merge that breaks it does not land. Every number below is measured, not estimated.",
       "stat1": "sites gated in CI",
       "stat2": "pages audited in {duration}",
       "stat3": "tests in the CLI"
@@ -214,7 +167,7 @@
       "title": "Before you install",
       "source": {
         "q": "Does it need access to my source code?",
-        "a": "No. It needs a URL. goflag reads what a crawler reads, which is also why it catches things a local build cannot show you — the real base URL, whatever the proxy serves for robots.txt, the redirects."
+        "a": "No. It needs a URL. goflag reads what a crawler reads, which is also why it catches things a local build cannot show you: the real base URL, whatever the proxy serves for robots.txt, the redirects."
       },
       "next": {
         "q": "Does it work outside Next.js?",
@@ -291,7 +244,7 @@
   },
   "notFound": {
     "title": "404",
-    "lead": "This page does not exist. If a link on this site brought you here, that is a broken link — and there is a tool for that.",
+    "lead": "This page does not exist. If a link on this site brought you here, that is a broken link, and there is a tool for that.",
     "home": "Back to the home page",
     "irony": "Yes, the irony is noted. The site is audited by goflag in its own pipeline; a 404 reachable from a link would fail that build."
   }

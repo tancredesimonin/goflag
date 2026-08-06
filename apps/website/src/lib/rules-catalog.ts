@@ -95,7 +95,7 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     severity: "warning",
     summary: "Keep descriptions between 50 and 160 characters",
     message: "Description is 31 characters — short of the recommended 50–160 window.",
-    why: "Too short and the snippet gets padded with body text you did not choose; too long and it is cut. The window is a heuristic, not a specification — see the note on rigor below.",
+    why: "Too short and the snippet gets padded with body text you did not choose; too long and it is cut. The window is a heuristic, not a specification; see the note on rigor below.",
     rigor: null,
     sources: [],
   },
@@ -128,7 +128,7 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     summary: '`rel="canonical"` must be an absolute, fully-qualified URL',
     message:
       'Canonical is "/the-page" — must be an absolute http(s) URL (consumers see the raw value, not the resolved "https://example.com/the-page").',
-    why: "This is the failure that de-indexes a site without anybody touching a page. A relative canonical resolves against `metadataBase`, which defaults to localhost — so production ships canonicals pointing at a host no crawler can reach.",
+    why: "This is the failure that de-indexes a site without anybody touching a page. A relative canonical resolves against `metadataBase`, which defaults to localhost, so production ships canonicals pointing at a host no crawler can reach.",
     rigor: null,
     sources: [],
   },
@@ -167,7 +167,7 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     summary: "Set an explicit `og:description` for richer link unfurls",
     message:
       "Page has `og:*` tags but no `og:description`; unfurls will fall back to the meta description (or nothing).",
-    why: "Only flagged when the page already carries other `og:*` tags — a page that opted into Open Graph and then skipped the description almost always did so by accident.",
+    why: "Only flagged when the page already carries other `og:*` tags. A page that opted into Open Graph and then skipped the description almost always did so by accident.",
     rigor: null,
     sources: [],
   },
@@ -268,7 +268,7 @@ export const SITE_RULES: readonly RuleDoc[] = [
     summary: "`robots.txt` must not forbid crawling a site that asks to be indexed",
     message:
       '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
-    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block — a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
+    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     fix: {
       title: "Gate the disallow on the deployed environment",
       snippet: [
@@ -315,7 +315,7 @@ export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; w
   {
     code: "locale.invalid",
     message: '`hreflang="pt_BR"` is not a valid BCP 47 tag.',
-    why: "An invalid tag is not a fallback, it is ignored — underscore instead of hyphen is enough to void the entire alternate.",
+    why: "An invalid tag is not a fallback, it is ignored: underscore instead of hyphen is enough to void the entire alternate.",
   },
   {
     code: "self-mismatch",

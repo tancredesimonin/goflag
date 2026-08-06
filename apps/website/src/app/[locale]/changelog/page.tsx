@@ -58,7 +58,7 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
             <div>
               <p className="text-muted-foreground mb-2 text-sm">{t("installPinned")}</p>
               <CopyCommand
-                command={`npx --yes "${PACKAGE.name}@${latest.version}" https://example.com`}
+                command={`pnpm dlx ${PACKAGE.name}@${latest.version} https://example.com`}
                 copyLabel={tHero("copy")}
                 copiedLabel={tHero("copied")}
               />

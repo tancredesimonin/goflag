@@ -28,7 +28,7 @@
     "url": "https://github.com/tancredesimonin/goflag/issues"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22"
   },
   "bin": {
     "goflag": "dist/cli.js"

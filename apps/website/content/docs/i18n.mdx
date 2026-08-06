@@ -6,15 +6,15 @@ group: reference
 order: 2
 ---
 
-This is the check goflag was built for, and the one where it was wrong first —
-see [the failure that started it](#the-bug-that-started-this).
+This is the check goflag was built for, and the one where it was wrong first.
+See [the failure that started it](#the-bug-that-started-this).
 
 ## The matrix
 
 goflag builds a **route × locale** matrix. A route is a URL with its locale
 segment removed: `/fr/pricing` and `/en/pricing` are one route, `/pricing`, in two
 locales. A cell is filled when a page for that route and locale was found. An
-empty cell is a **hole** — a translation the site serves in one language and not
+empty cell is a **hole**: a translation the site serves in one language and not
 in another.
 
 ## Where the locale axis comes from
@@ -22,7 +22,7 @@ in another.
 The axis is the list of locales the site is considered to serve. Everything else
 depends on it, so it is decided explicitly, in this order:
 
-1. **`--locales`** — authoritative. It overrides both of the following, and it is
+1. **`--locales`**: authoritative. It overrides both of the following, and it is
    the only way to make a locale the site does not serve _yet_ show up as
    missing.
 
@@ -51,7 +51,7 @@ id, because they are computed cross-page rather than from the per-page registry:
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `missing-back-link` | A declares an alternate to B, and B does not link back. hreflang is only honoured when reciprocal; a one-way declaration is discarded.  |
 | `x-default-missing` | The cluster advertises several locales but no `hreflang="x-default"`, which is where a visitor matching none of your languages is sent. |
-| `locale.invalid`    | The tag is not valid BCP 47. `pt_BR` with an underscore instead of a hyphen voids the whole alternate — it is ignored, not corrected.   |
+| `locale.invalid`    | The tag is not valid BCP 47. `pt_BR` with an underscore instead of a hyphen voids the whole alternate: it is ignored, not corrected.    |
 | `self-mismatch`     | A page's self-referential alternate does not point at its own canonical URL, which makes it a member of somebody else's cluster.        |
 
 ## Declaring a gap you meant to leave
@@ -63,7 +63,7 @@ never translated: pass the route and it stops being reported.
 goflag https://example.com --ignore-holes "/legal/**" --ignore-holes "/blog/2019-*"
 ```
 
-The glob matches the **locale-free route**, not the URL — `/legal/**` covers
+The glob matches the **locale-free route**, not the URL: `/legal/**` covers
 `/fr/legal/privacy` and `/en/legal/privacy` in one line. It is repeatable, and the
 suppressed count is still reported under `diagnostics.ignoredHoles`, so a
 suppression cannot hide how much it is hiding.
@@ -72,10 +72,10 @@ suppression cannot hide how much it is hiding.
 
 Beyond the matrix, two rules judge the site as a whole:
 
-- [`hreflang.missing`](/docs/rules/hreflang.missing) — the site serves several
+- [`hreflang.missing`](/docs/rules/hreflang.missing): the site serves several
   locales and a page declares no alternates at all. Without them, an engine cannot
   tell four translations from four competing pages.
-- [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) — the
+- [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch): the
   `<head>` and the sitemap disagree about which locales a route has. They are two
   declarations of one intent, produced by different code paths, so they drift.
 
@@ -89,7 +89,7 @@ check passed.
 goflag was detecting the absence of hreflang by reading the hreflang.
 
 Capturing the first baselines surfaced the same class of mistake twice more. The
-worst read the path segment `/cv` as Chuvash — a real ISO 639-1 code — and
+worst read the path segment `/cv` as Chuvash (a real ISO 639-1 code) and
 invented 31 translation holes that never existed.
 
 Both are fixed, and together they are why the axis is now either declared by you,

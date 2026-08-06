@@ -29,13 +29,13 @@ export const PACKAGE = {
    */
   repoPublic: false,
   license: "MIT",
-  nodeRange: ">=20.11",
+  nodeRange: ">=22",
 } as const;
 
 export const INSTALL = {
   tryIt: `npx ${PACKAGE.name} https://example.com`,
   addDev: `pnpm add -D ${PACKAGE.name}`,
-  pinned: `npx --yes "${PACKAGE.name}@${PACKAGE.version}"`,
+  pinned: `pnpm dlx ${PACKAGE.name}@${PACKAGE.version}`,
 } as const;
 
 /**

@@ -49,7 +49,7 @@ interface CommonInput {
   title: string;
   description: string;
   /**
-   * Skip the `%s — goflag` template from the root layout. For pages whose title
+   * Skip the `%s · goflag` template from the root layout. For pages whose title
    * already names the product, so it is not repeated twice in a tab.
    */
   absoluteTitle?: boolean;

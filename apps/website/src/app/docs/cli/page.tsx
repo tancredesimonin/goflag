@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const TITLE = "CLI reference";
 const DESCRIPTION =
-  "Every flag goflag accepts, its default, and what it changes — grouped by the question it answers rather than alphabetically.";
+  "Every flag goflag accepts, its default, and what it changes, grouped by the question it answers rather than alphabetically.";
 
 const TONE = {
   green: "text-flag-green",
