@@ -1,7 +1,7 @@
 # goflag — Rule Catalog & Spec-Grounded Architecture
 
-> **Status:** planning · **Last updated:** 2026-07-07
-> **Related:** the agent "loop" roadmap (M0 fingerprints/summary — shipped; M1 baseline/diff; M2 source localization; M3 MCP). This document describes the **rule layer** that feeds all of them.
+> **Status:** planning · **Last updated:** 2026-08-06
+> **Related:** the agent "loop" roadmap (M0 fingerprints/summary — shipped; M1 baseline/diff; M2 source localization; M3 MCP). This document describes the **rule layer** that feeds all of them. The **artefact layer** (sitemap / robots.txt validation) builds on this design and is specified in `docs/sitemap-robots-plan.md` (Phase G below).
 >
 > **No backward-compatibility constraint.** goflag is pre-1.0. We may **delete the current rule engine, the `Rule`/`Issue` shapes, and the 11 existing rules outright** and rebuild on this design wherever that is cleaner — there is no obligation to port old code, preserve rule ids, or keep report field shapes stable. Choose the cleanest design; regenerate baselines/fingerprints as needed.
 
@@ -243,6 +243,11 @@ interface Extraction {
 }
 ```
 
+`Extraction` is **per-page**. Site-level artefacts (robots.txt, the sitemap
+tree) get their own versioned observation models — `RobotsExtraction` and
+`SitemapExtraction`, specified in `docs/sitemap-robots-plan.md` §3 — read by
+site rules exactly the way page rules read `Extraction`.
+
 ## 8. Artifact — Prose / advisory rules
 
 goflag emits an **evidence bundle**; the AI agent judges the prose against it.
@@ -294,10 +299,11 @@ An opt-in mode that reports **every rule's status per page** (`pass` / `fail` / 
 | **D. Profiles**            | Profile overlay + runner composition + `--profile` flag                                                                                                                                                                                                       |
 | **E. Conformance + prose** | Opt-in conformance view; `ProseRule` + advisory findings                                                                                                                                                                                                      |
 | **F. Report/loop wiring**  | Thread `rigor` / `sources` / `observed` / `expected` into report + `--summary`; keep M1-diff compatible                                                                                                                                                       |
+| **G. Artefact rules**      | Sitemap / sitemap-index and full robots.txt validation on the same descriptor: site-level extraction models, RFC 9309 matcher, sourced rules. Depends on A + B + C; independent of D/E. Full spec: `docs/sitemap-robots-plan.md`                              |
 
 Each phase ships independently: tests + full gate (lint, typecheck, format, build) → MR to `develop`.
 
-**Sequencing:** this is the build-out of points #1/#2. It slots ahead of broadly expanding rules, is orthogonal to **M1 (diff)** (and makes it richer), and leaves **M2 (fix)** deferred — matching "handle the last step at the end." Start with **Phase A**.
+**Sequencing:** this is the build-out of points #1/#2. It slots ahead of broadly expanding rules, is orthogonal to **M1 (diff)** (and makes it richer), and leaves **M2 (fix)** deferred — matching "handle the last step at the end." Start with **Phase A**. Phase G is the first _expansion_ of the catalog once the machinery exists — it exercises the descriptor on site-level subjects and retires the never-wired `SitemapDiagnostics` analysis fields.
 
 ## 12. Open decisions (current defaults)
 
