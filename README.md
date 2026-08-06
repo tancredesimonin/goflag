@@ -138,6 +138,12 @@ The terminal view is just a render of that JSON.
 --ignore-holes <glob>  Route deliberately not translated everywhere
                        (repeatable).
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
+--profile <name>       Policy overlay on the rule set: default, strict,
+                       spec-only, marketing.
+--conformance          Report every rule's status on every page, not just
+                       the violations.
+--advisories           Attach the prose rules — the judgment calls goflag
+                       refuses to fake — with the facts to judge them by.
 --fail-on <level>      Exit 1 at or above this severity: warning (default),
                        error, or never.
 --regressions-only     Weaken the gate: fail only on NEW findings relative
@@ -161,6 +167,100 @@ The terminal view is just a render of that JSON.
 ```
 
 Headless mode needs Chromium. `playwright` is an optional peer dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+### Profiles: how much each rule matters to you
+
+Every rule records how authoritative it is — whether a published spec requires
+it, a vendor documents it, or it is widely-repeated folklore. That is a fact
+about the rule, and goflag never fudges it. What your build should _do_ about
+each one is a separate question, and that is what `--profile` answers:
+
+```sh
+goflag https://example.com --profile spec-only    # only what a spec backs
+goflag https://example.com --profile strict       # spec-backed rules fail the build
+goflag https://example.com --profile marketing    # metadata gaps are errors
+```
+
+| Profile     | What it does                                                                   |
+| ----------- | ------------------------------------------------------------------------------ |
+| `default`   | Each rule's own severity. No overlay.                                          |
+| `strict`    | Every spec-backed rule becomes an `error`. Heuristics stay warnings.           |
+| `spec-only` | Heuristic rules (title/description length) are switched off entirely.          |
+| `marketing` | The snippet and unfurl metadata — description, `og:title`, `og:image` — error. |
+
+A profile only changes how loudly a rule fires and whether it runs at all. It
+never changes what a rule observes, and it never rewrites a rule's stated
+authority — so `strict` can make a finding fail your build, but it cannot turn
+folklore into a spec requirement.
+
+The report records which profile produced it (`"profile": "strict"`), and the
+terminal output names any non-default one. A run under `spec-only` reporting
+zero issues means "nothing a spec backs is wrong here", not "nothing is wrong".
+
+That record is load-bearing: comparing a run against a baseline captured under
+a different profile still works, but "0 new findings" no longer means what it
+appears to, so goflag says so rather than letting the number speak for itself:
+
+```
+REGRESSION GATE  0 new · 19 known findings NOT gating this build
+baseline https://example.com — taken 2026-08-06 (today)
+note: baseline was captured under profile `strict`, this run used `spec-only` — the two are not like-for-like.
+```
+
+It is a warning, never a gate — a `--profile spec-only` investigation against a
+`strict` baseline is a legitimate thing to do.
+
+### Where do we stand? (`--conformance`)
+
+A list of violations cannot tell you the difference between a rule that
+passes everywhere and a rule that never applied to a single page. Both look
+like silence. `--conformance` reports every rule's status on every page:
+
+```sh
+goflag https://example.com --conformance
+```
+
+```
+Conformance
+  6 pages × every rule
+  canonical.absolute       6 fail  [vendor-spec]
+  canonical.missing        6 pass  [vendor-spec]
+  description.length       6 n/a   [heuristic]
+  title.missing            6 pass  [spec-required]
+```
+
+The terminal shows the tally; `--json` carries the full rule × page grid,
+with each rule's rigor and sources in a legend rather than repeated per
+cell. `pass + fail + warn + n/a + crashed` always equals the page count, so
+the coverage claim is checkable.
+
+### The questions goflag will not answer for you (`--advisories`)
+
+Whether a title _describes_ the page is not a thing a linter can decide.
+goflag could fake it — count words, match boilerplate, emit a confident
+verdict — and the result would be unfalsifiable noise. So it states the
+question, cites what makes it a real requirement, attaches the observed
+facts, and stops:
+
+```sh
+goflag https://example.com --advisories --json
+```
+
+```json
+{
+  "ruleId": "description.accurate",
+  "prose": "Does the description accurately summarize this page's content, and is it written for this page rather than copied across the site?",
+  "rigor": "guideline",
+  "sources": ["google-snippet", "moz-meta-description"],
+  "evidence": { "meta.description": { "value": "…", "origin": { "kind": "meta" } } },
+  "verdict": "needs-judgment"
+}
+```
+
+Advisories are asked only where the subject exists — no question about a
+description on a page that has none, because `description.missing` already
+says that. They never count toward the summary, the verdict, or the exit
+code: nobody has judged them yet.
 
 ### Gate on regressions, not on perfection
 
