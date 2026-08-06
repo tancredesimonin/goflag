@@ -125,7 +125,14 @@ export function defineSite<const L extends string>(input: SiteInput<L>): Site<L>
     const overrides = input.localeTags?.[locale];
     const tag = overrides?.bcp47 ?? locale;
 
-    bcp47.set(locale, toBcp47(tag));
+    // Validated, not rewritten. BCP 47 is case-insensitive, so `pt-br` is as
+    // correct as `pt-BR` — and re-casing it means the site's URLs say one thing
+    // while its hreflang says another. A crawler comparing the two literally
+    // then sees two locales where there is one, and reports a translation hole
+    // that does not exist. Producing a tag the site did not declare is not this
+    // library's call; `localeTags.bcp47` is, if you want a different one.
+    toBcp47(tag);
+    bcp47.set(locale, tag);
     openGraph.set(locale, overrides?.openGraph ?? toOpenGraphLocale(tag));
   }
 

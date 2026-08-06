@@ -125,10 +125,12 @@ describe("every page the registry can render", () => {
   });
 
   it("names every alternate with a valid BCP 47 tag — locale.invalid", () => {
+    // Case-insensitively: BCP 47 says tags are, and this library emits the
+    // site's own spelling rather than re-casing it.
     for (const { meta } of pages) {
       for (const tag of Object.keys(meta.alternates?.languages ?? {})) {
         if (tag === "x-default") continue;
-        expect(tag).toMatch(/^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$/);
+        expect(tag).toMatch(/^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?$/);
       }
     }
   });
@@ -239,5 +241,44 @@ describe("robots.txt against the pages", () => {
     const robots = routes.robots();
 
     expect(robots.sitemap).toBe(`${site.baseUrl}/sitemap.xml`);
+  });
+});
+
+describe("a site that declares no tag overrides", () => {
+  // The defect this covers: re-casing `pt-br` to `pt-BR` made a crawler
+  // comparing the URL segment against the tag see two locales where there is
+  // one, and report a translation hole for a language already served. Absent an
+  // explicit override, the tag and the segment are the same string.
+  const plain = defineSite({
+    baseUrl: "https://stereo.house",
+    name: "Stereo House",
+    locales: ["en", "pt-br"],
+    defaultLocale: "en",
+    indexable: true,
+    localeTags: { en: { openGraph: "en_US" } },
+  });
+
+  const plainRoutes = plain.routes({ home: { path: "" } });
+
+  it("spells every hreflang the way its URL does", () => {
+    const meta = plainRoutes.metadata({ path: "", locale: "pt-br", title: "T", description: "D" });
+
+    for (const [tag, target] of Object.entries(meta.alternates?.languages ?? {})) {
+      if (tag === "x-default") continue;
+      expect(String(target)).toContain(`/${tag}`);
+    }
+  });
+
+  it("still territory-qualifies og:locale, which has no such freedom", () => {
+    const meta = plainRoutes.metadata({ path: "", locale: "pt-br", title: "T", description: "D" });
+
+    expect(meta.openGraph).toMatchObject({ locale: "pt_BR" });
+  });
+
+  it("puts the same spelling in the sitemap as in the head", () => {
+    const row = plainRoutes.sitemap().find((entry) => entry.url.endsWith("/pt-br"));
+    const meta = plainRoutes.metadata({ path: "", locale: "pt-br", title: "T", description: "D" });
+
+    expect(row?.alternates?.languages).toEqual(meta.alternates?.languages);
   });
 });

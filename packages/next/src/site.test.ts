@@ -63,6 +63,26 @@ describe("defineSite — the locale axis", () => {
     expect(site.openGraphLocale("pt-BR")).toBe("pt_BR");
   });
 
+  it("emits hreflang exactly as declared, validated but not re-cased", () => {
+    // Found by migrating a site whose URLs are `/pt-br/`. Re-casing the tag to
+    // `pt-BR` made goflag see two locales where there is one and report a
+    // translation hole for a language already served. BCP 47 is
+    // case-insensitive; the site's own spelling is the one that matches its
+    // URLs, so it is the one that ships.
+    const site = defineSite({
+      baseUrl: "https://stereo.house",
+      name: "Stereo House",
+      locales: ["en", "pt-br"],
+      defaultLocale: "en",
+      indexable: true,
+      localeTags: { en: { openGraph: "en_US" } },
+    });
+
+    expect(site.bcp47("pt-br")).toBe("pt-br");
+    // og:locale has no such freedom: ogp.me defines one shape, so it is derived.
+    expect(site.openGraphLocale("pt-br")).toBe("pt_BR");
+  });
+
   it("takes overrides where deriving would be guessing", () => {
     // A site whose routing calls the locale `pt-br` still owes hreflang the
     // canonical case and og:locale an underscore. The overrides are for the
@@ -79,7 +99,7 @@ describe("defineSite — the locale axis", () => {
 
     expect(site.bcp47("en")).toBe("en-US");
     expect(site.openGraphLocale("en")).toBe("en_US");
-    expect(site.bcp47("pt-br")).toBe("pt-BR");
+    expect(site.bcp47("pt-br")).toBe("pt-br");
     expect(site.openGraphLocale("pt-br")).toBe("pt_BR");
   });
 
