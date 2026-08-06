@@ -11,7 +11,7 @@
 
 import { crawl } from "../lib/core/crawl";
 import { matchesAny } from "../lib/core/glob";
-import { lint } from "../lib/core/lint";
+import { sortIssues } from "../lib/core/lint";
 import { lintSite } from "../lib/core/lint-site";
 import {
   buildI18nMatrix,
@@ -22,17 +22,23 @@ import {
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
 import { probeRobots } from "../lib/core/probes/robots";
-import { getRule } from "../lib/rules";
+import { collectAdvisories } from "../lib/rules/advisory";
+import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
+import { extractionFromPage } from "../lib/rules/extraction/from-page";
+import { DEFAULT_PROFILE, rulesForProfile } from "../lib/rules/profiles";
+import { PROSE_RULES } from "../lib/rules/prose";
 import { getSiteRule } from "../lib/rules/site-rules";
 import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
 import type { Page } from "../lib/core/types";
+import { buildConformance, type ConformanceRow } from "./conformance";
 import { fingerprint, routeKey, targetKey } from "./fingerprint";
 import type {
   BrokenLink,
   GoflagReport,
+  ReportAdvisory,
   ReportReciprocityIssue,
   SeoIssue,
   SiteIssue,
@@ -124,6 +130,24 @@ export interface AuditOptions {
    * what made hreflang checks silently vacuous.
    */
   noSitemap?: boolean;
+  /**
+   * Named policy overlay applied to the rule registry (`--profile`), e.g.
+   * `strict` or `spec-only`. Defaults to `default` (no overlay). Throws on
+   * an unknown name rather than auditing under a policy nobody asked for.
+   */
+  profile?: string;
+  /**
+   * Emit the rule × page conformance matrix (`--conformance`): every rule's
+   * status on every page, passing ones included. Off by default because it
+   * is the largest section of the report and only an agent (or a coverage
+   * question) wants it.
+   */
+  conformance?: boolean;
+  /**
+   * Emit prose rules with their evidence bundles (`--advisories`). These
+   * carry no verdict and never affect the gate.
+   */
+  advisories?: boolean;
 }
 
 /** Infer a locale from the leading path segment, or null when unprefixed. */
@@ -265,6 +289,12 @@ export async function runAudit(
   const maxPages = options.maxPages ?? 200;
   const checkExternal = options.checkExternal !== false;
 
+  // Resolved before the crawl, and once for the whole run: every page is
+  // judged under the same policy, and an unknown profile name fails here
+  // rather than after a full crawl — or, worse, quietly under `default`.
+  const profile = options.profile ?? DEFAULT_PROFILE;
+  const rules = rulesForProfile(profile);
+
   // --- Sitemap discovery (independent of the markup we are about to judge) --
   //
   // Runs *before* the crawl so its URLs can seed the frontier. `crawlFallback`
@@ -334,24 +364,47 @@ export async function runAudit(
     }));
 
   // --- SEO lint (healthy pages only) -------------------------------------
+  //
+  // Each page is projected onto the extraction and evaluated exactly once,
+  // whatever the caller asked for: the violations list, the conformance
+  // matrix and the advisory bundles are three narrowings of that single
+  // evaluation, not three passes over the page.
   const seoIssues: SeoIssue[] = [];
+  const conformanceRows: ConformanceRow[] = [];
+  const advisories: ReportAdvisory[] = [];
+  // Resolved from the *effective* rules, not the global registry: one issue
+  // must not read its severity from one rule set and its `why` from another.
+  const ruleById = new Map(rules.map((rule) => [rule.id, rule]));
   for (const page of htmlPages) {
     const pageUrl = page.fetch.finalUrl;
-    // A rule can fire more than once on a page (e.g. robots.conflict emits
-    // both an index and a follow conflict); the occurrence index keeps their
-    // fingerprints distinct without depending on the (mutable) message text.
+    const extraction = extractionFromPage(page);
+    const evaluation = evaluateRules(extraction, rules);
+    if (options.conformance) {
+      conformanceRows.push({ pageUrl, findings: evaluation.findings });
+    }
+    if (options.advisories) {
+      for (const advisory of collectAdvisories(extraction, PROSE_RULES)) {
+        advisories.push({
+          ...advisory,
+          id: fingerprint("advisory", advisory.ruleId, routeKey(pageUrl)),
+          pageUrl,
+        });
+      }
+    }
+    // The occurrence index keeps fingerprints distinct if a rule ever fires
+    // more than once on a page, without depending on the (mutable) message.
     const occurrence = new Map<string, number>();
-    for (const issue of lint(page)) {
+    for (const issue of sortIssues(findingsToIssues(evaluation, rules))) {
       const n = occurrence.get(issue.ruleId) ?? 0;
       occurrence.set(issue.ruleId, n + 1);
-      const rule = getRule(issue.ruleId);
+      const rule = ruleById.get(issue.ruleId);
       seoIssues.push({
         id: fingerprint("seo", issue.ruleId, routeKey(pageUrl), String(n)),
         pageUrl,
         ruleId: issue.ruleId,
         severity: issue.severity,
         message: issue.message,
-        why: rule?.summary,
+        why: rule?.title,
         fix: issue.fix?.snippet,
       });
     }
@@ -521,6 +574,7 @@ export async function runAudit(
   return {
     url: entry,
     finishedAt: new Date().toISOString(),
+    profile,
     summary: {
       brokenLinks: brokenCount,
       missingTranslations,
@@ -545,6 +599,12 @@ export async function runAudit(
     missingTranslations: { holes, reciprocity },
     seoIssues,
     siteIssues,
+    // Both sections are omitted entirely when not asked for, rather than
+    // emitted empty: an empty `advisories: []` would read as "no prose rule
+    // has anything to ask about this site", which is a claim goflag has not
+    // made.
+    ...(options.conformance ? { conformance: buildConformance(rules, conformanceRows) } : {}),
+    ...(options.advisories ? { advisories } : {}),
     diagnostics: {
       pagesCrawled: pages.length,
       pagesScanned: linkReport.pagesScanned,

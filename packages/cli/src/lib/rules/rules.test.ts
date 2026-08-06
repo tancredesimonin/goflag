@@ -6,13 +6,23 @@
  * `pageFromHtml` so no network or fixture server is needed. This is the
  * fast, deterministic safety net that lets us refactor the rule registry
  * with confidence.
+ *
+ * The "rule registry" block is also the CI half of the provenance
+ * contract from the rules-catalog plan: every rule must cite at least one
+ * source that actually exists in the catalog, and must declare which
+ * extraction paths it reads.
  */
 
 import { describe, expect, it } from "vitest";
 
 import { lint } from "../core/lint";
+import { extractionFromPage } from "./extraction/from-page";
 import { RULES } from "./index";
+import { PROSE_RULES } from "./prose";
+import { getSource } from "./sources";
+import type { SourceRigor } from "./sources/types";
 import { pageFromHtml } from "./test-utils";
+import type { Rigor } from "./types";
 
 /** Rule ids present after linting a snippet. */
 function ids(html: string, opts?: Parameters<typeof pageFromHtml>[1]): string[] {
@@ -43,6 +53,71 @@ describe("rule registry", () => {
       seen.add(rule.id);
     }
     expect(RULES.length).toBe(11);
+  });
+
+  it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
+    for (const rule of RULES) {
+      expect(rule.sources.length, rule.id).toBeGreaterThan(0);
+      for (const sourceId of rule.sources) {
+        expect(getSource(sourceId), `${rule.id} cites unknown source ${sourceId}`).toBeDefined();
+      }
+    }
+  });
+
+  it("never claims more authority than its sources actually carry", () => {
+    // The honesty claim the whole rigor axis rests on. Citing a source is
+    // cheap; citing one that *supports the claimed rigor* is the part worth
+    // enforcing — a rule labelled `spec-required` on the strength of a blog
+    // post would poison exactly the decision an agent uses rigor to make.
+    //
+    // `spec-required` and `spec-recommended` differ in what the spec says
+    // (MUST vs SHOULD), not in who published it, so both need a `normative`
+    // source; the rest map onto the source scale directly.
+    const NEEDS: Record<Rigor, SourceRigor> = {
+      "spec-required": "normative",
+      "spec-recommended": "normative",
+      "vendor-spec": "vendor-spec",
+      guideline: "guideline",
+      heuristic: "heuristic",
+    };
+    const AUTHORITY: Record<SourceRigor, number> = {
+      normative: 4,
+      "vendor-spec": 3,
+      guideline: 2,
+      heuristic: 1,
+    };
+
+    for (const rule of [...RULES, ...PROSE_RULES]) {
+      const best = Math.max(...rule.sources.map((id) => AUTHORITY[getSource(id)!.rigor]));
+      expect(
+        best,
+        `${rule.id} claims ${rule.rigor} but its strongest source is weaker than ${NEEDS[rule.rigor]}`,
+      ).toBeGreaterThanOrEqual(AUTHORITY[NEEDS[rule.rigor]]);
+    }
+  });
+
+  it("declares which extraction paths it reads, and they exist", () => {
+    const extraction = extractionFromPage(pageFromHtml(CLEAN));
+    const topLevel = new Set(Object.keys(extraction));
+    for (const rule of RULES) {
+      expect(rule.reads.length, rule.id).toBeGreaterThan(0);
+      for (const path of rule.reads) {
+        const head = path.split(".")[0]!;
+        expect(topLevel.has(head), `${rule.id} reads unknown section ${path}`).toBe(true);
+      }
+    }
+  });
+
+  it("explains itself: title, why, expected and relates all resolve", () => {
+    const known = new Set(RULES.map((r) => r.id));
+    for (const rule of RULES) {
+      expect(rule.title.trim(), rule.id).toBeTruthy();
+      expect(rule.why.trim(), rule.id).toBeTruthy();
+      expect(rule.expected.trim(), rule.id).toBeTruthy();
+      for (const related of rule.relates ?? []) {
+        expect(known.has(related), `${rule.id} relates to unknown rule ${related}`).toBe(true);
+      }
+    }
   });
 
   it("produces zero findings on a clean page", () => {

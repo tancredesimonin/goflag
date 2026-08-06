@@ -2,78 +2,74 @@ import { describe, expect, it } from "vitest";
 
 import { lint, sortIssues, summariseIssues } from "@/lib/core/lint";
 import type { Issue } from "@/lib/core/types";
-import type { Rule } from "@/lib/rules";
+import type { BooleanRule } from "@/lib/rules";
 import { pageFromHtml } from "@/lib/rules/test-utils";
 
-const noopRule = (overrides: Partial<Rule> & { id: string }): Rule => ({
+/** A minimal synthetic boolean rule the runner tests can bend per case. */
+const syntheticRule = (overrides: Partial<BooleanRule> & { id: string }): BooleanRule => ({
+  kind: "boolean",
+  category: "test",
   severity: "warning",
-  summary: "noop",
-  check: () => undefined,
+  title: "synthetic",
+  why: "synthetic",
+  rigor: "heuristic",
+  sources: ["moz-title-tag"],
+  reads: ["document.title"],
+  expected: "nothing in particular",
+  evaluate: () => ({ status: "pass", observed: null }),
   ...overrides,
 });
 
 describe("lint runner", () => {
-  it("flattens single-issue and multi-issue rules", () => {
+  it("keeps only violations: pass and na findings emit no issue", () => {
     const page = pageFromHtml("<html><head></head><body></body></html>");
-    const rules: Rule[] = [
-      noopRule({
-        id: "test.single",
+    const rules = [
+      syntheticRule({
+        id: "test.fails",
         severity: "error",
-        check: ({ issue }) => issue({ message: "boom" }),
+        evaluate: () => ({ status: "fail", observed: null, message: "boom" }),
       }),
-      noopRule({
-        id: "test.many",
-        severity: "info",
-        check: ({ issue }) => [issue({ message: "a" }), issue({ message: "b" })],
+      syntheticRule({ id: "test.passes" }),
+      syntheticRule({
+        id: "test.na",
+        evaluate: () => ({ status: "na", observed: null }),
       }),
-      noopRule({ id: "test.silent" }),
     ];
     const issues = lint(page, rules);
-    expect(issues).toHaveLength(3);
-    expect(issues.map((i) => i.ruleId)).toEqual(["test.single", "test.many", "test.many"]);
+    expect(issues.map((i) => i.ruleId)).toEqual(["test.fails"]);
+    expect(issues[0]).toMatchObject({ severity: "error", message: "boom" });
   });
 
   it("sorts by severity then ruleId", () => {
     const page = pageFromHtml("<html><head></head><body></body></html>");
-    const rules: Rule[] = [
-      noopRule({
-        id: "z.warn",
-        severity: "warning",
-        check: ({ issue }) => issue({ message: "warn" }),
-      }),
-      noopRule({
-        id: "a.info",
-        severity: "info",
-        check: ({ issue }) => issue({ message: "info" }),
-      }),
-      noopRule({
-        id: "m.error",
-        severity: "error",
-        check: ({ issue }) => issue({ message: "err" }),
-      }),
+    const fail = (message: string) => ({ status: "fail" as const, observed: null, message });
+    const rules = [
+      syntheticRule({ id: "z.warn", severity: "warning", evaluate: () => fail("warn") }),
+      syntheticRule({ id: "a.info", severity: "info", evaluate: () => fail("info") }),
+      syntheticRule({ id: "m.error", severity: "error", evaluate: () => fail("err") }),
     ];
     const ids = lint(page, rules).map((i) => i.ruleId);
     expect(ids).toEqual(["m.error", "z.warn", "a.info"]);
   });
 
-  it("respects appliesTo gates", () => {
+  it("falls back to the rule's expected sentence when a failure has no message", () => {
     const page = pageFromHtml("<html><head></head><body></body></html>");
-    const rules: Rule[] = [
-      noopRule({
-        id: "skipped",
-        appliesTo: () => false,
-        check: ({ issue }) => issue({ message: "should not fire" }),
+    const rules = [
+      syntheticRule({
+        id: "test.terse",
+        expected: "a well-formed thing",
+        evaluate: () => ({ status: "fail", observed: null }),
       }),
     ];
-    expect(lint(page, rules)).toEqual([]);
+    expect(lint(page, rules)[0]?.message).toBe("Expected a well-formed thing.");
   });
 
   it("captures rule crashes as engine.rule-crashed", () => {
     const page = pageFromHtml("<html><head></head><body></body></html>");
-    const rules: Rule[] = [
-      noopRule({
+    const rules = [
+      syntheticRule({
         id: "boom",
-        check: () => {
+        evaluate: () => {
           throw new Error("nope");
         },
       }),
