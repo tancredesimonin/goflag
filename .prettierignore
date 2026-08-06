@@ -19,3 +19,9 @@ pnpm-lock.yaml
 # keep byte-for-byte identical. Globbed from any depth so the pattern survives
 # packages moving around the workspace.
 **/fixtures/**
+
+# Agent worktrees: full checkouts of this repository living inside it. Git skips
+# them through .git/info/exclude, which Prettier does not read — so without this
+# line `format:check` reports on somebody else's uncommitted work in a copy that
+# never reaches CI, and doubles the files it walks.
+.claude/

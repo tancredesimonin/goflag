@@ -41,6 +41,11 @@ stages:
 variables:
   PNPM_VERSION: "11.18.0"
   CI: "true"
+  # `pnpm install` runs the root `prepare` script, which installs the git hooks.
+  # A runner has no commits to make, so that is pure setup for nothing — and
+  # the hooks are the belt to CI's braces, not a second copy of the same check.
+  # Same setting the sites in this group use.
+  HUSKY: "0"
 
 # Jobs that only make sense when the CLI package (or the workspace wiring it
 # depends on) actually changed. Docs-only commits are frequent and the test

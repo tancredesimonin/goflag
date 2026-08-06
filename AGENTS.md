@@ -62,6 +62,11 @@ repository. `build`, `typecheck`, `test*` and `clean` fan out with `pnpm -r`, so
 they cover every workspace package. To work on one package only, filter:
 `pnpm --filter @goflag/cli test`.
 
+A husky `pre-commit` hook runs Prettier over staged files, so `format:check`
+should never be what CI tells you about. It formats only — linting and
+typechecking stay in the commands above, and in CI. Skip it with
+`git commit --no-verify` when you must; CI still has the last word.
+
 ## Run the CLI from source
 
 ```sh
