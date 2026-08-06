@@ -9,6 +9,8 @@
 import type { Severity } from "../lib/core/types";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { ReciprocityIssue } from "../lib/core/i18n";
+import type { AdvisoryFinding } from "../lib/rules/types";
+import type { ConformanceView } from "./conformance";
 import type { ReportDiff } from "./diff";
 
 export type Verdict = "green" | "yellow" | "red";
@@ -117,11 +119,29 @@ export interface SeoIssue {
   fix?: string;
 }
 
+/**
+ * One prose rule's evidence bundle, attributed to a page. The `id` is a
+ * fingerprint on the same scheme as `SeoIssue`, so an agent's judgment can
+ * be recorded against it and diffed across runs (M1) once judgments exist.
+ */
+export interface ReportAdvisory extends AdvisoryFinding {
+  id: string;
+  pageUrl: string;
+}
+
 export interface GoflagReport {
   /** The base URL the audit started from (normalized). */
   url: string;
   /** ISO timestamp when the audit finished. */
   finishedAt: string;
+  /**
+   * The rule profile the run was judged under (`--profile`, default
+   * `default`). Recorded because it changes what "clean" means: a baseline
+   * captured under `spec-only` is not comparable to one captured under
+   * `strict`, and a green run says nothing about the rules the profile
+   * switched off.
+   */
+  profile: string;
   summary: {
     brokenLinks: number;
     missingTranslations: number;
@@ -146,6 +166,20 @@ export interface GoflagReport {
   seoIssues: SeoIssue[];
   /** Findings from the cross-page rule registry (`SITE_RULES`). */
   siteIssues: SiteIssue[];
+  /**
+   * Every rule's status on every page, passing ones included. Present only
+   * when asked for (`--conformance`): on a large crawl it dwarfs the rest
+   * of the report, and it answers a question — "where do we stand against
+   * the catalog?" — that a violations list cannot.
+   */
+  conformance?: ConformanceView;
+  /**
+   * Prose rules with their evidence, for an agent to judge. Present only
+   * when asked for (`--advisories`). Every entry's verdict is
+   * `needs-judgment`: these are questions, not findings, and they never
+   * touch the summary counts, the verdict, or the exit code.
+   */
+  advisories?: ReportAdvisory[];
   /** Comparison against a stored baseline, when `--baseline` was given. */
   diff?: ReportDiff;
   diagnostics: {

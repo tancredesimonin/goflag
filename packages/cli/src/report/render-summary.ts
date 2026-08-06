@@ -7,6 +7,7 @@
  * function of the summary; no I/O.
  */
 
+import { DEFAULT_PROFILE } from "../lib/rules/profiles";
 import type { GoflagSummary, RollupSeo } from "./summarize";
 import type { Verdict } from "./types";
 
@@ -48,7 +49,10 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
     `${c(verdictColor(summary.verdict), VERDICT_FLAG[summary.verdict])}  ` +
       c(
         ANSI.dim,
-        `${summary.totals.pagesCrawled} pages crawled, ${summary.totals.pagesScanned} scanned`,
+        `${summary.totals.pagesCrawled} pages crawled, ${summary.totals.pagesScanned} scanned` +
+          // Same reasoning as `renderTerminal`: a narrowed run must say so,
+          // or its low finding count reads as a clean site.
+          (summary.profile === DEFAULT_PROFILE ? "" : `, profile ${summary.profile}`),
       ),
   );
   lines.push("");
@@ -115,6 +119,41 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
   if (summary.siteIssues.length > 0) {
     lines.push(c(ANSI.bold, "Site-wide issues"));
     lines.push(...rollupRows(summary.siteIssues, c));
+    lines.push("");
+  }
+
+  // --- Conformance (totals only; the matrix lives in the full report) ----
+  if (summary.conformance) {
+    lines.push(c(ANSI.bold, "Conformance"));
+    for (const rule of summary.conformance.rules) {
+      const { pass, fail, warn, na, crashed } = rule.totals;
+      const tally = [
+        fail > 0 ? c(ANSI.red, `${fail} fail`) : null,
+        warn > 0 ? c(ANSI.yellow, `${warn} warn`) : null,
+        pass > 0 ? c(ANSI.green, `${pass} pass`) : null,
+        na > 0 ? c(ANSI.dim, `${na} n/a`) : null,
+        crashed > 0 ? c(ANSI.red, `${crashed} crashed`) : null,
+      ].filter(Boolean);
+      lines.push(`  ${c(ANSI.cyan, rule.ruleId.padEnd(24))} ${tally.join(c(ANSI.dim, " · "))}`);
+    }
+    lines.push("");
+  }
+
+  // --- Advisories (one row per rule; evidence stays in the JSON) ---------
+  if (summary.advisories && summary.advisories.length > 0) {
+    lines.push(c(ANSI.bold, "Needs judgment"));
+    const byRule = new Map<string, { prose: string; pages: number }>();
+    for (const advisory of summary.advisories) {
+      const entry = byRule.get(advisory.ruleId);
+      if (entry) entry.pages += 1;
+      else byRule.set(advisory.ruleId, { prose: advisory.prose, pages: 1 });
+    }
+    for (const [ruleId, { prose, pages }] of byRule) {
+      lines.push(
+        `  ${c(ANSI.cyan, ruleId)} ${c(ANSI.dim, `(${pages} page${pages === 1 ? "" : "s"})`)}`,
+      );
+      lines.push(`    ${prose}`);
+    }
     lines.push("");
   }
 

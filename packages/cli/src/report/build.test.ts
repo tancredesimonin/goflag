@@ -86,6 +86,7 @@ describe("exitCode", () => {
   const report = (verdict: GoflagReport["summary"]["verdict"]): GoflagReport => ({
     url: "https://x.com",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     summary: { ...base, verdict },
     localeAxis: { locales: [], source: "none", multilingual: false },
     pages: [],

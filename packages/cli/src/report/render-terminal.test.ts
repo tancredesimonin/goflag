@@ -19,6 +19,7 @@ function baseReport(overrides: ReportOverrides = {}): GoflagReport {
   const base: GoflagReport = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     summary: {
       brokenLinks: 0,
       missingTranslations: 0,
@@ -52,6 +53,70 @@ describe("renderTerminal — header + verdict", () => {
     expect(out).toContain("No problems found.");
     expect(out).toContain("https://example.com/");
     expect(out).toContain("1 pages crawled, 1 scanned");
+    // The default policy is the assumed one, so naming it would be noise.
+    expect(out).not.toContain("profile");
+  });
+
+  it("names a non-default profile next to the crawl counts", () => {
+    const out = renderTerminal(baseReport({ profile: "marketing" }), { color: false });
+    expect(out).toContain("1 pages crawled, 1 scanned, profile marketing");
+  });
+
+  it("renders conformance as per-rule totals, not the raw matrix", () => {
+    const out = renderTerminal(
+      baseReport({
+        conformance: {
+          rules: [
+            {
+              ruleId: "title.missing",
+              kind: "boolean",
+              title: "Every page needs a title",
+              rigor: "spec-required",
+              sources: ["whatwg-html-title"],
+              expected: "a non-empty title",
+              totals: { pass: 3, fail: 1, warn: 0, na: 0, crashed: 0 },
+            },
+          ],
+          pages: [{ url: "https://example.com/", statuses: { "title.missing": "fail" } }],
+        },
+      }),
+      { color: false },
+    );
+    expect(out).toContain("Conformance");
+    expect(out).toContain("title.missing");
+    expect(out).toContain("1 fail");
+    expect(out).toContain("3 pass");
+    expect(out).toContain("[spec-required]");
+  });
+
+  it("lists advisories as questions, without letting them read as findings", () => {
+    const report = baseReport({
+      advisories: [
+        {
+          id: "abc",
+          pageUrl: "https://example.com/",
+          ruleId: "title.descriptive",
+          kind: "prose",
+          prose: "Does the title describe what is on THIS page?",
+          rigor: "guideline",
+          sources: ["google-title-link"],
+          evidence: { "document.title": { value: "Home", origin: { kind: "title" } } },
+          verdict: "needs-judgment",
+        },
+      ],
+    });
+    const out = renderTerminal(report, { color: false });
+
+    expect(out).toContain("Needs judgment");
+    expect(out).toContain("Does the title describe what is on THIS page?");
+    // A question is not a problem: the verdict and the all-clear line stand.
+    expect(out).toContain("No problems found.");
+  });
+
+  it("shows neither section when the report carries neither", () => {
+    const out = renderTerminal(baseReport(), { color: false });
+    expect(out).not.toContain("Conformance");
+    expect(out).not.toContain("Needs judgment");
   });
 
   it("shows a RED FLAG and no all-clear line when there are hard failures", () => {
