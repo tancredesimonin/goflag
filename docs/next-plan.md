@@ -250,14 +250,35 @@ extraire un paquet pour ça recréerait le problème que I4 prétend éviter.
 
 ## 6. Phasage
 
-| Étape   | Contenu                                                                                                                                                                                                                          | Dépend de |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **N-0** | **Mise au propre dans `apps/website`, sans paquet** : fusionner les deux constructeurs derrière une politique par route, sortir `process.env` des builders, faire dériver `sitemap.ts` du même tableau de routes que le `<head>` | rien      |
-| **N-1** | Créer `packages/next` : `defineSite`, `site.routes()`, `routes.X.metadata()` / `staticParams()` / `href()`. `apps/website` migre. Ajuster `no-restricted-imports` pour l'import de test uniquement                               | N-0       |
-| **N-2** | `site.sitemap()` + `site.robots()` depuis le même registre. `apps/website` supprime `sitemap.ts` et `robots.ts`                                                                                                                  | N-1       |
-| **N-3** | **stereo-house migre** — le test d'ergonomie                                                                                                                                                                                     | N-2       |
-| **N-4** | Publication `@goflag/next@0.1.0` sur la chaîne de release existante                                                                                                                                                              | N-3       |
-| hors v0 | `.goflag/routes.json` (5.2/5.3), `llms.txt` (phase 6), `tancrede` / `tancredo` / `openfinanceguide` (5.1)                                                                                                                        | N-4       |
+| Étape   | Contenu                                                                                                                                                                                                                          | État        |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| **N-0** | **Mise au propre dans `apps/website`, sans paquet** : fusionner les deux constructeurs derrière une politique par route, sortir `process.env` des builders, faire dériver `sitemap.ts` du même tableau de routes que le `<head>` | ✅ livrée   |
+| **N-1** | Créer `packages/next` : `defineSite`, `site.routes()`, `routes.metadata()`. `apps/website` migre                                                                                                                                 | ✅ livrée   |
+| **N-2** | `routes.sitemap()` + `routes.robots()` depuis le même registre                                                                                                                                                                   | ✅ livrée   |
+| **N-3** | **stereo-house migre** — le test d'ergonomie                                                                                                                                                                                     | ⬜ suivante |
+| **N-4** | Publication `@goflag/next@0.1.0`                                                                                                                                                                                                 | ⬜          |
+| hors v0 | `.goflag/routes.json` (5.2/5.3), `llms.txt` (phase 6), `tancrede` / `tancredo` / `openfinanceguide` (5.1)                                                                                                                        | ⬜          |
+
+### Deux écarts assumés, décidés en écrivant le code
+
+**`staticParams` et `href` ne sont pas livrés.** La forme des paramètres est une
+propriété de la route de système de fichiers — `[slug]` contre `[[...slug]]` —
+que le registre ne connaît pas. La dériver serait deviner, et une devinette dans
+`generateStaticParams` produit des pages manquantes plutôt qu'une erreur.
+`routes.family(nom)` rend les routes d'une famille ; le site en tire ses
+segments en trois lignes visibles. À reprendre quand un deuxième site aura
+montré la forme réelle du besoin.
+
+**Le §4 — « les tests sont les règles » — n'est pas branché.** `@goflag/cli`
+exporte `runAudit` et les types du rapport, pas le registre ni le modèle
+d'extraction, et I3 interdit de contourner son point d'entrée public. Aucun
+ajustement de `no-restricted-imports` n'a donc été nécessaire, et I4 n'a pas
+bougé. À la place, `src/conformance.test.ts` porte des invariants écrits à la
+main, chacun nommé d'après la règle qu'il couvre — réciprocité hreflang,
+`x-default` dans son propre cluster, sitemap et `<head>` d'accord, `og:locale`
+territorialisé. Ce fichier est explicitement provisoire : quand
+`goflag rules --json` livrera le catalogue, il est remplacé par un harnais qui
+évalue les vraies règles.
 
 **N-0 d'abord, et sans paquet.** C'est la leçon du §4 appliquée : on n'extrait
 qu'une fois que la forme est juste sur un consommateur réel. Les trois
@@ -268,15 +289,21 @@ de toute façon, fait pendant qu'il est encore gratuit d'avoir tort.
 
 ### Critères de sortie
 
-| Étape   | Critère                                                                                                                                  |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **N-0** | Une seule fonction construit la metadata des deux familles de pages, et `sitemap.ts` ne reconstruit plus la carte des locales            |
-| **N-2** | `pnpm --filter @goflag/website seo` reste **vert**, sur le profil `strict`. Le site s'audite déjà : la migration ne doit rien lui coûter |
-| **N-3** | Migrer stereo-house **supprime du code net**. Solde positif ⇒ l'API est ratée, on la refait (non négociable, hérité de la phase 4)       |
-| **N-4** | Un `pnpm add -D @goflag/next` dans un projet vierge, hors monorepo, produit un `<head>` que goflag juge propre                           |
+| Étape   | Critère                                                                                                                                                                                |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **N-0** | Une seule fonction construit la metadata des deux familles de pages, et `sitemap.ts` ne reconstruit plus la carte des locales                                                          |
+| **N-2** | ✅ `pnpm --filter @goflag/website seo` : 0 lien cassé, 0 trou de traduction, 0 problème de site, avant comme après. Les 3 `title.length` restants sont de la copy traduite, antérieurs |
+| **N-3** | Migrer stereo-house **supprime du code net**. Solde positif ⇒ l'API est ratée, on la refait (non négociable, hérité de la phase 4)                                                     |
+| **N-4** | Un `pnpm add -D @goflag/next` dans un projet vierge, hors monorepo, produit un `<head>` que goflag juge propre                                                                         |
 
 Le critère N-2 est nouveau et vaut mieux que le compte de lignes : le site est
 le seul consommateur qui **prouve** sa propre conformité à chaque pipeline.
+
+**Mesuré sur le consommateur n°1** : `apps/website` passe de 252 à 140 lignes de
+code de production sur ce périmètre, soit **−112 en solde**, en gagnant au
+passage les validations et deux correctifs. La bibliothèque coûte 919 lignes de
+source pour 858 de tests. Le vrai test d'ergonomie reste N-3 : le site dont
+l'API n'a pas été tirée.
 
 ---
 
