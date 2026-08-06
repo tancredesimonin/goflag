@@ -7,9 +7,22 @@ missing translation pages, a robots.txt that contradicts the pages it serves,
 and missing or misconfigured SEO metadata. The JSON
 report is the source of truth. There is no web app and no browser UI here.
 
-The repository is a pnpm workspace (`packages/*`, `apps/*`). Today the only
-package is `packages/cli` (`@goflag/cli`) — the rest of the tree is workspace
-plumbing, not code that ships.
+The repository is a pnpm workspace (`packages/*`, `apps/*`) holding two
+published packages and one deployed app:
+
+- `packages/cli` (`@goflag/cli`) — the auditor. Published.
+- `packages/next` (`@goflag/next`) — the library that produces what the auditor
+  checks for: declare a site's routes once, derive metadata, the hreflang
+  cluster, the sitemap and robots.txt from them. **Not yet published** — the
+  first version goes out by hand, since npm cannot attach a trusted publisher
+  to a package that does not exist. Plan: `docs/next-plan.md`.
+- `apps/website` — goflag.tech. Deployed, not published, and the first consumer
+  of `@goflag/next`. It audits itself with goflag in its own pipeline
+  (`pnpm --filter @goflag/website seo`), which is the closest thing to an
+  end-to-end test the two products have.
+
+**Invariant I3, enforced by lint**: neither `packages/next` nor `apps/**` may
+import from `packages/cli`. The two products must stay independently useful.
 
 ## Layout
 
@@ -26,6 +39,12 @@ plumbing, not code that ships.
   answer — they carry evidence to an agent and never a verdict. Design and
   remaining phases: `docs/rules-catalog-plan.md`.
 - `packages/cli/src/lib/runner/**` — boot-and-audit support for `--start`.
+- `packages/next/src/**` — the route registry. `site.ts` (`defineSite`),
+  `routes.ts` (families, the registry, sitemap and robots projections),
+  `metadata.ts`, `locate.ts` (canonical + hreflang cluster), `locale.ts` (tag
+  forms). `conformance.test.ts` judges the library's own output by invariants
+  named after the rules the CLI reports — provisional, and meant to be replaced
+  by the real catalogue once it is exported.
 - `packages/cli/src/report/**` — the `GoflagReport` schema (`types.ts`), the
   orchestrator (`runAudit` in `build.ts`), and the terminal/summary/diff
   renderers.
@@ -72,3 +91,15 @@ Root `dev` is `pnpm --filter @goflag/cli dev` (tsx); arguments after the script
 name are forwarded to the CLI.
 
 Exit codes: `0` clean, `1` findings found, `2` fatal.
+
+## Releasing
+
+Two packages, two tag namespaces: `v*` for the CLI, `next-v*` for the library.
+Merging `develop` into `main` is the decision to publish — one `release` job
+handles both packages and pushes once, and each tag triggers its own
+`publish:*` job, which trades a short-lived OIDC token for the right to publish
+that one package. There is no npm credential in CI.
+
+A release only happens when a package's **published surface** moved (its `src`,
+its manifest, and the files that reach its tarball). A `fix(ci)` spends no
+version number.
