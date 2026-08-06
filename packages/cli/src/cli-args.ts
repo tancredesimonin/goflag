@@ -8,8 +8,14 @@
  * exit-code-2 with the help text.
  */
 
+import { PROFILE_NAMES, PROFILES } from "./lib/rules/profiles";
 import type { AuditOptions, FailOn } from "./report/build";
 import type { LogMode } from "./report/logger";
+
+/** `--profile` names and what each one means, indented for the help block. */
+const PROFILE_HELP = PROFILE_NAMES.map(
+  (name) => `                         ${name} — ${PROFILES[name]!.description}`,
+).join("\n");
 
 export const HELP = `goflag — audit a site for broken links, missing translations, and SEO metadata
 
@@ -35,6 +41,16 @@ Options:
   --no-sitemap           Do not discover the sitemap; crawl from <url> only.
                          Discovery is on by default because link-only crawling
                          cannot find locales a site never links to.
+  --profile <name>       Policy overlay on the rule set — it changes how
+                         loudly a rule fires, never what it observes:
+${PROFILE_HELP}
+  --conformance          Report EVERY rule's status on every page (pass /
+                         fail / warn / na), not just the violations. Answers
+                         "where do we stand against the catalog?"; pairs with
+                         --json.
+  --advisories           Attach the prose rules — the judgment calls goflag
+                         refuses to fake — each with the observed facts an
+                         agent needs to judge it. Never affects the gate.
   --fail-on <level>      Exit 1 at or above this severity: warning (default),
                          error, or never.
   --regressions-only     Weaken the gate: fail only on findings that are NEW
@@ -162,6 +178,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--no-sitemap":
         parsed.options.noSitemap = true;
         break;
+      case "--conformance":
+        parsed.options.conformance = true;
+        break;
+      case "--advisories":
+        parsed.options.advisories = true;
+        break;
       case "--ignore-holes":
         parsed.options.ignoreHoles = [...(parsed.options.ignoreHoles ?? []), next(i, arg)];
         i++;
@@ -175,6 +197,17 @@ export function parseArgs(argv: string[]): ParsedArgs {
           .filter(Boolean);
         if (tags.length === 0) throw new Error(`${arg} expects at least one locale`);
         parsed.options.locales = [...(parsed.options.locales ?? []), ...tags];
+        i++;
+        break;
+      }
+      case "--profile": {
+        const value = next(i, arg);
+        // Validated here, not in `runAudit`: a mistyped policy should cost
+        // an argument-parse error, not a crawl.
+        if (!PROFILE_NAMES.includes(value)) {
+          throw new Error(`${arg} expects one of: ${PROFILE_NAMES.join(", ")}`);
+        }
+        parsed.options.profile = value;
         i++;
         break;
       }

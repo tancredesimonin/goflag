@@ -1,15 +1,14 @@
 /**
  * The rule catalogue, as documentation.
  *
- * This is a hand-maintained mirror of `packages/cli/src/lib/rules/index.ts` and
- * `site-rules.ts`, and it is deliberately not an import: an ESLint rule forbids
- * `apps/**` from reaching into `packages/cli` (invariant I3), so the site cannot
- * read the registry directly.
+ * This is a hand-maintained mirror of `packages/cli/src/lib/rules/index.ts`,
+ * `prose.ts` and `site-rules.ts`, and it is deliberately not an import: an
+ * ESLint rule forbids `apps/**` from reaching into `packages/cli` (invariant
+ * I3), so the site cannot read the registry directly.
  *
- * The field names below match what `goflag rules --json` will emit in phase 3
- * (`id`, `severity`, `summary`, `fix`, plus the `rigor` and `sources` this file
- * cannot yet fill). When that command lands, this file is replaced by its
- * output and the pages that render it do not change.
+ * The field names match what `goflag rules --json` will emit when that command
+ * lands; this file is then replaced by its output and the pages rendering it do
+ * not change.
  *
  * `summary`, `message` and `fix.snippet` are verbatim from the registry. `why`
  * is the only editorial field — the cost of the mistake, which the code has no
@@ -17,6 +16,147 @@
  */
 
 export type RuleSeverity = "error" | "warning" | "info";
+
+/**
+ * How authoritative the requirement behind a rule is — the honest expression
+ * of "source of truth", and the thing that tells a reader (or an agent) how
+ * much a finding is worth arguing with. A `heuristic` is folklore that may be
+ * safely ignored on a given page; a `spec-required` is not.
+ */
+export type RuleRigor =
+  "spec-required" | "spec-recommended" | "vendor-spec" | "guideline" | "heuristic";
+
+/** How authoritative a cited document is, on the source catalogue's own scale. */
+export type SourceRigor = "normative" | "vendor-spec" | "guideline" | "heuristic";
+
+export interface SourceDoc {
+  id: string;
+  publisher: string;
+  title: string;
+  rigor: SourceRigor;
+  /** Deep link, with the section anchor already applied. */
+  url: string;
+}
+
+/**
+ * The documents the shipped rules cite, mirrored from the CLI's source
+ * catalogue. Only the cited entries appear here — the catalogue itself carries
+ * more, seeded for rules that do not exist yet.
+ */
+export const SOURCES: Readonly<Record<string, SourceDoc>> = {
+  "bing-webmaster-guidelines": {
+    id: "bing-webmaster-guidelines",
+    publisher: "Microsoft",
+    title: "Bing Webmaster Guidelines",
+    rigor: "guideline",
+    url: "https://www.bing.com/webmasters/help/webmasters-guidelines-30fba23a",
+  },
+  "google-canonicalization": {
+    id: "google-canonicalization",
+    publisher: "Google",
+    title: "Consolidate duplicate URLs (canonicalization)",
+    rigor: "vendor-spec",
+    url: "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
+  },
+  "google-robots-meta": {
+    id: "google-robots-meta",
+    publisher: "Google",
+    title: "Robots meta tag and X-Robots-Tag",
+    rigor: "vendor-spec",
+    url: "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+  },
+  "google-snippet": {
+    id: "google-snippet",
+    publisher: "Google",
+    title: "Control your snippets in search results",
+    rigor: "guideline",
+    url: "https://developers.google.com/search/docs/appearance/snippet",
+  },
+  "google-title-link": {
+    id: "google-title-link",
+    publisher: "Google",
+    title: "Influence your title links in search results",
+    rigor: "guideline",
+    url: "https://developers.google.com/search/docs/appearance/title-link",
+  },
+  "ietf-rfc6596": {
+    id: "ietf-rfc6596",
+    publisher: "IETF",
+    title: "RFC 6596 — The Canonical Link Relation",
+    rigor: "normative",
+    url: "https://www.rfc-editor.org/rfc/rfc6596",
+  },
+  "mdn-viewport": {
+    id: "mdn-viewport",
+    publisher: "MDN / Mozilla",
+    title: "MDN — Viewport meta tag",
+    rigor: "guideline",
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag",
+  },
+  "meta-og-sharing": {
+    id: "meta-og-sharing",
+    publisher: "Meta",
+    title: "Sharing — webmasters (Open Graph usage)",
+    rigor: "vendor-spec",
+    url: "https://developers.facebook.com/docs/sharing/webmasters/",
+  },
+  "moz-meta-description": {
+    id: "moz-meta-description",
+    publisher: "Moz",
+    title: "Meta description best practices",
+    rigor: "heuristic",
+    url: "https://moz.com/learn/seo/meta-description",
+  },
+  "moz-title-tag": {
+    id: "moz-title-tag",
+    publisher: "Moz",
+    title: "Title tag best practices",
+    rigor: "heuristic",
+    url: "https://moz.com/learn/seo/title-tag",
+  },
+  ogp: {
+    id: "ogp",
+    publisher: "ogp.me",
+    title: "The Open Graph protocol",
+    rigor: "vendor-spec",
+    url: "https://ogp.me/",
+  },
+  "w3c-i18n-language-tags": {
+    id: "w3c-i18n-language-tags",
+    publisher: "W3C",
+    title: "W3C i18n — Language tags in HTML and XML",
+    rigor: "guideline",
+    url: "https://www.w3.org/International/articles/language-tags/",
+  },
+  "whatwg-html-lang": {
+    id: "whatwg-html-lang",
+    publisher: "WHATWG",
+    title: "HTML Living Standard — the lang and xml:lang attributes",
+    rigor: "normative",
+    url: "https://html.spec.whatwg.org/multipage/dom.html#the-lang-and-xml:lang-attributes",
+  },
+  "whatwg-html-standard-metadata-names": {
+    id: "whatwg-html-standard-metadata-names",
+    publisher: "WHATWG",
+    title: "HTML Living Standard — standard metadata names",
+    rigor: "normative",
+    url: "https://html.spec.whatwg.org/multipage/semantics.html#standard-metadata-names",
+  },
+  "whatwg-html-title": {
+    id: "whatwg-html-title",
+    publisher: "WHATWG",
+    title: "HTML Living Standard — the title element",
+    rigor: "normative",
+    url: "https://html.spec.whatwg.org/multipage/semantics.html#the-title-element",
+  },
+  "whatwg-url": {
+    id: "whatwg-url",
+    publisher: "WHATWG",
+    title: "URL Standard",
+    rigor: "normative",
+    url: "https://url.spec.whatwg.org/",
+  },
+};
 
 export interface RuleFix {
   title: string;
@@ -26,18 +166,31 @@ export interface RuleFix {
 
 export interface RuleDoc {
   id: string;
-  scope: "page" | "site";
-  severity: RuleSeverity;
+  scope: "page" | "site" | "prose";
+  /**
+   * `null` on prose rules. They produce no verdict, so there is nothing for a
+   * severity to describe — inventing one would make a question look like a
+   * finding, which is the single thing this design refuses to do.
+   */
+  severity: RuleSeverity | null;
   /** Verbatim `summary` from the registry. */
   summary: string;
-  /** The message the CLI prints, verbatim (with example values substituted). */
+  /**
+   * The message the CLI prints, verbatim (with example values substituted).
+   * On a prose rule this is the question printed under "Needs judgment".
+   */
   message: string;
   /** Editorial: what the mistake costs. Not present in the registry. */
   why: string;
   fix?: RuleFix;
-  /** Phase 3 will fill these. Left explicit rather than absent, so the gap shows. */
-  rigor: null;
-  sources: [];
+  /**
+   * `null` on the cross-page rules only: they still run on the pre-catalogue
+   * contract and pick up rigor when they move onto the descriptor (phase G).
+   * Left explicit rather than absent, so the gap shows.
+   */
+  rigor: RuleRigor | null;
+  /** Ids into `SOURCES`. Empty only where `rigor` is null, for the same reason. */
+  sources: readonly string[];
 }
 
 export const PAGE_RULES: readonly RuleDoc[] = [
@@ -56,8 +209,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
       ].join("\n"),
       language: "tsx",
     },
-    rigor: null,
-    sources: [],
+    rigor: "spec-required",
+    sources: ["whatwg-html-title"],
   },
   {
     id: "title.length",
@@ -66,8 +219,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     summary: "Keep `<title>` between 10 and 60 characters",
     message: "Title is 74 characters — long of the recommended 10–60 window.",
     why: "Past roughly sixty characters the result gets truncated, and the truncation lands wherever it lands. A title that ends mid-word is a title whose promise the reader never saw.",
-    rigor: null,
-    sources: [],
+    rigor: "heuristic",
+    sources: ["google-title-link", "moz-title-tag"],
   },
   {
     id: "description.missing",
@@ -86,8 +239,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
       ].join("\n"),
       language: "tsx",
     },
-    rigor: null,
-    sources: [],
+    rigor: "spec-recommended",
+    sources: ["whatwg-html-standard-metadata-names", "google-snippet"],
   },
   {
     id: "description.length",
@@ -96,8 +249,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     summary: "Keep descriptions between 50 and 160 characters",
     message: "Description is 31 characters — short of the recommended 50–160 window.",
     why: "Too short and the snippet gets padded with body text you did not choose; too long and it is cut. The window is a heuristic, not a specification; see the note on rigor below.",
-    rigor: null,
-    sources: [],
+    rigor: "heuristic",
+    sources: ["google-snippet", "moz-meta-description"],
   },
   {
     id: "canonical.missing",
@@ -118,8 +271,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
       ].join("\n"),
       language: "tsx",
     },
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["ietf-rfc6596", "google-canonicalization"],
   },
   {
     id: "canonical.absolute",
@@ -129,8 +282,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     message:
       'Canonical is "/the-page" — must be an absolute http(s) URL (consumers see the raw value, not the resolved "https://example.com/the-page").',
     why: "This is the failure that de-indexes a site without anybody touching a page. A relative canonical resolves against `metadataBase`, which defaults to localhost, so production ships canonicals pointing at a host no crawler can reach.",
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["ietf-rfc6596", "google-canonicalization", "whatwg-url"],
   },
   {
     id: "viewport.missing",
@@ -147,8 +300,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
       ].join("\n"),
       language: "tsx",
     },
-    rigor: null,
-    sources: [],
+    rigor: "guideline",
+    sources: ["mdn-viewport", "whatwg-html-standard-metadata-names"],
   },
   {
     id: "og.title.missing",
@@ -157,8 +310,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     summary: "Set an explicit `og:title` instead of relying on `<title>` fallback",
     message: "Page has no `og:title`; consumers will fall back to `<title>` (or nothing).",
     why: "A search title and a shared-link title have different jobs: one ends in the site name for disambiguation, the other does not need it. Relying on the fallback means every share carries the search variant.",
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["ogp"],
   },
   {
     id: "og.description.missing",
@@ -168,8 +321,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     message:
       "Page has `og:*` tags but no `og:description`; unfurls will fall back to the meta description (or nothing).",
     why: "Only flagged when the page already carries other `og:*` tags. A page that opted into Open Graph and then skipped the description almost always did so by accident.",
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["ogp", "meta-og-sharing"],
   },
   {
     id: "og.image.missing",
@@ -190,8 +343,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
       ].join("\n"),
       language: "tsx",
     },
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["ogp", "meta-og-sharing"],
   },
   {
     id: "robots.conflict",
@@ -201,8 +354,8 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     message:
       "Conflicting indexing directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
-    rigor: null,
-    sources: [],
+    rigor: "vendor-spec",
+    sources: ["google-robots-meta"],
   },
 ];
 
@@ -291,7 +444,67 @@ export const SITE_RULES: readonly RuleDoc[] = [
   },
 ];
 
-export const ALL_RULES: readonly RuleDoc[] = [...PAGE_RULES, ...SITE_RULES];
+/**
+ * The judgement calls goflag states but refuses to answer.
+ *
+ * Each one is a rule it could fake — count words, match a boilerplate string,
+ * emit a confident verdict about whether a title "describes the page". It does
+ * not: a fabricated judgement on a question of meaning is unfalsifiable noise a
+ * developer learns to ignore. Instead `--advisories` attaches the observed
+ * facts the answer turns on and leaves the verdict at `needs-judgment`, for a
+ * human or an agent to settle.
+ *
+ * They are asked only where the subject exists: no question about a description
+ * on a page that has none, because `description.missing` already says that.
+ */
+export const PROSE_RULES: readonly RuleDoc[] = [
+  {
+    id: "title.descriptive",
+    scope: "prose",
+    severity: null,
+    summary: "The `<title>` describes this specific page",
+    message:
+      "Does the title describe what is on THIS page specifically — not the site, not the section — and would it be distinguishable from the other pages of this site in a list of search results?",
+    why: "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",
+    rigor: "guideline",
+    sources: ["google-title-link", "bing-webmaster-guidelines"],
+  },
+  {
+    id: "description.accurate",
+    scope: "prose",
+    severity: null,
+    summary: "The meta description summarizes this page truthfully",
+    message:
+      "Does the description accurately summarize this page's content, and is it written for this page rather than copied across the site?",
+    why: "The description is the one sentence you get to write in a search result. A boilerplate line repeated site-wide, or one that promises something the page does not deliver, gets replaced by improvised page text — or gets the click and loses the visitor.",
+    rigor: "guideline",
+    sources: ["google-snippet", "moz-meta-description"],
+  },
+  {
+    id: "lang.matches-content",
+    scope: "prose",
+    severity: null,
+    summary: "The declared `lang` is the language the page is actually written in",
+    message:
+      "Is the text of this page actually written in the language its `lang` attribute declares?",
+    why: "A wrong `lang` is worse than a missing one: screen readers switch to the wrong pronunciation rules, browsers offer to translate a page that is already in the reader's language, and search engines file the page under the wrong audience. Nothing in the markup contradicts it, so no mechanical check can catch it.",
+    rigor: "spec-required",
+    sources: ["whatwg-html-lang", "w3c-i18n-language-tags"],
+  },
+  {
+    id: "og.image.representative",
+    scope: "prose",
+    severity: null,
+    summary: "The `og:image` represents this page and survives the unfurl crop",
+    message:
+      "Does the og:image represent what this page is about, rather than being a site-wide default, and does its subject survive being cropped to the 1.91:1 aspect ratio consumers render?",
+    why: "The preview image is the whole payload of a shared link. A generic site-wide banner, or artwork whose subject sits outside the ~1.91:1 crop, is present enough to pass every mechanical check and still communicate nothing.",
+    rigor: "guideline",
+    sources: ["ogp", "meta-og-sharing"],
+  },
+];
+
+export const ALL_RULES: readonly RuleDoc[] = [...PAGE_RULES, ...SITE_RULES, ...PROSE_RULES];
 
 /**
  * Translation gaps and hreflang reciprocity are computed cross-page in

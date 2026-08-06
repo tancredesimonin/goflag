@@ -6,6 +6,7 @@
  */
 
 import type { Severity } from "../lib/core/types";
+import { DEFAULT_PROFILE } from "../lib/rules/profiles";
 import type { GoflagReport, Verdict } from "./types";
 
 interface RenderOptions {
@@ -47,7 +48,11 @@ export function renderTerminal(report: GoflagReport, options: RenderOptions = {}
     `${c(verdictColor(report.summary.verdict), VERDICT_FLAG[report.summary.verdict].toUpperCase())}  ` +
       c(
         ANSI.dim,
-        `${report.diagnostics.pagesCrawled} pages crawled, ${report.diagnostics.pagesScanned} scanned`,
+        `${report.diagnostics.pagesCrawled} pages crawled, ${report.diagnostics.pagesScanned} scanned` +
+          // Named only when it is not the default. A run under `spec-only`
+          // that prints "0 SEO issues" without saying so reads as a clean
+          // site rather than a narrowed one.
+          (report.profile === DEFAULT_PROFILE ? "" : `, profile ${report.profile}`),
       ),
   );
   lines.push("");
@@ -134,6 +139,48 @@ export function renderTerminal(report: GoflagReport, options: RenderOptions = {}
       `  ${c(ANSI.dim, `locales: ${report.localeAxis.locales.join(", ") || "none"} (via ${report.localeAxis.source})`)}`,
     );
     lines.push(...renderIssuesByPage(report.siteIssues, c));
+    lines.push("");
+  }
+
+  // --- Conformance -------------------------------------------------------
+  // Opt-in, and rendered as per-rule totals rather than the full matrix: a
+  // 200-row grid is unreadable in a terminal, and the column that actually
+  // answers "where do we stand" is the tally. The matrix itself is in --json.
+  if (report.conformance) {
+    lines.push(c(ANSI.bold, "Conformance"));
+    const judged = report.conformance.pages.length;
+    lines.push(c(ANSI.dim, `  ${judged} page${judged === 1 ? "" : "s"} judged × every rule`));
+    for (const rule of report.conformance.rules) {
+      const { pass, fail, warn, na, crashed } = rule.totals;
+      const tally = [
+        fail > 0 ? c(ANSI.red, `${fail} fail`) : null,
+        warn > 0 ? c(ANSI.yellow, `${warn} warn`) : null,
+        pass > 0 ? c(ANSI.green, `${pass} pass`) : null,
+        na > 0 ? c(ANSI.dim, `${na} n/a`) : null,
+        crashed > 0 ? c(ANSI.red, `${crashed} crashed`) : null,
+      ].filter(Boolean);
+      lines.push(
+        `  ${c(ANSI.cyan, rule.ruleId.padEnd(24))} ${tally.join(c(ANSI.dim, " · "))}` +
+          c(ANSI.dim, `  [${rule.rigor}]`),
+      );
+    }
+    lines.push("");
+  }
+
+  // --- Advisories --------------------------------------------------------
+  // Questions, not findings: listed once per rule with the pages they apply
+  // to, and never counted in the summary line above. The evidence bundle an
+  // agent needs is in --json; printing it here would bury the findings that
+  // a human can actually act on.
+  if (report.advisories && report.advisories.length > 0) {
+    lines.push(c(ANSI.bold, "Needs judgment"));
+    lines.push(c(ANSI.dim, "  goflag states these; it will not guess the answer."));
+    for (const [ruleId, group] of groupBy([...report.advisories], (a) => a.ruleId)) {
+      lines.push(
+        `  ${c(ANSI.cyan, ruleId)} ${c(ANSI.dim, `(${group.length} page${group.length === 1 ? "" : "s"})`)}`,
+      );
+      lines.push(`    ${group[0]!.prose}`);
+    }
     lines.push("");
   }
 

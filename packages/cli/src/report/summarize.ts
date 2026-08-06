@@ -19,8 +19,10 @@
 import type { ReciprocityCode } from "../lib/core/i18n";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { Severity } from "../lib/core/types";
+import type { ConformanceRule } from "./conformance";
 import type {
   GoflagReport,
+  ReportAdvisory,
   SeoIssue,
   SiteIssue,
   TranslationHole,
@@ -70,6 +72,8 @@ export interface RollupReciprocity {
 export interface GoflagSummary {
   url: string;
   finishedAt: string;
+  /** The rule profile the run was judged under. See `GoflagReport.profile`. */
+  profile: string;
   verdict: Verdict;
   totals: {
     brokenLinks: number;
@@ -90,6 +94,20 @@ export interface GoflagSummary {
   seoIssues: RollupSeo[];
   /** Cross-page findings, rolled up by rule exactly like `seoIssues`. */
   siteIssues: RollupSeo[];
+  /**
+   * Per-rule conformance totals, when `--conformance` was asked for. The
+   * per-page matrix is dropped here on purpose — it is precisely the
+   * page-by-page repetition summary mode exists to collapse, and the totals
+   * answer the same question. Use the full report for the grid.
+   */
+  conformance?: { rules: ConformanceRule[] };
+  /**
+   * Prose rules needing judgment, when `--advisories` was asked for, carried
+   * verbatim. Not rolled up: each page's evidence bundle is different, and
+   * collapsing them would throw away the only thing that makes an advisory
+   * answerable.
+   */
+  advisories?: ReportAdvisory[];
   truncated: boolean;
   warnings: string[];
 }
@@ -98,6 +116,7 @@ export function summarize(report: GoflagReport): GoflagSummary {
   return {
     url: report.url,
     finishedAt: report.finishedAt,
+    profile: report.profile,
     verdict: report.summary.verdict,
     totals: {
       brokenLinks: report.summary.brokenLinks,
@@ -117,6 +136,8 @@ export function summarize(report: GoflagReport): GoflagSummary {
     },
     seoIssues: rollupByRule(report.seoIssues),
     siteIssues: rollupByRule(report.siteIssues),
+    ...(report.conformance ? { conformance: { rules: report.conformance.rules } } : {}),
+    ...(report.advisories ? { advisories: report.advisories } : {}),
     truncated: report.diagnostics.truncated,
     warnings: report.diagnostics.warnings,
   };

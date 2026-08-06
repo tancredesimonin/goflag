@@ -15,6 +15,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   return ogImage({
     title: rule?.id ?? "Rule",
     subtitle: rule?.summary.replace(/`/g, ""),
-    label: rule ? rule.severity : "rule",
+    // A prose rule carries no severity — it is a question, not a finding.
+    label: rule ? (rule.severity ?? "needs-judgment") : "rule",
   });
 }

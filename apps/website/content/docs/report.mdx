@@ -23,6 +23,9 @@ goflag https://example.com --report report.json   # also prints the terminal vie
 {
   "url": "https://example.com/",
   "finishedAt": "2026-08-04T11:22:33.041Z",
+  // Which rule profile judged this run. It changes what "clean" means, so it
+  // travels with the report rather than being remembered by whoever ran it.
+  "profile": "default",
   "summary": {
     "brokenLinks": 3,
     "missingTranslations": 2,
@@ -139,6 +142,86 @@ The field to read before you trust a count.
 | `ignoredHoles`                  | Translation gaps suppressed by `--ignore-holes`. A suppression cannot hide how much it is hiding.                                                                                                              |
 | `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page (the site's own statement that they are duplicates). Reported so a shrinking finding count is explicable. |
 | `sitemap`                       | `{ found, sitemapUrl, urlCount, uncrawled }`. `uncrawled` counts URLs the sitemap declared that the crawl never reached, which is usually a linking problem.                                                   |
+
+## `conformance` — asked for with `--conformance`
+
+The finding collections answer "what is wrong here". They cannot answer "where
+do we stand against the catalogue": a rule that passes on every page and a rule
+that never applied to a single one both look like silence. `--conformance` adds
+the missing view — every rule's status on every judged page.
+
+{/* prettier-ignore */}
+```jsonc
+"conformance": {
+  // Rule metadata is carried once, in a legend, rather than repeated in every
+  // cell: a 200-page grid with it inline is 2,200 copies of the same fields.
+  "rules": [
+    {
+      "ruleId": "canonical.absolute",
+      "kind": "boolean",
+      "rigor": "vendor-spec",
+      "sources": ["ietf-rfc6596", "google-canonicalization", "whatwg-url"],
+      "expected": "an absolute `http(s)://` canonical URL",
+      // pass + fail + warn + na + crashed always equals pages.length.
+      "totals": { "pass": 10, "fail": 1, "warn": 0, "na": 1, "crashed": 0 }
+    }
+    /* … one per rule the active profile left enabled */
+  ],
+  "pages": [
+    { "url": "https://example.com/", "statuses": { "canonical.absolute": "pass" } }
+    /* … one per judged page */
+  ]
+}
+```
+
+`pages` covers the **judged** pages, which is fewer than `pages` at the top
+level: unreachable pages, non-HTML resources, and pages the site itself declared
+duplicate never reach the rule layer. Use `conformance.pages.length` as the
+denominator — every rule's totals sum to it, `crashed` included, so a matrix
+whose arithmetic does not close is a bug rather than a rounding.
+
+A rule the active profile switched off is **absent** from the view rather than
+present with five zeroes: "not run" and "never applied" are different claims,
+and only the second one is `na`.
+
+## `advisories` — asked for with `--advisories`
+
+The judgement calls goflag refuses to fake. Whether a title _describes_ the page
+is not a thing a linter can decide, so goflag states the question, cites what
+makes it a real requirement, attaches the observed facts, and stops.
+
+{/* prettier-ignore */}
+```jsonc
+"advisories": [
+  {
+    "id": "advisory-a3f37dba70",       // fingerprinted like any other finding
+    "pageUrl": "https://example.com/",
+    "ruleId": "description.accurate",
+    "kind": "prose",
+    "prose": "Does the description accurately summarize this page's content, and is it written for this page rather than copied across the site?",
+    "rigor": "guideline",
+    "sources": ["google-snippet", "moz-meta-description"],
+    // An absent observation is `null`, never a missing key: "this page has no
+    // og:image" is itself evidence.
+    "evidence": {
+      "meta.description": { "value": "…", "origin": { "kind": "meta", "name": "description" } },
+      "document.title": { "value": "…", "origin": { "kind": "title" } },
+      "http.finalUrl": "https://example.com/"
+    },
+    "verdict": "needs-judgment"
+  }
+]
+```
+
+`verdict` is `needs-judgment` and nothing else — there is no code path in goflag
+that sets it otherwise. Advisories never touch `summary`, the verdict or the
+exit code, because nobody has judged them yet. They are asked only where the
+subject exists: no question about a description on a page that has none, since
+`description.missing` already says that.
+
+Both sections are **omitted entirely** when not asked for, rather than emitted
+empty. An empty `advisories: []` would read as "goflag looked and had nothing to
+ask", which is a claim it has not made.
 
 ## Stability
 

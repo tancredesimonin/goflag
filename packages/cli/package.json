@@ -58,6 +58,7 @@
     "test:unit": "vitest run src test/unit",
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
+    "validate:sources": "tsx scripts/validate-sources.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
     "release": "commit-and-tag-version"

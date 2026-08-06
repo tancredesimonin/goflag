@@ -7,6 +7,7 @@ function report(overrides: Partial<GoflagReport> = {}): GoflagReport {
   return {
     url: "https://x.test",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     summary: {
       brokenLinks: 0,
       missingTranslations: 0,
@@ -122,13 +123,40 @@ describe("diffReports", () => {
     expect(diff.unchanged).toBe(1);
   });
 
-  it("echoes where and when the baseline was taken", () => {
+  it("echoes where, when and under which profile the baseline was taken", () => {
     const baseline = report({ url: "https://prod.test", finishedAt: "2026-05-05T00:00:00.000Z" });
     const diff = diffReports(baseline, report());
     expect(diff.baseline).toEqual({
       url: "https://prod.test",
       finishedAt: "2026-05-05T00:00:00.000Z",
+      profile: "default",
     });
+    expect(diff.profileMismatch).toBeUndefined();
+  });
+
+  it("flags a baseline captured under a different profile", () => {
+    // "0 new findings" against a stricter baseline is not the reassurance it
+    // looks like, so the mismatch is surfaced rather than silently absorbed.
+    const diff = diffReports(report({ profile: "strict" }), report({ profile: "spec-only" }));
+    expect(diff.profileMismatch).toEqual({ baseline: "strict", current: "spec-only" });
+  });
+
+  it("reads a pre-profile baseline as `default`, which is what it captured", () => {
+    const legacy = report();
+    delete (legacy as { profile?: string }).profile;
+
+    expect(diffReports(legacy, report({ profile: "default" })).profileMismatch).toBeUndefined();
+    expect(diffReports(legacy, report({ profile: "strict" })).profileMismatch).toEqual({
+      baseline: "default",
+      current: "strict",
+    });
+  });
+
+  it("never lets a profile mismatch change the gate", () => {
+    // It is a warning about interpretation, not a finding. Failing the build
+    // on it would punish a legitimate `--profile spec-only` investigation.
+    const mismatched = diffReports(report({ profile: "strict" }), report({ profile: "default" }));
+    expect(diffExitCode(mismatched, "warning")).toBe(0);
   });
 
   it("orders added findings by severity, then kind, then summary", () => {

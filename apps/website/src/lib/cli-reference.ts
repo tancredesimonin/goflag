@@ -51,6 +51,16 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
         flag: "--report <file>",
         description: "Write the full JSON report to <file>.",
       },
+      {
+        flag: "--conformance",
+        description:
+          "Report every rule's status on every page (pass, fail, warn, n/a), not just the violations. A violations list cannot tell a rule that passes everywhere apart from one that never applied; this can. The terminal shows per-rule totals, and the JSON carries the full rule by page grid.",
+      },
+      {
+        flag: "--advisories",
+        description:
+          "Attach the prose rules: the judgment calls goflag refuses to fake, each with its sources and the observed facts an agent needs to judge it. Asked only where the subject exists, and never counted toward the verdict or the exit code, because nobody has judged them yet.",
+      },
     ],
   },
   {
@@ -107,6 +117,12 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
     intro:
       "A plain run fails on any finding, which is unusable on a site that is not clean yet, so it gets switched off. These flags make the gate ask whether a change made things worse.",
     flags: [
+      {
+        flag: "--profile <name>",
+        default: "default",
+        description:
+          "Policy overlay on the rule set: default, strict (every spec-backed rule fails the build), spec-only (heuristic rules switched off entirely), or marketing (snippet and unfurl metadata gaps are errors). It changes how loudly a rule fires and whether it runs, never what it observes or how authoritative it claims to be. The report records which profile judged it, and the terminal names any non-default one.",
+      },
       {
         flag: "--fail-on <level>",
         default: "warning",

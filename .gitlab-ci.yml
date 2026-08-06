@@ -132,6 +132,24 @@ test:unit:
   script:
     - pnpm test:unit
 
+# The rule catalog's provenance contract has a network half: every cited
+# source URL must still resolve (vendor docs drift). Structural validation
+# (unique ids, rigor present, dates parse) already runs inside `test:unit` on
+# every pipeline; this job only probes third-party servers, so it runs where
+# that is worth the flakiness — on schedules (drift detection) and on merge
+# requests that actually touch the catalog.
+sources:liveness:
+  stage: test
+  <<: *pnpm
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - packages/cli/src/lib/rules/sources/**/*
+        - packages/cli/scripts/validate-sources.ts
+  script:
+    - pnpm --filter @goflag/cli validate:sources
+
 test:integration:
   stage: test
   # Playwright image so Chromium is preinstalled and the headless integration

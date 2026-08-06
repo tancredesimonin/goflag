@@ -291,15 +291,54 @@ An opt-in mode that reports **every rule's status per page** (`pass` / `fail` / 
 
 ## 11. Phased implementation
 
-| Phase                      | Deliverable                                                                                                                                                                                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A. Source catalog**      | `sources/` data + `Source` type + CI provenance validator (URLs resolve, rigor present); seed with §4                                                                                                                                                         |
-| **B. Extraction model**    | Formalize + version + document `Extraction`; adapter from `Page`; schema tests                                                                                                                                                                                |
-| **C. Deterministic rules** | Rule descriptor types (boolean/scored). **Replace the current `RULES` engine outright** and re-express today's ~11 checks as sourced rules (real `sources` + `rigor`) — no obligation to preserve old ids or behavior; delete the legacy engine where cleaner |
-| **D. Profiles**            | Profile overlay + runner composition + `--profile` flag                                                                                                                                                                                                       |
-| **E. Conformance + prose** | Opt-in conformance view; `ProseRule` + advisory findings                                                                                                                                                                                                      |
-| **F. Report/loop wiring**  | Thread `rigor` / `sources` / `observed` / `expected` into report + `--summary`; keep M1-diff compatible                                                                                                                                                       |
-| **G. Artefact rules**      | Sitemap / sitemap-index and full robots.txt validation on the same descriptor: site-level extraction models, RFC 9309 matcher, sourced rules. Depends on A + B + C; independent of D/E. Full spec: `docs/sitemap-robots-plan.md`                              |
+| Phase                      | Status     | Deliverable                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A. Source catalog**      | ✅ shipped | `sources/` data + `Source` type + CI provenance validator (URLs resolve, rigor present); seed with §4                                                                                                                                                         |
+| **B. Extraction model**    | ✅ shipped | Formalize + version + document `Extraction`; adapter from `Page`; schema tests                                                                                                                                                                                |
+| **C. Deterministic rules** | ✅ shipped | Rule descriptor types (boolean/scored). **Replace the current `RULES` engine outright** and re-express today's ~11 checks as sourced rules (real `sources` + `rigor`) — no obligation to preserve old ids or behavior; delete the legacy engine where cleaner |
+| **D. Profiles**            | ✅ shipped | Profile overlay + runner composition + `--profile` flag                                                                                                                                                                                                       |
+| **E. Conformance + prose** | ✅ shipped | Opt-in conformance view; `ProseRule` + advisory findings                                                                                                                                                                                                      |
+| **F. Report/loop wiring**  | next       | Thread `rigor` / `sources` / `observed` / `expected` into report + `--summary`; keep M1-diff compatible                                                                                                                                                       |
+| **G. Artefact rules**      | planned    | Sitemap / sitemap-index and full robots.txt validation on the same descriptor: site-level extraction models, RFC 9309 matcher, sourced rules. Depends on A + B + C; independent of D/E. Full spec: `docs/sitemap-robots-plan.md`                              |
+
+**Phase D as shipped.** Two levers per rule — `enabled` and `severity` —
+overlaid `byRigor` first, then per rule id, in `src/lib/rules/profiles/`. A
+profile never touches `rigor` or `sources`: policy decides what fails your
+build, not how authoritative a requirement is. Ships `default`, `strict`,
+`spec-only` and `marketing`; the report records the active profile, and the
+baseline diff reports a mismatch rather than silently comparing two policies
+(a warning, never a gate — a cross-profile investigation is legitimate).
+§9's third lever, **requiredness**, is deliberately not implemented — whether
+an absent optional subject is `na` or a failure lives inside each evaluator,
+and hoisting it into the overlay first needs the descriptor to declare its
+optional subjects. Cross-page `SiteRule`s are not overlaid yet; they join when
+Phase G moves them onto the descriptor.
+
+**Phase E as shipped.** Both halves are opt-in flags (`--conformance`,
+`--advisories`) and both are omitted from the report entirely when not asked
+for — an empty `advisories: []` would claim goflag had looked and found
+nothing to ask, which it has not. Each page is projected and evaluated once;
+violations, matrix and advisories are three narrowings of that single pass.
+
+- **Conformance** (`src/report/conformance.ts`) carries rule metadata once in
+  a legend and bare statuses per cell, so a 200-page grid stays readable by an
+  agent. `pass + fail + warn + na + crashed` always equals the page count —
+  `crashed` exists so the arithmetic closes. A rule the active profile
+  switched off is absent rather than all-zero: "not run" and "never applied"
+  are different claims, and only the second is `na`.
+- **Prose rules** (`src/lib/rules/prose.ts`, `advisory.ts`) ship four
+  questions, kept out of the deterministic `Rule` union so no consumer can
+  mistake one for a verdict. §8's `evidence` field is the inherited `reads` —
+  for a prose rule the two collapse, and one field beats two kept in sync; the
+  consumer-facing name survives on `AdvisoryFinding`. Absent observations
+  appear in the bundle as `null` rather than missing keys, since "no
+  `og:image`" is itself evidence.
+- One deviation from §8: a prose rule declares an `appliesTo` gate and is
+  asked only where its subject exists. Asking "does the description summarize
+  the page?" where there is no description stacks an unanswerable question on
+  top of the deterministic finding that already covers it. The gate tests
+  presence only — never quality, which would be goflag making the judgment it
+  declined to make.
 
 Each phase ships independently: tests + full gate (lint, typecheck, format, build) → MR to `develop`.
 
