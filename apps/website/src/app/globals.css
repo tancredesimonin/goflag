@@ -1,0 +1,534 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+@plugin "@tailwindcss/typography";
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Palette
+ *
+ * Emerald is the accent, and every chromatic value below is a stock Tailwind
+ * colour quoted by name in a trailing comment. That is the whole rule: the
+ * hues are emerald, amber, red and cyan, which are ramps designed to sit
+ * together, so nothing here is a one-off eyeballed against its neighbours.
+ * When you need a new shade, take the next stop on one of those four ramps.
+ *
+ * The neutrals and the shadows still come from the shadcn/studio preset, and
+ * those are zinc — also stock. Leave them.
+ *
+ * WARNING: the preset itself is violet. `--primary`, `--ring`, `--sidebar-*`
+ * and `--chart-*` are overridden here to emerald, so `shadcn apply` will
+ * silently hand the site back its violet. After any apply, re-emeraldise this
+ * block rather than accepting the diff.
+ *
+ * Why one hue needs three shades:
+ *
+ * - `--primary` is a surface with a label on it, so it is the darkest emerald
+ *   that keeps that label at AA.
+ * - `--brand` is the mark and the timeline dots — graphics, which answer to
+ *   the 3:1 non-text threshold instead. It can therefore be a stop brighter,
+ *   and it needs to be: at 24px the primary shade reads as near-black.
+ * - `--flag-*` are the on-page severities, text on the page background, so
+ *   they flip with the theme.
+ *
+ * The verdict colours are not decoration. goflag prints a verdict in green,
+ * yellow or red and URLs in cyan, so these carry on the site the meaning they
+ * carry in a terminal, and are reused for rule severities.
+ *
+ * `--terminal-*` is the product shot and is the exception to the flipping:
+ * see the note on that block.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  /* emerald-700 — 5.37:1 under white, where emerald-600 is 3.67:1 and a 14px
+     semibold button label is not "large text". */
+  --primary: oklch(0.508 0.118 165.612);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+
+  /* Severities on the page background. Amber rather than yellow: no yellow that
+     clears AA on white still looks yellow, and amber-700 at least looks like a
+     deliberate warning instead of a brown. */
+  --flag-green: oklch(0.508 0.118 165.612); /* emerald-700 */
+  --flag-yellow: oklch(0.555 0.163 48.998); /* amber-700 */
+  --flag-red: oklch(0.577 0.245 27.325); /* red-600, = --destructive */
+
+  --brand: oklch(0.596 0.145 163.225); /* emerald-600 */
+  --brand-foreground: oklch(1 0 0);
+  --link: oklch(0.508 0.118 165.612); /* emerald-700 */
+
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.596 0.145 163.225); /* emerald-600 */
+
+  /* Terminal surface — the product shot. Dark in both themes: a terminal that
+     turns white in light mode stops reading as a terminal. */
+  --terminal: oklch(0.19 0.005 250);
+  --terminal-foreground: oklch(0.89 0.005 250);
+  --terminal-border: oklch(0.28 0.008 250);
+  --terminal-dim: oklch(0.6 0.008 250);
+
+  /* The terminal's own verdict palette, and the one set of colours here that is
+     deliberately *not* redeclared under `.dark`. The surface does not flip, so
+     neither can the text on it: the page-level `--flag-*` are dark shades meant
+     for white, and reusing them here put emerald-700 and red-700 on a near-black
+     panel at 3.4:1 and 2.9:1. These are the bright stops a real terminal would
+     use, and they clear AA on both surfaces.
+     Cyan stays cyan — the shade goflag prints URLs in, and far enough from
+     emerald that a URL and a pass are still two different colours. */
+  --terminal-green: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --terminal-yellow: oklch(0.828 0.189 84.429); /* amber-400 */
+  --terminal-red: oklch(0.704 0.191 22.216); /* red-400 */
+  --terminal-cyan: oklch(0.789 0.154 211.53); /* cyan-400 */
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.508 0.118 165.612); /* emerald-700 */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.596 0.145 163.225); /* emerald-600 */
+
+  /* The `--font-inter` / `--font-source-serif-4` / `--font-jetbrains-mono`
+     variables on the right are injected by `next/font` in the root layout;
+     naming the families as strings here would load nothing. Declared once, here
+     — the preset also writes them inside `@layer base`, which is later in the
+     cascade and would win, so that block is deleted on every apply. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Inter carries the interface and the documentation. The serif is an accent,
+     asked for by name with `font-serif` on a handful of marketing headings —
+     not the body default, or it would end up on every button and table cell. */
+  --font-serif: var(--font-source-serif-4), ui-serif, Georgia, serif;
+
+  /* The preset's own names, pointed at the same stacks so its `@layer base`
+     heading rules resolve. `--font-body` is deliberately sans. */
+  --font-heading: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
+
+  --radius: 0.625rem;
+
+  --background: oklch(1 0 0);
+
+  --foreground: oklch(0.141 0.005 285.823);
+
+  /* The emerald ramp, lightest first, keeping the preset's own ordering. */
+  --chart-1: oklch(0.845 0.143 164.978); /* emerald-300 */
+
+  --chart-2: oklch(0.765 0.177 163.223); /* emerald-400 */
+
+  --chart-3: oklch(0.696 0.17 162.48); /* emerald-500 */
+
+  --chart-4: oklch(0.596 0.145 163.225); /* emerald-600 */
+
+  --chart-5: oklch(0.508 0.118 165.612); /* emerald-700 */
+
+  --shadow-2xs: 0 1px 3px 0px oklch(0 0 0 / 0.05);
+
+  --shadow-xs: 0 1px 3px 0px oklch(0 0 0 / 0.05);
+
+  --shadow-2xl: 0 1px 3px 0px oklch(0 0 0 / 0.25);
+
+  --shadow-sm: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1);
+
+  --shadow: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1);
+
+  --shadow-md: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 2px 4px -1px oklch(0 0 0 / 0.1);
+
+  --shadow-lg: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 4px 6px -1px oklch(0 0 0 / 0.1);
+
+  --shadow-xl: 0 1px 3px 0px oklch(0 0 0 / 0.1), 0 8px 10px -1px oklch(0 0 0 / 0.1);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  /* The pairing inverts here, which is intended: a light-on-dark-green button on
+     a dark page would be a second dark rectangle. emerald-500 with the near-black
+     emerald-950 label is 6.14:1 and reads as the brightest thing on the page,
+     which is what a single call to action wants. */
+  --primary: oklch(0.696 0.17 162.48); /* emerald-500 */
+  --primary-foreground: oklch(0.262 0.051 172.552); /* emerald-950 */
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+
+  /* One stop brighter than the light-mode trio, which is the whole reason these
+     are tokens: the same "warning amber" has to be amber-700 on white and
+     amber-400 on near-black to read as the same colour at the same weight. */
+  --flag-green: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --flag-yellow: oklch(0.828 0.189 84.429); /* amber-400 */
+  --flag-red: oklch(0.704 0.191 22.216); /* red-400, = --destructive */
+
+  --brand: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --brand-foreground: oklch(0.262 0.051 172.552); /* emerald-950 */
+  --link: oklch(0.765 0.177 163.223); /* emerald-400 */
+
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.696 0.17 162.48); /* emerald-500 */
+
+  /* Surface only. The verdict colours are inherited from `:root` on purpose. */
+  --terminal: oklch(0.14 0.004 250);
+  --terminal-foreground: oklch(0.9 0.004 250);
+  --terminal-border: oklch(0.26 0.008 250);
+  --terminal-dim: oklch(0.62 0.008 250);
+
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.696 0.17 162.48); /* emerald-500 */
+  --sidebar-primary-foreground: oklch(0.262 0.051 172.552); /* emerald-950 */
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.696 0.17 162.48); /* emerald-500 */
+  --chart-1: oklch(0.845 0.143 164.978); /* emerald-300 */
+  --chart-2: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --chart-3: oklch(0.696 0.17 162.48); /* emerald-500 */
+  --chart-4: oklch(0.596 0.145 163.225); /* emerald-600 */
+  --chart-5: oklch(0.508 0.118 165.612); /* emerald-700 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-link: var(--link);
+  --color-flag-green: var(--flag-green);
+  --color-flag-yellow: var(--flag-yellow);
+  --color-flag-red: var(--flag-red);
+
+  --color-terminal: var(--terminal);
+  --color-terminal-foreground: var(--terminal-foreground);
+  --color-terminal-border: var(--terminal-border);
+  --color-terminal-dim: var(--terminal-dim);
+  --color-terminal-green: var(--terminal-green);
+  --color-terminal-yellow: var(--terminal-yellow);
+  --color-terminal-red: var(--terminal-red);
+  --color-terminal-cyan: var(--terminal-cyan);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-inter: var(--font-inter);
+  --font-source-serif-4: var(--font-source-serif-4);
+  --font-jetbrains-mono: var(--font-jetbrains-mono);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow: var(--shadow);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-2xs: var(--shadow-2xs);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "cv02" 1,
+      "cv03" 1,
+      "cv04" 1;
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 2.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 1.875rem;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  h3 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  h4 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  h5 {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  h6 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+  body,
+  p {
+    font-family: var(--font-body);
+    line-height: 1.65;
+  }
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/* ── Editorial headings ──
+ * The serif, used where it earns its keep: the headings of the localized pages,
+ * which are prose people read once. Everything else — the interface, the
+ * documentation, every table and badge — stays in Inter, and code stays in
+ * JetBrains Mono. A serif on a button is a costume. */
+.editorial :is(h1, h2) {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* ── Grid backdrop ──
+ * A single hairline grid, used behind the hero only. Flat, no gradient: it
+ * reads as graph paper rather than decoration. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 3rem 3rem;
+}
+
+/* ── Dot backdrop ──
+ * The grid's counterpart, behind the workflow diagram: dots read as a canvas to
+ * arrange things on, where the grid reads as paper to write on. Tinted with the
+ * brand rather than the border colour, because at 14% it is the one place a wash
+ * of emerald costs nothing — nothing is judged against it. */
+.bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--brand) 14%, transparent) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 1.25rem 1.25rem;
+}
+
+/* A tint reads as texture on white and as nothing on near-black, so the dark
+   mode needs the mix pushed rather than the same value inherited. */
+.dark .bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--brand) 30%, transparent) 1.5px,
+    transparent 1.5px
+  );
+}
+
+/* ── Scroll reveal ──
+ * A scroll-driven CSS animation, so there is no client component wrapping the
+ * content and therefore no hydration boundary around it — which is what the
+ * JavaScript version cost, in exchange for a fade.
+ *
+ * Where `animation-timeline` is unsupported the rule never applies and the
+ * element is simply already in its final state, so nothing is ever hidden
+ * behind a feature test. Same for a reader who asked for less motion. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 20%;
+    }
+  }
+}
+
+/* ── Shiki dual themes ──
+ * Two producers, one switch. `rehype-pretty-code` (MDX) marks the element with
+ * `data-theme`; a direct `codeToHtml` call (the rule fix snippets) marks it with
+ * `.shiki`. Both emit `--shiki-light` / `--shiki-dark` and neither sets a
+ * colour, so the theme is chosen here. */
+
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+}
+
+code[data-theme*=" "],
+code[data-theme*=" "] span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+.dark code[data-theme*=" "],
+.dark code[data-theme*=" "] span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+
+figure[data-rehype-pretty-code-figure] {
+  position: relative;
+  margin: 1.5rem 0;
+}
+
+figure[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  background-color: var(--muted);
+}
+
+figure[data-rehype-pretty-code-figure] code {
+  display: grid;
+  background: transparent !important;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+figure[data-rehype-pretty-code-figure] [data-line] {
+  padding: 0 1.25rem;
+}
+
+figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] {
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 0.5rem 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background-color: var(--secondary);
+}
+
+figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] + pre {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
+  background-color: color-mix(in oklch, var(--link) 12%, transparent);
+  border-left: 2px solid var(--link);
+  padding-left: calc(1.25rem - 2px);
+}
+
+figure[data-rehype-pretty-code-figure] [data-highlighted-chars] {
+  background-color: color-mix(in oklch, var(--link) 16%, transparent);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+}
+
+[data-rehype-pretty-code-figure] > code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border);
+  background-color: var(--muted);
+}
+
+.prose figure[data-rehype-pretty-code-figure] {
+  margin: 1.5em 0;
+}
+
+.prose figure[data-rehype-pretty-code-figure] pre {
+  margin: 0;
+}
+
+.prose figure[data-rehype-pretty-code-figure] code {
+  font-size: 0.875rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}

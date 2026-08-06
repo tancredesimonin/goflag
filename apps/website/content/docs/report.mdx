@@ -1,0 +1,231 @@
+---
+title: The JSON report
+description: The shape of the document every other view is derived from: findings, the locale axis, diagnostics, and the fields worth reading first.
+navTitle: JSON report
+group: reference
+order: 3
+---
+
+Everything goflag prints is a pure function of one object. The terminal view is a
+rendering of it; `--summary` is a rollup of it; the baseline diff is two of them
+compared. If something other than a person consumes the result, read this and
+ignore the terminal.
+
+```bash
+goflag https://example.com --json > report.json
+goflag https://example.com --report report.json   # also prints the terminal view
+```
+
+## Top level
+
+{/* prettier-ignore */}
+```jsonc
+{
+  "url": "https://example.com/",
+  "finishedAt": "2026-08-04T11:22:33.041Z",
+  // Which rule profile judged this run. It changes what "clean" means, so it
+  // travels with the report rather than being remembered by whoever ran it.
+  "profile": "default",
+  "summary": {
+    "brokenLinks": 3,
+    "missingTranslations": 2,
+    "seoIssues": 14,
+    "siteIssues": 1,
+    "unreachablePages": 0,
+    "verdict": "red"
+  },
+  "localeAxis": {
+    "locales": ["en", "fr", "de"],
+    "source": "sitemap",
+    "multilingual": true
+  },
+  // The collections are elided here for space; in a real report the counts
+  // in `summary` always match them, and `pages` has one entry per crawled page.
+  "pages": [
+    {
+      "url": "https://example.com/",
+      "status": 200,
+      "locale": null
+    }
+    /* … ×128 */
+  ],
+  "unreachablePages": [],
+  "brokenLinks": [/* 3 entries */],
+  "missingTranslations": {
+    "holes": [/* 2 entries */],
+    "reciprocity": []
+  },
+  "seoIssues": [/* 14 entries */],
+  "siteIssues": [/* 1 entry */],
+  "diagnostics": {
+    "pagesCrawled": 128,
+    "pagesScanned": 128,
+    "pagesFailed": 0,
+    "truncated": false,
+    "warnings": []
+  }
+}
+```
+
+`verdict` is `green`, `yellow` or `red`. It is a summary of severities, not of
+counts: `red` means at least one error-level finding, `yellow` means warnings
+only, `green` means nothing at all.
+
+## Every finding has an `id`
+
+```json
+{
+  "id": "seo:og.image.missing:/pricing",
+  "pageUrl": "https://example.com/pricing",
+  "ruleId": "og.image.missing",
+  "severity": "warning",
+  "message": "Page has no `og:image`; a shared link renders as a bare text row.",
+  "why": "…",
+  "fix": "export const metadata = { openGraph: { images: [\"/og.png\"] } }"
+}
+```
+
+`id` is the **fingerprint**: stable across runs, across environments, and across
+message rewordings. It is what [baseline gating](/docs/ci/baseline) matches on,
+and what you should key on if you store findings anywhere yourself. Do not parse
+it; treat it as opaque.
+
+`why` and `fix` are present when the rule offers them. `fix` assumes the Next.js
+App Router and says so; the finding is still correct on any stack.
+
+## The finding collections
+
+| Field                             | What it holds                                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `brokenLinks`                     | One entry per (page, target) pair, with `status`, `verdict` and a human `reason`. A footer link on 500 pages is probed once but reported per referring page. |
+| `unreachablePages`                | Crawled pages that answered non-2xx. `status: 0` means a network error rather than an HTTP status.                                                           |
+| `missingTranslations.holes`       | `{ route, presentLocales, missingLocales }`: a route served in some locales and not others.                                                                  |
+| `missingTranslations.reciprocity` | hreflang findings: `missing-back-link`, `x-default-missing`, `locale.invalid`, `self-mismatch`.                                                              |
+| `seoIssues`                       | Per-page findings from the [page rule registry](/docs/rules).                                                                                                |
+| `siteIssues`                      | Cross-page findings: same shape as `seoIssues`, but a statement about the whole site, so fixing one usually fixes a whole column.                            |
+
+## `localeAxis`
+
+```json
+{
+  "locales": ["en", "fr"],
+  "source": "none",
+  "multilingual": false,
+  "candidates": [
+    {
+      "tag": "cv",
+      "pages": 1,
+      "isKnownLanguage": true,
+      "htmlLangAgrees": false,
+      "observedLangs": ["en"]
+    }
+  ]
+}
+```
+
+`source` is `explicit` (you passed `--locales`), `sitemap`, or `none`. When it is
+`none`, goflag did not guess an axis and the translation checks did not run;
+`candidates` lists the locale-looking prefixes it saw with the evidence for and
+against each, as a suggestion for `--locales`. See
+[Translations](/docs/i18n#where-the-locale-axis-comes-from).
+
+## `diagnostics`
+
+The field to read before you trust a count.
+
+| Field                           | Why it matters                                                                                                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pagesCrawled` / `pagesScanned` | Scanned is the subset whose links were extracted.                                                                                                                                                              |
+| `pagesFailed`                   | Pages that could not be fetched at all.                                                                                                                                                                        |
+| `truncated`                     | `true` when a page or link cap cut the crawl short. **A report with `truncated: true` is a report about part of your site.**                                                                                   |
+| `warnings`                      | Non-fatal problems, in prose: a link blocked by an anti-bot filter, a sitemap that would not parse.                                                                                                            |
+| `ignoredHoles`                  | Translation gaps suppressed by `--ignore-holes`. A suppression cannot hide how much it is hiding.                                                                                                              |
+| `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page (the site's own statement that they are duplicates). Reported so a shrinking finding count is explicable. |
+| `sitemap`                       | `{ found, sitemapUrl, urlCount, uncrawled }`. `uncrawled` counts URLs the sitemap declared that the crawl never reached, which is usually a linking problem.                                                   |
+
+## `conformance` — asked for with `--conformance`
+
+The finding collections answer "what is wrong here". They cannot answer "where
+do we stand against the catalogue": a rule that passes on every page and a rule
+that never applied to a single one both look like silence. `--conformance` adds
+the missing view — every rule's status on every judged page.
+
+{/* prettier-ignore */}
+```jsonc
+"conformance": {
+  // Rule metadata is carried once, in a legend, rather than repeated in every
+  // cell: a 200-page grid with it inline is 2,200 copies of the same fields.
+  "rules": [
+    {
+      "ruleId": "canonical.absolute",
+      "kind": "boolean",
+      "rigor": "vendor-spec",
+      "sources": ["ietf-rfc6596", "google-canonicalization", "whatwg-url"],
+      "expected": "an absolute `http(s)://` canonical URL",
+      // pass + fail + warn + na + crashed always equals pages.length.
+      "totals": { "pass": 10, "fail": 1, "warn": 0, "na": 1, "crashed": 0 }
+    }
+    /* … one per rule the active profile left enabled */
+  ],
+  "pages": [
+    { "url": "https://example.com/", "statuses": { "canonical.absolute": "pass" } }
+    /* … one per judged page */
+  ]
+}
+```
+
+`pages` covers the **judged** pages, which is fewer than `pages` at the top
+level: unreachable pages, non-HTML resources, and pages the site itself declared
+duplicate never reach the rule layer. Use `conformance.pages.length` as the
+denominator — every rule's totals sum to it, `crashed` included, so a matrix
+whose arithmetic does not close is a bug rather than a rounding.
+
+A rule the active profile switched off is **absent** from the view rather than
+present with five zeroes: "not run" and "never applied" are different claims,
+and only the second one is `na`.
+
+## `advisories` — asked for with `--advisories`
+
+The judgement calls goflag refuses to fake. Whether a title _describes_ the page
+is not a thing a linter can decide, so goflag states the question, cites what
+makes it a real requirement, attaches the observed facts, and stops.
+
+{/* prettier-ignore */}
+```jsonc
+"advisories": [
+  {
+    "id": "advisory-a3f37dba70",       // fingerprinted like any other finding
+    "pageUrl": "https://example.com/",
+    "ruleId": "description.accurate",
+    "kind": "prose",
+    "prose": "Does the description accurately summarize this page's content, and is it written for this page rather than copied across the site?",
+    "rigor": "guideline",
+    "sources": ["google-snippet", "moz-meta-description"],
+    // An absent observation is `null`, never a missing key: "this page has no
+    // og:image" is itself evidence.
+    "evidence": {
+      "meta.description": { "value": "…", "origin": { "kind": "meta", "name": "description" } },
+      "document.title": { "value": "…", "origin": { "kind": "title" } },
+      "http.finalUrl": "https://example.com/"
+    },
+    "verdict": "needs-judgment"
+  }
+]
+```
+
+`verdict` is `needs-judgment` and nothing else — there is no code path in goflag
+that sets it otherwise. Advisories never touch `summary`, the verdict or the
+exit code, because nobody has judged them yet. They are asked only where the
+subject exists: no question about a description on a page that has none, since
+`description.missing` already says that.
+
+Both sections are **omitted entirely** when not asked for, rather than emitted
+empty. An empty `advisories: []` would read as "goflag looked and had nothing to
+ask", which is a claim it has not made.
+
+## Stability
+
+goflag is `0.x`, and this shape can change in a minor version. Additions are
+common; removals are called out in the [changelog](/changelog). Two guarantees
+worth relying on in the meantime: the document is always fully
+JSON-serialisable, and `id` stays stable for an unchanged finding.

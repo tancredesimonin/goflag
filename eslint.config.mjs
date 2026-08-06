@@ -7,7 +7,19 @@ export default tseslint.config(
     // `.claude/worktrees` holds full copies of this repository, so linting it
     // reports the same file twice — and reports it wrongly, since the path no
     // longer matches the `scripts/**` override below. Git already excludes it.
-    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", "**/fixtures/**", ".claude/**"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/coverage/**",
+      "**/fixtures/**",
+      ".claude/**",
+      // Build output and generated sources. `.next` in particular contains the
+      // bundled copy of every dependency, which is both meaningless to lint and
+      // slow enough to make the whole command look broken.
+      "**/.next/**",
+      "**/.content-collections/**",
+      "**/next-env.d.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -21,7 +33,7 @@ export default tseslint.config(
     // Repository tooling: plain Node ESM, no TypeScript. The TS configs above
     // disable `no-undef` (the compiler already covers it), so these files are
     // the only ones that need Node's globals spelled out.
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "apps/*/*.mjs"],
     languageOptions: {
       globals: { process: "readonly" },
     },

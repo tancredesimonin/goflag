@@ -2,7 +2,7 @@
   "name": "@goflag/cli",
   "version": "0.1.4",
   "type": "module",
-  "description": "A lean CLI that audits a site for broken links, missing translation pages, and missing/misconfigured SEO metadata. JSON-first.",
+  "description": "Audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.",
   "keywords": [
     "seo",
     "hreflang",
@@ -17,7 +17,7 @@
     "ci"
   ],
   "license": "MIT",
-  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
@@ -28,7 +28,7 @@
     "url": "https://github.com/tancredesimonin/goflag/issues"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22"
   },
   "bin": {
     "goflag": "dist/cli.js"
@@ -58,6 +58,7 @@
     "test:unit": "vitest run src test/unit",
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
+    "validate:sources": "tsx scripts/validate-sources.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
     "release": "commit-and-tag-version"

@@ -2,9 +2,10 @@
 # Keeping them apart means a release script that iterates over packages never
 # picks up the website, and `rules:changes` in CI can key on the distinction.
 #
-# Neither `packages/next` nor `apps/website` exists yet. The globs are ready for
-# them; creating empty stubs for things that do not exist is how a repository
-# accumulates code nobody calls.
+# `apps/website` is the marketing and documentation site. `packages/next` does
+# not exist yet; the glob is ready for it, but creating an empty stub for
+# something that does not exist is how a repository accumulates code nobody
+# calls.
 packages:
   - "packages/*"
   - "apps/*"
@@ -27,12 +28,36 @@ minimumReleaseAge: 4320
 # worker into a browser app's public directory, which a CLI has none of. Denied rather than
 # carried over because the full build, the typecheck and all 516 tests pass without them —
 # the permission was never doing anything.
+#
+# The four below arrived with `apps/website`, and are denied for the same reason as esbuild:
+# each ships its native code as optional per-platform packages that pnpm installs directly,
+# so the install script is only a fallback compile path. `@parcel/watcher` is narrower still
+# — content-collections reaches for it in watch mode only, which is `pnpm dev`, never CI.
+# Verified rather than assumed: `pnpm build` and `pnpm typecheck` pass across the workspace
+# with all four denied.
 allowBuilds:
   esbuild: false
   msw: false
+  sharp: false
+  "@swc/core": false
+  "@parcel/watcher": false
+  unrs-resolver: false
 
 # Security floors, moved verbatim from the package.json `pnpm.overrides` block — pnpm 11 no
 # longer reads that field, so leaving them there would have dropped both pins silently.
 overrides:
   undici: ^7.28.0
   fast-uri: ^3.1.2
+
+  # Both arrived with `apps/website`, and both are Next's own pins rather than
+  # anything we asked for: it depends on `postcss` at exactly 8.4.31 and resolves
+  # `sharp` to 0.34.x, which are the three `high` advisories that
+  # `pnpm audit --prod --audit-level=high` fails the pipeline on. The patched
+  # versions were already in the tree for our own use, so the lockfile carried the
+  # fixed and the vulnerable copy of each side by side.
+  #
+  # postcss is a minor bump inside the range everything else already accepts.
+  # sharp crosses a minor, which would be worth more care if anything used it —
+  # it exists only for `next/image`, which this site never imports.
+  postcss: ^8.5.18
+  sharp: ^0.35.0

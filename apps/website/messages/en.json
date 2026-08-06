@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "docs": "Docs",
+    "rules": "Rules",
+    "changelog": "Changelog",
+    "github": "GitHub",
+    "npm": "npm",
+    "skipToContent": "Skip to content",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "toggleTheme": "Toggle theme",
+    "language": "Language"
+  },
+  "meta": {
+    "home": {
+      "title": "goflag: a CLI that flags invisible site defects in CI",
+      "description": "A CLI that reports broken links, missing translation pages, a robots.txt that contradicts your pages, and misconfigured SEO metadata. JSON-first, MIT."
+    },
+    "changelog": {
+      "title": "Changelog",
+      "description": "Every published version of @goflag/cli, generated from the commit history, with the release notes that explain what a version actually changes."
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Your page is perfect. Google no longer sees it.",
+      "lead": "goflag is a CLI that reads your site the way a crawler does, and fails a CI step before an invisible defect ships.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "workflowLabel": "One gate, four checks"
+    },
+    "workflow": {
+      "prevents": {
+        "name": "What it prevents",
+        "origin": {
+          "title": "A tag changes.",
+          "label": "commit",
+          "time": "day 0"
+        },
+        "without": {
+          "label": "Without goflag",
+          "shipped": {
+            "title": "It ships.",
+            "label": "shipped",
+            "time": "day 0"
+          },
+          "unnoticed": {
+            "title": "The page leaves the index.",
+            "label": "unnoticed",
+            "time": "weeks later"
+          },
+          "tooLate": {
+            "title": "Someone asks why traffic fell.",
+            "label": "too late",
+            "time": "months later"
+          }
+        },
+        "with": {
+          "label": "With goflag",
+          "flagged": {
+            "title": "CI raises the flag.",
+            "label": "caught in CI",
+            "time": "4 min later"
+          },
+          "fixed": {
+            "title": "A developer or an agent fixes it.",
+            "label": "fixed",
+            "time": "minutes later"
+          },
+          "clean": {
+            "title": "It ships clean.",
+            "label": "shipped clean",
+            "time": "still day 0"
+          }
+        }
+      },
+      "links": {
+        "name": "Links",
+        "question": "Does every link still lead somewhere?"
+      },
+      "i18n": {
+        "name": "Translations",
+        "question": "Has a locale quietly lost a page?"
+      },
+      "robots": {
+        "name": "robots.txt",
+        "question": "Does the site forbid what it asks for elsewhere?"
+      },
+      "metadata": {
+        "name": "Metadata",
+        "question": "Will a crawler read what you meant to publish?"
+      }
+    },
+    "terminal": {
+      "title": "The whole interface",
+      "lead": "The JSON report is the interface: pipe it into scripts, diff it between runs, gate CI on it, or hand it to an AI agent. The terminal output is a render of it.",
+      "tabs": {
+        "full": "Full report",
+        "summary": "--summary",
+        "gate": "Baseline gate"
+      },
+      "caption": "Real output; only the spacing is adjusted for the page. Progress goes to stderr so stdout stays clean for the report."
+    },
+    "invisible": {
+      "title": "What a browser cannot show you",
+      "lead": "Each of these renders perfectly. The defect is in the part of the page nobody looks at, and the cost is paid in a search index you never see.",
+      "youSee": "What you see",
+      "crawlerSees": "What a crawler sees",
+      "consequence": "Consequence",
+      "one": {
+        "see": "A page that renders exactly as designed.",
+        "consequence": "The page asks to be dropped in favour of another. It will be."
+      },
+      "two": {
+        "see": "Four locales, every one of them reachable.",
+        "consequence": "Each translation competes with the other three instead of consolidating with them."
+      },
+      "three": {
+        "see": "A live production site, serving traffic.",
+        "consequence": "No page is ever fetched, so the index directive on every page is never read."
+      }
+    },
+    "method": {
+      "title": "Gate on regressions, not on perfection",
+      "lead": "A run that fails on any finding is unusable on a site that is not clean yet, so it gets switched off, or quietly ignored. Three flags make the gate tenable, and one of them makes the backlog actually shrink.",
+      "step1": {
+        "title": "Capture a baseline",
+        "body": "Freeze today’s findings as known, so the gate can ask whether this change made things worse instead of whether the site is perfect. The output never says clean while findings are outstanding; it says how many are being let through."
+      },
+      "step2": {
+        "title": "Gate on what is new",
+        "body": "Findings are matched by fingerprint, and page URLs are normalised to origin-independent routes, so a baseline captured against production compares cleanly with a run against localhost."
+      },
+      "step3": {
+        "title": "Lower the ratchet",
+        "body": "Fix a finding, drop --max-debt by one, commit both. Without this, a baseline fossilises behind a build that passes."
+      }
+    },
+    "ci": {
+      "title": "In CI",
+      "lead": "Two moments are worth auditing, and they answer different questions.",
+      "whenHeader": "When",
+      "againstHeader": "Against",
+      "answersHeader": "Answers",
+      "mrWhen": "On the merge request",
+      "mrAgainst": "The branch’s own build, booted by --start",
+      "mrAnswers": "Does this change regress?",
+      "deployWhen": "After deploying",
+      "deployAgainst": "The running environment",
+      "deployAnswers": "Is what is actually serving correct?",
+      "detail": "The flags worth knowing (--no-external, version pinning, exit codes) are three short sections in the docs.",
+      "docsCta": "See the CI recipes"
+    },
+    "proof": {
+      "title": "Built by auditing my own sites",
+      "lead": "goflag exists because four sites I run needed it, this one included: goflag.tech is gated by its own audit in CI, and a merge that breaks it does not land. Every number below is measured, not estimated.",
+      "stat1": "sites gated in CI",
+      "stat2": "pages audited in {duration}",
+      "stat3": "tests in the CLI"
+    },
+    "not": {
+      "title": "What goflag is not",
+      "closing": "One command, a JSON report, an exit code. If what you want is a number to optimise, this is the wrong tool: a score invites optimising the score.",
+      "versus": "If you want a desktop crawler with a UI, Screaming Frog exists; if you only want dead links, lychee is faster. goflag is for gating a build on what a crawler reads."
+    },
+    "faq": {
+      "title": "Before you install",
+      "source": {
+        "q": "Does it need access to my source code?",
+        "a": "No. It needs a URL. goflag reads what a crawler reads, which is also why it catches things a local build cannot show you: the real base URL, whatever the proxy serves for robots.txt, the redirects."
+      },
+      "next": {
+        "q": "Does it work outside Next.js?",
+        "a": "The checks do: they judge HTML, and HTML is HTML. The fix snippets attached to findings assume the Next.js App Router, and say so. Nothing breaks on a Rails or Astro site; you just get the finding without the copy-paste remedy."
+      },
+      "chromium": {
+        "q": "Do I need Chromium?",
+        "a": "Only without --static. A page whose head looks empty is re-rendered in headless Chromium, so a client-rendered app is not reported as missing everything; --static turns that off and never downloads a browser."
+      },
+      "privacy": {
+        "q": "What leaves my machine?",
+        "a": "The HTTP requests to the site you named, and nothing else. The report is written to your disk or your stdout."
+      },
+      "free": {
+        "q": "What does it cost?",
+        "a": "Nothing. MIT."
+      },
+      "scale": {
+        "q": "Will it finish on a large site?",
+        "a": "The largest site it gates is {pages} pages and takes about {duration} with --static --no-external. --max-pages caps the crawl, --include and --exclude narrow it, and a run that hit a cap says so in diagnostics rather than reporting a smaller number as if it were the whole site."
+      }
+    },
+    "close": {
+      "title": "Point it at your site.",
+      "lead": "The quickstart takes you from a red first run to a gate you trust.",
+      "quickstart": "Quickstart",
+      "changelog": "Changelog"
+    }
+  },
+  "changelog": {
+    "title": "Changelog",
+    "lead": "Every published version of {package}. Entries are generated from the commit history, so this page cannot drift from what actually shipped.",
+    "currentVersion": "Current version",
+    "released": "Released",
+    "installPinned": "Pin this version",
+    "filterAll": "All",
+    "filterFeatures": "Features",
+    "filterFixes": "Fixes",
+    "filterDocs": "Docs",
+    "noEntries": "No entries of this kind in this release.",
+    "viewCommit": "View commit",
+    "viewDiff": "Compare with the previous version",
+    "onNpm": "View on npm",
+    "sections": {
+      "features": "Features",
+      "fixes": "Bug fixes",
+      "docs": "Documentation",
+      "other": "Other changes"
+    }
+  },
+  "footer": {
+    "tagline": "Flags the site problems humans can’t catch at scale.",
+    "product": "Product",
+    "resources": "Resources",
+    "project": "Project",
+    "license": "MIT licensed",
+    "copyright": "© {year} {domain}. All rights reserved.",
+    "packageLicense": "{name} is MIT",
+    "builtBy": "Built by {author}",
+    "issuesNote": "The GitHub repository is a read-only mirror. Issues are tracked on GitLab.",
+    "docs": "Documentation",
+    "quickstart": "Quickstart",
+    "rules": "Rule catalogue",
+    "ci": "CI recipes",
+    "changelog": "Changelog",
+    "npm": "npm package",
+    "github": "GitHub mirror",
+    "legalNotice": "Legal notice",
+    "privacy": "Privacy policy",
+    "cookies": "Cookie policy"
+  },
+  "legal": {
+    "lastUpdated": "Last updated {date}"
+  },
+  "notFound": {
+    "title": "404",
+    "lead": "This page does not exist. If a link on this site brought you here, that is a broken link, and there is a tool for that.",
+    "home": "Back to the home page",
+    "irony": "Yes, the irony is noted. The site is audited by goflag in its own pipeline; a 404 reachable from a link would fail that build."
+  }
+}

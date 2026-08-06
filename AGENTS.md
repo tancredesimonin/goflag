@@ -3,7 +3,8 @@
 ## What this is
 
 Goflag is a **Node/TypeScript CLI**. It crawls a site and reports broken links,
-missing translation pages, and missing/misconfigured SEO metadata. The JSON
+missing translation pages, a robots.txt that contradicts the pages it serves,
+and missing or misconfigured SEO metadata. The JSON
 report is the source of truth. There is no web app and no browser UI here.
 
 The repository is a pnpm workspace (`packages/*`, `apps/*`). Today the only
@@ -16,9 +17,14 @@ plumbing, not code that ships.
   fetch/extract (static and headless Chromium), link audit (`links/`), the i18n
   matrix and reciprocity check, probes (`robots`, `sitemap`, `manifest`), and
   the pure `lint()` / `lintSite()` runners.
-- `packages/cli/src/lib/rules/**` — the SEO metadata rule registry
-  (`index.ts`) and its types. Each rule is a pure `Page -> Issue[]`; the runner
-  that iterates them lives in `core/lint.ts`.
+- `packages/cli/src/lib/rules/**` — the SEO metadata rule catalog. `index.ts`
+  is the registry: each rule is a sourced descriptor with a pure evaluator over
+  the `Extraction` model (`extraction/`), never over raw HTML. `sources/` is
+  the cited source-of-truth catalog, `profiles/` the `--profile` policy
+  overlay, `evaluate.ts` the runner; `core/lint.ts` wires them to a `Page`.
+  `prose.ts` + `advisory.ts` are the questions goflag states but refuses to
+  answer — they carry evidence to an agent and never a verdict. Design and
+  remaining phases: `docs/rules-catalog-plan.md`.
 - `packages/cli/src/lib/runner/**` — boot-and-audit support for `--start`.
 - `packages/cli/src/report/**` — the `GoflagReport` schema (`types.ts`), the
   orchestrator (`runAudit` in `build.ts`), and the terminal/summary/diff
@@ -35,7 +41,7 @@ plumbing, not code that ships.
 
 ## Toolchain
 
-- Node `>=20.11` (`engines`); `.nvmrc` pins `24.18.1`.
+- Node `>=22` (`engines`); `.nvmrc` pins `24.18.1`.
 - Repo pins **`pnpm@11.18.0`** via `packageManager`. Use
   `corepack enable && corepack prepare pnpm@11.18.0 --activate`.
 - Headless SPA tests need Chromium. `playwright` is a devDependency of the CLI

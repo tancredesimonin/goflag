@@ -1,0 +1,128 @@
+---
+title: Baseline gating
+description: How findings are fingerprinted and matched across environments, what a baseline does and does not promise, and how to keep one from fossilising.
+navTitle: Baseline gating
+group: use
+order: 2
+---
+
+A run that fails on any finding is unusable on a site that is not clean yet. So
+it gets switched off, or quietly ignored, and the pipeline keeps a red badge
+nobody reads. A baseline replaces the question.
+
+## The four flags
+
+| Flag                 | What it does                                                                                                                 |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `--baseline <file>`  | The stored report to compare against. **On its own it is an error**: it weakens the gate, so it has to be asked for by name. |
+| `--regressions-only` | Fail only on findings that are new relative to the baseline.                                                                 |
+| `--update-baseline`  | Write this run to the baseline and exit `0` instead of judging against it.                                                   |
+| `--max-debt <n>`     | Fail when the site carries more than `n` findings in total, new or known.                                                    |
+
+## Capturing one
+
+```bash
+mkdir -p .goflag
+goflag https://example.com \
+  --baseline .goflag/baseline.json --update-baseline
+```
+
+```plaintext
+goflag: baseline captured — 13 findings grandfathered in .goflag/baseline.json
+goflag: set --max-debt 13 to stop that number growing, and lower it as you fix.
+```
+
+Commit the file. It is a reviewable record of what the team decided to live with,
+and a diff on it in a merge request is a decision worth seeing.
+
+Re-running `--update-baseline` later prints what changed rather than silently
+replacing the file:
+
+```plaintext
+goflag: baseline updated — 2 newly accepted, 5 resolved, 10 findings now grandfathered
+```
+
+## What a finding is matched by
+
+Findings are matched by **fingerprint**, not by list position. A fingerprint is
+built from the stable parts of a finding: the rule that produced it, the route it
+was found on, and the thing it points at (a link target, a locale, a missing
+tag). It deliberately excludes anything that moves without the defect moving:
+
+- **The origin.** Page URLs are normalised to origin-independent routes, so a
+  baseline captured against `https://example.com` compares cleanly with a run
+  against `http://localhost:3000`. This is what makes the merge-request job
+  possible at all.
+- **Counts and ordering.** Adding a page does not renumber existing findings.
+- **Message text.** Rewording a rule's message in a new version of goflag does not
+  invalidate your baseline.
+
+What it does include is the route. Move a page, and its findings are new
+findings, which is correct: nobody reviewed the metadata at the new URL.
+
+## Reading the gate
+
+```plaintext
+goflag --regressions-only
+REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
+baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
+
+New findings
+  + error seo  canonical.absolute: canonical is relative  on /pricing
+
+Resolved
+  - warn  seo  og.image.missing  on /about
+```
+
+The headline changes with the state of the run: `REGRESSION` when new findings
+exist, `REGRESSION GATE` when only known debt is passing through, `CLEAN` when
+nothing is outstanding. The two gate labels are not a typo for each other.
+
+Three deliberate choices in that output:
+
+1. **It is never green and never says "clean" while findings are outstanding.**
+   This mode passes builds on sites with known defects. A green flag would say
+   the opposite of what happened.
+2. **The debt is the headline, not a footnote.** `13 known findings NOT gating
+this build` is printed in bold on every run, because a reader who stops seeing
+   the number stops knowing it exists.
+3. **Resolved findings are listed.** A gate that only ever shows problems gives
+   no signal that the backlog is moving, which is how a gate stops being read.
+
+The baseline's age is printed for the same reason. A baseline taken 400 days ago
+is not a decision any more; it is a fossil.
+
+## Accepting a finding on purpose
+
+Sometimes the finding is real and the answer is still "not this quarter". Accept
+it explicitly:
+
+```bash
+goflag … --baseline .goflag/baseline.json --update-baseline
+```
+
+Then review the diff on the baseline file. The line you added is the sentence
+"we know, and we chose this", written down, in the repository, next to the code
+it concerns.
+
+What you should not do is raise `--max-debt` to make a red pipeline go away. That
+is the same decision with the evidence deleted.
+
+## Lowering the ratchet
+
+```bash
+goflag … --baseline .goflag/baseline.json --regressions-only --max-debt 12
+```
+
+Fix a finding, drop the number by one, commit both in the same change. Without
+this step a baseline is a permission slip; with it, it is a plan.
+
+## What a baseline does not do
+
+- It does not make the findings go away. `goflag` without `--regressions-only`
+  still reports all of them, and that is the run to read when you want the list.
+- It does not protect you from a rule getting stricter. A new version of goflag
+  can produce findings your baseline has never seen. That is what pinning the
+  version is for.
+- It does not know why you accepted anything. The file records _what_; the commit
+  message is where _why_ lives.

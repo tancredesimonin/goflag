@@ -8,6 +8,7 @@ function reportWith(verdict: Verdict): GoflagReport {
   return {
     url: "https://x.test",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     summary: {
       brokenLinks: 0,
       missingTranslations: 0,

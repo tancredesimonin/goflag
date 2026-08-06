@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseArgs, HELP } from "./cli-args";
+import { PROFILE_NAMES } from "./lib/rules/profiles";
 
 describe("parseArgs", () => {
   it("captures the URL as the sole positional argument", () => {
@@ -67,6 +68,28 @@ describe("parseArgs", () => {
     expect(a.options.exclude).toEqual(["/x/**", "/admin"]);
   });
 
+  it("parses --profile and defaults to none (runAudit applies `default`)", () => {
+    expect(parseArgs(["u", "--profile", "strict"]).options.profile).toBe("strict");
+    expect(parseArgs(["u", "--profile", "spec-only"]).options.profile).toBe("spec-only");
+    expect(parseArgs(["u"]).options.profile).toBeUndefined();
+  });
+
+  it("rejects an unknown --profile before anything is crawled", () => {
+    expect(() => parseArgs(["u", "--profile", "stcirt"])).toThrow(/--profile expects one of/);
+    // The list of real names is what makes the error actionable.
+    expect(() => parseArgs(["u", "--profile", "stcirt"])).toThrow(/marketing/);
+    expect(() => parseArgs(["u", "--profile"])).toThrow(/requires a value/);
+  });
+
+  it("parses --conformance and --advisories, both off by default", () => {
+    const a = parseArgs(["u", "--conformance", "--advisories"]);
+    expect(a.options.conformance).toBe(true);
+    expect(a.options.advisories).toBe(true);
+    const b = parseArgs(["u"]);
+    expect(b.options.conformance).toBeUndefined();
+    expect(b.options.advisories).toBeUndefined();
+  });
+
   it("captures --report <file>", () => {
     expect(parseArgs(["u", "--report", "out.json"]).report).toBe("out.json");
   });
@@ -103,8 +126,15 @@ describe("parseArgs", () => {
       "--verbose",
       "--quiet",
       "--no-color",
+      "--profile",
+      "--conformance",
+      "--advisories",
     ]) {
       expect(HELP).toContain(flag);
     }
+  });
+
+  it("HELP lists every profile, so the flag documents itself", () => {
+    for (const name of PROFILE_NAMES) expect(HELP).toContain(name);
   });
 });

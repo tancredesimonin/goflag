@@ -1,0 +1,119 @@
+---
+title: Install
+description: Run goflag once with pnpm dlx, or add it as a pinned dev dependency. Node 22 or newer, and Playwright Chromium when the site is not totally static.
+group: start
+order: 2
+---
+
+## Requirements
+
+Two things, in this order:
+
+1. **Node `>=22`.** The package declares that range; CI and local development
+   run on Node 24.
+2. **Playwright Chromium, if your site is not totally static.** Client-rendered
+   pages (Next.js App Router without full SSR for every route, SPAs, anything
+   that fills `<head>` in the browser) need a headless browser. Without it,
+   goflag judges the empty shell and the findings look wrong. That is not a
+   bug in the tool; install Chromium before you decide the report is lying.
+   See [Chromium](#chromium) below. Pure static HTML can skip this.
+
+## Run it once
+
+You do not have to install anything to try it:
+
+```bash
+pnpm dlx @goflag/cli https://example.com
+```
+
+The binary is called `goflag`, so once it is on your `PATH` (locally or in a
+project) every example in these docs works verbatim.
+
+## Add it to a project
+
+<PackageManagerCode
+  pnpm="pnpm add -D @goflag/cli"
+  npm="npm install --save-dev @goflag/cli"
+  yarn="yarn add -D @goflag/cli"
+  bun="bun add -d @goflag/cli"
+/>
+
+Then wire it to a script, so the flags live in the repository rather than in
+somebody's shell history:
+
+```json title="package.json"
+{
+  "scripts": {
+    "seo": "goflag http://localhost:3000 --start \"pnpm start\" --no-external"
+  }
+}
+```
+
+`--start` boots the command, waits for the URL to answer, audits, then stops it
+again; `--no-external` keeps third-party outages out of the result. See
+[CI](/docs/ci) for why both belong in a gate.
+
+## Pin the version you gate on
+
+In a pipeline, do not float:
+
+```bash
+pnpm dlx @goflag/cli@__CLI_VERSION__ https://example.com
+```
+
+A floating version turns somebody else's release into a red pipeline on a commit
+that touched nothing, and the job is only worth having if red means _you_ broke
+something.
+
+## Chromium
+
+By default, a page whose `<head>` looks empty (no title, no description, no
+canonical, no Open Graph, no JSON-LD) is re-rendered in headless Chromium, so a
+client-rendered application is not reported as missing everything it actually
+declares at runtime.
+
+That path needs `playwright`, which is an **optional peer dependency**: nothing
+is downloaded unless you ask for it.
+
+<Callout type="warning" title="Not totally static? Install this first.">
+  If metadata is filled in the browser and you skip Chromium, the report will look broken. Install
+  Playwright and Chromium before filing an issue.
+</Callout>
+
+<PackageManagerCode
+  pnpm={"pnpm add -D playwright\npnpm exec playwright install chromium"}
+  npm={"npm install --save-dev playwright\nnpx playwright install chromium"}
+  yarn={"yarn add -D playwright\nyarn playwright install chromium"}
+  bun={"bun add -d playwright\nbunx playwright install chromium"}
+/>
+
+Without it, goflag does not fail: the page is judged on its static HTML and the
+report notes that it would have escalated. Install Chromium when you see that
+note and the findings look wrong.
+
+### `--static`, if you are certain
+
+`--static` turns off both the re-render and the detection that triggers it, and
+never downloads anything:
+
+```bash
+goflag https://example.com --static
+```
+
+It makes a run several times faster, and it is only safe when **every** page
+emits its metadata on the server. That is rarer than it sounds, and it drifts:
+one route that fills its `<head>` in the browser is enough to make findings
+misleading, and nothing will warn you when somebody adds it next quarter. Opt
+in when you are sure, re-check the assumption when the stack changes, and
+leave the default alone otherwise.
+
+## Verify the install
+
+```bash
+goflag --version
+goflag --help
+```
+
+Both exit `0`. If `goflag https://example.com` exits `1`, that is not an
+installation problem: `1` means findings were reported. See
+[exit codes](/docs/cli#exit-codes).

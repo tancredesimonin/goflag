@@ -11,6 +11,7 @@ function baseReport(overrides: ReportOverrides = {}): GoflagReport {
   const base: GoflagReport = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     summary: {
       brokenLinks: 0,
       missingTranslations: 0,

@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "docs": "Documentación",
+    "rules": "Reglas",
+    "changelog": "Registro de cambios",
+    "github": "GitHub",
+    "npm": "npm",
+    "skipToContent": "Saltar al contenido",
+    "openMenu": "Abrir el menú",
+    "closeMenu": "Cerrar el menú",
+    "toggleTheme": "Cambiar de tema",
+    "language": "Idioma"
+  },
+  "meta": {
+    "home": {
+      "title": "goflag: una CLI que señala en CI los defectos invisibles de un sitio",
+      "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."
+    },
+    "changelog": {
+      "title": "Registro de cambios",
+      "description": "Todas las versiones publicadas de @goflag/cli, generadas desde el historial de commits, con las notas que explican qué cambia cada versión."
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Su página es perfecta. Google ya no la ve.",
+      "lead": "goflag es una CLI que lee su sitio como lo lee un rastreador, y hace fallar un paso de CI antes de que un defecto invisible llegue a producción.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "workflowLabel": "Una barrera, cuatro comprobaciones"
+    },
+    "workflow": {
+      "prevents": {
+        "name": "Lo que evita",
+        "origin": {
+          "title": "Cambia una etiqueta.",
+          "label": "commit",
+          "time": "día 0"
+        },
+        "without": {
+          "label": "Sin goflag",
+          "shipped": {
+            "title": "Se despliega.",
+            "label": "desplegado",
+            "time": "día 0"
+          },
+          "unnoticed": {
+            "title": "La página sale del índice.",
+            "label": "inadvertido",
+            "time": "semanas después"
+          },
+          "tooLate": {
+            "title": "Alguien pregunta por qué cayó el tráfico.",
+            "label": "demasiado tarde",
+            "time": "meses después"
+          }
+        },
+        "with": {
+          "label": "Con goflag",
+          "flagged": {
+            "title": "La CI da la alerta.",
+            "label": "detectado en CI",
+            "time": "4 min después"
+          },
+          "fixed": {
+            "title": "Un desarrollador o un agente lo corrige.",
+            "label": "corregido",
+            "time": "minutos después"
+          },
+          "clean": {
+            "title": "Se despliega limpio.",
+            "label": "desplegado limpio",
+            "time": "todavía el día 0"
+          }
+        }
+      },
+      "links": {
+        "name": "Enlaces",
+        "question": "¿Cada enlace sigue llevando a alguna parte?"
+      },
+      "i18n": {
+        "name": "Traducciones",
+        "question": "¿Alguna locale ha perdido una página en silencio?"
+      },
+      "robots": {
+        "name": "robots.txt",
+        "question": "¿El sitio prohíbe lo que pide en otra parte?"
+      },
+      "metadata": {
+        "name": "Metadatos",
+        "question": "¿Leerá un crawler lo que usted quiso publicar?"
+      }
+    },
+    "terminal": {
+      "title": "Toda la interfaz",
+      "lead": "El informe JSON es la interfaz: canalícelo a sus scripts, compárelo entre ejecuciones, condicione la CI con él o déselo a leer a un agente de IA. La salida del terminal es una representación de él.",
+      "tabs": {
+        "full": "Informe completo",
+        "summary": "--summary",
+        "gate": "Barrera con línea base"
+      },
+      "caption": "Salida real; solo se ajusta el espaciado para esta página. El progreso va a stderr para que stdout quede limpio para el informe."
+    },
+    "invisible": {
+      "title": "Lo que un navegador no puede mostrarle",
+      "lead": "Cada uno de estos casos se muestra a la perfección. El defecto está en la parte de la página que nadie mira, y el coste se paga en un índice de búsqueda que usted nunca ve.",
+      "youSee": "Lo que usted ve",
+      "crawlerSees": "Lo que ve un rastreador",
+      "consequence": "Consecuencia",
+      "one": {
+        "see": "Una página que se muestra exactamente como se diseñó.",
+        "consequence": "La página pide que se la descarte en favor de otra. Y así será."
+      },
+      "two": {
+        "see": "Cuatro idiomas, todos ellos accesibles.",
+        "consequence": "Cada traducción compite con las otras tres en lugar de consolidarse con ellas."
+      },
+      "three": {
+        "see": "Un sitio en producción, atendiendo tráfico real.",
+        "consequence": "Ninguna página se descarga nunca, así que la directiva de indexación de cada página no se lee jamás."
+      }
+    },
+    "method": {
+      "title": "Bloquee por regresiones, no por perfección",
+      "lead": "Una ejecución que falla ante cualquier hallazgo es inservible en un sitio que todavía no está limpio: acaba desactivada, o ignorada sin decirlo. Tres opciones hacen que la barrera sea sostenible, y una de ellas es la que de verdad reduce la deuda acumulada.",
+      "step1": {
+        "title": "Capture una línea base",
+        "body": "Congele los hallazgos de hoy como conocidos, para que la barrera pueda preguntar si este cambio ha empeorado las cosas en lugar de si el sitio es perfecto. La salida nunca dice que el sitio esté limpio mientras queden hallazgos pendientes; dice cuántos se están dejando pasar."
+      },
+      "step2": {
+        "title": "Bloquee solo por lo nuevo",
+        "body": "Los hallazgos se emparejan por huella, y las URL de las páginas se normalizan a rutas independientes del origen: así, una línea base capturada contra producción se compara sin ruido con una ejecución contra localhost."
+      },
+      "step3": {
+        "title": "Baje el tope, un diente cada vez",
+        "body": "Corrija un hallazgo, baje --max-debt en uno y haga commit de las dos cosas. Sin esto, una línea base se fosiliza detrás de una build que pasa."
+      }
+    },
+    "ci": {
+      "title": "En CI",
+      "lead": "Hay dos momentos que merece la pena auditar, y responden a preguntas distintas.",
+      "whenHeader": "Cuándo",
+      "againstHeader": "Contra qué",
+      "answersHeader": "Qué responde",
+      "mrWhen": "En la merge request",
+      "mrAgainst": "La build de la propia rama, arrancada por --start",
+      "mrAnswers": "¿Este cambio introduce una regresión?",
+      "deployWhen": "Después de desplegar",
+      "deployAgainst": "El entorno en ejecución",
+      "deployAnswers": "¿Es correcto lo que se está sirviendo de verdad?",
+      "detail": "Las opciones que conviene conocer (--no-external, fijar la versión, los códigos de salida) caben en tres secciones cortas de la documentación.",
+      "docsCta": "Ver las recetas de CI"
+    },
+    "proof": {
+      "title": "Construido auditando mis propios sitios",
+      "lead": "goflag existe porque cuatro sitios que gestiono lo necesitaban, este incluido: goflag.tech está protegido por su propia auditoría en CI, y un merge que la rompe no se fusiona. Todas las cifras de abajo están medidas, no estimadas.",
+      "stat1": "sitios con barrera en CI",
+      "stat2": "páginas auditadas en {duration}",
+      "stat3": "tests en la CLI"
+    },
+    "not": {
+      "title": "Lo que goflag no es",
+      "closing": "Un comando, un informe JSON, un código de salida. Si lo que quiere es una cifra que optimizar, esta es la herramienta equivocada: una puntuación invita a optimizar la puntuación.",
+      "versus": "Si quiere un rastreador de escritorio con interfaz, existe Screaming Frog; si solo busca enlaces rotos, lychee es más rápido. goflag sirve para condicionar una build a lo que lee un rastreador."
+    },
+    "faq": {
+      "title": "Antes de instalar",
+      "source": {
+        "q": "¿Necesita acceso a mi código fuente?",
+        "a": "No. Necesita una URL. goflag lee lo que lee un rastreador, que es también la razón de que detecte cosas que una build local no puede mostrarle: la URL base real, lo que sirva el proxy para robots.txt, las redirecciones."
+      },
+      "next": {
+        "q": "¿Funciona fuera de Next.js?",
+        "a": "Las comprobaciones sí: juzgan HTML, y el HTML es HTML. Los fragmentos de corrección que acompañan a los hallazgos dan por supuesto el App Router de Next.js, y lo dicen. Nada se rompe en un sitio hecho con Rails o con Astro; simplemente obtiene el hallazgo sin el remedio para copiar y pegar."
+      },
+      "chromium": {
+        "q": "¿Necesito Chromium?",
+        "a": "Solo sin --static. Una página cuyo head parece vacío se vuelve a renderizar en Chromium en modo headless, para que una aplicación renderizada en el cliente no aparezca como si le faltara todo; --static desactiva eso y nunca descarga un navegador."
+      },
+      "privacy": {
+        "q": "¿Qué sale de mi máquina?",
+        "a": "Las peticiones HTTP al sitio que usted haya indicado, y nada más. El informe se escribe en su disco o en su stdout."
+      },
+      "free": {
+        "q": "¿Cuánto cuesta?",
+        "a": "Nada. MIT."
+      },
+      "scale": {
+        "q": "¿Termina en un sitio grande?",
+        "a": "El sitio más grande en el que actúa como barrera tiene {pages} páginas y tarda unos {duration} con --static --no-external. --max-pages limita el rastreo, --include y --exclude lo acotan, y una ejecución que ha llegado a un límite lo dice en diagnostics, en lugar de informar de una cifra menor como si fuera el sitio entero."
+      }
+    },
+    "close": {
+      "title": "Apúntelo a su sitio.",
+      "lead": "El inicio rápido le lleva de una primera ejecución en rojo a una barrera en la que confiar.",
+      "quickstart": "Inicio rápido",
+      "changelog": "Registro de cambios"
+    }
+  },
+  "changelog": {
+    "title": "Registro de cambios",
+    "lead": "Todas las versiones publicadas de {package}. Las entradas se generan a partir del historial de commits, así que esta página no puede desviarse de lo que realmente se publicó.",
+    "currentVersion": "Versión actual",
+    "released": "Publicada",
+    "installPinned": "Fijar esta versión",
+    "filterAll": "Todo",
+    "filterFeatures": "Funcionalidades",
+    "filterFixes": "Correcciones",
+    "filterDocs": "Documentación",
+    "noEntries": "No hay entradas de este tipo en esta versión.",
+    "viewCommit": "Ver el commit",
+    "viewDiff": "Comparar con la versión anterior",
+    "onNpm": "Ver en npm",
+    "sections": {
+      "features": "Funcionalidades",
+      "fixes": "Correcciones de fallos",
+      "docs": "Documentación",
+      "other": "Otros cambios"
+    }
+  },
+  "footer": {
+    "tagline": "Señala los problemas de un sitio que nadie puede detectar a escala.",
+    "product": "Producto",
+    "resources": "Recursos",
+    "project": "Proyecto",
+    "license": "Licencia MIT",
+    "copyright": "© {year} {domain}. Todos los derechos reservados.",
+    "packageLicense": "{name} es MIT",
+    "builtBy": "Creado por {author}",
+    "issuesNote": "El repositorio de GitHub es un espejo de solo lectura. Las incidencias se gestionan en GitLab.",
+    "docs": "Documentación",
+    "quickstart": "Inicio rápido",
+    "rules": "Catálogo de reglas",
+    "ci": "Recetas de CI",
+    "changelog": "Registro de cambios",
+    "npm": "Paquete de npm",
+    "github": "Espejo de GitHub",
+    "legalNotice": "Aviso legal",
+    "privacy": "Política de privacidad",
+    "cookies": "Política de cookies"
+  },
+  "legal": {
+    "lastUpdated": "Última actualización: {date}"
+  },
+  "notFound": {
+    "title": "404",
+    "lead": "Esta página no existe. Si un enlace de este sitio le ha traído hasta aquí, se trata de un enlace roto, y hay una herramienta para eso.",
+    "home": "Volver a la página de inicio",
+    "irony": "Sí, la ironía queda anotada. El sitio se audita con goflag en su propia pipeline; un 404 accesible desde un enlace haría fallar esa build."
+  }
+}

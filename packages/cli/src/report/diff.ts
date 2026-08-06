@@ -17,6 +17,7 @@
  */
 
 import type { Severity } from "../lib/core/types";
+import { DEFAULT_PROFILE } from "../lib/rules/profiles";
 import type { GoflagReport } from "./types";
 
 /** Which part of the report a finding came from. */
@@ -40,8 +41,17 @@ export interface DiffEntry {
 }
 
 export interface ReportDiff {
-  /** Where and when the baseline was taken, echoed for the report header. */
-  baseline: { url: string; finishedAt: string };
+  /** Where, when, and under which rule profile the baseline was taken. */
+  baseline: { url: string; finishedAt: string; profile: string };
+  /**
+   * Set when this run was judged under a different profile than the baseline
+   * was captured under. Not an error — comparing `spec-only` against a
+   * `default` baseline is legitimate, it is just not like-for-like, and
+   * "0 new findings" means less than it appears. So it is reported loudly
+   * and gates nothing: silently diffing across two policies is the failure
+   * mode worth preventing.
+   */
+  profileMismatch?: { baseline: string; current: string };
   /** Findings present now and absent from the baseline — what should fail CI. */
   added: DiffEntry[];
   /** Findings in the baseline that are gone. Worth showing: progress is data too. */
@@ -150,11 +160,19 @@ export function diffReports(baseline: GoflagReport, current: GoflagReport): Repo
     if (!now.has(id)) resolved.push(entry);
   }
 
+  // A baseline stored before profiles existed has no `profile`; the behaviour
+  // it captured is what `default` still does, so that is the honest reading.
+  const baselineProfile = baseline.profile ?? DEFAULT_PROFILE;
+  const currentProfile = current.profile ?? DEFAULT_PROFILE;
+
   return {
-    baseline: { url: baseline.url, finishedAt: baseline.finishedAt },
+    baseline: { url: baseline.url, finishedAt: baseline.finishedAt, profile: baselineProfile },
     added: sortEntries(added),
     resolved: sortEntries(resolved),
     unchanged,
+    ...(baselineProfile === currentProfile
+      ? {}
+      : { profileMismatch: { baseline: baselineProfile, current: currentProfile } }),
   };
 }
 

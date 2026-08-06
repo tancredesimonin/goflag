@@ -17,14 +17,16 @@
  *   3. Within a single rule's emissions, the order the rule returned
  *      them (rules can produce one issue per offending tag).
  *
- * Errors thrown inside a rule's `check()` are caught and converted into
- * a synthetic `info`-severity issue with id `engine.rule-crashed`. We
- * never let one buggy rule take the whole lint run down — the CLI exit
- * code and the UI both depend on a successful walk over every rule.
+ * Errors thrown inside a rule's `evaluate()` are caught and converted
+ * into a synthetic `info`-severity issue with id `engine.rule-crashed`.
+ * We never let one buggy rule take the whole lint run down — the CLI
+ * exit code and the UI both depend on a successful walk over every rule.
  */
 
 import type { Issue, Page, Severity } from "./types";
 import { RULES, type Rule } from "../rules";
+import { evaluateRules, findingsToIssues } from "../rules/evaluate";
+import { extractionFromPage } from "../rules/extraction/from-page";
 
 const SEVERITY_RANK: Record<Severity, number> = {
   error: 0,
@@ -33,44 +35,19 @@ const SEVERITY_RANK: Record<Severity, number> = {
 };
 
 /**
- * Run the rule registry against a `Page`. The optional `rules` override
- * is used by the per-rule contract test harness so it can isolate one
- * rule against a fixture without the noise of the other 24.
+ * Run the rule registry against a `Page`: project the page onto the
+ * extraction contract, evaluate every descriptor, and narrow the findings
+ * to violations. The optional `rules` override is used by the per-rule
+ * contract test harness so it can isolate one rule against a fixture
+ * without the noise of the others.
+ *
+ * Consumers that want the full conformance view (every rule's status,
+ * passing ones included) call `evaluateRules` directly.
  */
 export function lint(page: Page, rules: ReadonlyArray<Rule> = RULES): Issue[] {
-  const issues: Issue[] = [];
-
-  for (const rule of rules) {
-    if (rule.appliesTo && !rule.appliesTo(page)) continue;
-
-    let result: Issue[] | Issue | undefined | void;
-    try {
-      result = rule.check({
-        page,
-        issue: (input) => ({
-          ruleId: rule.id,
-          severity: input.severity ?? rule.severity,
-          message: input.message,
-          origin: input.origin,
-          fix: input.fix,
-          suggestion: input.suggestion,
-        }),
-      });
-    } catch (err) {
-      issues.push({
-        ruleId: "engine.rule-crashed",
-        severity: "info",
-        message: `Rule \`${rule.id}\` threw: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      continue;
-    }
-
-    if (!result) continue;
-    if (Array.isArray(result)) issues.push(...result);
-    else issues.push(result);
-  }
-
-  return sortIssues(issues);
+  const extraction = extractionFromPage(page);
+  const result = evaluateRules(extraction, rules);
+  return sortIssues(findingsToIssues(result, rules));
 }
 
 /**

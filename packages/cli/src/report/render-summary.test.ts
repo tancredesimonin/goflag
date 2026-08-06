@@ -11,6 +11,7 @@ function baseSummary(overrides: SummaryOverrides = {}): GoflagSummary {
   const base: GoflagSummary = {
     url: "https://example.com/",
     finishedAt: "2026-01-01T00:00:00.000Z",
+    profile: "default",
     verdict: "green",
     totals: {
       brokenLinks: 0,
@@ -39,6 +40,13 @@ describe("renderSummaryTerminal", () => {
     expect(out).toContain("GREEN FLAG");
     expect(out).toContain("(summary)");
     expect(out).toContain("No problems found.");
+    // The default policy is the assumed one, so naming it would be noise.
+    expect(out).not.toContain("profile");
+  });
+
+  it("names a non-default profile, so a narrowed run cannot read as a clean one", () => {
+    const out = renderSummaryTerminal(baseSummary({ profile: "spec-only" }), { color: false });
+    expect(out).toContain("profile spec-only");
   });
 
   it("renders a broken link once with a count and sample pages", () => {

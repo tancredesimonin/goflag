@@ -7,7 +7,7 @@
   "license": "MIT",
   "packageManager": "pnpm@11.18.0",
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -16,8 +16,9 @@
     "test:integration": "pnpm -r test:integration",
     "test:coverage": "pnpm -r test:coverage",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint . --max-warnings 0 && pnpm -r --if-present lint",
     "lint:fix": "eslint . --fix",
+    "dev:website": "pnpm --filter @goflag/website dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "pnpm -r clean",

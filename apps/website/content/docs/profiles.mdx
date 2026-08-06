@@ -1,0 +1,102 @@
+---
+title: Profiles
+description: Every rule records how authoritative it is. What your build should do about each one is a separate question, and --profile is how you answer it.
+navTitle: Profiles
+group: use
+order: 3
+---
+
+Every rule goflag ships records how authoritative the requirement behind it is:
+whether a published standard demands it, a vendor documents it, or it is
+widely-repeated folklore. That is a fact about the world, and goflag never
+fudges it.
+
+What your build should _do_ about each one is a different question, and the
+answer is yours. That is what `--profile` sets.
+
+```bash
+goflag https://example.com --profile spec-only    # only what a spec backs
+goflag https://example.com --profile strict       # spec-backed rules fail the build
+goflag https://example.com --profile marketing    # metadata gaps are errors
+```
+
+## The four profiles
+
+| Profile     | What it does                                                                   |
+| ----------- | ------------------------------------------------------------------------------ |
+| `default`   | Each rule's own severity. No overlay.                                          |
+| `strict`    | Every spec-backed rule becomes an `error`. Heuristics stay warnings.           |
+| `spec-only` | Heuristic rules (`title.length`, `description.length`) are switched off.       |
+| `marketing` | The snippet and unfurl metadata — description, `og:title`, `og:image` — error. |
+
+## What a profile can and cannot change
+
+A profile has exactly two levers per rule: whether it runs at all, and how
+loudly it fires. It never changes what a rule observes, and — the part that
+matters — it never rewrites a rule's stated authority.
+
+So `strict` can make a `heuristic` finding fail your build, but it cannot turn
+folklore into a spec requirement. The finding still reports
+`"rigor": "heuristic"`, and anyone reading the report can still tell the
+difference. This is deliberate: an overlay that could launder authority would
+destroy the one thing the rigor scale is for.
+
+That is also why `strict` leaves heuristics at `warning` rather than promoting
+everything indiscriminately. Google states outright that title length is not a
+ranking factor; a profile that failed builds over it would be lying with the
+tool's own vocabulary.
+
+## `spec-only` removes rules, it does not quiet them
+
+The heuristic rules are switched **off**, not lowered to `info`. A disabled rule
+is absent from the [conformance view](/docs/report#conformance--asked-for-with---conformance)
+entirely rather than sitting there as a suspiciously quiet `pass` — "not run"
+and "never applied" are different claims, and conflating them would make the
+matrix lie about coverage.
+
+The practical consequence is that a profile can change the verdict, not just the
+wording:
+
+```
+$ goflag https://example.com/page --depth 0
+YELLOW FLAG   title.length, description.length
+
+$ goflag https://example.com/page --depth 0 --profile spec-only
+GREEN FLAG    No problems found.
+```
+
+Both runs are honest. The second one means "nothing a specification backs is
+wrong here" — which is a narrower claim than "nothing is wrong", and the reason
+the profile is recorded in the report.
+
+## Profiles and baselines
+
+The report records which profile produced it, and the terminal names any
+non-default one next to the crawl counts. That record is load-bearing when you
+gate on a [baseline](/docs/ci/baseline): comparing a run against a baseline
+captured under a different profile still works, but `0 new findings` no longer
+means what it appears to.
+
+goflag says so rather than letting the number speak for itself:
+
+```
+REGRESSION GATE  0 new · 19 known findings NOT gating this build
+baseline https://example.com — taken 2026-08-06 (today)
+note: baseline was captured under profile `strict`, this run used `spec-only` — the two are not like-for-like.
+```
+
+It is a warning and never a gate. Investigating with `--profile spec-only`
+against a `strict` baseline is a legitimate thing to do; doing it without
+noticing is not.
+
+## Picking one
+
+Most projects want `default`, and should reach for another only with a reason:
+
+- **`strict`** when the site is already clean and you want it to stay that way.
+  It has no mercy for a `vendor-spec` rule you were treating as advisory.
+- **`spec-only`** when the length-window warnings are noise you have decided
+  against, and you would rather they disappear than be ignored. An ignored
+  warning trains people to ignore warnings.
+- **`marketing`** for a site whose pages exist to be shared, where a missing
+  preview image costs a click whatever the specification calls it.
