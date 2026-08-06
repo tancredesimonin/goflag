@@ -7,8 +7,13 @@
  *
  * Run it with `pnpm --filter @goflag/cli validate:sources`.
  *
- * Exit codes: 0 every URL resolves, 1 at least one does not (or the catalog
+ * Exit codes: 0 no citation has drifted, 1 at least one has (or the catalog
  * is structurally invalid — no point probing URLs of a broken catalog).
+ *
+ * "Drifted" is narrower than "did not answer". A host that is down or rate
+ * limiting says nothing about whether the URL is still right, and failing a
+ * merge on it would be blocking work on someone else's outage. Those are
+ * reported and counted, not fatal; see `main()`.
  */
 
 import { SOURCES } from "../src/lib/rules/sources/index";
@@ -34,12 +39,18 @@ interface ProbeResult {
   id: string;
   url: string;
   ok: boolean;
+  /**
+   * The host was unavailable (429/5xx or a network error) rather than the URL
+   * being wrong. Survives the retries so the caller can tell "this citation
+   * has drifted" from "this check could not run".
+   */
+  transient: boolean;
   detail: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function probeOnce(id: string, url: string): Promise<ProbeResult & { transient: boolean }> {
+async function probeOnce(id: string, url: string): Promise<ProbeResult> {
   try {
     // GET rather than HEAD: several of these hosts answer HEAD with 403/405.
     const response = await fetch(url, {
@@ -93,16 +104,42 @@ async function main(): Promise<number> {
     }),
   );
 
-  const failures = results.filter((result) => !result.ok);
-  for (const result of results.sort((a, b) => a.id.localeCompare(b.id))) {
-    console.log(`${result.ok ? "ok  " : "FAIL"} ${result.id} — ${result.detail}`);
-  }
-  console.log(`\n${results.length - failures.length}/${results.length} sources resolve`);
+  // Two failures that look alike and mean opposite things. A 404 says the
+  // document moved and the citation is now unverifiable — exactly the drift
+  // this job exists to catch. A 503 after every retry says the host is down;
+  // the URL is very likely fine, and "update the URL and its retrievedAt"
+  // would be advice to change something that is not wrong.
+  //
+  // So only the definitive kind fails the job. The inconclusive kind is
+  // reported with its count — a check that could not run must say so rather
+  // than pass quietly, but it must not block a merge on someone else's
+  // outage either.
+  const dead = results.filter((result) => !result.ok && !result.transient);
+  const inconclusive = results.filter((result) => !result.ok && result.transient);
 
-  if (failures.length > 0) {
+  for (const result of results.sort((a, b) => a.id.localeCompare(b.id))) {
+    const tag = result.ok ? "ok  " : result.transient ? "??  " : "FAIL";
+    console.log(`${tag} ${result.id} — ${result.detail}`);
+  }
+  console.log(
+    `\n${results.length - dead.length - inconclusive.length}/${results.length} sources resolve`,
+  );
+
+  if (inconclusive.length > 0) {
+    console.warn(
+      `\n${inconclusive.length} source(s) could not be reached — the host answered 429/5xx or ` +
+        `refused the connection on every attempt. Not treated as drift:`,
+    );
+    for (const result of inconclusive) {
+      console.warn(`  ${result.id}: ${result.url} — ${result.detail}`);
+    }
+  }
+
+  if (dead.length > 0) {
     console.error("\nunreachable sources (update the URL and its retrievedAt):");
-    for (const failure of failures)
+    for (const failure of dead) {
       console.error(`  ${failure.id}: ${failure.url} — ${failure.detail}`);
+    }
     return 1;
   }
   return 0;
