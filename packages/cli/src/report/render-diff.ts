@@ -107,6 +107,17 @@ export function renderDiffTerminal(diff: ReportDiff, options: RenderOptions = {}
         (age === null ? "" : age === 0 ? " (today)" : ` (${age} day${age === 1 ? "" : "s"} ago)`),
     ),
   );
+  // Loud, not dim: a cross-profile diff still prints "0 new", and that number
+  // means something different from what the reader assumes.
+  if (diff.profileMismatch) {
+    lines.push(
+      c(
+        ANSI.yellow,
+        `note: baseline was captured under profile \`${diff.profileMismatch.baseline}\`, ` +
+          `this run used \`${diff.profileMismatch.current}\` — the two are not like-for-like.`,
+      ),
+    );
+  }
   lines.push("");
 
   if (diff.added.length > 0) {
