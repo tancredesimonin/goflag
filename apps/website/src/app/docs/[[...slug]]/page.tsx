@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { DocsPage } from "@/components/docs/docs-page";
 import { Mdx } from "@/components/docs/mdx";
 import { docsHref } from "@/lib/docs-nav";
-import { routeMetadata } from "@/lib/seo/site-routes";
+import { routes } from "@/lib/seo/site";
 
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const doc = findDoc((await params).slug);
   if (!doc) return {};
 
-  return routeMetadata({
+  return routes.metadata({
     path: docsHref(doc.slug),
     title: doc.title,
     description: doc.description,

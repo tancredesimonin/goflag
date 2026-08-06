@@ -10,17 +10,17 @@ import { Method } from "@/components/home/method";
 import { NotThis } from "@/components/home/not-this";
 import { Output } from "@/components/home/output";
 import { Proof } from "@/components/home/proof";
-import { routeMetadata } from "@/lib/seo/site-routes";
+import { requireLocale, routes } from "@/lib/seo/site";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const locale = requireLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "meta.home" });
 
-  return routeMetadata({
+  return routes.metadata({
     locale,
     path: "",
     title: t("title"),
