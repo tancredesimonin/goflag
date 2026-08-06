@@ -1,0 +1,66 @@
+{
+  "name": "@goflag/next",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Declare a Next.js App Router site's routes once, and derive the metadata, hreflang cluster, sitemap and robots.txt that goflag audits for.",
+  "keywords": [
+    "nextjs",
+    "app-router",
+    "seo",
+    "metadata",
+    "hreflang",
+    "i18n",
+    "canonical",
+    "sitemap",
+    "robots",
+    "open-graph"
+  ],
+  "license": "MIT",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "homepage": "https://github.com/tancredesimonin/goflag#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tancredesimonin/goflag.git",
+    "directory": "packages/next"
+  },
+  "bugs": {
+    "url": "https://github.com/tancredesimonin/goflag/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist coverage LICENSE",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "next": ">=15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^2.1.8",
+    "next": "16.2.12",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
