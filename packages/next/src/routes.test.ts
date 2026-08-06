@@ -194,11 +194,26 @@ describe("robots", () => {
     expect(site.routes({ home: { path: "" } }).robots()).toEqual({
       rules: { userAgent: "*", allow: "/" },
       sitemap: "https://goflag.tech/sitemap.xml",
+    });
+  });
+
+  it("takes extra paths to keep crawlers out of", () => {
+    expect(site.routes({ home: { path: "" } }).robots({ disallow: ["/api/"] }).rules).toMatchObject(
+      { allow: "/", disallow: ["/api/"] },
+    );
+  });
+
+  it("emits Host only when asked, because goflag warns about it", () => {
+    // `Host:` is non-standard, read by Yandex alone, and reported as
+    // `robotstxt.unknown-directive`. A library that produces output its own
+    // auditor warns about has picked a side against itself.
+    expect(site.routes({ home: { path: "" } }).robots()).not.toHaveProperty("host");
+    expect(site.routes({ home: { path: "" } }).robots({ host: true })).toMatchObject({
       host: "https://goflag.tech",
     });
   });
 
-  it("forbids everything, and names no sitemap, where it is not", () => {
+  it("forbids everything, and names no sitemap, where it is not indexable", () => {
     // `robots.blocks-site` is a rule because a production container shipping
     // the staging value serves this while every page asks to be indexed. The
     // same flag drives both, so the two cannot contradict each other.
@@ -210,8 +225,87 @@ describe("robots", () => {
       indexable: false,
     });
 
-    expect(staging.routes({ home: { path: "" } }).robots()).toEqual({
+    expect(staging.routes({ home: { path: "" } }).robots({ disallow: ["/api/"] })).toEqual({
       rules: { userAgent: "*", disallow: "/" },
     });
+  });
+});
+
+describe("sitemap facts", () => {
+  interface Capsule {
+    slug: string;
+    locale: string;
+    updated: string;
+  }
+
+  const capsules: Capsule[] = [
+    { slug: "tr-808", locale: "en-US", updated: "2026-01-02" },
+    { slug: "tr-808", locale: "fr-FR", updated: "2026-05-06" },
+  ];
+
+  const routes = site.routes({
+    home: { path: "", changeFrequency: "weekly", priority: 1 },
+    capsules: collection(capsules, {
+      path: (c) => `/library/${c.slug}`,
+      locale: (c) => c.locale,
+      lastModified: (c) => c.updated,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    }),
+  });
+
+  it("stamps each locale with its own date, not the route's", () => {
+    // A translation is edited on its own day. Collapsing the cluster to one
+    // date makes every other row claim a change that did not happen to it.
+    const rows = routes.sitemap();
+    const en = rows.find((row) => row.url.endsWith("/en-US/library/tr-808"));
+    const fr = rows.find((row) => row.url.endsWith("/fr-FR/library/tr-808"));
+
+    expect(en?.lastModified).toEqual(new Date("2026-01-02"));
+    expect(fr?.lastModified).toEqual(new Date("2026-05-06"));
+  });
+
+  it("carries changefreq and priority through to every row of a route", () => {
+    const rows = routes.sitemap();
+
+    expect(rows.find((row) => row.url.endsWith("/en-US"))).toMatchObject({
+      changeFrequency: "weekly",
+      priority: 1,
+    });
+    expect(rows.find((row) => row.url.includes("/library/"))).toMatchObject({
+      changeFrequency: "monthly",
+      priority: 0.8,
+    });
+  });
+
+  it("falls back to the option only where a route supplied nothing", () => {
+    const stamped = new Date("2026-08-06T00:00:00.000Z");
+    const rows = routes.sitemap({ lastModified: stamped });
+
+    expect(rows.find((row) => row.url.endsWith("/en-US"))?.lastModified).toEqual(stamped);
+    expect(rows.find((row) => row.url.endsWith("/en-US/library/tr-808"))?.lastModified).toEqual(
+      new Date("2026-01-02"),
+    );
+  });
+
+  it("refuses a date it cannot parse rather than writing it into the XML", () => {
+    // `sitemap.lastmod.invalid` reports exactly this, in the one document that
+    // tells a crawler what to fetch.
+    expect(() =>
+      site.routes({
+        x: collection([{ slug: "a", locale: "en-US", updated: "last tuesday" }], {
+          path: (c) => `/library/${c.slug}`,
+          locale: (c) => c.locale,
+          lastModified: (c) => c.updated,
+        }),
+      }),
+    ).toThrow(/unparseable lastModified/);
+  });
+
+  it("refuses a priority outside the range the protocol defines", () => {
+    expect(() => site.routes({ x: { path: "/x", priority: 1.5 } })).toThrow(
+      /between 0\.0 and 1\.0/,
+    );
+    expect(() => site.routes({ x: { path: "/x", priority: -1 } })).toThrow(/between 0\.0 and 1\.0/);
   });
 });

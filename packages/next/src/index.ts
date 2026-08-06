@@ -15,7 +15,9 @@ export {
   type CollectionFamily,
   type FamilyInput,
   type RouteInput,
+  type RobotsOptions,
   type Routes,
+  type SitemapFacts,
   type SitemapOptions,
 } from "./routes";
 export { buildMetadata, type RouteContent } from "./metadata";

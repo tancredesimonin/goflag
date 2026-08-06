@@ -1,6 +1,10 @@
 /** How Open Graph should describe a route. */
 export type OgType = "website" | "article";
 
+/** sitemaps.org `<changefreq>`. Google ignores it; the protocol still defines it. */
+export type ChangeFrequency =
+  "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+
 /** A route served under `/[locale]`, belonging to an hreflang cluster. */
 export interface LocalizedRoute<L extends string> {
   readonly policy: "localized";
@@ -15,6 +19,16 @@ export interface LocalizedRoute<L extends string> {
    */
   readonly locales: readonly L[];
   readonly ogType: OgType;
+  readonly changeFrequency?: ChangeFrequency;
+  readonly priority?: number;
+  /**
+   * Last-modified per locale, where the content supplied one.
+   *
+   * Per locale rather than per route because a translation is edited on its own
+   * day. Collapsing them to a single date would make three of the four rows
+   * claim a change that did not happen to them.
+   */
+  readonly lastModified?: Readonly<Partial<Record<L, Date>>>;
 }
 
 /**
@@ -29,6 +43,9 @@ export interface MonolingualRoute<L extends string> {
   readonly path: string;
   readonly locale: L;
   readonly ogType: OgType;
+  readonly changeFrequency?: ChangeFrequency;
+  readonly priority?: number;
+  readonly lastModified?: Date;
 }
 
 export type Route<L extends string> = LocalizedRoute<L> | MonolingualRoute<L>;
