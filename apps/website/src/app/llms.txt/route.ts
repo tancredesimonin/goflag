@@ -3,7 +3,7 @@ import { allDocs } from "content-collections";
 import { INSTALL, PACKAGE, SITE } from "@/lib/constants";
 import { docsHref, getDocsNav } from "@/lib/docs-nav";
 import { ALL_RULES } from "@/lib/rules-catalog";
-import { getBaseUrl } from "@/lib/seo/metadata";
+import { siteConfig } from "@/lib/seo/site";
 
 /**
  * `llms.txt` — an index for whatever is reading this site without eyes.
@@ -15,7 +15,7 @@ import { getBaseUrl } from "@/lib/seo/metadata";
 export const dynamic = "force-static";
 
 export function GET() {
-  const base = getBaseUrl();
+  const base = siteConfig().baseUrl;
   const lines: string[] = [];
 
   lines.push(`# ${SITE.name}`);

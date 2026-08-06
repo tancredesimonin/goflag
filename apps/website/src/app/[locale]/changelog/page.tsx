@@ -7,7 +7,7 @@ import { CopyCommand } from "@/components/site/copy-command";
 import { Badge } from "@/components/ui/badge";
 import { getChangelog, type ChangelogSectionId } from "@/lib/changelog";
 import { PACKAGE } from "@/lib/constants";
-import { buildPageMetadata } from "@/lib/seo/metadata";
+import { routeMetadata } from "@/lib/seo/site-routes";
 
 const SECTION_ORDER: ChangelogSectionId[] = ["features", "fixes", "docs", "other"];
 
@@ -19,7 +19,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta.changelog" });
 
-  return buildPageMetadata({
+  return routeMetadata({
     locale,
     path: "/changelog",
     title: t("title"),

@@ -10,7 +10,7 @@ import {
   SITE_RULES,
   type RuleSeverity,
 } from "@/lib/rules-catalog";
-import { buildDocsMetadata } from "@/lib/seo/metadata";
+import { routeMetadata } from "@/lib/seo/site-routes";
 import { cn } from "@/lib/utils";
 
 const TITLE = "Rule catalogue";
@@ -48,7 +48,7 @@ const RIGOR_LEVELS = [
   },
 ] as const;
 
-export const metadata: Metadata = buildDocsMetadata({
+export const metadata: Metadata = routeMetadata({
   path: "/docs/rules",
   title: TITLE,
   description: DESCRIPTION,

@@ -6,7 +6,8 @@ import { stripTicks, Ticks } from "@/components/docs/ticks";
 import { Badge } from "@/components/ui/badge";
 import { highlight } from "@/lib/highlight";
 import { ALL_RULES, SOURCES, type RuleDoc, type RuleSeverity } from "@/lib/rules-catalog";
-import { buildDocsMetadata, clampDescription } from "@/lib/seo/metadata";
+import { clampDescription } from "@/lib/seo/metadata";
+import { routeMetadata } from "@/lib/seo/site-routes";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const rule = ALL_RULES.find((entry) => entry.id === id);
   if (!rule) return {};
 
-  return buildDocsMetadata({
+  return routeMetadata({
     path: `/docs/rules/${rule.id}`,
     // The rule id is the thing people search for and the thing a report prints,
     // so it leads. Appending the summary pushed every one of these past the

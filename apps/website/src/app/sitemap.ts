@@ -1,49 +1,24 @@
-import { allDocs, allLegals } from "content-collections";
 import type { MetadataRoute } from "next";
 
-import { defaultLocale, locales } from "@/i18n/config";
-import { docsHref } from "@/lib/docs-nav";
-import { ALL_RULES } from "@/lib/rules-catalog";
-import { getBaseUrl } from "@/lib/seo/metadata";
+import { siteSitemapUrls } from "@/lib/seo/site-routes";
 
 /**
- * One entry per URL the site actually serves, with `alternates.languages` on the
- * localized ones — the same source the pages use for their `<head>`, because a
- * sitemap that disagrees with the head is exactly what
- * `hreflang.sitemap-mismatch` reports.
+ * One entry per URL the site actually serves, projected from the same registry
+ * the pages use for their `<head>`.
+ *
+ * It used to rebuild the `route × locale` map by hand from the same
+ * collections. Two derivations of one truth is exactly the disagreement
+ * `hreflang.sitemap-mismatch` reports, and the old version already carried it
+ * latently: it gave every legal page all four locales while the page itself
+ * derived its own set, so a notice translated into three would have been listed
+ * in four and clustered in three.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = getBaseUrl();
+  const lastModified = new Date();
 
-  const localizedPaths = [
-    "",
-    "/changelog",
-    ...[...new Set(allLegals.map((doc) => `/${doc.slug}`))],
-  ];
-
-  const localized = localizedPaths.flatMap((path) =>
-    locales.map((locale) => ({
-      url: `${base}/${locale}${path}`,
-      lastModified: new Date(),
-      alternates: {
-        languages: {
-          ...Object.fromEntries(
-            locales.map((alternate) => [alternate, `${base}/${alternate}${path}`]),
-          ),
-          "x-default": `${base}/${defaultLocale}${path}`,
-        },
-      },
-    })),
-  );
-
-  // The documentation is English only and lives outside the locale segment, so
-  // these carry no alternates at all rather than alternates pointing at English.
-  const docs = [
-    ...allDocs.map((doc) => `${base}${docsHref(doc.slug)}`),
-    `${base}/docs/cli`,
-    `${base}/docs/rules`,
-    ...ALL_RULES.map((rule) => `${base}/docs/rules/${rule.id}`),
-  ].map((url) => ({ url, lastModified: new Date() }));
-
-  return [...localized, ...docs];
+  return siteSitemapUrls().map(({ url, languages }) => ({
+    url,
+    lastModified,
+    ...(languages ? { alternates: { languages } } : {}),
+  }));
 }

@@ -10,7 +10,7 @@ import { Method } from "@/components/home/method";
 import { NotThis } from "@/components/home/not-this";
 import { Output } from "@/components/home/output";
 import { Proof } from "@/components/home/proof";
-import { buildPageMetadata } from "@/lib/seo/metadata";
+import { routeMetadata } from "@/lib/seo/site-routes";
 
 export async function generateMetadata({
   params,
@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta.home" });
 
-  return buildPageMetadata({
+  return routeMetadata({
     locale,
     path: "",
     title: t("title"),

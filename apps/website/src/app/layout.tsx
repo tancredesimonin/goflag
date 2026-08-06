@@ -8,7 +8,8 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { localeToBcp47 } from "@/i18n/config";
 import { SITE } from "@/lib/constants";
-import { getBaseUrl, rootRobots } from "@/lib/seo/metadata";
+import { rootRobots } from "@/lib/seo/metadata";
+import { siteConfig } from "@/lib/seo/site";
 
 import "./globals.css";
 
@@ -39,11 +40,13 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+const config = siteConfig();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(getBaseUrl()),
+  metadataBase: new URL(config.baseUrl),
   title: { default: SITE.name, template: `%s · ${SITE.name}` },
   description: SITE.tagline,
-  robots: rootRobots(),
+  robots: rootRobots(config),
   other: {
     /**
      * Dark Reader honours this and stands down on the whole site.
