@@ -53,50 +53,86 @@ Next : ce sont des fonctions pures de la liste de locales. Elles vivent dans
 `src/locale/` non par anticipation d'une extraction — le bloc B l'écarte — mais
 parce qu'un module sans dépendance framework se teste et se relit seul.
 
-### A.1 Typage fort contre l'ISO
+### A.1 Typage fort — et zéro table écrite à la main
 
 ```ts
 locales: ["en", "fr", "es", "pt"]; // validé au type ET à l'exécution
 ```
 
-- `Language` = union ISO 639-1, `Region` = union ISO 3166-1 alpha-2 + numériques
-  (`419`).
-- Validation par **type conditionnel sur le littéral écrit**, pas par union
-  précalculée. Énumérer toutes les combinaisons langue-région fait ~46 000
-  membres : ça compile, et ça rend les messages d'erreur illisibles. Un
-  `ValidTag<T>` qui décompose le tag écrit valide autant sans rien matérialiser.
-- Même validation à l'exécution, pour les locales venues d'une collection.
-- **Pas de sous-balise de script en v1** — et la raison est l'absence de
-  consommateur, pas l'avis du CLI. Aucun des cinq sites ne sert de chinois ni de
-  serbe. Que le CLI refuse `zh-Hant` aujourd'hui est un défaut qui lui est
-  propre (B.5) ; aligner la lib sur le bug de l'auditeur serait précisément le
-  couplage que le bloc B écarte. Le jour où une locale à script arrive, les deux
-  se corrigent — séparément.
+**À l'exécution, tout vient d'ICU, qui est dans Node.** Pas de dépendance
+ajoutée, pas de liste à maintenir, pas de données inventées — I1 tient au sens
+strict, `Intl` étant intégré au runtime.
+
+```
+Intl.DisplayNames(fallback:"none").of("fr")  → "French"     existe
+                                    .of("qq")  → undefined    n'existe pas
+```
+
+Mesuré : ICU connaît **190 langues** et **280 régions** à deux lettres.
+
+**Le piège, trouvé en sondant.** `region "ZZ"` répond `"Unknown Region"` et non
+`undefined` : `ZZ` est un vrai code CLDR signifiant « région inconnue ». Une
+vérification naïve accepterait donc `pt-ZZ`, précisément le tag signalé au §0.
+D'où une liste d'exclusion courte et motivée — les codes qui veulent dire
+« inconnu » ou « test » :
+
+| Écarté       | Pourquoi                                                                |
+| ------------ | ----------------------------------------------------------------------- |
+| `mul`, `zxx` | « plusieurs langues », « aucun contenu linguistique » — pas des langues |
+| `ZZ`         | « Unknown Region »                                                      |
+| `XA`, `XB`   | pseudo-locales de test d'ICU                                            |
+
+`EU`, `QO` et `419` restent acceptés : ce sont des macro-régions légitimes, et
+Google documente `es-419`.
+
+**Au type, une union générée.** TypeScript ne peut pas interroger ICU à la
+compilation, donc l'union de littéraux est nécessaire — mais elle n'est pas
+écrite à la main : un script la produit en énumérant `aa`–`zz` à travers
+`DisplayNames`. Jamais maintenue, régénérable, et prouvée conforme à ce que le
+runtime acceptera.
+
+La validation se fait par **type conditionnel sur le littéral écrit**, pas par
+union précalculée : énumérer les combinaisons langue-région ferait ~53 000
+membres, ce qui compile mais rend les messages d'erreur illisibles.
+
+**Pas de sous-balise de script en v1** — et la raison est l'absence de
+consommateur, pas l'avis du CLI. Aucun des cinq sites ne sert de chinois ni de
+serbe. Que le CLI refuse `zh-Hant` aujourd'hui est un défaut qui lui est propre
+(B.5) ; aligner la lib sur le bug de l'auditeur serait le couplage que le bloc B
+écarte.
+
+**Garde-fou ICU.** Node livre full-icu par défaut depuis la v13, mais une
+compilation `small-icu` n'embarque que l'anglais et ferait répondre
+`DisplayNames` autrement. Une sonde au chargement du module — `of("fr")` vaut
+`"French"`, `of("qq")` vaut `undefined` — et une erreur explicite sinon : une
+donnée absente doit échouer bruyamment, pas tout accepter en silence.
 
 ### A.2 Casse canonique
 
-`bcp47(locale)` → langue en minuscules, script en capitale initiale, région en
-majuscules. Sert `hreflang` **et** `lang`.
+`bcp47(locale)` → `Intl.getCanonicalLocales()`, qui fait exactement ça et le
+fait avec ICU : `pt-br` → `pt-BR`, `EN-us` → `en-US`, `zh-hant-tw` →
+`zh-Hant-TW`. Sert `hreflang` **et** `lang`.
 
 Possible seulement parce que le CLI replie désormais la casse à l'identité
 (`fix(i18n)`, livré) : sans ça, `hreflang="pt-BR"` au-dessus de `/pt-br/`
 refabrique la locale fantôme.
 
-### A.3 `og:locale` par les likely subtags
+### A.3 `og:locale` par les likely subtags — d'ICU, pas d'une table
 
-`openGraphLocale(locale)` → `language_TERRITORY` en dérivant la région la plus
-probable. Supprime le fait n°4 : plus aucune table recopiée.
-
-**Sous-ensemble curé, pas CLDR entier.** La table complète fait ~1000 entrées ;
-la lib en porte les langues dont la région est établie, et **refuse en nommant
-la correction** pour les autres :
+`openGraphLocale(locale)` → `new Intl.Locale(tag).maximize()`, qui **est**
+l'algorithme des likely subtags, adossé au CLDR complet et livré avec Node.
 
 ```
-Locale "xy" has no likely region. Add one:
-  localeTags: { xy: { openGraph: "xy_ZZ" } }
+en → en-Latn-US    fr → fr-Latn-FR    es → es-Latn-ES    pt → pt-Latn-BR
+zh → zh-Hans-CN    ar → ar-Arab-EG    de → de-Latn-DE    it → it-Latn-IT
 ```
 
-Inventer une région serait décider à la place du site quelle audience il vise.
+Les quatre premières sont exactement les tables que les deux sites ont écrites
+à la main. Le fait n°4 disparaît sans qu'aucune donnée ne soit recopiée.
+
+Ce qui règle aussi la question laissée ouverte : plus de « sous-ensemble curé »,
+donc plus de risque d'inventer une région. ICU les connaît toutes, et une langue
+sans région probable n'existe pas dans le CLDR.
 
 ### A.4 `resolveLocale` — RFC 4647 §3.4 _Lookup_
 
@@ -173,13 +209,17 @@ Le CLI doit accepter `zh-Hant` — il le refuse aujourd'hui, c'est un faux
 positif — et refuser `qq`. La lib peut refuser tout ce que le site n'a pas
 déclaré proprement. Ce ne sont pas les mêmes règles.
 
-### B.3 Ce que la duplication coûte réellement
+### B.3 Et finalement, rien n'est dupliqué
 
-ISO 639-1 est une liste fermée ; ISO 3166-1 bouge d'un pays tous les quelques
-années. Ce sont ~430 chaînes de deux lettres issues d'un standard externe
-stable. Dupliquer **des données de référence** n'a rien à voir avec dupliquer de
-la logique : elles ne dérivent pas, elles ne s'interprètent pas, et leur source
-fait autorité pour les deux copies indépendamment.
+Le débat sur le coût des tables recopiées est sans objet : **ni l'un ni l'autre
+n'a de table.** Les deux interrogent ICU, qui est dans Node.
+
+L'indépendance de B.1 tient quand même, et c'est ce qui compte : ils appellent
+la même source de données avec des **sévérités différentes**, décidées
+séparément. Partager une donnée de référence externe n'est pas partager un
+jugement — le CLDR fait autorité pour les deux copies indépendamment, exactement
+comme une RFC fait autorité pour deux implémentations qui restent des témoins
+séparés.
 
 ### B.4 Comment on garde les deux honnêtes sans les coupler
 
@@ -200,8 +240,9 @@ extraction :
   donc la règle `locale.invalid` ne tient pas sa promesse ;
 - il refuse `zh-Hant`, qui est valide.
 
-Le corriger demande au CLI sa propre table de régions. Il a déjà celle des
-langues, non câblée à la validation.
+Le corriger ne demande **aucune table** : la même sonde `Intl.DisplayNames`,
+avec la sévérité propre à un auditeur. Sa liste ISO 639-1 écrite à la main
+devient d'ailleurs supprimable.
 
 ### B.6 Ce qui est déjà livré côté CLI
 
