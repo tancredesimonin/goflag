@@ -14,9 +14,8 @@ published packages and one deployed app:
 - `packages/cli` (`@goflag/cli`) — the auditor. Published.
 - `packages/next` (`@goflag/next`) — the library that produces what the auditor
   checks for: declare a site's routes once, derive metadata, the hreflang
-  cluster, the sitemap and robots.txt from them. **Not yet published** — the
-  first version goes out by hand, since npm cannot attach a trusted publisher
-  to a package that does not exist. Plan: `docs/next-plan.md`.
+  cluster, the sitemap and robots.txt from them. Published. Plan:
+  `docs/next-plan.md`.
 - `apps/website` — goflag.tech. Deployed, not published, and the first consumer
   of `@goflag/next`. It audits itself with goflag in its own pipeline
   (`pnpm --filter @goflag/website seo`), which is the closest thing to an

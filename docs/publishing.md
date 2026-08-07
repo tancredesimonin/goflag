@@ -1,6 +1,9 @@
 # goflag — Publier `@goflag/next`
 
-> **Rédigé** 2026-08-07
+> **Rédigé** 2026-08-07 · **Suivi** — `@goflag/next` est passée par ce chemin
+> le 2026-08-07 : `0.1.0` publiée à la main, trusted publisher configuré,
+> manifeste publié vérifié. Le document reste écrit au présent parce que
+> `@goflag/og` devra refaire exactement les mêmes étapes.
 > **Portée** — la première publication de `@goflag/next` sur npm, la
 > configuration du trusted publisher OIDC, et l'ordre des opérations autour de
 > la fusion. Tout ce qui suit est **manuel** : le reste est déjà automatisé.
