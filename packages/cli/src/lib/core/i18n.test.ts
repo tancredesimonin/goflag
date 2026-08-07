@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildI18nMatrix, isValidLocale, reciprocityIssues } from "./i18n";
+import { buildI18nMatrix, isValidLocale, localeIdentity, reciprocityIssues } from "./i18n";
 import { pageFromHtml } from "@/lib/rules/test-utils";
 
 function localePage(
@@ -137,5 +137,68 @@ describe("reciprocityIssues", () => {
     ];
     const issues = reciprocityIssues(pages).filter((i) => i.code === "locale.invalid");
     expect(issues).toHaveLength(1);
+  });
+});
+
+describe("locale identity is case-folded", () => {
+  it("folds a tag to one key whatever case it was written in", () => {
+    expect(localeIdentity("pt-BR")).toBe("pt-br");
+    expect(localeIdentity("PT-br")).toBe("pt-br");
+    expect(localeIdentity(" FR ")).toBe("fr");
+  });
+
+  it("gives one column to a site whose URLs and tags differ only in case", () => {
+    // The defect this covers, and it is the default output of Next plus
+    // next-intl: lowercase URL segments, canonically-cased hreflang. The
+    // matrix used to key on the raw string, so `/pt-br/` and `hreflang="pt-BR"`
+    // became two columns for one language — and every route in the second one
+    // reported a translation hole in a language the site already served.
+    const pages = [
+      localePage("https://s.test/en/about", [
+        { hreflang: "en", href: "https://s.test/en/about" },
+        { hreflang: "pt-BR", href: "https://s.test/pt-br/about" },
+      ]),
+      localePage("https://s.test/pt-br/about", [
+        { hreflang: "en", href: "https://s.test/en/about" },
+        { hreflang: "pt-BR", href: "https://s.test/pt-br/about" },
+      ]),
+    ];
+
+    const matrix = buildI18nMatrix(pages);
+
+    expect(matrix.locales).toEqual(["en", "pt-br"]);
+    expect(matrix.cells["/about"]?.["pt-br"]?.url).toBe("https://s.test/pt-br/about");
+    expect(matrix.cells["/about"]?.["pt-BR"]).toBeUndefined();
+  });
+
+  it("does not invent a hole when only the case differs", () => {
+    // The symptom as it reached a report: "missing es, fr, pt-br, pt-BR".
+    const pages = [
+      localePage("https://s.test/pt-br/", [{ hreflang: "pt-BR", href: "https://s.test/pt-br/" }]),
+    ];
+
+    const matrix = buildI18nMatrix(pages, { locales: ["en", "pt-br"] });
+    const row = matrix.cells["/"] ?? {};
+
+    expect(Object.keys(row).sort()).toEqual(["en", "pt-br"]);
+    expect(row["pt-br"]?.url).toBe("https://s.test/pt-br/");
+  });
+
+  it("folds an explicit --locales list the same way", () => {
+    const matrix = buildI18nMatrix([], { locales: ["EN", "pt-BR"] });
+
+    expect(matrix.locales).toEqual(["en", "pt-br"]);
+  });
+
+  it("reports a rejected tag as the page wrote it, not as we folded it", () => {
+    // Folding is for identity. A finding about an invalid tag must quote the
+    // site, or it judges what we altered rather than what was declared.
+    const [issue] = reciprocityIssues([
+      localePage("https://s.test/en/", [{ hreflang: "ENGLISH", href: "https://s.test/en/" }]),
+    ]);
+
+    expect(issue?.code).toBe("locale.invalid");
+    expect(issue?.message).toContain('hreflang="ENGLISH"');
+    expect(issue?.locale).toBe("ENGLISH");
   });
 });

@@ -63,6 +63,24 @@ export interface I18nMatrix {
 // `pt-BR`. The `i` flag keeps us from flagging real, common tags as invalid.
 const BCP47_LOOSE = /^[a-z]{2,3}(-[a-z]{2}|-\d{3})?$/i;
 
+/**
+ * Fold a language tag to the form the matrix keys on.
+ *
+ * BCP 47 §2.1.1 makes tags case-insensitive, and says the conventional
+ * capitalisation "MUST NOT be taken to carry meaning". This file already knew
+ * that — it is why `BCP47_LOOSE` carries the `i` flag — but it applied it to
+ * *validation* only. Identity kept the raw string, so a site routing on
+ * `/pt-br/` while declaring `hreflang="pt-BR"` grew two columns for one
+ * language, and every route in it reported a translation hole in a language
+ * the site already served.
+ *
+ * That combination is not exotic. It is what Next.js and next-intl produce by
+ * default: lowercase URL segments, canonically-cased tags.
+ */
+export function localeIdentity(tag: string): string {
+  return tag.trim().toLowerCase();
+}
+
 /** True when a URL path segment looks like a locale tag (`/fr`, `/pt-br`, …). */
 export function looksLikeLocaleSegment(segment: string): boolean {
   return BCP47_LOOSE.test(segment);
@@ -146,7 +164,7 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
         continue;
       }
       const { route } = splitRoute(altUrl.pathname);
-      const locale = alt.isXDefault ? "x-default" : alt.hreflang;
+      const locale = alt.isXDefault ? "x-default" : localeIdentity(alt.hreflang);
       // Use the alternate's *route* but trust the declared locale —
       // some sites colocate hreflang URLs without a locale prefix
       // (e.g. `/about` for both en and x-default).
@@ -203,14 +221,19 @@ export function reciprocityIssues(pages: Page[]): ReciprocityIssue[] {
     const url = page.fetch.finalUrl;
     const seenLocalesOnPage = new Set<string>();
     for (const alt of page.links.alternates) {
-      const locale = alt.isXDefault ? "x-default" : alt.hreflang;
+      // Folded for identity, raw for the finding. Counting `pt-BR` and
+      // `pt-br` as two locales is the defect; but reporting a *rejected* tag
+      // in a form the page never wrote would be judging what we altered
+      // rather than what the site declared.
+      const raw = alt.isXDefault ? "x-default" : alt.hreflang;
+      const locale = alt.isXDefault ? "x-default" : localeIdentity(alt.hreflang);
       seenLocalesOnPage.add(locale);
       if (!isValidLocale(locale)) {
         issues.push({
           code: "locale.invalid",
           url,
-          locale,
-          message: `\`hreflang="${locale}"\` is not a valid BCP 47 tag.`,
+          locale: raw,
+          message: `\`hreflang="${raw}"\` is not a valid BCP 47 tag.`,
         });
         continue;
       }
@@ -287,7 +310,7 @@ function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
 export function splitRoute(pathname: string): { route: string; locale: string } {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length > 0 && looksLikeLocaleSegment(segments[0]!)) {
-    const locale = segments[0]!;
+    const locale = localeIdentity(segments[0]!);
     const rest = segments.slice(1).join("/");
     return { route: rest ? `/${rest}` : "/", locale };
   }
