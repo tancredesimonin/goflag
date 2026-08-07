@@ -2,7 +2,7 @@
 
 > **Rédigé** 2026-08-07
 > **Portée** — la refonte du modèle de locales à travers les quatre blocs qui
-> le portent : `@goflag/next`, un paquet agnostique à extraire, le dépôt goflag
+> le portent : `@goflag/next`, ce qui reste hors de Next, le dépôt goflag
 > (CLI + site), et stereo-house.
 > **Lié** — `docs/next-plan.md` (le registre de routes), `docs/publishing.md`
 > (la chaîne de release), `docs/spec-and-lib-plan.md` §6 (« pas de wrapper sur
@@ -49,8 +49,9 @@ que c'est bien celui-là.
 ## Bloc A — `@goflag/next`
 
 **Objet** — porter le modèle ci-dessus. Aucune de ces quatre briques ne touche
-Next : ce sont des fonctions pures de la liste de locales, ce qui les rend
-extractibles telles quelles (bloc B).
+Next : ce sont des fonctions pures de la liste de locales. Elles vivent dans
+`src/locale/` non par anticipation d'une extraction — le bloc B l'écarte — mais
+parce qu'un module sans dépendance framework se teste et se relit seul.
 
 ### A.1 Typage fort contre l'ISO
 
@@ -65,9 +66,12 @@ locales: ["en", "fr", "es", "pt"]; // validé au type ET à l'exécution
   membres : ça compile, et ça rend les messages d'erreur illisibles. Un
   `ValidTag<T>` qui décompose le tag écrit valide autant sans rien matérialiser.
 - Même validation à l'exécution, pour les locales venues d'une collection.
-- **Périmètre aligné sur le CLI** : pas de sous-balise de script en v1. Le CLI
-  refuse `zh-Hant` ; une lib qui l'émettrait produirait ce que son propre
-  auditeur rejette. Les deux évoluent ensemble ou pas du tout.
+- **Pas de sous-balise de script en v1** — et la raison est l'absence de
+  consommateur, pas l'avis du CLI. Aucun des cinq sites ne sert de chinois ni de
+  serbe. Que le CLI refuse `zh-Hant` aujourd'hui est un défaut qui lui est
+  propre (B.5) ; aligner la lib sur le bug de l'auditeur serait précisément le
+  couplage que le bloc B écarte. Le jour où une locale à script arrive, les deux
+  se corrigent — séparément.
 
 ### A.2 Casse canonique
 
@@ -134,67 +138,76 @@ niveau de findings ; les tests couvrent les quatre briques.
 
 ---
 
-## Bloc B — hors Next : le paquet agnostique
+## Bloc B — hors Next : chacun ses tables, et c'est délibéré
 
-**Objet** — les tables ISO et la notion de validité sont maintenant nécessaires
-à **deux** paquets, et correctement câblées dans aucun.
+**Objet** — trancher ce qui est partagé entre le CLI et la lib. Réponse :
+**rien**. Les deux portent leurs propres tables ISO, et l'indépendance est la
+fonctionnalité.
 
-### B.1 Ce que la duplication coûte déjà
+### B.1 Pourquoi pas un paquet commun
 
-|                   | `@goflag/cli`                   | `@goflag/next` |
-| ----------------- | ------------------------------- | -------------- |
-| Liste ISO 639-1   | oui, non câblée à la validation | à écrire       |
-| Liste ISO 3166-1  | absente                         | à écrire       |
-| Validité d'un tag | forme seule (`pt-ZZ` accepté)   | forme seule    |
-| Repli de casse    | `localeIdentity`                | `toBcp47`      |
+La version précédente de ce plan proposait `@goflag/locale`, extrait au motif
+que deux consommateurs réels existent (I4). C'était le bon critère appliqué au
+mauvais objet.
 
-Deux réponses à « ce tag est-il valide ? », dans un dépôt dont la thèse est
-qu'une seule vérité doit avoir une seule source. Si elles divergent, l'auditeur
-signale ce que le producteur émet, ou l'inverse.
+**Une validité partagée recrée la circularité de la phase 1.** Le bug fondateur
+du produit était goflag détectant l'absence de `hreflang` **en lisant les
+`hreflang`** : site muet → rien à suivre → tous les checks satisfaits par
+vacuité. Un `isValidLocale` commun est la même faute un cran plus haut. La lib
+émet `pt-XX`, le CLI le valide avec la même fonction, l'accepte nécessairement,
+et le site expédie un tag mort que rien n'attrape. L'accord des deux ne prouve
+plus rien, puisqu'ils ne pouvaient pas être en désaccord.
 
-### B.2 La forme
+L'audit d'un site par son propre outil ne vaut que si le producteur et
+l'auditeur sont deux témoins séparés.
 
-`@goflag/locale` — zéro dépendance, aucun import framework :
+### B.2 Et ils n'ont pas le même métier
 
-- tables ISO 639-1 et ISO 3166-1, typées
-- `isLanguage`, `isRegion`, `parseTag`
-- `toBcp47` (casse canonique + existence)
-- `localeIdentity` (repli de casse)
-- `lookup` (RFC 4647 §3.4)
+|                | Rôle                                         | Sévérité juste                                 |
+| -------------- | -------------------------------------------- | ---------------------------------------------- |
+| `@goflag/next` | produit des tags pour un site qu'il contrôle | **strict** — une coquille casse le build       |
+| `@goflag/cli`  | juge le site de quelqu'un d'autre            | **exact** — un faux positif est son pire échec |
 
-I3 est respecté : ni le CLI ni la lib ne dépendent l'un de l'autre. C'est
-exactement l'échappatoire que la règle de lint documente — « extract to a third
-package both may depend on, and only once two consumers actually want it ».
-I4 est satisfait : deux consommateurs réels.
+Une fonction commune aurait dû choisir, et se serait trompée pour l'un des deux.
+Le CLI doit accepter `zh-Hant` — il le refuse aujourd'hui, c'est un faux
+positif — et refuser `qq`. La lib peut refuser tout ce que le site n'a pas
+déclaré proprement. Ce ne sont pas les mêmes règles.
 
-### B.3 Quand — et pourquoi pas maintenant
+### B.3 Ce que la duplication coûte réellement
 
-**Pas dans la 0.2.0.** Un troisième paquet, c'est une troisième publication, un
-troisième espace de tags, un troisième trusted publisher — le coût qu'on vient
-de payer une fois, à refaire avant d'avoir la preuve que la forme est la bonne.
+ISO 639-1 est une liste fermée ; ISO 3166-1 bouge d'un pays tous les quelques
+années. Ce sont ~430 chaînes de deux lettres issues d'un standard externe
+stable. Dupliquer **des données de référence** n'a rien à voir avec dupliquer de
+la logique : elles ne dérivent pas, elles ne s'interprètent pas, et leur source
+fait autorité pour les deux copies indépendamment.
 
-Donc : **écrire ces primitives dans `packages/next/src/locale/`, sans aucun
-import de Next**, pour que l'extraction soit un déplacement de fichiers et non
-une réécriture.
+### B.4 Comment on garde les deux honnêtes sans les coupler
 
-**Le déclencheur est nommé, et il est proche** : le jour où la règle
-`locale.invalid` du CLI est réparée pour vérifier l'existence — c'est-à-dire
-dès qu'on veut refuser `pt-ZZ` et accepter `zh-Hant` — elle a besoin de la
-liste des régions, que seule la lib aura. Ce jour-là on extrait, et pas avant.
+Un invariant, vérifié en **test** et jamais à l'exécution : _tout tag que la lib
+émet doit passer le validateur du CLI._ La réciproque est fausse et doit le
+rester — le CLI accepte légitimement des tags qu'aucun de nos sites ne produit.
 
-### B.4 Ce qui est déjà livré côté CLI
+Il se câblera quand le CLI exportera son catalogue (`goflag rules --json`), en
+devDependency, comme `docs/next-plan.md` §4 le prévoit déjà. D'ici là c'est un
+invariant écrit, pas exécuté. Un runtime couplé reste exclu : I1 et I3 tiennent.
+
+### B.5 Ce qui reste dû au CLI, indépendamment
+
+Deux défauts de `isValidLocale`, qui sont les siens et ne dépendent d'aucune
+extraction :
+
+- il accepte `pt-ZZ`, `qq`, `xx-YZ` — la forme est vérifiée, l'existence non,
+  donc la règle `locale.invalid` ne tient pas sa promesse ;
+- il refuse `zh-Hant`, qui est valide.
+
+Le corriger demande au CLI sa propre table de régions. Il a déjà celle des
+langues, non câblée à la validation.
+
+### B.6 Ce qui est déjà livré côté CLI
 
 `fix(i18n)` — repli de casse à l'identité. Un site routant sur `/pt-br/` et
 déclarant `hreflang="pt-BR"` ne récolte plus deux colonnes ni de trou fantôme.
 Vérifié avant/après sur stereo-house, même site, même commande.
-
-### B.5 Ce qui reste dû au CLI, et n'est pas dans ce lot
-
-- `isValidLocale` vérifie la forme, pas l'existence : `pt-ZZ`, `qq`, `xx-YZ`
-  passent. La règle `locale.invalid` ne tient donc pas sa promesse.
-- Elle refuse `zh-Hant`, valide.
-
-À traiter avec B.3, dont c'est le déclencheur.
 
 ---
 
@@ -274,11 +287,11 @@ répond 301 en un seul saut.
 ## Ordre d'exécution
 
 ```
-1. Bloc A            @goflag/next 0.2.0, primitives isolées dans src/locale/
+1. Bloc A            @goflag/next 0.2.0, tables ISO propres à la lib
 2. Bloc C            apps/website migré — boucle courte, workspace, pas de npm
 3. publication       0.2.0 + la version CLI portant fix(i18n)
 4. Bloc D            stereo-house migré et rebaseliné
-5. Bloc B            extraction, au déclencheur nommé en B.3
+5. Bloc B.5          le CLI répare locale.invalid, avec ses propres tables
 ```
 
 Les blocs 1 et 2 sont une seule branche : le site est le banc d'essai de la lib,
