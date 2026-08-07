@@ -1,20 +1,19 @@
 {
-  "name": "@goflag/cli",
-  "version": "0.2.0",
+  "name": "@goflag/next",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.",
+  "description": "Declare a Next.js App Router site's routes once, and derive the metadata, hreflang cluster, sitemap and robots.txt that goflag audits for.",
   "keywords": [
+    "nextjs",
+    "app-router",
     "seo",
+    "metadata",
     "hreflang",
     "i18n",
-    "sitemap",
     "canonical",
-    "open-graph",
-    "broken-links",
-    "crawler",
-    "audit",
-    "nextjs",
-    "ci"
+    "sitemap",
+    "robots",
+    "open-graph"
   ],
   "license": "MIT",
   "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
@@ -22,16 +21,13 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tancredesimonin/goflag.git",
-    "directory": "packages/cli"
+    "directory": "packages/next"
   },
   "bugs": {
     "url": "https://github.com/tancredesimonin/goflag/issues"
   },
   "engines": {
     "node": ">=22"
-  },
-  "bin": {
-    "goflag": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -49,40 +45,24 @@
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsx src/cli.ts",
-    "start": "node dist/cli.js",
-    "clean": "rm -rf dist coverage README.md LICENSE",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf dist coverage",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
-    "test:unit": "vitest run src test/unit",
-    "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
-    "validate:sources": "tsx scripts/validate-sources.ts",
-    "prepack": "node ../../scripts/stage-package-docs.mjs",
-    "prepublishOnly": "pnpm build",
     "release": "commit-and-tag-version --path ."
   },
-  "dependencies": {
-    "cheerio": "^1.2.0"
-  },
   "peerDependencies": {
-    "playwright": "^1.59.1"
-  },
-  "peerDependenciesMeta": {
-    "playwright": {
-      "optional": true
-    }
+    "next": ">=15"
   },
   "devDependencies": {
-    "@hono/node-server": "^2.0.1",
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^2.1.8",
     "commit-and-tag-version": "^12.5.0",
-    "hono": "^4.12.25",
-    "playwright": "1.62.0",
+    "next": "16.2.12",
     "tsup": "^8.5.1",
-    "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

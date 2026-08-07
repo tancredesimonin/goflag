@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DocsPage } from "@/components/docs/docs-page";
 import { Badge } from "@/components/ui/badge";
 import { ENGINE_LIMITS, EXIT_CODES, FLAG_GROUPS } from "@/lib/cli-reference";
-import { buildDocsMetadata } from "@/lib/seo/metadata";
+import { routes } from "@/lib/seo/site";
 import { cn } from "@/lib/utils";
 
 const TITLE = "CLI reference";
@@ -17,7 +17,7 @@ const TONE = {
   red: "text-flag-red",
 } as const;
 
-export const metadata: Metadata = buildDocsMetadata({
+export const metadata: Metadata = routes.metadata({
   path: "/docs/cli",
   title: TITLE,
   description: DESCRIPTION,

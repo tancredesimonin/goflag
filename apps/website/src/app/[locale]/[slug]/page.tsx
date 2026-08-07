@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Mdx } from "@/components/docs/mdx";
-import { buildPageMetadata } from "@/lib/seo/metadata";
+import { requireLocale, routes } from "@/lib/seo/site";
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -22,20 +22,22 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { locale, slug } = await params;
+  const { locale: segment, slug } = await params;
+  const locale = requireLocale(segment);
   const doc = findLegal(locale, slug);
   if (!doc) return {};
 
   const title = doc.seo?.title ?? doc.title;
   const description = doc.seo?.description ?? doc.title;
 
-  return buildPageMetadata({
+  // No `availableLocales` here any more: which locales this notice exists in is
+  // derived once, in the registry, and the sitemap reads the same answer.
+  return routes.metadata({
     locale,
     path: `/${slug}`,
     title,
     description,
     absoluteTitle: Boolean(doc.seo?.title),
-    availableLocales: allLegals.filter((entry) => entry.slug === slug).map((entry) => entry.locale),
   });
 }
 

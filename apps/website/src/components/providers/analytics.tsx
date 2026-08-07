@@ -1,6 +1,6 @@
 import PlausibleProvider from "next-plausible";
 
-import { isProduction } from "@/lib/seo/metadata";
+import { isProduction } from "@/lib/seo/site";
 
 /**
  * Plausible, or nothing at all.
