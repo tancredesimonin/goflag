@@ -2,7 +2,7 @@ import { collection, defineSite } from "@goflag/next";
 import { allDocs, allLegals } from "content-collections";
 import { notFound } from "next/navigation";
 
-import { defaultLocale, locales, localeToOGCompatibleLocale, type Locale } from "@/i18n/config";
+import { defaultLocale, locales, type Locale } from "@/i18n/config";
 import { SITE } from "@/lib/constants";
 import { docsHref } from "@/lib/docs-nav";
 import { ALL_RULES } from "@/lib/rules-catalog";
@@ -27,13 +27,10 @@ export const site = defineSite({
   locales,
   defaultLocale,
   indexable: isProduction(),
-  // hreflang keeps the tag the routing uses — `en`, not `en-US`: narrowing a
-  // cluster to a territory is a targeting decision, not a formatting one, and
-  // nothing here has a reason to make it. `og:locale` has no such choice; ogp.me
-  // defines it as language_TERRITORY, so it comes from the site's own map.
-  localeTags: Object.fromEntries(
-    locales.map((locale) => [locale, { openGraph: localeToOGCompatibleLocale(locale) }]),
-  ),
+  // No `localeTags`. Every form is derived: `hreflang` and `lang` from the tag
+  // itself, `og:locale` from ICU's likely subtags — which answers `pt_BR` for
+  // `pt`, so the Brazilian variant still reaches an unfurl without this site
+  // declaring a territory it does not target.
 });
 
 /**

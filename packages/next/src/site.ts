@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { toBcp47, toOpenGraphLocale } from "./locale";
+import { lookup, toBcp47, toOpenGraphLocale, type ValidTag } from "./locale";
 import { defineRoutes, type FamilyInput, type Routes } from "./routes";
 
 /**
@@ -12,10 +12,20 @@ import { defineRoutes, type FamilyInput, type Routes } from "./routes";
  * adopted without renaming yours. The site computes; this derives.
  */
 
+/**
+ * Per-locale overrides, for the cases deriving cannot reach.
+ *
+ * Two are known to be legitimate: a site whose content variety and target
+ * audience differ — Brazilian Portuguese written for every Portuguese speaker,
+ * so `lang: "pt-BR"` with `bcp47: "pt"` — and an `og:locale` for a language
+ * whose likely region ICU does not carry.
+ */
 export interface LocaleTags {
-  /** Overrides the derived `hreflang` / `lang` tag. */
+  /** Overrides the derived `hreflang` tag. */
   bcp47?: string;
-  /** Overrides the derived `og:locale`. Required for a locale with no territory. */
+  /** Overrides `<html lang>`, when it should be more precise than `hreflang`. */
+  lang?: string;
+  /** Overrides the derived `og:locale`. */
   openGraph?: string;
 }
 
@@ -24,7 +34,13 @@ export interface SiteInput<L extends string> {
   baseUrl: string;
   /** `og:site_name`, and the default document title. */
   name: string;
-  /** Every locale served, in the order alternates should be listed. */
+  /**
+   * Every locale served, in the order alternates should be listed.
+   *
+   * Declare the shortest tag that is justified (RFC 5646 §4.1): `pt`, not
+   * `pt-BR`, unless you serve more than one Portuguese. Every tag is checked
+   * against ICU at compile time and again at run time.
+   */
   locales: readonly L[];
   defaultLocale: L;
   /**
@@ -48,12 +64,22 @@ export interface Site<L extends string> {
   readonly defaultLocale: L;
   readonly indexable: boolean;
   readonly twitter: { card: "summary" | "summary_large_image"; site?: string };
-  /** The `hreflang` / `lang` tag for a locale. */
+  /** The `hreflang` tag for a locale. */
   bcp47(locale: L): string;
+  /** The `<html lang>` value. The `hreflang` tag unless overridden. */
+  lang(locale: L): string;
   /** The `og:locale` for a locale. */
   openGraphLocale(locale: L): string;
   /** Whether this site serves the given tag. Narrows an unknown string. */
   servesLocale(locale: string): locale is L;
+  /**
+   * Which served locale a URL segment resolves to, or `undefined`.
+   *
+   * RFC 4647 Lookup: `pt-BR` and `PT` both find `pt`. Never falls back to the
+   * default locale — an unserved language must 404 rather than answer 200 with
+   * the wrong one.
+   */
+  resolveLocale(segment: string): L | undefined;
   /**
    * The parts of the root layout's metadata that follow from the declaration:
    * `metadataBase`, the title template, and the robots directives every child
@@ -97,7 +123,14 @@ function normalizeBaseUrl(input: string): string {
  * rather than on the page that happens to render it. A malformed locale should
  * fail the build once, not on one route in one language.
  */
-export function defineSite<const L extends string>(input: SiteInput<L>): Site<L> {
+export function defineSite<const L extends string>(
+  // The intersection is what validates. `locales: readonly L[]` inside
+  // `SiteInput` is the inference site — L is read from the array you wrote —
+  // and this second constraint then re-checks each of those literals against
+  // ICU. Putting `ValidTag<L>` in the interface instead would leave nothing to
+  // infer from, and every locale would collapse to the default's type.
+  input: SiteInput<L> & { locales: readonly ValidTag<L>[] },
+): Site<L> {
   const baseUrl = normalizeBaseUrl(input.baseUrl);
 
   if (input.locales.length === 0) {
@@ -119,21 +152,16 @@ export function defineSite<const L extends string>(input: SiteInput<L>): Site<L>
   }
 
   const bcp47 = new Map<string, string>();
+  const lang = new Map<string, string>();
   const openGraph = new Map<string, string>();
 
   for (const locale of input.locales) {
     const overrides = input.localeTags?.[locale];
-    const tag = overrides?.bcp47 ?? locale;
+    const tag = toBcp47(overrides?.bcp47 ?? locale);
 
-    // Validated, not rewritten. BCP 47 is case-insensitive, so `pt-br` is as
-    // correct as `pt-BR` — and re-casing it means the site's URLs say one thing
-    // while its hreflang says another. A crawler comparing the two literally
-    // then sees two locales where there is one, and reports a translation hole
-    // that does not exist. Producing a tag the site did not declare is not this
-    // library's call; `localeTags.bcp47` is, if you want a different one.
-    toBcp47(tag);
     bcp47.set(locale, tag);
-    openGraph.set(locale, overrides?.openGraph ?? toOpenGraphLocale(tag));
+    lang.set(locale, overrides?.lang ? toBcp47(overrides.lang) : tag);
+    openGraph.set(locale, overrides?.openGraph ?? toOpenGraphLocale(overrides?.bcp47 ?? locale));
   }
 
   const known = new Set<string>(input.locales);
@@ -156,6 +184,12 @@ export function defineSite<const L extends string>(input: SiteInput<L>): Site<L>
       return tag;
     },
 
+    lang(locale) {
+      const tag = lang.get(locale);
+      if (tag === undefined) throw new Error(`Unknown locale ${JSON.stringify(locale)}`);
+      return tag;
+    },
+
     openGraphLocale(locale) {
       const tag = openGraph.get(locale);
       if (tag === undefined) throw new Error(`Unknown locale ${JSON.stringify(locale)}`);
@@ -164,6 +198,10 @@ export function defineSite<const L extends string>(input: SiteInput<L>): Site<L>
 
     servesLocale(locale): locale is L {
       return known.has(locale);
+    },
+
+    resolveLocale(segment) {
+      return lookup(segment, input.locales) as L | undefined;
     },
 
     routes(families) {

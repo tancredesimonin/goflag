@@ -73,7 +73,7 @@ const legal = defineCollection({
   include: "**/*.mdx",
   schema: z.object({
     title: z.string(),
-    locale: z.enum(["en", "fr", "es", "pt-br"]),
+    locale: z.enum(["en", "fr", "es", "pt"]),
     slug: z.string(),
     lastUpdated: z.string(),
     content: z.string(),

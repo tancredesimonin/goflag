@@ -147,7 +147,7 @@ function LinksFlow() {
   );
 }
 
-const LOCALES = ["en", "fr", "es", "pt-br"] as const;
+const LOCALES = ["en", "fr", "es", "pt"] as const;
 const ROUTES = [
   { route: "/", hole: null },
   { route: "/pricing", hole: null },
@@ -209,7 +209,7 @@ function I18nFlow() {
             </span>,
             <span key="present">
               <span className="text-terminal-dim">{'  "presentLocales": '}</span>
-              {'["en", "fr", "pt-br"],'}
+              {'["en", "fr", "pt"],'}
             </span>,
             <span key="missing">
               <span className="text-terminal-dim">{'  "missingLocales": '}</span>

@@ -6,9 +6,8 @@ import { getLocale } from "next-intl/server";
 import { Analytics } from "@/components/providers/analytics";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { localeToBcp47 } from "@/i18n/config";
 import { SITE } from "@/lib/constants";
-import { site } from "@/lib/seo/site";
+import { requireLocale, site } from "@/lib/seo/site";
 
 import "./globals.css";
 
@@ -74,7 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html
-      lang={localeToBcp47(locale)}
+      lang={site.lang(requireLocale(locale))}
       suppressHydrationWarning
       className={`${sans.variable} ${serif.variable} ${mono.variable}`}
     >
