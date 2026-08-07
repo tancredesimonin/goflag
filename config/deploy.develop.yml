@@ -1,0 +1,31 @@
+service: goflag-develop
+
+# Retain fewer old image versions on the shared host (Kamal default is 5) to
+# limit disk growth. See the prune-server job in the infrastructure repo.
+retain_containers: 1
+
+proxy:
+  hosts:
+    - develop.goflag.tech
+  ssl: true
+  app_port: 3000
+  healthcheck:
+    path: /en
+  run:
+    version: v0.9.2
+
+builder:
+  args:
+    APP_ENV: develop
+    NEXT_PUBLIC_WEBSITE_FRONTEND_URL: https://develop.goflag.tech
+    # Deliberately absent, even once production has one: a staging site that
+    # reports into the same Plausible property poisons the numbers.
+
+env:
+  clear:
+    # Anything other than `production` makes robots.ts serve `Disallow: /` and
+    # next.config.mjs add `X-Robots-Tag: noindex`. That agreement between the
+    # two is what keeps develop out of the index — and out of goflag's own
+    # `robots.blocks-site` finding.
+    APP_ENV: develop
+    NEXT_PUBLIC_WEBSITE_FRONTEND_URL: https://develop.goflag.tech

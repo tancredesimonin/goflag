@@ -1,0 +1,15 @@
+# Formatting only, and only on what is staged.
+#
+# `format-check` is the single most frequent CI failure in this repository —
+# more than the next three causes combined — and every one of them is the same
+# story: a file that Prettier would have fixed in milliseconds instead costs a
+# push, a runner, and several minutes before it says so.
+#
+# Deliberately narrow. Linting and typechecking are not here: they are slower,
+# they have not been failing, and a pre-commit hook that takes long enough to
+# be annoying is a pre-commit hook people run with --no-verify.
+#
+# Fixtures are safe: Prettier honours .prettierignore even for the explicit
+# paths lint-staged hands it, and `--ignore-unknown` skips file types it has
+# no parser for (images, .ico, .nvmrc) rather than failing the commit.
+pnpm lint-staged

@@ -36,11 +36,17 @@ stages:
   - verify
   - test
   - security
+  - deploy
   - release
 
 variables:
   PNPM_VERSION: "11.18.0"
   CI: "true"
+  # `pnpm install` runs the root `prepare` script, which installs the git hooks.
+  # A runner has no commits to make, so that is pure setup for nothing — and
+  # the hooks are the belt to CI's braces, not a second copy of the same check.
+  # Same setting the sites in this group use.
+  HUSKY: "0"
 
 # Jobs that only make sense when the CLI package (or the workspace wiring it
 # depends on) actually changed. Docs-only commits are frequent and the test
@@ -262,6 +268,91 @@ test:package:next:
         }
         console.log('imported and rendered from the tarball');
       "
+# ---------------------------------------------------------------------------
+# apps/website — goflag.tech
+# ---------------------------------------------------------------------------
+# Two environments, two builds. Next bakes the origin, the robots policy and
+# the analytics script into the output, so develop and production cannot be the
+# same image promoted twice — they are separate builds of the same commit, and
+# `config/deploy.develop.yml` is what makes them differ.
+#
+# Kamal deploys onto the shared OVH host from the infrastructure repo, next to
+# the other sites. Nothing new is provisioned: the Beszel agent already reports
+# every container on that host, and Gatus watches the three hostnames.
+.kamal_deploy_template:
+  image: docker:29.6.2@sha256:bfec1f5159c63a81ca6fdedbd81404d2c0e16378ed0feec3bb3fbf3998847659
+  services:
+    - docker:29.6.2-dind@sha256:bfec1f5159c63a81ca6fdedbd81404d2c0e16378ed0feec3bb3fbf3998847659
+  # `install` publishes node_modules as an artifact. It is no use to a job that
+  # installs inside the image, and unpacking it here would drop a host-built
+  # node_modules straight into the Docker build context.
+  dependencies: []
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apk add --no-cache ruby ruby-dev build-base openssh-client
+    # Pinned: a floating '~> 2.0' can raise the minimum kamal-proxy mid-pipeline.
+    - gem install kamal -v '2.11.0'
+    - until test -f /certs/client/ca.pem; do sleep 1; done
+    - docker context create tls --docker "host=tcp://docker:2376,ca=/certs/client/ca.pem,cert=/certs/client/cert.pem,key=/certs/client/key.pem"
+    - docker context use tls
+    - unset DOCKER_TLS_CERTDIR DOCKER_HOST DOCKER_TLS_VERIFY DOCKER_CERT_PATH
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo "$SERVER_HOST_KEY" >> ~/.ssh/known_hosts
+    - echo "$KAMAL_REGISTRY_PASSWORD" | docker login registry.gitlab.com -u "$KAMAL_REGISTRY_USERNAME" --password-stdin
+
+# `$CI_PIPELINE_SOURCE == "push"` is load-bearing. This repository runs
+# scheduled pipelines (sources:liveness, the security template), and a
+# scheduled pipeline on a branch sets `$CI_COMMIT_BRANCH` — so a bare
+# `if: $CI_COMMIT_BRANCH == "main"` would rebuild and redeploy the site on
+# every schedule, on a commit nobody touched.
+deploy:
+  extends: .kamal_deploy_template
+  stage: deploy
+  script:
+    - kamal deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
+    # The `chore(release)` commit is the one that carries a new
+    # packages/cli/CHANGELOG.md — and `workflow:` skips its pipeline outright to
+    # break the release loop, so production does not pick the changelog up on
+    # its own. It lands with the next merge to main, or by playing this job.
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
+  environment:
+    name: production
+    url: https://goflag.tech
+
+deploy-develop:
+  extends: .kamal_deploy_template
+  stage: deploy
+  script:
+    - kamal deploy -d develop
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: manual
+      allow_failure: true
+  environment:
+    name: develop
+    url: https://develop.goflag.tech
+
+# Rebooting the proxy restarts 80/443 for every app on the shared host, so it is
+# never part of a deploy. Play it by hand when a Kamal upgrade requires a newer
+# kamal-proxy than the one pinned in config/deploy.yml.
+kamal-proxy-reboot:
+  extends: .kamal_deploy_template
+  stage: deploy
+  script:
+    # Non-interactive: the default prompt loops forever in CI (no TTY).
+    - kamal proxy reboot --confirmed
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
 
 # Publishing happens on a tag and nowhere else: a version is a promise, and
 # `develop` makes no promises. Tags come from `pnpm release`

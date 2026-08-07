@@ -5,7 +5,8 @@
 Goflag is a **Node/TypeScript CLI**. It crawls a site and reports broken links,
 missing translation pages, a robots.txt that contradicts the pages it serves,
 and missing or misconfigured SEO metadata. The JSON
-report is the source of truth. There is no web app and no browser UI here.
+report is the source of truth. The CLI itself has no UI: nothing it does
+requires a browser to look at.
 
 The repository is a pnpm workspace (`packages/*`, `apps/*`) holding two
 published packages and one deployed app:
@@ -54,6 +55,12 @@ import from `packages/cli`. The two products must stay independently useful.
   real Chromium).
 - `packages/cli/fixtures/**` — static fixture sites. Prettier-ignored on
   purpose: they are captured verbatim and must stay byte-for-byte identical.
+- `apps/website/**` — the marketing and documentation site (`goflag.tech`).
+  Next.js + next-intl (`en`, `fr`, `es`, `pt-br`, default `en`), MDX content
+  under `content/`. It is audited by the CLI it documents:
+  `pnpm --filter @goflag/website seo`.
+- `Dockerfile`, `config/deploy*.yml`, `.kamal/**` — how that site is built and
+  shipped. See **Deploy** below.
 - `tools/**` — published artefacts that are not products, deliberately outside
   the workspace globs. Nothing here is built, tested or released by the
   workspace scripts.
@@ -81,6 +88,11 @@ repository. `build`, `typecheck`, `test*` and `clean` fan out with `pnpm -r`, so
 they cover every workspace package. To work on one package only, filter:
 `pnpm --filter @goflag/cli test`.
 
+A husky `pre-commit` hook runs Prettier over staged files, so `format:check`
+should never be what CI tells you about. It formats only — linting and
+typechecking stay in the commands above, and in CI. Skip it with
+`git commit --no-verify` when you must; CI still has the last word.
+
 ## Run the CLI from source
 
 ```sh
@@ -103,3 +115,36 @@ that one package. There is no npm credential in CI.
 A release only happens when a package's **published surface** moved (its `src`,
 its manifest, and the files that reach its tarball). A `fix(ci)` spends no
 version number.
+
+## Deploy (apps/website)
+
+| Branch    | Destination               | URL                             |
+| --------- | ------------------------- | ------------------------------- |
+| `develop` | `kamal deploy -d develop` | `https://develop.goflag.tech`   |
+| `main`    | `kamal deploy`            | `https://goflag.tech` (+ `www`) |
+
+Both run from `.gitlab-ci.yml` on push, onto the shared OVH host described in
+the `infrastructure` repository. DNS, TLS, the status page and the host metrics
+all live there; nothing about them is configured here.
+
+They are **two builds, not one image promoted twice**. Next bakes the origin,
+the robots policy and the analytics script into its output, so the environment
+has to be chosen before `next build` runs — that is what `builder.args` in
+`config/deploy.yml` and `config/deploy.develop.yml` set. `APP_ENV` is also
+passed at runtime, because the container's environment is what
+`lib/seo/site.ts` reads when the server module loads: production says `allow`,
+anything else says `Disallow: /` and adds `X-Robots-Tag: noindex`. The two come
+from one `indexable` flag on `defineSite`, so they cannot disagree — which is
+what goflag reports as `robots.conflict` when they do.
+
+The image builds only `@goflag/website` — the Dockerfile installs with
+`--filter "@goflag/website..."`. `packages/cli` reaches users through npm, and
+its devDependencies would drag Playwright into a container that never runs a
+test.
+
+Local dry run, from a clean checkout:
+
+```sh
+SERVER_IP=<host> KAMAL_REGISTRY_USERNAME=<token-user> KAMAL_REGISTRY_PASSWORD=<token> \
+  kamal deploy -d develop
+```

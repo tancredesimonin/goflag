@@ -1,0 +1,52 @@
+service: goflag
+image: tancredesimonin-indie/goflag
+
+# Retain fewer old image versions on the shared host (Kamal default is 5) to
+# limit disk growth. See the prune-server job in the infrastructure repo.
+retain_containers: 1
+
+servers:
+  web:
+    hosts:
+      - <%= ENV['SERVER_IP'] %>
+
+proxy:
+  hosts:
+    - goflag.tech
+    - www.goflag.tech
+  ssl: true
+  app_port: 3000
+  # `/en`, not `/`: the site defaults to English and `/` is a redirect. The
+  # sibling sites default to French and check `/fr` for the same reason.
+  healthcheck:
+    path: /en
+  # Pin proxy image; bump with Kamal gem upgrades (see .gitlab-ci.yml kamal version).
+  run:
+    version: v0.9.2
+
+registry:
+  server: registry.gitlab.com
+  username: <%= ENV['KAMAL_REGISTRY_USERNAME'] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  args:
+    APP_ENV: production
+    NEXT_PUBLIC_WEBSITE_FRONTEND_URL: https://goflag.tech
+    # next-plausible v4 wants the site-specific script URL, not a domain.
+    # next.config.mjs proxies it from our own origin, so the request is
+    # first-party and survives the blocklists that kill plausible.io.
+    NEXT_PUBLIC_PLAUSIBLE_SRC: https://plausible.io/js/pa-Yu1sMEL3xryRNbck1eKaB.js
+
+ssh:
+  user: ubuntu
+
+env:
+  clear:
+    # Read at runtime, not only at build time: robots.ts and the metadata
+    # helpers branch on it, so a production container must say production or it
+    # serves `Disallow: /` to a site whose pages all ask to be indexed.
+    APP_ENV: production
+    NEXT_PUBLIC_WEBSITE_FRONTEND_URL: https://goflag.tech
