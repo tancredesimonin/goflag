@@ -45,6 +45,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepublishOnly": "pnpm build",
     "clean": "rm -rf dist coverage",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
