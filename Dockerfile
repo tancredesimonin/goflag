@@ -22,9 +22,14 @@ COPY . .
 # `@goflag/website...` is the package and its workspace dependencies. Without
 # the filter, `pnpm install` also resolves `packages/cli` — whose devDeps pull
 # Playwright and a browser download into an image that will never run a test.
+#
+# The same suffix on `build`, and for a reason the install line did not have:
+# the site resolves `@goflag/next` through its built `dist`, which nothing in
+# this image would otherwise produce. `...` makes pnpm build the dependency
+# first, in topological order.
 RUN corepack enable pnpm \
   && pnpm install --frozen-lockfile --filter "@goflag/website..." \
-  && pnpm --filter @goflag/website build
+  && pnpm --filter "@goflag/website..." build
 
 FROM base AS runner
 WORKDIR /app
