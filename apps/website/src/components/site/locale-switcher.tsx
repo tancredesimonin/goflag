@@ -18,7 +18,7 @@ const localeFlags: Record<Locale, string> = {
   en: "🇬🇧",
   fr: "🇫🇷",
   es: "🇪🇸",
-  "pt-br": "🇧🇷",
+  pt: "🇧🇷",
 };
 
 /** Always English — the button label must not follow the active locale. */
