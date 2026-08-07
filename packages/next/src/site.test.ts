@@ -53,7 +53,18 @@ describe("defineSite — the locale axis", () => {
     // page someone happens to open.
     expect(() =>
       defineSite({ ...base, locales: ["en-US", "english" as "fr-FR"], defaultLocale: "en-US" }),
-    ).toThrow(/not a language tag/);
+    ).toThrow(/names no language/);
+  });
+
+  it("refuses a language ICU has never heard of", () => {
+    // The defect this closes: the shape was checked, the existence was not, so
+    // `qq` and `xx-YZ` reached every hreflang on the site.
+    expect(() =>
+      defineSite({ ...base, locales: ["en-US", "qq" as "fr-FR"], defaultLocale: "en-US" }),
+    ).toThrow(/names no language/);
+    expect(() =>
+      defineSite({ ...base, locales: ["pt-ZZ" as "en-US"], defaultLocale: "pt-ZZ" as "en-US" }),
+    ).toThrow(/no region ICU knows/);
   });
 
   it("derives both tag forms from the locale itself", () => {
@@ -63,56 +74,71 @@ describe("defineSite — the locale axis", () => {
     expect(site.openGraphLocale("pt-BR")).toBe("pt_BR");
   });
 
-  it("emits hreflang exactly as declared, validated but not re-cased", () => {
-    // Found by migrating a site whose URLs are `/pt-br/`. Re-casing the tag to
-    // `pt-BR` made goflag see two locales where there is one and report a
-    // translation hole for a language already served. BCP 47 is
-    // case-insensitive; the site's own spelling is the one that matches its
-    // URLs, so it is the one that ships.
+  it("canonicalises the case, so a document answers the question once", () => {
+    // The site routes on `/pt-br/` and declares `hreflang="pt-BR"`. Those are
+    // one tag — BCP 47 says the case carries no meaning — and the CLI folds
+    // them to one identity, which is what makes emitting the canonical form
+    // safe. Before that fix it manufactured a phantom locale.
     const site = defineSite({
       baseUrl: "https://stereo.house",
       name: "Stereo House",
       locales: ["en", "pt-br"],
       defaultLocale: "en",
       indexable: true,
-      localeTags: { en: { openGraph: "en_US" } },
     });
 
-    expect(site.bcp47("pt-br")).toBe("pt-br");
-    // og:locale has no such freedom: ogp.me defines one shape, so it is derived.
-    expect(site.openGraphLocale("pt-br")).toBe("pt_BR");
+    expect(site.bcp47("pt-br")).toBe("pt-BR");
+    expect(site.lang("pt-br")).toBe("pt-BR");
   });
 
-  it("takes overrides where deriving would be guessing", () => {
-    // A site whose routing calls the locale `pt-br` still owes hreflang the
-    // canonical case and og:locale an underscore. The overrides are for the
-    // other direction: a bare `en` that means en-US on this site and nothing in
-    // particular anywhere else.
+  it("derives og:locale rather than asking for a table", () => {
+    // A language with no territory used to be refused until the site supplied
+    // an override, which is why both sites carried four hand-copied lines.
+    // ICU's likely subtags answer it, and answer it the same way.
     const site = defineSite({
       baseUrl: "https://goflag.tech",
       name: "goflag",
-      locales: ["en", "pt-br"],
+      locales: ["en", "fr", "es", "pt"],
       defaultLocale: "en",
       indexable: true,
-      localeTags: { en: { bcp47: "en-US", openGraph: "en_US" } },
     });
 
-    expect(site.bcp47("en")).toBe("en-US");
     expect(site.openGraphLocale("en")).toBe("en_US");
-    expect(site.bcp47("pt-br")).toBe("pt-br");
-    expect(site.openGraphLocale("pt-br")).toBe("pt_BR");
+    expect(site.openGraphLocale("fr")).toBe("fr_FR");
+    expect(site.openGraphLocale("es")).toBe("es_ES");
+    expect(site.openGraphLocale("pt")).toBe("pt_BR");
   });
 
-  it("refuses a territoryless locale rather than inventing one for og:locale", () => {
-    expect(() =>
-      defineSite({
-        baseUrl: "https://goflag.tech",
-        name: "goflag",
-        locales: ["en"],
-        defaultLocale: "en",
-        indexable: true,
-      }),
-    ).toThrow(/no territory/);
+  it("lets lang be more precise than hreflang, which is a real case", () => {
+    // Brazilian Portuguese written for every Portuguese speaker: `lang`
+    // describes the content, `hreflang` targets an audience, and here they
+    // legitimately differ.
+    const site = defineSite({
+      baseUrl: "https://goflag.tech",
+      name: "goflag",
+      locales: ["en", "pt"],
+      defaultLocale: "en",
+      indexable: true,
+      localeTags: { pt: { lang: "pt-BR" } },
+    });
+
+    expect(site.bcp47("pt")).toBe("pt");
+    expect(site.lang("pt")).toBe("pt-BR");
+    expect(site.openGraphLocale("pt")).toBe("pt_BR");
+  });
+
+  it("resolves a URL segment to the locale it means, or to nothing", () => {
+    const site = defineSite({
+      baseUrl: "https://goflag.tech",
+      name: "goflag",
+      locales: ["en", "fr", "es", "pt"],
+      defaultLocale: "en",
+      indexable: true,
+    });
+
+    expect(site.resolveLocale("pt-BR")).toBe("pt");
+    expect(site.resolveLocale("PT")).toBe("pt");
+    expect(site.resolveLocale("de")).toBeUndefined();
   });
 
   it("narrows an unknown string to a served locale", () => {

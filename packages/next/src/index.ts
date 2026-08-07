@@ -22,5 +22,15 @@ export {
 } from "./routes";
 export { buildMetadata, type RouteContent } from "./metadata";
 export { clusterOf, locate } from "./locate";
-export { regionOf, toBcp47, toOpenGraphLocale } from "./locale";
+export {
+  isLanguage,
+  isRegion,
+  localeIdentity,
+  lookup,
+  toBcp47,
+  toOpenGraphLocale,
+  type Language,
+  type Region,
+  type ValidTag,
+} from "./locale";
 export type { LocalizedRoute, MonolingualRoute, OgType, PageLocation, Route } from "./types";

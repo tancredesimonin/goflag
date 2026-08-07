@@ -260,13 +260,15 @@ describe("a site that declares no tag overrides", () => {
 
   const plainRoutes = plain.routes({ home: { path: "" } });
 
-  it("spells every hreflang the way its URL does", () => {
+  it("emits the canonical form of the tag its URL carries", () => {
+    // `/pt-br/` and `hreflang="pt-BR"` are one tag: BCP 47 makes the case
+    // meaningless, and the CLI folds them to one identity. Emitting the
+    // canonical form is what keeps `lang` and `hreflang` from answering the
+    // same question two ways in one document.
     const meta = plainRoutes.metadata({ path: "", locale: "pt-br", title: "T", description: "D" });
 
-    for (const [tag, target] of Object.entries(meta.alternates?.languages ?? {})) {
-      if (tag === "x-default") continue;
-      expect(String(target)).toContain(`/${tag}`);
-    }
+    expect(Object.keys(meta.alternates?.languages ?? {})).toContain("pt-BR");
+    expect(String(meta.alternates?.canonical)).toContain("/pt-br");
   });
 
   it("still territory-qualifies og:locale, which has no such freedom", () => {
