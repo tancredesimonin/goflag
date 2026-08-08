@@ -1,7 +1,7 @@
 # The website, and only the website. `packages/cli` ships to npm from the
 # `release` job and has no business in a container image — the filtered install
 # below is what keeps its dependency tree (Chromium among them) out of here.
-FROM node:24.18.1-alpine AS base
+FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS base
 
 FROM base AS builder
 WORKDIR /app
