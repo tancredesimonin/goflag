@@ -34,9 +34,13 @@ export const site = defineSite({
 Declare the shortest tag that is justified. `pt`, not `pt-BR`, unless you serve
 more than one Portuguese. Every tag is checked against ICU, at compile time and
 again at run time, and the derived forms follow: `hreflang` and `<html lang>`
-from the tag itself, `og:locale` from ICU's likely subtags. That last one
-answers `pt_BR` for `pt`, so a Brazilian unfurl still works without your site
-declaring a territory it does not target.
+take the tag's canonical form, `og:locale` comes from ICU's likely subtags. That
+last one answers `pt_BR` for `pt`, so a Brazilian unfurl still works without
+your site declaring a territory it does not target.
+
+Your URLs are untouched. Declaring `pt-br` gives canonicals on `/pt-br/` and a
+cluster keyed `pt-BR`, which is the same tag written the way each place expects
+it. See [what it refuses to build](/docs/next/guarantees#two-things-it-gets-right-that-hand-written-versions-usually-do-not).
 
 `indexable` is one flag on purpose. A site that forbids crawling while its pages
 ask to be indexed is exactly the `robots.conflict` finding, and leaving no way
