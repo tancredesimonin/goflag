@@ -35,7 +35,7 @@ export default tseslint.config(
     // the only ones that need Node's globals spelled out.
     files: ["scripts/**/*.mjs", "apps/*/*.mjs"],
     languageOptions: {
-      globals: { process: "readonly" },
+      globals: { process: "readonly", console: "readonly" },
     },
   },
   {

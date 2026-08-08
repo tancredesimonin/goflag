@@ -1,6 +1,6 @@
 {
   "name": "@goflag/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.",
   "keywords": [
@@ -17,7 +17,7 @@
     "ci"
   ],
   "license": "MIT",
-  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
@@ -61,7 +61,7 @@
     "validate:sources": "tsx scripts/validate-sources.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
-    "release": "commit-and-tag-version --path ."
+    "release": "commit-and-tag-version --path . --skip.tag"
   },
   "dependencies": {
     "cheerio": "^1.2.0"

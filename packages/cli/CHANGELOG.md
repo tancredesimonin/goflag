@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.1](https://github.com/tancredesimonin/goflag/compare/v0.2.0...v0.2.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **i18n:** fold locale tags to one identity, as BCP 47 says they are ([7ec450f](https://github.com/tancredesimonin/goflag/commit/7ec450f60bb70cddfde5ab8954e20f42db7784ed))
+
 ## [0.2.0](https://github.com/tancredesimonin/goflag/compare/v0.1.4...v0.2.0) (2026-08-06)
 
 
