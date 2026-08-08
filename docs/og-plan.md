@@ -1,7 +1,8 @@
 # goflag — Plan `@goflag/og` : images de partage dynamiques
 
 > **Rédigé** 2026-08-02 · **Réécrit** 2026-08-06 (frontière du paquet, et un
-> consommateur réel est apparu entre-temps)
+> consommateur réel est apparu entre-temps) · **Amendé** 2026-08-08 (le `.ico`,
+> §6.4 et §7.1 — la lacune que la convention Next ne couvre pas)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -19,6 +20,8 @@
 | **D3** | Un **gabarit par défaut piloté par tokens**, pas une galerie de gabarits                             |
 | **D4** | Les **illustrations de contenu** (blog, LinkedIn, vidéo) ne rentrent pas dans goflag                 |
 | **D5** | L'OG entre d'abord par les **règles**, pas par la lib — l'auditeur avant l'outil                     |
+| **D6** | Le `.ico` est **empaqueté** par le cœur, jamais rendu par lui — le site fournit les buffers          |
+| **D7** | C'est le seul artefact **committé** de la lib : il est livré avec sa garde d'idempotence             |
 
 ---
 
@@ -56,6 +59,8 @@ sur un site qui n'utilise pas la lib.
 | Brique                                                   | Dans goflag ?                                                         |
 | -------------------------------------------------------- | --------------------------------------------------------------------- |
 | Règles `og.image.*` / `og.locale.*` sourcées ogp.me      | ✅ catalogue — renforce l'auditeur, indépendant de la lib             |
+| Règles `icons.*` — le Fact est extrait, rien ne le juge  | ✅ catalogue — §7.1                                                   |
+| Empaquetage `.ico` multi-tailles                         | ✅ cœur — la seule sortie que Next ne sait pas produire (§6.4)        |
 | Mécanisme : gabarit, locale, fontes, tokens, alt traduit | ✅ `@goflag/og` — remède de la règle                                  |
 | Un gabarit par défaut, piloté par tokens                 | ✅ le strict nécessaire pour que le remède soit utilisable            |
 | Une galerie de gabarits                                  | ⛔ `ogimagecn` (shadcn-labs) occupe le terrain ; rien à y gagner      |
@@ -312,9 +317,82 @@ Le contenu reste **dans le site**. La lib ne connaît que des champs neutres.
 tient dans la lib au lieu d'être recopié.
 
 `icon.tsx` et `apple-icon.tsx` utilisent le même arbre et les mêmes tokens. Un
-jeu de tokens → og:image + favicon + apple-touch-icon, tous cohérents. C'est
-gratuit une fois les tokens posés, et le catalogue couvre déjà `links.icons` et
-la doc Apple.
+jeu de tokens → og:image + `icon.png` + apple-touch-icon, tous cohérents. C'est
+gratuit une fois les tokens posés.
+
+Deux corrections à la version précédente de ce paragraphe, qui promettait trop :
+
+- **« favicon » n'inclut pas le `.ico`.** `ImageResponse` sort du PNG ;
+  `icon.tsx` émet donc un `<link rel="icon" type="image/png">`. Un `/favicon.ico`
+  à la racine reste hors d'atteinte de la convention — voir §6.4.
+- **« le catalogue couvre déjà `links.icons` »** était faux. `icons` est
+  **extrait** (`extraction/from-page.ts`, `Fact<unknown>`) et **aucune règle ne
+  le juge** : aucun id `icons.*` n'existe. C'est le signal collecté et jamais
+  jugé, cinquième occurrence. Le §7.1 le corrige.
+
+### 6.4 D6 — Le `.ico`, la seule sortie que Next ne sait pas produire
+
+Next n'a **aucune convention de fichier générant un `.ico`** : `favicon.ico` est
+un fichier statique, et `icon.tsx` passe par `ImageResponse`, qui sort du PNG. Un
+conteneur ICO multi-tailles — en-tête `ICONDIR`, table `ICONDIRENTRY`, PNG
+concaténés — ne sort de nulle part dans la chaîne.
+
+C'est une lacune réelle, et elle est **déjà comblée à la main quatre fois** :
+`tancrede`, `tancredo`, `openfinanceguide` et `stereo-house` embarquent chacun
+leur `scripts/generate-favicon*.mjs`, avec le même empaquetage ICO recopié. Ce
+n'est pas `discoverSitemap()` : ce sont quatre appelants qui existent aujourd'hui.
+
+#### La forme
+
+L'empaquetage est de la manipulation de `Buffer` pure — une trentaine de lignes,
+**aucune dépendance, aucun moteur de rendu**. Il consomme des PNG déjà rasterisés
+et rend un buffer :
+
+```ts
+buildIco(entries: { width: number; buffer: Buffer }[]) → Buffer
+```
+
+Il appartient donc au **cœur**, à côté de `fitTitle`, et non à `@goflag/og/next` :
+il ne connaît ni React, ni satori, ni Next. C'est même la partie la plus pure du
+paquet — le reste du cœur a au moins besoin d'une fabrique JSX en peer.
+
+#### Qui rasterise
+
+Le site, exactement comme il fournit ses fontes (§4.1). Même contrat, même
+raison : la lib n'embarque pas ce que le site a déjà.
+
+Et il l'a déjà. **`sharp` est en dépendance directe des cinq sites**,
+`apps/website` compris, parce que Next s'en sert pour l'optimisation d'images.
+Rasteriser le gabarit en 16/32/48 coûte donc zéro installation supplémentaire.
+C'est ce qui fait que le `.ico` **ne rouvre pas le débat du §2** : il ne demande
+ni satori dupliqué, ni binaire natif `resvg`, ni friction Alpine. Le rasteur est
+déjà là, sur chaque site concerné.
+
+#### D7 — le seul artefact committé, donc le seul qui peut dériver
+
+Tout le reste de `@goflag/og` est rendu au build (D2) et n'entre jamais dans git.
+Le `.ico`, lui, **doit être committé** : c'est un fichier statique servi à la
+racine.
+
+Un artefact généré **et** committé a un mode d'échec propre, observé sur ces
+sites : un hook de pre-commit le régénère à chaque commit, et les octets changent
+sans que les pixels changent — les encodeurs PNG ne sont pas stables d'une version
+de `sharp` à l'autre. Le fichier est sali à chaque commit, et le bruit finit
+committé. Constaté sur `stereo-house` (trois icônes modifiées, pixels vérifiés
+identiques) et corrigé sur `tancrede`.
+
+La lib ne peut donc pas se contenter de produire le fichier : elle diffuserait ce
+défaut à chaque site adoptant. L'empaquetage est livré **idempotent par
+construction** :
+
+```ts
+writeIco(path, entries, { fingerprintOf: sources }) → "written" | "unchanged"
+```
+
+L'empreinte porte sur les **entrées** (le SVG source, les tailles demandées),
+jamais sur les octets produits — sinon un bump de `sharp` compte comme un
+changement. Un mode `--check` en découle, qui échoue sans rien écrire : c'est ce
+qui rend le fichier vérifiable en CI plutôt que régénéré en pre-commit.
 
 ---
 
@@ -338,6 +416,40 @@ pour `llms.txt` multilingue — la valeur est dans l'intersection i18n, pas dans
 sujet générique.
 
 Ces règles ne dépendent pas de la lib et se livrent dans le catalogue.
+
+### 7.1 La famille `icons.*` — un Fact extrait que rien ne juge
+
+`icons` est déjà collecté par l'extraction (`extraction/from-page.ts`), et le
+catalogue n'expose **aucun id `icons.*`**. Le signal est là, personne ne s'en
+sert. C'est le mode d'échec du §4, à l'envers : au lieu d'un check qu'on ignore,
+une donnée qu'on ne juge pas.
+
+Les sources sont déjà au catalogue (§4.2 / §4.3) — WHATWG link types, MDN `<link>`
+types, la doc Apple, le W3C Web App Manifest. Rien à sourcer de neuf.
+
+| Règle                       | Rigueur     | Ce qu'elle juge                                             |
+| --------------------------- | ----------- | ----------------------------------------------------------- |
+| `icons.missing`             | guideline   | aucune icône déclarée, ni `<link rel="icon">` ni manifeste  |
+| `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      |
+| `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   |
+| `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles |
+| `icons.apple-touch.missing` | vendor-spec | pas d'`apple-touch-icon` (doc Apple, déjà sourcée)          |
+| `icons.manifest-mismatch`   | guideline   | les icônes du manifeste et celles du `<head>` divergent     |
+
+Deux remarques d'honnêteté sur la rigueur.
+
+`icons.ico.missing` est **guideline, pas vendor-spec** : aucune spec n'exige un
+`/favicon.ico`. C'est une convention de repli — les navigateurs modernes suivent
+le `<link>` déclaré, mais les clients naïfs (lecteurs de flux, dépliage de liens,
+certains crawlers) tapent la racine à l'aveugle. La règle mérite d'exister, pas
+d'être présentée comme normative. `apps/website` la déclenchera : il ne sert
+aucun `.ico`.
+
+`icons.unreachable` et `icons.sizes-mismatch` réutilisent le sondage de liens
+existant, comme `og.image.reachable`. `sizes-mismatch` est la plus rentable des
+six en pratique : `tancrede` déclare aujourd'hui
+`{ url: "/favicon.ico", sizes: "48x48" }` alors que le conteneur porte 16, 32
+**et** 48. La déclaration est à moitié vraie, et rien ne le dit.
 
 ---
 
@@ -374,22 +486,25 @@ texte sur une zone chargée sans voile.
 | Pas de WOFF2                                              | fonte committée en TTF/OTF                                        |
 | Fonte non latine = fichier lourd                          | à sous-ensembler le jour où ça arrive, pas avant                  |
 | Rendu au build → un changement de token = rebuild du site | acceptable ; c'est déjà vrai du reste de la metadata              |
+| `ImageResponse` ne sait pas produire de `.ico`            | conteneur empaqueté par le cœur, rasterisé par le site (§6.4)     |
+| Le `.ico` doit être committé, pas rendu                   | livré idempotent (D7), sinon la lib diffuse la dérive d'encodeur  |
 | Cœur sans moteur → le snapshot passe par un binding       | assumé : c'est ce qui rend le cœur testable sans build Next       |
 
 ---
 
 ## 10. Phasage
 
-| Étape    | Contenu                                                                                                                                                                     | Dépend de |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **OG-0** | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                             | —         |
-| **OG-1** | Les 6 règles du §7 dans le catalogue sourcé. `og.image.alt` fait alors échouer le site de goflag : le corriger sur place                                                    | catalogue |
-| **OG-2** | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction | OG-1      |
-| **OG-3** | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent                                                                               | OG-2      |
-| **OG-4** | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait)                                                                                           | OG-3      |
-| **OG-5** | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                             | OG-4, N-2 |
-| hors     | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                            | —         |
-| hors     | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                      | —         |
+| Étape    | Contenu                                                                                                                                                                                                                                                       | Dépend de |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **OG-0** | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                               | —         |
+| **OG-1** | Les 6 règles du §7 **et la famille `icons.*` du §7.1** dans le catalogue sourcé. `og.image.alt` et `icons.ico.missing` font alors échouer le site de goflag : les corriger sur place                                                                          | catalogue |
+| **OG-2** | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction. **Plus un `.ico` produit par un script local** — consommateur n°1 du §6.4        | OG-1      |
+| **OG-3** | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle | OG-2      |
+| **OG-4** | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                           | OG-3      |
+| **OG-5** | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                               | OG-4, N-2 |
+| hors     | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                              | —         |
+| hors     | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                      | OG-4      |
+| hors     | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                        | —         |
 
 **OG-1 avant tout le reste.** D5 : la règle avant l'outil. Aujourd'hui le site
 de goflag ne déclare aucun `og:image:alt` et rien ne le lui reproche — écrire la
@@ -405,6 +520,18 @@ engagement d'API.
 `apps/website` **et** stereo-house doit supprimer du code net, et le snapshot
 par locale doit tourner dans vitest sans build Next. Sinon l'API est ratée.
 
+**Pour le `.ico`, le critère est plus dur et plus lisible** : les quatre
+`generate-favicon*.mjs` recopiés doivent disparaître au profit d'un appel, et le
+`--check` doit tourner en CI sur les quatre sites sans qu'aucun hook de
+pre-commit ne réécrive quoi que ce soit. Si un seul site doit garder son script,
+c'est que le contrat des buffers est mal posé.
+
+**Le `.ico` ne rallonge pas le chemin critique.** Il n'ajoute aucune étape : une
+règle en OG-1, un script local en OG-2 — que `apps/website` devra écrire de toute
+façon pour satisfaire `icons.ico.missing` — et un consommateur n°2 gratuit en
+OG-3. La seule décision réellement nouvelle est D6, et elle est déjà tranchée par
+la forme du cœur.
+
 ---
 
 ## 11. Ce que ce plan ne fait pas
@@ -416,3 +543,6 @@ par locale doit tourner dans vitest sans build Next. Sinon l'API est ratée.
 - Pas de résolution fonte-par-script tant que toutes les locales sont latines.
 - Pas de service HTTP de rendu à la demande : le build suffit.
 - Pas de `@goflag/og/render` tant qu'aucun site non-Next n'existe.
+- **Pas de rasteur dans le cœur, y compris pour le `.ico`.** Le cœur empaquette
+  des buffers ; c'est le site qui les produit, avec le `sharp` qu'il a déjà. D1
+  tient sans exception.
