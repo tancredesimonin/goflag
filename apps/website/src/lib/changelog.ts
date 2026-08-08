@@ -1,15 +1,24 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The changelog page, parsed from the file `commit-and-tag-version` writes.
+ * The changelog page, parsed from the files `commit-and-tag-version` writes.
  *
- * Read at build time from `packages/cli/CHANGELOG.md` rather than copied here,
- * so the page cannot drift from what actually shipped. This is a file read and
- * not an import: invariant I3 forbids `apps/**` from importing `packages/cli`,
- * and the reason behind it — the site must not depend on the CLI's build — holds
- * for a generated markdown file too.
+ * Read at build time from each package's `CHANGELOG.md` rather than copied
+ * here, so the page cannot drift from what actually shipped. This is a file
+ * read and not an import: invariant I3 forbids `apps/**` from importing
+ * `packages/cli`, and the reason behind it (the site must not depend on either
+ * package's build) holds for a generated markdown file too.
+ *
+ * Two packages, one page. They ship on their own version lines, so a merged
+ * timeline is the only view that answers "what changed, and when": two pages
+ * would ask the reader to hold both in their head, and a tab would hide half
+ * the history behind a click nobody makes.
  */
+
+/** Which package a release belongs to. Ordered: the CLI leads a shared date. */
+export const PACKAGES = ["cli", "next"] as const;
+export type PackageId = (typeof PACKAGES)[number];
 
 export interface ChangelogEntry {
   /** Conventional-commit subject, with the scope split out. */
@@ -28,6 +37,8 @@ export interface ChangelogSection {
 }
 
 export interface ChangelogRelease {
+  /** The package this version belongs to. Two version lines share this page. */
+  package: PackageId;
   version: string;
   /** ISO date the generator recorded, or null for a hand-written heading. */
   date: string | null;
@@ -63,7 +74,7 @@ function parseEntry(line: string): ChangelogEntry | null {
   };
 }
 
-export function parseChangelog(markdown: string): ChangelogRelease[] {
+export function parseChangelog(markdown: string, pkg: PackageId): ChangelogRelease[] {
   const releases: ChangelogRelease[] = [];
   let release: ChangelogRelease | null = null;
   let section: ChangelogSectionId | null = null;
@@ -76,12 +87,35 @@ export function parseChangelog(markdown: string): ChangelogRelease[] {
     }
   };
 
+  /**
+   * An entry is not always one line. `commit-and-tag-version` reflows a long
+   * BREAKING CHANGE body across several, and parsing only the first printed a
+   * sentence that stopped at a semicolon. So the lines are collected and parsed
+   * together, which also keeps the commit link when it lands on the last one.
+   */
+  let entryLines: string[] = [];
+
+  const flushEntry = () => {
+    if (!release || entryLines.length === 0) return;
+
+    const entry = parseEntry(entryLines.join(" "));
+    entryLines = [];
+    if (!entry) return;
+
+    const id = section ?? "other";
+    const bucket = release.sections.find((candidate) => candidate.id === id);
+    if (bucket) bucket.entries.push(entry);
+    else release.sections.push({ id, entries: [entry] });
+  };
+
   for (const line of markdown.split("\n")) {
     const heading = line.startsWith("## ") ? RELEASE_HEADING.exec(line) : null;
 
     if (heading) {
+      flushEntry();
       flushNote();
       release = {
+        package: pkg,
         version: heading[1] ?? "",
         compareUrl: heading[2] ?? null,
         date: heading[3] ?? null,
@@ -95,35 +129,80 @@ export function parseChangelog(markdown: string): ChangelogRelease[] {
 
     if (!release) continue;
 
-    if (line.startsWith("### ")) {
+    if (line.startsWith("#")) {
+      flushEntry();
       flushNote();
-      const label = line.slice(4).trim().toLowerCase();
-      section = SECTION_IDS[label] ?? "other";
+      if (line.startsWith("### ")) {
+        const label = line.slice(4).trim().toLowerCase();
+        section = SECTION_IDS[label] ?? "other";
+      }
       continue;
     }
 
     if (/^[*-] /.test(line.trim())) {
-      const entry = parseEntry(line);
-      if (!entry) continue;
-
-      const id = section ?? "other";
-      const bucket = release.sections.find((candidate) => candidate.id === id);
-      if (bucket) bucket.entries.push(entry);
-      else release.sections.push({ id, entries: [entry] });
+      flushEntry();
+      entryLines = [line.trim()];
       continue;
     }
 
-    // Prose directly under a version heading — the 0.1.0 entry has one, and
+    // A blank line closes an entry. Anything else that follows one belongs to
+    // it, which is how a reflowed body stays whole.
+    if (!line.trim()) {
+      flushEntry();
+      continue;
+    }
+
+    if (entryLines.length > 0) {
+      entryLines.push(line.trim());
+      continue;
+    }
+
+    // Prose directly under a version heading. The 0.1.0 entry has one, and
     // dropping it would silently delete the only hand-written line in the file.
-    if (line.trim() && section === null) note.push(line.trim());
+    if (section === null) note.push(line.trim());
   }
 
+  flushEntry();
   flushNote();
 
   return releases;
 }
 
+const SOURCES: Record<PackageId, string> = {
+  cli: join(process.cwd(), "..", "..", "packages", "cli", "CHANGELOG.md"),
+  next: join(process.cwd(), "..", "..", "packages", "next", "CHANGELOG.md"),
+};
+
+/**
+ * Every release of every package, newest first.
+ *
+ * A missing file yields nothing rather than failing the build. `@goflag/next`
+ * had no changelog until its first automatic release wrote one, and a site that
+ * cannot be built until a sibling package has shipped is a coupling the file
+ * read was chosen to avoid.
+ *
+ * Sorted on the date the generator recorded. Same date means the same merge to
+ * main, so the tie is broken by package order and the CLI leads.
+ */
 export function getChangelog(): ChangelogRelease[] {
-  const path = join(process.cwd(), "..", "..", "packages", "cli", "CHANGELOG.md");
-  return parseChangelog(readFileSync(path, "utf8"));
+  return PACKAGES.flatMap((pkg) => {
+    const path = SOURCES[pkg];
+    if (!existsSync(path)) return [];
+
+    return parseChangelog(readFileSync(path, "utf8"), pkg);
+  }).sort((a, b) => {
+    if (a.date !== b.date) return (b.date ?? "").localeCompare(a.date ?? "");
+    return PACKAGES.indexOf(a.package) - PACKAGES.indexOf(b.package);
+  });
+}
+
+/** The newest version of each package, for the header. */
+export function currentVersions(releases: ChangelogRelease[]): Array<{
+  package: PackageId;
+  version: string;
+}> {
+  return PACKAGES.flatMap((pkg) => {
+    const latest = releases.find((release) => release.package === pkg);
+    return latest ? [{ package: pkg, version: latest.version }] : [];
+  });
 }

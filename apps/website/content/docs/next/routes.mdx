@@ -1,0 +1,137 @@
+---
+title: The route registry
+description: defineSite takes values rather than reading the environment, site.routes declares every URL served, and a locale policy belongs to a route, not the site.
+navTitle: Route registry
+group: library
+order: 2
+---
+
+Two calls. `defineSite` describes the site, `site.routes` enumerates what it
+serves. Everything else is derived from those.
+
+## `defineSite`
+
+```ts
+export const site = defineSite({
+  baseUrl: "https://example.com",
+  name: "Example",
+  locales: ["en", "fr", "pt"],
+  defaultLocale: "en",
+  indexable: process.env.APP_ENV === "production",
+});
+```
+
+| Field           | What it does                                                             |
+| --------------- | ------------------------------------------------------------------------ |
+| `baseUrl`       | Public origin. A trailing slash is dropped, a path is refused.           |
+| `name`          | `og:site_name`, and the default document title.                          |
+| `locales`       | Every locale served, in the order alternates should be listed.           |
+| `defaultLocale` | Where `x-default` points.                                                |
+| `indexable`     | Drives `robots.txt` **and** the `robots` meta tag, together.             |
+| `localeTags`    | Optional per-locale overrides, for the cases where deriving would guess. |
+| `twitter`       | Optional `summary` or `summary_large_image`, and the site handle.        |
+
+Declare the shortest tag that is justified. `pt`, not `pt-BR`, unless you serve
+more than one Portuguese. Every tag is checked against ICU, at compile time and
+again at run time, and the derived forms follow: `hreflang` and `<html lang>`
+from the tag itself, `og:locale` from ICU's likely subtags. That last one
+answers `pt_BR` for `pt`, so a Brazilian unfurl still works without your site
+declaring a territory it does not target.
+
+`indexable` is one flag on purpose. A site that forbids crawling while its pages
+ask to be indexed is exactly the `robots.conflict` finding, and leaving no way
+to set the two apart is the only way to make it unsatisfiable.
+
+### It reads no environment variable
+
+`process.env.APP_ENV` above is your site's convention, on your side of the line.
+Four sites, four different names for the same idea, and a library that picked
+one would impose it on the other three. It would also be untestable without
+mutating a global.
+
+So `defineSite` takes values. One line each in your site, and the library stays
+a pure function of its configuration.
+
+## `site.routes`
+
+```ts
+export const routes = site.routes({
+  home: { path: "" },
+  changelog: { path: "/changelog" },
+  legal: collection(allLegals, {
+    path: (doc) => `/${doc.slug}`,
+    locale: (doc) => doc.locale,
+  }),
+  docs: collection(allDocs, {
+    path: (doc) => `/docs/${doc.slug}`,
+    locale: "en",
+    ogType: "article",
+  }),
+});
+```
+
+Adding a page means adding it here. A page that renders a canonical without a
+registry entry fails the build, instead of shipping absent from the sitemap.
+
+## A locale policy belongs to a route
+
+This is the constraint that reading a real site surfaced, and it breaks any API
+that assumes one cluster per site. Documentation lives outside the locale
+segment and is English only. A legal notice is translated into whatever has
+actually been translated. Both are on the same site.
+
+The rule is short: **a fixed `locale` means the route stands alone, a derived or
+absent one means it clusters.**
+
+| Declaration                   | Cluster                       | `x-default`     |
+| ----------------------------- | ----------------------------- | --------------- |
+| nothing                       | every locale the site serves  | `defaultLocale` |
+| `locales: ["en", "fr"]`       | only those                    | `defaultLocale` |
+| `locale: "en"`                | itself, self-referential      | itself          |
+| `locale: (doc) => doc.locale` | whatever the collection holds | `defaultLocale` |
+
+A route that declares it exists in two locales is not a translation hole. It is
+an intention, and goflag stops reporting it as one.
+
+## `collection`
+
+For a family of pages built from content, availability per locale is **derived**
+from the entries present, never declared a second time. Adding a translation
+updates the hreflang cluster, the sitemap and the alternates together, because
+all three read the same rows.
+
+```ts
+collection(allLegals, {
+  path: (doc) => `/${doc.slug}`,
+  locale: (doc) => doc.locale,
+  lastModified: (doc) => doc.updatedAt,
+  changeFrequency: "monthly",
+  priority: 0.5,
+});
+```
+
+`lastModified` is per entry and per locale, because a translation is edited on
+its own day.
+
+## What the registry gives back
+
+| Call                                                    | Returns                        |
+| ------------------------------------------------------- | ------------------------------ |
+| `routes.metadata({ path, locale, title, description })` | `Metadata`                     |
+| `routes.sitemap({ lastModified })`                      | `MetadataRoute.Sitemap`        |
+| `routes.robots({ disallow })`                           | `MetadataRoute.Robots`         |
+| `site.rootMetadata({ description })`                    | `Metadata` for the root layout |
+| `routes.family("docs")`                                 | that family's routes           |
+| `site.servesLocale(segment)`                            | a type guard on the locale     |
+
+`routes.family` exists because the shape of a dynamic segment, `[slug]` against
+`[[...slug]]`, is a property of the filesystem route and not of the registry.
+Deriving `generateStaticParams` would be guessing, and a wrong guess there
+produces missing pages rather than an error. So the registry hands back the
+routes and your site turns them into params in three visible lines.
+
+`robots({ disallow })` adds paths while the site is indexable, and is ignored
+when it is not: a site that forbids everything has nothing to add to that. The
+non-standard `Host:` directive is off by default, because only Yandex ever read
+it and goflag reports it as `robotstxt.unknown-directive`. A library has no
+business producing output its own auditor warns about.

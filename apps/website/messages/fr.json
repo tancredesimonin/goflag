@@ -18,7 +18,7 @@
     },
     "changelog": {
       "title": "Changelog",
-      "description": "Toutes les versions publiées de @goflag/cli, générées depuis l’historique des commits, avec les notes qui expliquent ce qu’une version change."
+      "description": "Toutes les versions publiées de @goflag/cli et @goflag/next, générées depuis l'historique des commits, avec les notes qui expliquent chaque version."
     }
   },
   "home": {
@@ -173,6 +173,10 @@
         "q": "Est-ce que ça fonctionne en dehors de Next.js ?",
         "a": "Les vérifications, oui : elles jugent du HTML, et le HTML est le HTML. Les extraits de correctif attachés aux constats supposent le Next.js App Router, et le disent. Rien ne casse sur un site Rails ou Astro ; vous obtenez simplement le constat sans le remède prêt à coller."
       },
+      "remedy": {
+        "q": "Est-ce qu'il corrige ce qu'il trouve ?",
+        "a": "Pas sur votre site : il lit ce que lit un crawler et ne touche jamais à vos sources. En revanche le même projet publie @goflag/next, un registre de routes pour l'App Router de Next.js qui produit la metadata, le cluster hreflang, le sitemap et robots.txt depuis une seule déclaration, ce qui rend plusieurs de ces findings impossibles. Documenté sous Bibliothèque Next.js."
+      },
       "chromium": {
         "q": "Ai-je besoin de Chromium ?",
         "a": "Seulement sans --static. Une page dont le head paraît vide est réaffichée dans un Chromium headless, pour qu’une application rendue côté client ne soit pas signalée comme dépourvue de tout ; --static désactive cela et ne télécharge jamais de navigateur."
@@ -199,7 +203,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "lead": "Toutes les versions publiées de {package}. Les entrées sont générées depuis l’historique des commits, cette page ne peut donc pas s’écarter de ce qui a réellement été publié.",
+    "lead": "Toutes les versions publiées de goflag : le CLI et la bibliothèque Next.js, sur une seule frise. Les entrées sont générées depuis l'historique des commits, donc cette page ne peut pas diverger de ce qui est réellement sorti.",
     "currentVersion": "Version actuelle",
     "released": "Publiée le",
     "installPinned": "Épingler cette version",
@@ -237,7 +241,8 @@
     "github": "Miroir GitHub",
     "legalNotice": "Mentions légales",
     "privacy": "Politique de confidentialité",
-    "cookies": "Politique relative aux cookies"
+    "cookies": "Politique relative aux cookies",
+    "library": "Bibliothèque Next.js"
   },
   "legal": {
     "lastUpdated": "Dernière mise à jour {date}"

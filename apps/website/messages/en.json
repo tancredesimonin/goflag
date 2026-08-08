@@ -18,7 +18,7 @@
     },
     "changelog": {
       "title": "Changelog",
-      "description": "Every published version of @goflag/cli, generated from the commit history, with the release notes that explain what a version actually changes."
+      "description": "Every published version of @goflag/cli and @goflag/next, generated from the commit history, with the notes that explain what each version changes."
     }
   },
   "home": {
@@ -173,6 +173,10 @@
         "q": "Does it work outside Next.js?",
         "a": "The checks do: they judge HTML, and HTML is HTML. The fix snippets attached to findings assume the Next.js App Router, and say so. Nothing breaks on a Rails or Astro site; you just get the finding without the copy-paste remedy."
       },
+      "remedy": {
+        "q": "Can it fix what it finds?",
+        "a": "Not on your site: it reads what a crawler reads and never touches your source. But the same project ships @goflag/next, a route registry for the Next.js App Router that produces the metadata, the hreflang cluster, the sitemap and robots.txt from one declaration, so several of these findings stop being possible. It is documented under The Next.js library."
+      },
       "chromium": {
         "q": "Do I need Chromium?",
         "a": "Only without --static. A page whose head looks empty is re-rendered in headless Chromium, so a client-rendered app is not reported as missing everything; --static turns that off and never downloads a browser."
@@ -199,7 +203,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "lead": "Every published version of {package}. Entries are generated from the commit history, so this page cannot drift from what actually shipped.",
+    "lead": "Every published version of goflag: the CLI and the Next.js library, on one timeline. Entries are generated from the commit history, so this page cannot drift from what actually shipped.",
     "currentVersion": "Current version",
     "released": "Released",
     "installPinned": "Pin this version",
@@ -237,7 +241,8 @@
     "github": "GitHub mirror",
     "legalNotice": "Legal notice",
     "privacy": "Privacy policy",
-    "cookies": "Cookie policy"
+    "cookies": "Cookie policy",
+    "library": "Next.js library"
   },
   "legal": {
     "lastUpdated": "Last updated {date}"

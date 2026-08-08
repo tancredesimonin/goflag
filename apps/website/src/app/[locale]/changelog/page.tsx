@@ -5,11 +5,22 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import ChangelogContent from "@/components/shadcn-studio/blocks/timeline-component-05/timeline-component-05";
 import { CopyCommand } from "@/components/site/copy-command";
 import { Badge } from "@/components/ui/badge";
-import { getChangelog, type ChangelogSectionId } from "@/lib/changelog";
-import { PACKAGE } from "@/lib/constants";
+import {
+  currentVersions,
+  getChangelog,
+  type ChangelogSectionId,
+  type PackageId,
+} from "@/lib/changelog";
+import { LIB, PACKAGE } from "@/lib/constants";
 import { requireLocale, routes } from "@/lib/seo/site";
 
 const SECTION_ORDER: ChangelogSectionId[] = ["features", "fixes", "docs", "other"];
+
+/** What each package is called on npm, and where to send someone who wants it. */
+const NAMES: Record<PackageId, { name: string; npm: string }> = {
+  cli: { name: PACKAGE.name, npm: PACKAGE.npm },
+  next: { name: LIB.name, npm: LIB.npm },
+};
 
 export async function generateMetadata({
   params,
@@ -34,7 +45,8 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
   const t = await getTranslations("changelog");
   const tHero = await getTranslations("home.hero");
   const releases = getChangelog();
-  const latest = releases[0];
+  const current = currentVersions(releases);
+  const currentCli = current.find((entry) => entry.package === "cli");
 
   const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
   const formatDate = (date: string | null) => (date ? dateFormat.format(new Date(date)) : "");
@@ -45,41 +57,49 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
         <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-4 text-lg leading-relaxed">
-          {t("lead", { package: PACKAGE.name })}
-        </p>
+        <p className="text-muted-foreground mt-4 text-lg leading-relaxed">{t("lead")}</p>
 
-        {latest ? (
-          <div className="mt-8 grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
-            <div>
-              <p className="text-muted-foreground text-sm">{t("currentVersion")}</p>
-              <p className="font-display text-2xl font-semibold">{latest.version}</p>
+        {/* One card per package. They ship on their own version lines, so a
+            single "current version" would have to pick one and be wrong about
+            the other. */}
+        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+          {current.map(({ package: pkg, version }) => (
+            <div key={pkg}>
+              <p className="text-muted-foreground font-mono text-sm">{NAMES[pkg].name}</p>
+              <p className="font-display text-2xl font-semibold">{version}</p>
+              <a
+                href={NAMES[pkg].npm}
+                target="_blank"
+                rel="noreferrer"
+                className="text-link mt-2 inline-flex items-center gap-1.5 text-sm hover:underline"
+              >
+                {t("onNpm")}
+                <ExternalLinkIcon className="size-3.5" />
+              </a>
             </div>
-            <div>
-              <p className="text-muted-foreground mb-2 text-sm">{t("installPinned")}</p>
-              <CopyCommand
-                command={`pnpm dlx ${PACKAGE.name}@${latest.version} https://example.com`}
-                copyLabel={tHero("copy")}
-                copiedLabel={tHero("copied")}
-              />
-            </div>
+          ))}
+        </div>
+
+        {/* The pinned command is the CLI's: it is the one you run against a
+            site. Pinning the library is an edit to a package.json, not a
+            command worth copying. */}
+        {currentCli ? (
+          <div className="mt-8">
+            <p className="text-muted-foreground mb-2 text-sm">{t("installPinned")}</p>
+            <CopyCommand
+              command={`pnpm dlx ${PACKAGE.name}@${currentCli.version} https://example.com`}
+              copyLabel={tHero("copy")}
+              copiedLabel={tHero("copied")}
+            />
           </div>
         ) : null}
-
-        <a
-          href={PACKAGE.npm}
-          target="_blank"
-          rel="noreferrer"
-          className="text-link mt-6 inline-flex items-center gap-1.5 text-sm hover:underline"
-        >
-          {t("onNpm")}
-          <ExternalLinkIcon className="size-3.5" />
-        </a>
       </header>
 
       <ChangelogContent
         releases={releases.map((release) => ({
+          id: `${release.package}-${release.version}`,
           version: release.version,
+          packageName: NAMES[release.package].name,
           date: formatDate(release.date),
           content: (
             <div className="space-y-6">
