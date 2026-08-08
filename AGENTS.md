@@ -106,14 +106,37 @@ Exit codes: `0` clean, `1` findings found, `2` fatal.
 ## Releasing
 
 Two packages, two tag namespaces: `v*` for the CLI, `next-v*` for the library.
-Merging `develop` into `main` is the decision to publish — one `release` job
-handles both packages and pushes once, and each tag triggers its own
-`publish:*` job, which trades a short-lived OIDC token for the right to publish
-that one package. There is no npm credential in CI.
+Both are **protected tags**, creatable by Maintainers — which means the release
+bot, and you when CI is down.
 
-A release only happens when a package's **published surface** moved (its `src`,
-its manifest, and the files that reach its tarball). A `fix(ci)` spends no
-version number.
+`main` and `develop` accept a push from **no one**, CI included. So the version
+bump and the changelog are written on a branch and reviewed like any other
+commit; nothing but a tag is ever written back to the repository by a runner.
+
+```
+pnpm release              on a branch cut off develop — bumps what moved,
+                          writes the changelogs, commits
+  → merge request into develop
+  → merge develop into main         the decision to publish
+  → job `tag` on main               reads each manifest, creates the missing tag
+  → job `publish:npm` / `publish:next`   OIDC, one package each
+```
+
+`pnpm release` (`scripts/release.mjs`) holds every judgement: a release only
+happens when a package's **published surface** moved (its `src`, its manifest,
+and the files that reach its tarball), so a `fix(ci)` spends no version number.
+The `tag` job decides nothing — it compares the version on `main` against the
+tags on the remote and creates what is missing, which makes it idempotent and
+safe to re-run.
+
+There is no npm credential in CI: each `publish:*` job trades a short-lived OIDC
+token for the right to publish its one package. Pushing the tag needs
+`RELEASE_TOKEN`, a project access token with the Maintainer role.
+
+Never `git push --tags` or `--follow-tags` from CI. GitLab declines an entire
+push payload when any single ref in it is refused, so bundling refs turns one
+rejection into all of them — the 2026-08-08 failure, where a refused branch took
+two valid tags down with it.
 
 ## Deploy (apps/website)
 

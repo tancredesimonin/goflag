@@ -61,7 +61,7 @@
     "validate:sources": "tsx scripts/validate-sources.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
-    "release": "commit-and-tag-version --path ."
+    "release": "commit-and-tag-version --path . --skip.tag"
   },
   "dependencies": {
     "cheerio": "^1.2.0"
