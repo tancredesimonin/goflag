@@ -507,8 +507,9 @@ memory.
 
 ## Develop locally
 
-Requires pnpm `11.18.0` (pinned via `packageManager` — `corepack enable` picks
-it up). Run these from the repository root:
+Requires pnpm, pinned via `packageManager` in the root `package.json` — run
+`corepack enable` once and it picks up the right version by itself. Run these
+from the repository root:
 
 ```sh
 pnpm install

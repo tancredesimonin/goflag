@@ -67,8 +67,10 @@ import from `packages/cli`. The two products must stay independently useful.
 ## Toolchain
 
 - Node `>=22` (`engines`); `.nvmrc` pins `24.18.1`.
-- Repo pins **`pnpm@11.18.0`** via `packageManager`. Use
-  `corepack enable && corepack prepare pnpm@11.18.0 --activate`.
+- Repo pins pnpm via **`packageManager`** in the root `package.json` — that is
+  the only place the version is written. Use `corepack enable` and let it read
+  the pin; do not add a `corepack prepare pnpm@<version> --activate` line, which
+  only creates a second number to keep in sync.
 - Headless SPA tests need Chromium. `playwright` is a devDependency of the CLI
   package, not of the root, so install it from that package:
   `pnpm --filter @goflag/cli exec playwright install chromium`.
