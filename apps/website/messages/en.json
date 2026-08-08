@@ -216,6 +216,7 @@
     "viewDiff": "Compare with the previous version",
     "onNpm": "View on npm",
     "sections": {
+      "breaking": "Breaking changes",
       "features": "Features",
       "fixes": "Bug fixes",
       "docs": "Documentation",

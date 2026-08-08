@@ -14,7 +14,9 @@ import {
 import { LIB, PACKAGE } from "@/lib/constants";
 import { requireLocale, routes } from "@/lib/seo/site";
 
-const SECTION_ORDER: ChangelogSectionId[] = ["features", "fixes", "docs", "other"];
+// Breaking first. It is the one thing a reader has to act on, and it used to
+// render last under "Other changes", which is the worst place for it.
+const SECTION_ORDER: ChangelogSectionId[] = ["breaking", "features", "fixes", "docs", "other"];
 
 /** What each package is called on npm, and where to send someone who wants it. */
 const NAMES: Record<PackageId, { name: string; npm: string }> = {

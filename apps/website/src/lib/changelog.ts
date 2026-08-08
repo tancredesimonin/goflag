@@ -29,7 +29,7 @@ export interface ChangelogEntry {
   commitUrl: string | null;
 }
 
-export type ChangelogSectionId = "features" | "fixes" | "docs" | "other";
+export type ChangelogSectionId = "breaking" | "features" | "fixes" | "docs" | "other";
 
 export interface ChangelogSection {
   id: ChangelogSectionId;
@@ -50,12 +50,25 @@ export interface ChangelogRelease {
 }
 
 const SECTION_IDS: Record<string, ChangelogSectionId> = {
+  "breaking changes": "breaking",
   features: "features",
   "bug fixes": "fixes",
   documentation: "docs",
   "performance improvements": "other",
   reverts: "other",
 };
+
+/**
+ * `commit-and-tag-version` writes "⚠ BREAKING CHANGES", warning sign included.
+ * Matching on the letters alone means the heading keeps its decoration without
+ * the lookup having to know about it.
+ */
+function sectionLabel(heading: string): string {
+  return heading
+    .toLowerCase()
+    .replace(/[^a-z ]/g, "")
+    .trim();
+}
 
 /** `## [0.1.4](https://…/compare/v0.1.3...v0.1.4) (2026-08-04)` and its plain variant. */
 const RELEASE_HEADING = /^## \[?([0-9][^\]\s]*)\]?(?:\(([^)]+)\))?(?: \(([\d-]+)\))?/;
@@ -133,8 +146,7 @@ export function parseChangelog(markdown: string, pkg: PackageId): ChangelogRelea
       flushEntry();
       flushNote();
       if (line.startsWith("### ")) {
-        const label = line.slice(4).trim().toLowerCase();
-        section = SECTION_IDS[label] ?? "other";
+        section = SECTION_IDS[sectionLabel(line.slice(4))] ?? "other";
       }
       continue;
     }

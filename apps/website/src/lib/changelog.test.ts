@@ -20,12 +20,21 @@ const MULTILINE = `# @goflag/next changelog
 describe("parseChangelog", () => {
   it("keeps a reflowed entry whole", () => {
     const [release] = parseChangelog(MULTILINE, "next");
-    const breaking = release?.sections.find((section) => section.id === "other");
+    const breaking = release?.sections.find((section) => section.id === "breaking");
 
     // The generator wraps a long BREAKING CHANGE body across three lines.
     // Reading only the first printed a sentence that stopped at a semicolon.
     expect(breaking?.entries[0]?.subject).toContain("becomes unnecessary rather than required");
     expect(breaking?.entries).toHaveLength(1);
+  });
+
+  it("reads the breaking heading through its warning sign", () => {
+    const [release] = parseChangelog(MULTILINE, "next");
+
+    // The generator writes "⚠ BREAKING CHANGES". Matching the label literally
+    // dropped it into `other`, which rendered the one thing a reader has to act
+    // on last, under "Other changes".
+    expect(release?.sections.map((section) => section.id)).toContain("breaking");
   });
 
   it("reads the date of a first release, which carries no compare link", () => {
