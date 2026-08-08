@@ -20,7 +20,14 @@ export function DocsSidebar({ groups }: { groups: DocsNavGroup[] }) {
             {group.items.map((item) => {
               // A rule page (`/docs/rules/title.missing`) keeps the catalogue
               // entry highlighted, so the reader never loses their place.
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              //
+              // The index is excluded from that prefix rule, because `/docs` is
+              // a prefix of every page here and it lit up on all of them. It
+              // only showed as a duplicate highlight once a second section
+              // arrived, but it was wrong from the first nested page.
+              const active =
+                pathname === item.href ||
+                (item.href !== "/docs" && pathname.startsWith(`${item.href}/`));
 
               return (
                 <li key={item.href}>

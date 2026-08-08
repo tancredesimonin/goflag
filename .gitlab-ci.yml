@@ -1,24 +1,25 @@
 # Layer 1 — vulnerability scanning (infrastructure/gitlab-templates)
 #
-# Skipped on everything the release job pushes. A cross-project include is
-# resolved with the permissions of whoever triggered the pipeline, and the
-# release job pushes the tag, the release commit on main, and the same commit
-# on develop using a project access token — a bot that is a member of this
-# project and no other, so it cannot read `infrastructure`. The include fails
-# and the pipeline dies at creation with zero jobs, `publish:npm` included.
+# Skipped on everything the release bot pushes — which is now exactly one thing,
+# a tag. A cross-project include is resolved with the permissions of whoever
+# triggered the pipeline, and the bot is a project access token: a member of this
+# project and no other, so it cannot read `infrastructure`. The include fails and
+# the pipeline dies at creation with zero jobs, `publish:npm` included.
 #
 # Nothing is lost: these jobs already restrict themselves to merge requests and
-# the default branch, so they were filtered out on those refs anyway.
+# the default branch, so they were filtered out on tags anyway.
 #
-# `$CI_COMMIT_MESSAGE` may be unavailable this early. If it is, the condition
-# reads as a non-match and the include is added — which is exactly today's
-# behaviour, so the tag half still holds and nothing regresses.
+# There used to be a second half here, `$CI_COMMIT_MESSAGE !~ /^chore\(release\)/`,
+# because the release job also pushed the version commit to main and to develop.
+# It does not any more — that commit now arrives through a merge request opened
+# by a person, whose permissions resolve the include fine. Keeping the condition
+# would only skip the security scan on the one commit that ships.
 include:
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-trivy-deps.yml"
     rules: &not_a_release_push
-      - if: $CI_COMMIT_TAG == null && $CI_COMMIT_MESSAGE !~ /^chore\(release\)/
+      - if: $CI_COMMIT_TAG == null
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
     file: "gitlab-templates/security-pnpm-audit.yml"
@@ -40,7 +41,6 @@ stages:
   - release
 
 variables:
-  PNPM_VERSION: "11.18.0"
   CI: "true"
   # `pnpm install` runs the root `prepare` script, which installs the git hooks.
   # A runner has no commits to make, so that is pure setup for nothing — and
@@ -99,8 +99,13 @@ variables:
       - .pnpm-store
       - node_modules
   before_script:
+    # No version here on purpose. `packageManager` in package.json is the single
+    # declaration; corepack reads it on the first `pnpm` call and fetches that
+    # version. A `corepack prepare pnpm@<x> --activate` line alongside it is not
+    # a second safety net — it is a second number to keep in sync, and when the
+    # two drifted every job downloaded pnpm twice, the activate step being the
+    # wasted one. Same reason the Dockerfile says `corepack enable pnpm` bare.
     - corepack enable
-    - corepack prepare pnpm@${PNPM_VERSION} --activate
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
@@ -384,6 +389,15 @@ publish:npm:
         echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
         exit 1
       fi
+    # Already there? Then there is nothing to do, and saying so beats a red
+    # pipeline on a release that succeeded. This is the case `publishing.md` §1
+    # warns about: a first version published by hand leaves the registry ahead
+    # of the tags, and the first automatic run collides with it.
+    - |
+      if [ -n "$(npm view "@goflag/cli@$PKG_VERSION" version 2>/dev/null)" ]; then
+        echo "@goflag/cli@$PKG_VERSION is already on npm — nothing to publish."
+        exit 0
+      fi
     # npm rather than pnpm: the OIDC exchange is implemented by the npm CLI, so
     # publishing goes through it directly from the package directory.
     # No --provenance: npm only attests public repositories, and this one is
@@ -413,143 +427,89 @@ publish:next:
         echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
         exit 1
       fi
+    # Same guard as `publish:npm`, and this is the package it was written for:
+    # `0.1.0` went out by hand on 2026-08-07, so the registry has a version no
+    # tag points at.
+    - |
+      if [ -n "$(npm view "@goflag/next@$PKG_VERSION" version 2>/dev/null)" ]; then
+        echo "@goflag/next@$PKG_VERSION is already on npm — nothing to publish."
+        exit 0
+      fi
     - cd packages/next && npm publish --access public
 
-# Merging develop into main is the decision to publish. This job turns that
-# merge into a version and a tag; `publish:npm` above turns the tag into a
-# package. Two jobs rather than one because they fail for different reasons:
-# a bad version is a repository problem, a failed publish is a registry one.
+# Merging develop into main is the decision to publish. This job is the only
+# thing the pipeline ever writes back to the repository, and it writes exactly
+# one kind of ref: a tag, on a commit that is already on main.
+#
+# It bumps nothing. The version and the changelog are authored on a branch,
+# reviewed, and merged like every other commit — `main` and `develop` both
+# refuse a push from everyone, CI included, and a release that needs an
+# exception to that rule is a release nobody read. `pnpm release` at the
+# repository root is what writes them; see AGENTS.md.
+#
+# So this job reconciles rather than releases: main declares a version, and the
+# tag either already exists or gets created. That makes it idempotent, safe to
+# retry, and self-healing — a tag lost to a failed pipeline is created by the
+# next merge instead of by hand.
+#
+# No `<<: *pnpm`: this needs `node` from the image and nothing else. A tag that
+# cannot be created because a dependency failed to resolve is a coupling with
+# no purpose.
 #
 # Needs RELEASE_TOKEN — a project access token with the Maintainer role and
-# `write_repository`. The job token cannot push, and a push made with it would
-# not trigger the tag pipeline that publishes.
-release:
+# `write_repository`, because `v*` and `next-v*` are protected tags and only
+# Maintainers may create them. The job token cannot, and a push made with it
+# would not trigger the tag pipeline that publishes.
+tag:
   stage: release
-  <<: *pnpm
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  variables:
-    # commit-and-tag-version reads the whole history and every tag to work out
-    # the bump. The default shallow clone would make it invent 1.0.0 forever.
-    GIT_DEPTH: 0
   script:
     - git config user.name "goflag release"
     - git config user.email "39413504+tancredesimonin@users.noreply.github.com"
     - git remote set-url origin "https://oauth2:${RELEASE_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git"
-    - git fetch origin --tags --quiet
 
-    # CI checks out a detached HEAD; commit-and-tag-version commits, so it needs
-    # a branch to commit onto.
-    - git checkout -B main "$CI_COMMIT_SHA"
-
-    # Two packages, one job. Two jobs would race: each pushes a release commit
-    # to main, and the second would be rejected as non-fast-forward — or worse,
-    # succeed after a fetch and publish a tag for a tree the first job never
-    # saw. One job, both packages, one push at the end.
-    #
-    # Everything below is the single-package logic, unchanged and parameterised.
-    # `return` rather than `exit`: a package with nothing to release must not
-    # end the job for the other one.
-    - RELEASED=""
+    # One ref per push, and never `--tags` or `--follow-tags`. Both bundle
+    # several refs into one payload, and GitLab declines the entire payload when
+    # any single ref in it is refused — which is how a branch rejection took two
+    # innocent tags down with it on 2026-08-08.
     - |
-      release_one() {
-        NAME="$1"; FILTER="$2"; MATCH="$3"; MANIFEST="$4"; shift 4
+      tag_one() {
+        NAME="$1"; MANIFEST="$2"; PREFIX="$3"
+        TAG="$PREFIX$(node -p "require('./$MANIFEST').version")"
 
-        # Per-namespace: a bare `git describe` would answer with whichever tag
-        # is most recent across both packages, and diff against a range that
-        # has nothing to do with this one.
-        LAST_TAG="$(git describe --tags --abbrev=0 --match "$MATCH" 2>/dev/null || true)"
-        RANGE="${LAST_TAG:+$LAST_TAG..HEAD}"
-
-        # A merge to main is not always a release. Docs, chores and refactors
-        # are merged too, and publishing on those would spend a version number
-        # on nothing — then open a merge request on every consuming site to pin
-        # it.
-        #
-        # Written to a file rather than piped into `grep -q`. Under the
-        # runner's `pipefail`, grep exits at the first match, `git log` takes
-        # SIGPIPE, and the pipeline reports 141 — so `if !` reads a match as
-        # "found nothing". That inverts the guard exactly when there is
-        # something to release, which is how v0.1.1 was skipped.
-        #
-        # Outside the working tree: commit-and-tag-version commits right after,
-        # and a stray file next to package.json is one `git add -A` away from
-        # shipping.
-        git log --format=%B $RANGE > /tmp/release-range.txt
-        if ! grep -qE '^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE' /tmp/release-range.txt; then
-          echo "$NAME: no feat/fix/perf/breaking commit since ${LAST_TAG:-the first commit} — nothing to release."
+        # Asked of the remote rather than the local clone: the checkout is
+        # shallow and fetches no tags, so a local lookup answers "absent" every
+        # time and the push then fails on an existing tag instead of skipping.
+        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+          echo "$NAME: $TAG is already tagged — nothing to do."
           return 0
         fi
 
-        # And the commit type is not enough. `fix(ci)` and `fix(deps)` are
-        # honest conventional-commit fixes that change nothing a consumer can
-        # install — three of the four versions tagged on 2026-08-02 were
-        # exactly that, each spending a number and queueing a merge request on
-        # every consuming site.
-        #
-        # So: did the published surface move? That is `src`, the manifest, and
-        # the files that reach the tarball. `dist/` is not listed because it is
-        # built from `src` and never committed.
-        #
-        # Skipped when no tag exists: a first release has nothing to diff
-        # against and should always go out.
-        if [ -n "$LAST_TAG" ]; then
-          git diff --name-only "$LAST_TAG..HEAD" -- "$@" > /tmp/release-paths.txt
-          if [ ! -s /tmp/release-paths.txt ]; then
-            echo "$NAME: nothing under the published surface changed since $LAST_TAG — nothing to release."
-            echo "  (the files that reach the tarball: $*)"
-            return 0
-          fi
-          echo "$NAME: published surface changed:"
-          sed 's/^/  /' /tmp/release-paths.txt
-        fi
-
-        pnpm --filter "$FILTER" release
-        echo "releasing $NAME $(node -p "require('./$MANIFEST').version")"
-        RELEASED="yes"
+        # Annotated, like the ones commit-and-tag-version used to write: a
+        # lightweight tag records neither who created it nor when.
+        git tag -a "$TAG" -m "$TAG" "$CI_COMMIT_SHA"
+        git push origin "refs/tags/$TAG"
+        echo "$NAME: tagged $TAG"
       }
 
-    - release_one "@goflag/cli" "@goflag/cli" "v[0-9]*" "packages/cli/package.json"
-      packages/cli/src packages/cli/package.json README.md LICENSE
-    - release_one "@goflag/next" "@goflag/next" "next-v[0-9]*" "packages/next/package.json"
-      packages/next/src packages/next/package.json packages/next/README.md packages/next/LICENSE
-
-    - |
-      if [ -z "$RELEASED" ]; then
-        echo "Nothing to release."
-        exit 0
-      fi
-
-    # Tag last-ish: pushing the branch and the tag together means the tag
-    # pipeline (which publishes) only ever sees a commit that is already on main.
-    - git push origin HEAD:main --follow-tags
-
-    # The release commit carries the new version and the changelog. If develop
-    # does not receive it, the next merge to main sees two different versions of
-    # package.json and resolves the conflict in whichever direction it likes.
-    #
-    # Loud on failure: the package is already published at this point, so a
-    # silent skip would leave develop quietly wrong for weeks.
-    - |
-      if ! git push origin HEAD:develop; then
-        echo "v$VERSION is published, but develop did not fast-forward." >&2
-        echo "Someone pushed to develop during the release. Merge main into develop by hand." >&2
-        exit 1
-      fi
+    - tag_one "@goflag/cli" "packages/cli/package.json" "v"
+    - tag_one "@goflag/next" "packages/next/package.json" "next-v"
 
 workflow:
   rules:
     # First, and deliberately so. A tag pipeline shares the commit message of
-    # the release commit below, so any rule matching that message would take
-    # the publishing pipeline down with it. This is the same trap as putting
-    # `[skip ci]` in the release commit: it skips the tag too.
+    # the commit it points at, so any rule matching a message would take the
+    # publishing pipeline down with it. This is the same trap as putting
+    # `[skip ci]` in a release commit: it skips the tag too.
     - if: $CI_COMMIT_TAG
 
-    # The `release` job pushes its own commit back to main, which triggers a
-    # pipeline, which would run `release` again. Cut the loop here rather than
-    # in the job, so the whole pipeline is skipped instead of merely idle.
-    - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /^chore\(release\)/
-      when: never
+    # There used to be a `when: never` here for `chore(release)` commits on
+    # main, because the release job pushed its own commit back and would
+    # otherwise have re-run on it. Nothing pushes a commit to main any more, so
+    # there is no loop to cut — and the rule became actively harmful: a release
+    # merged fast-forward leaves `chore(release)` as the tip of main, and
+    # skipping that pipeline is skipping the only job that creates the tag.
 
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"

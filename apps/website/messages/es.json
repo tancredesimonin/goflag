@@ -18,7 +18,7 @@
     },
     "changelog": {
       "title": "Registro de cambios",
-      "description": "Todas las versiones publicadas de @goflag/cli, generadas desde el historial de commits, con las notas que explican qué cambia cada versión."
+      "description": "Todas las versiones publicadas de @goflag/cli y @goflag/next, generadas desde el historial de commits, con las notas que explican cada versión."
     }
   },
   "home": {
@@ -173,6 +173,10 @@
         "q": "¿Funciona fuera de Next.js?",
         "a": "Las comprobaciones sí: juzgan HTML, y el HTML es HTML. Los fragmentos de corrección que acompañan a los hallazgos dan por supuesto el App Router de Next.js, y lo dicen. Nada se rompe en un sitio hecho con Rails o con Astro; simplemente obtiene el hallazgo sin el remedio para copiar y pegar."
       },
+      "remedy": {
+        "q": "¿Corrige lo que encuentra?",
+        "a": "En tu sitio no: lee lo que lee un crawler y nunca toca tu código. Pero el mismo proyecto publica @goflag/next, un registro de rutas para el App Router de Next.js que produce la metadata, el clúster hreflang, el sitemap y robots.txt desde una sola declaración, con lo que varios de estos hallazgos dejan de ser posibles. Está documentado en Biblioteca Next.js."
+      },
       "chromium": {
         "q": "¿Necesito Chromium?",
         "a": "Solo sin --static. Una página cuyo head parece vacío se vuelve a renderizar en Chromium en modo headless, para que una aplicación renderizada en el cliente no aparezca como si le faltara todo; --static desactiva eso y nunca descarga un navegador."
@@ -199,7 +203,7 @@
   },
   "changelog": {
     "title": "Registro de cambios",
-    "lead": "Todas las versiones publicadas de {package}. Las entradas se generan a partir del historial de commits, así que esta página no puede desviarse de lo que realmente se publicó.",
+    "lead": "Todas las versiones publicadas de goflag: la CLI y la biblioteca Next.js, en una sola línea de tiempo. Las entradas se generan a partir del historial de commits, así que esta página no puede desviarse de lo que realmente se publicó.",
     "currentVersion": "Versión actual",
     "released": "Publicada",
     "installPinned": "Fijar esta versión",
@@ -212,6 +216,7 @@
     "viewDiff": "Comparar con la versión anterior",
     "onNpm": "Ver en npm",
     "sections": {
+      "breaking": "Cambios incompatibles",
       "features": "Funcionalidades",
       "fixes": "Correcciones de fallos",
       "docs": "Documentación",
@@ -237,7 +242,8 @@
     "github": "Espejo de GitHub",
     "legalNotice": "Aviso legal",
     "privacy": "Política de privacidad",
-    "cookies": "Política de cookies"
+    "cookies": "Política de cookies",
+    "library": "Biblioteca Next.js"
   },
   "legal": {
     "lastUpdated": "Última actualización: {date}"

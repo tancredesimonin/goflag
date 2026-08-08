@@ -22,6 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "pnpm -r clean",
+    "release": "node scripts/release.mjs",
     "dev": "pnpm --filter @goflag/cli dev",
     "prepare": "husky"
   },

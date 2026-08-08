@@ -492,23 +492,44 @@ console.log(report.summary); // { brokenLinks, missingTranslations, seoIssues, v
 ## Repository layout
 
 ```
-packages/cli/      @goflag/cli — the CLI (installs the `goflag` command)
+packages/cli/      @goflag/cli, the CLI (installs the `goflag` command)
+packages/next/     @goflag/next, the Next.js library (see below)
+apps/website/      goflag.tech, the landing page and the documentation
 tools/name-holder/ the bare `goflag` name on npm, a signpost to @goflag/cli
 ```
 
-That is the whole tree. `@goflag/next` (the Next.js library) and the
-documentation site are planned but deliberately absent: the workspace globs
-(`packages/*`, `apps/*`) are ready for them, and empty stubs for things that do
-not exist are how a repository accumulates code nobody calls.
+That is the whole tree. Neither `packages/next` nor `apps/**` may import from
+the CLI: the two products stay independently useful, and an ESLint rule
+enforces it rather than trusting memory.
 
-When they land, they must not import from the CLI: the two products stay
-independently useful, and an ESLint rule enforces it rather than trusting
-memory.
+## The other half: `@goflag/next`
+
+goflag tells you what is wrong. It does not tell you how to stop writing it
+wrong. [`@goflag/next`](packages/next) is a route registry for the Next.js App
+Router that produces the HTML this auditor would have nothing to say about.
+
+```ts
+export const routes = site.routes({
+  home: { path: "" },
+  docs: collection(allDocs, { path: (d) => `/docs/${d.slug}`, locale: "en" }),
+});
+
+// app/sitemap.ts
+export default () => routes.sitemap();
+```
+
+A sitemap derived separately from the metadata is two derivations of one truth,
+held in agreement by vigilance, and their disagreement is what goflag reports as
+`hreflang.sitemap-mismatch`. Projecting both from one registry makes that
+finding unrepresentable. Full documentation at
+[goflag.tech/docs/next](https://goflag.tech/docs/next), and the API reference in
+[`packages/next/README.md`](packages/next/README.md).
 
 ## Develop locally
 
-Requires pnpm `11.18.0` (pinned via `packageManager` — `corepack enable` picks
-it up). Run these from the repository root:
+Requires pnpm, pinned via `packageManager` in the root `package.json` — run
+`corepack enable` once and it picks up the right version by itself. Run these
+from the repository root:
 
 ```sh
 pnpm install

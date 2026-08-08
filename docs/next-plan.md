@@ -250,14 +250,14 @@ extraire un paquet pour ça recréerait le problème que I4 prétend éviter.
 
 ## 6. Phasage
 
-| Étape   | Contenu                                                                                                                                                                                                                          | État        |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| **N-0** | **Mise au propre dans `apps/website`, sans paquet** : fusionner les deux constructeurs derrière une politique par route, sortir `process.env` des builders, faire dériver `sitemap.ts` du même tableau de routes que le `<head>` | ✅ livrée   |
-| **N-1** | Créer `packages/next` : `defineSite`, `site.routes()`, `routes.metadata()`. `apps/website` migre                                                                                                                                 | ✅ livrée   |
-| **N-2** | `routes.sitemap()` + `routes.robots()` depuis le même registre                                                                                                                                                                   | ✅ livrée   |
-| **N-3** | **stereo-house migre** — le test d'ergonomie                                                                                                                                                                                     | ⬜ suivante |
-| **N-4** | Publication `@goflag/next@0.1.0`                                                                                                                                                                                                 | ⬜          |
-| hors v0 | `.goflag/routes.json` (5.2/5.3), `llms.txt` (phase 6), `tancrede` / `tancredo` / `openfinanceguide` (5.1)                                                                                                                        | ⬜          |
+| Étape   | Contenu                                                                                                                                                                                                                          | État      |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **N-0** | **Mise au propre dans `apps/website`, sans paquet** : fusionner les deux constructeurs derrière une politique par route, sortir `process.env` des builders, faire dériver `sitemap.ts` du même tableau de routes que le `<head>` | ✅ livrée |
+| **N-1** | Créer `packages/next` : `defineSite`, `site.routes()`, `routes.metadata()`. `apps/website` migre                                                                                                                                 | ✅ livrée |
+| **N-2** | `routes.sitemap()` + `routes.robots()` depuis le même registre                                                                                                                                                                   | ✅ livrée |
+| **N-3** | **stereo-house migre** — le test d'ergonomie                                                                                                                                                                                     | ✅ livrée |
+| **N-4** | Publication `@goflag/next` : `0.1.0` à la main le 2026-08-07, puis `0.2.0` par la chaîne automatique le 2026-08-08 (voir `docs/publishing.md`)                                                                                   | ✅ livrée |
+| hors v0 | `.goflag/routes.json` (5.2/5.3), `llms.txt` (phase 6), `tancrede` / `tancredo` / `openfinanceguide` (5.1)                                                                                                                        | ⬜        |
 
 ### Ce que N-3 a réellement produit
 

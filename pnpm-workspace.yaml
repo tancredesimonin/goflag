@@ -2,10 +2,10 @@
 # Keeping them apart means a release script that iterates over packages never
 # picks up the website, and `rules:changes` in CI can key on the distinction.
 #
-# `apps/website` is the marketing and documentation site. `packages/next` does
-# not exist yet; the glob is ready for it, but creating an empty stub for
-# something that does not exist is how a repository accumulates code nobody
-# calls.
+# `apps/website` is the marketing and documentation site. `packages/next` is the
+# library that produces what the CLI audits; both landed after this split was
+# written, and the split is what keeps a release script iterating over packages
+# from ever picking up the site.
 packages:
   - "packages/*"
   - "apps/*"
@@ -46,7 +46,7 @@ allowBuilds:
 # Security floors, moved verbatim from the package.json `pnpm.overrides` block — pnpm 11 no
 # longer reads that field, so leaving them there would have dropped both pins silently.
 overrides:
-  nanoid: ">=3.3.17"
+  nanoid: "^3.3.17"
   undici: ^7.28.0
   fast-uri: ^3.1.2
 

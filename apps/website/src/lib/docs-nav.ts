@@ -7,15 +7,20 @@ export interface DocsNavItem {
 }
 
 export interface DocsNavGroup {
-  id: "start" | "use" | "reference";
+  id: "start" | "use" | "reference" | "library";
   title: string;
   items: DocsNavItem[];
 }
 
+/**
+ * `library` comes last on purpose. The CLI is what a reader arrives for, and
+ * `@goflag/next` only makes sense once they know what it is producing for.
+ */
 const GROUP_TITLES: Record<DocsNavGroup["id"], string> = {
   start: "Getting started",
   use: "Using it",
   reference: "Reference",
+  library: "The Next.js library",
 };
 
 /**
@@ -57,7 +62,7 @@ export function getDocsNav(): DocsNavGroup[] {
     ...GENERATED,
   ];
 
-  return (["start", "use", "reference"] as const)
+  return (["start", "use", "reference", "library"] as const)
     .map((id) => ({
       id,
       title: GROUP_TITLES[id],

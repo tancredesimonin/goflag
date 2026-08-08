@@ -1,6 +1,6 @@
 import { allDocs } from "content-collections";
 
-import { INSTALL, PACKAGE, SITE } from "@/lib/constants";
+import { INSTALL, LIB, PACKAGE, SITE } from "@/lib/constants";
 import { docsHref, getDocsNav } from "@/lib/docs-nav";
 import { ALL_RULES } from "@/lib/rules-catalog";
 import { site } from "@/lib/seo/site";
@@ -24,6 +24,10 @@ export function GET() {
   lines.push("");
   lines.push(
     `${PACKAGE.name} is a Node CLI that crawls a site by URL and reports four classes of defect: broken links, missing translation pages, a robots.txt that contradicts the pages it serves, and missing or misconfigured SEO metadata. The JSON report is the source of truth; the terminal output is a rendering of it. MIT licensed, Node ${PACKAGE.nodeRange}, no account and no telemetry.`,
+  );
+  lines.push("");
+  lines.push(
+    `${LIB.name} is the other half: a route registry for the Next.js App Router that produces what the CLI audits. A site declares its routes once, and the metadata, the hreflang cluster, the sitemap and robots.txt are derived from that one declaration rather than kept in agreement by hand. Build-time only, no runtime dependency.`,
   );
   lines.push("");
   lines.push(`Try it: \`${INSTALL.tryIt}\``);
@@ -54,7 +58,8 @@ export function GET() {
   lines.push(
     `- [Changelog](${base}/en/changelog): every published version, generated from the commit history.`,
   );
-  lines.push(`- [npm](${PACKAGE.npm})`);
+  lines.push(`- [npm](${PACKAGE.npm}): ${PACKAGE.name}`);
+  lines.push(`- [npm](${LIB.npm}): ${LIB.name}`);
   if (PACKAGE.repoPublic) lines.push(`- [Source](${PACKAGE.repo})`);
   lines.push("");
 

@@ -1,6 +1,6 @@
 {
   "name": "@goflag/next",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Declare a Next.js App Router site's routes once, and derive the metadata, hreflang cluster, sitemap and robots.txt that goflag audits for.",
   "keywords": [
@@ -16,7 +16,7 @@
     "open-graph"
   ],
   "license": "MIT",
-  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "release": "commit-and-tag-version --path ."
+    "release": "commit-and-tag-version --path . --skip.tag"
   },
   "peerDependencies": {
     "next": ">=15"

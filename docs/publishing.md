@@ -2,8 +2,12 @@
 
 > **Rédigé** 2026-08-07 · **Suivi** — `@goflag/next` est passée par ce chemin
 > le 2026-08-07 : `0.1.0` publiée à la main, trusted publisher configuré,
-> manifeste publié vérifié. Le document reste écrit au présent parce que
-> `@goflag/og` devra refaire exactement les mêmes étapes.
+> manifeste publié vérifié. Le 2026-08-08 la première release automatique a
+> échoué — pas sur npm, sur `git push` : la chaîne poussait un commit sur `main`,
+> qui n'accepte de push de personne. Elle a été refaite en « la CI ne pousse
+> qu'un tag » (§4), et l'étape ②bis ci-dessous en est le corollaire.
+> Le document reste écrit au présent parce que `@goflag/og` devra refaire
+> exactement les mêmes étapes.
 > **Portée** — la première publication de `@goflag/next` sur npm, la
 > configuration du trusted publisher OIDC, et l'ordre des opérations autour de
 > la fusion. Tout ce qui suit est **manuel** : le reste est déjà automatisé.
@@ -27,26 +31,37 @@ Donc : une publication manuelle, une configuration, et plus jamais.
 ## 1. L'ordre, qui n'est pas négociable
 
 ```
-①  publier 0.1.0 à la main        ← depuis la branche, avant toute fusion
-②  configurer le trusted publisher
-③  fusionner la MR dans develop
-④  fusionner develop dans main    ← déclenche release + publish:next en OIDC
+①    publier 0.1.0 à la main        ← depuis la branche, avant toute fusion
+②    configurer le trusted publisher  (npm)
+②bis protéger le namespace de tags   (GitLab)
+③    fusionner la MR dans develop
+④    fusionner develop dans main    ← déclenche tag + publish:next en OIDC
 ```
 
-**② avant ④.** Si `main` reçoit la lib avant que le trusted publisher existe,
-le job `release` constate qu'aucun tag `next-v*` n'est présent, tague
-`next-v0.1.1`, et `publish:next` échoue sur un paquet absent du registre. Le
-tag reste, la publication non, et il faut démêler.
+**② et ②bis avant ④.** Si `main` reçoit la lib avant que le trusted publisher
+existe, le job `tag` pose le tag et `publish:next` échoue sur un paquet absent
+du registre. Le tag reste, la publication non, et il faut démêler. Et sans
+②bis, le motif de tag qui déclenche une publication OIDC est créable par
+n'importe quel Developer.
 
-**③ peut passer avant ①** sans rien casser : le job `release` ne tourne que sur
+**③ peut passer avant ①** sans rien casser : le job `tag` ne tourne que sur
 `main`, et `develop` ne promet rien. Mais publier depuis la branche est plus
 simple, puisque c'est là que le code est.
 
 **Ne crée pas de tag `next-v0.1.0` à la main.** La pipeline de tag lancerait
 `publish:next` sur une version déjà présente, npm refuserait, et la pipeline
-serait rouge sur une release réussie. La première publication automatique sera
-`0.1.1` — c'est exactement le chemin qu'a pris le CLI, qui est passé de `0.1.0`
-manuel à `0.1.3`.
+serait rouge sur une release réussie.
+
+**La première publication automatique n'est pas `0.1.1`.** C'était la prévision,
+tirée du chemin du CLI (`0.1.0` manuel → `0.1.3`), et elle est fausse pour une
+raison structurelle : aucun tag `next-v*` n'existe encore, donc la plage de
+commits que lit `commit-and-tag-version` remonte au premier commit du dépôt et
+contient `feat(next)!: derive every locale form from ICU`. Un `!` en `0.x` force
+un bump **mineur**. Ce sera `0.2.0`.
+
+La leçon vaut pour `@goflag/og` : la publication manuelle de `0.1.0` ne pose pas
+de tag, donc la première release automatique voit toute l'histoire du paquet,
+pas seulement ce qui a suivi. Si elle contient un breaking, le numéro saute.
 
 ---
 
@@ -153,21 +168,60 @@ id_tokens:
 
 ---
 
+## 3bis. Étape ②bis — protéger le namespace de tags
+
+Côté GitLab cette fois, et c'est l'étape qu'on a oubliée pour `@goflag/next` :
+
+```sh
+glab api --method POST projects/81884394/protected_tags \
+  -f name='next-v*' -f create_access_level=40
+```
+
+`v*` était protégé depuis le premier jour ; `next-v*` ne l'a jamais été. Le trou
+n'a rien coûté parce qu'aucun tag `next-v*` n'est jamais sorti, mais il était
+réel : **`publish:next` se déclenche sur le motif du tag et publie via OIDC,
+sans credential à voler.** Un tag forgé par n'importe quel compte Developer
+publiait sous ton nom.
+
+La règle générale, qui vaut pour `og-v*` le jour venu : **un job `publish:*`
+déclenché par un motif de tag exige que ce motif soit protégé.** Le trusted
+publisher garantit _quel dépôt_ publie, jamais _qui_ a le droit de le demander.
+
+Les tags protégés sont un système à part des branches protégées : ils ne règlent
+que la **création**, et la protection d'une branche n'a aucun effet sur eux.
+C'est ce qui permet à la CI de taguer `main` sans jamais pouvoir y pousser.
+
+---
+
 ## 4. Étapes ③ et ④ — fusionner
 
-1. **MR !83 → `develop`.** Rien ne se publie ; le job `release` ne s'exécute que
-   sur `main`.
-2. **`develop` → `main`.** C'est la décision de publier, comme pour le CLI.
+1. **`pnpm release` sur une branche coupée de `develop`.** Le script décide, pour
+   chaque paquet, si sa surface publiée a bougé depuis son dernier tag ; si oui
+   il bumpe, écrit le changelog et commite. Il ne tague pas.
+2. **MR → `develop`.** Le commit de release est relu comme les autres. Rien ne se
+   publie.
+3. **`develop` → `main`.** C'est la décision de publier, comme pour le CLI.
 
 Ce que la pipeline de `main` fait alors, dans l'ordre :
 
-| Job            | Ce qu'il fait                                                                                                                          |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `release`      | Pour chaque paquet : la surface publiée a-t-elle bougé depuis son dernier tag ? Si oui, bump + changelog + tag. Un seul push à la fin. |
-| `publish:npm`  | Sur un tag `v*` seulement. Ici : rien, la surface du CLI n'a pas bougé.                                                                |
-| `publish:next` | Sur un tag `next-v*`. Échange OIDC, `npm publish`.                                                                                     |
+| Job            | Ce qu'il fait                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `tag`          | Lit la version de chaque manifeste, la compare aux tags du remote, crée celui qui manque. Un push par tag. |
+| `publish:npm`  | Sur un tag `v*` seulement.                                                                                 |
+| `publish:next` | Sur un tag `next-v*`. Échange OIDC, `npm publish`.                                                         |
 
-Attendu ce coup-ci : `@goflag/next@0.1.1` publiée, `@goflag/cli` intouchée.
+Le job `tag` ne décide rien et ne bumpe rien : c'est une réconciliation entre ce
+que `main` déclare et ce que le registre de tags contient. Il est donc
+idempotent, rejouable, et rattrape tout seul un tag perdu par une pipeline
+rouge — au lieu de demander une intervention manuelle sur une branche protégée.
+
+**Pourquoi le bump n'est pas fait par la CI.** `main` et `develop` refusent un
+push de tout le monde, runner compris. Une release qui exigerait une exception à
+cette règle serait une release que personne n'a relue. Le 2026-08-08, le job
+`release` de l'époque a tenté `git push origin HEAD:main --follow-tags` et s'est
+fait refuser les trois refs d'un coup : GitLab décline le payload entier dès
+qu'une seule de ses refs est interdite. D'où la règle, à ne jamais réintroduire :
+**un ref par push, jamais `--tags` ni `--follow-tags`.**
 
 ### Vérifier que l'OIDC a marché
 
@@ -198,18 +252,20 @@ correspondre **exactement**, chemin du fichier CI compris.
 
 ---
 
-## 6. Les quatre pièges, tous déjà payés une fois
+## 6. Les cinq pièges, tous déjà payés une fois
 
 Consignés au §2 du plan principal. Ils ne se reproduiront pas à l'identique,
 mais ils indiquent où regarder quand quelque chose ne va pas.
 
-| Symptôme                            | Cause réelle                                                             |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `403` à la publication              | granular token sur un paquet jamais publié — n'en utilise pas pour ①     |
-| `EOTP`                              | 2FA sur les écritures, depuis une CI. C'est ce que l'OIDC supprime.      |
-| `404` en local                      | session npm expirée — `npm whoami` d'abord                               |
-| Le paquet publié diffère du tarball | npm réécrit `package.json` à la publication. D'où la vérification du §2. |
+| Symptôme                                                                | Cause réelle                                                                                                |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `403` à la publication                                                  | granular token sur un paquet jamais publié — n'en utilise pas pour ①                                        |
+| `EOTP`                                                                  | 2FA sur les écritures, depuis une CI. C'est ce que l'OIDC supprime.                                         |
+| `404` en local                                                          | session npm expirée — `npm whoami` d'abord                                                                  |
+| Le paquet publié diffère du tarball                                     | npm réécrit `package.json` à la publication. D'où la vérification du §2.                                    |
+| `not allowed to push to protected branches`, et **trois** refs refusées | Une seule l'était : GitLab décline le payload entier. La CI ne pousse plus qu'un tag, un ref par push (§4). |
 
 **La leçon commune** : une pipeline verte ne dit pas qu'une chaîne fonctionne,
-seulement qu'elle n'a pas été exercée. Trois des quatre défauts vivaient depuis
-des jours dans une CI verte.
+seulement qu'elle n'a pas été exercée. Quatre des cinq défauts vivaient depuis
+des jours dans une CI verte — le dernier depuis que la chaîne à deux paquets
+avait été écrite, sans qu'un seul tag `next-v*` ne soit jamais passé dedans.
