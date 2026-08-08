@@ -1,0 +1,67 @@
+---
+title: What it refuses to build
+description: Every check the library performs fails the build, instead of shipping a defect that is invisible in a browser and expensive weeks later in search.
+navTitle: What it refuses
+group: library
+order: 3
+---
+
+Everything below is a defect that ships silently and costs weeks to find. The
+library refuses it at build time instead, which is the only moment it is cheap.
+
+## Routes
+
+| Refused                                               | Because                                                                 |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| A path no route declares                              | the page would render a canonical and be absent from the sitemap        |
+| Two routes on one path                                | the head and the sitemap would describe different routes under one URL  |
+| A locale a route does not serve                       | the canonical would name a page that was never built                    |
+| A collection entry in a locale the site omits         | the content and the declaration contradict each other, and neither wins |
+| A path that does not start with `/`, or ends with one | both double into every canonical and every alternate on the site        |
+
+## Site
+
+| Refused                                     | Because                                                                       |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `baseUrl` with a path, or a relative one    | it prefixes every absolute URL the site emits                                 |
+| `baseUrl` that is not http or https         | same, and the scheme reaches the sitemap                                      |
+| A site serving no locale                    | there is no cluster to build and no `x-default` to point anywhere             |
+| Duplicate locales                           | the alternates would list the same page twice                                 |
+| A malformed language tag                    | `locale.invalid`, which exists because these tables get copied wrong          |
+| `og:locale` for a territoryless locale      | ogp.me defines it as `language_TERRITORY`, and guessing one picks an audience |
+| A sitemap `priority` outside `0.0` to `1.0` | the value is silently dropped by crawlers rather than corrected               |
+
+## Two things it gets right that hand-written versions usually do not
+
+**It does not re-case your locale tag.** If your URLs are `/pt-br/`, the tag it
+emits is the one you declared. A library that rewrites the site's own identifier
+manufactures a disagreement between the URL and the tag, and the auditor
+correctly reports it. This was a real bug, found by the second site to migrate,
+and it produced a phantom "missing pt-BR" on a site already serving that
+language.
+
+**`x-default` is in its own cluster.** A `x-default` that points outside the set
+of alternates is a cluster that does not close, and reciprocity checks fail on
+it.
+
+## The tests are the rules
+
+The library's own suite does not invent its assertions. Each one is named after
+the goflag rule it covers: hreflang reciprocity, `x-default` inside its own
+cluster, sitemap and `<head>` in agreement, `og:locale` territorialised.
+
+That file is explicitly provisional. When `goflag rules --json` ships the
+catalogue as data, it is replaced by a harness that renders the library's output
+and evaluates the real rules against it. A rule added to the catalogue then
+breaks the library if the library does not satisfy it, which is the loop worth
+having rather than an accident to correct.
+
+## What it deliberately does not do
+
+- **No `next-intl` wrapper.** Forty lines with nothing added.
+- **No React components.** They drag a design system in with them.
+- **No `process.env`.** See [the registry](/docs/next/routes#it-reads-no-environment-variable).
+- **No JSON-LD yet.** The catalogue does not judge structured data beyond its
+  presence, and producing what nobody can check is how signals get collected and
+  never read.
+- **No Pages Router.** App Router only.

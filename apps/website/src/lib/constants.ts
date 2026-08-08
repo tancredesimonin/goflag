@@ -1,7 +1,13 @@
 /**
- * Facts about the published package that the site quotes in more than one
- * place. `CLI_VERSION` is the version every install snippet pins to, so it has
- * to be bumped here — and only here — when a release lands.
+ * Facts about the published packages that the site quotes in more than one
+ * place. `PACKAGE.version` is what every install snippet pins to, so it has to
+ * be bumped here, and only here, when a release lands.
+ *
+ * It is a literal rather than a read of `packages/cli/package.json` because
+ * this module reaches components, and a `node:fs` call in it would make every
+ * one of them server-only for the sake of one string. `constants.test.ts`
+ * carries the honesty instead: it fails when the number here stops matching
+ * the manifest, which is how it went three releases stale.
  */
 export const SITE = {
   name: "goflag",
@@ -13,7 +19,7 @@ export const SITE = {
 export const PACKAGE = {
   name: "@goflag/cli",
   bin: "goflag",
-  version: "0.1.4",
+  version: "0.2.1",
   npm: "https://www.npmjs.com/package/@goflag/cli",
   repo: "https://github.com/tancredesimonin/goflag",
   issues: "https://github.com/tancredesimonin/goflag/issues",
@@ -30,6 +36,21 @@ export const PACKAGE = {
   repoPublic: false,
   license: "MIT",
   nodeRange: ">=22",
+} as const;
+
+/**
+ * The other half of the project: the library that produces what the CLI audits.
+ *
+ * Deliberately thinner than `PACKAGE`. The site is the CLI's shop window, and
+ * the library is documented rather than sold, so it needs a name, a version and
+ * somewhere to click. Anything more would be a second product on a page that
+ * has one.
+ */
+export const LIB = {
+  name: "@goflag/next",
+  version: "0.2.0",
+  npm: "https://www.npmjs.com/package/@goflag/next",
+  docs: "/docs/next",
 } as const;
 
 export const INSTALL = {

@@ -45,8 +45,8 @@ const docs = defineCollection({
   schema: z.object({
     title: z.string(),
     description: z.string(),
-    /** Sidebar group. Rendered in the order declared by `DOC_GROUPS`. */
-    group: z.enum(["start", "use", "reference"]),
+    /** Sidebar group. Rendered in the order declared by `GROUP_TITLES`. */
+    group: z.enum(["start", "use", "reference", "library"]),
     /** Position inside the group. */
     order: z.number(),
     /** Shorter label for the sidebar, when the title is a sentence. */

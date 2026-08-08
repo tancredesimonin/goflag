@@ -1,0 +1,96 @@
+---
+title: Produce what goflag audits
+description: "@goflag/next declares a Next.js App Router site's routes once, then derives the metadata, hreflang cluster, sitemap and robots.txt from it."
+navTitle: What it is
+group: library
+order: 1
+---
+
+goflag tells you what is wrong. It does not tell you how to stop writing it
+wrong. `@goflag/next` is the other half: a route registry for the Next.js App
+Router that produces the HTML goflag would have nothing to say about.
+
+The point is not convenience. A sitemap derived separately from the metadata is
+two derivations of one truth, held in agreement by vigilance, and their
+disagreement is what the [`hreflang.sitemap-mismatch`](/docs/rules) rule
+reports. Projecting both from one registry makes that finding unrepresentable.
+
+## Install
+
+<PackageManagerCode
+  pnpm="pnpm add -D @goflag/next"
+  npm="npm install --save-dev @goflag/next"
+  yarn="yarn add -D @goflag/next"
+  bun="bun add -d @goflag/next"
+/>
+
+Node `>=22`. `next` is a peer dependency and the runtime depends on nothing
+else. It is a build-time library: nothing it produces reaches the browser.
+
+## Declare the site once
+
+```ts title="lib/site.ts"
+import { collection, defineSite } from "@goflag/next";
+import { allDocs, allLegals } from "content-collections";
+
+export const site = defineSite({
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com",
+  name: "Example",
+  locales: ["en", "fr", "pt"],
+  defaultLocale: "en",
+  indexable: process.env.APP_ENV === "production",
+});
+
+export const routes = site.routes({
+  home: { path: "" },
+  legal: collection(allLegals, { path: (d) => `/${d.slug}`, locale: (d) => d.locale }),
+  docs: collection(allDocs, { path: (d) => `/docs/${d.slug}`, locale: "en" }),
+});
+```
+
+The library reads no environment variable. The two lookups above are your site's
+conventions, not something a library gets to name, and keeping them out means
+its tests have nothing to stub. See [the route registry](/docs/next/routes) for
+what the shapes mean.
+
+## Then three files stop containing logic
+
+```ts title="app/[locale]/page.tsx"
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+  return routes.metadata({ path: "", locale, title: "…", description: "…" });
+}
+```
+
+```ts title="app/sitemap.ts"
+export default () => routes.sitemap({ lastModified: new Date() });
+```
+
+```ts title="app/robots.ts"
+export default () => routes.robots();
+```
+
+Each returns the native Next type (`Metadata`, `MetadataRoute.Sitemap`,
+`MetadataRoute.Robots`), so there is nothing to unlearn and you can adopt one
+output without adopting the others. A library you can only adopt whole does not
+get adopted.
+
+## What it is worth
+
+Measured on the two sites that migrated, not estimated:
+
+| Site                     | Before | After | Findings before and after |
+| ------------------------ | ------ | ----- | ------------------------- |
+| This one                 | 252    | 140   | unchanged                 |
+| A second, unrelated site | 224    | 123   | 39, identical             |
+
+Lines of production code over the same scope. The second migration was the real
+test, because its API was not derived from that site, and it is where four
+defects surfaced that the first one could not have shown.
+
+## Where to go next
+
+- [The route registry](/docs/next/routes): `defineSite`, `routes`, and what a
+  locale policy per route buys you.
+- [What it refuses to build](/docs/next/guarantees): the checks that fail your
+  build instead of shipping quietly.

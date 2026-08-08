@@ -17,6 +17,7 @@ export async function SiteFooter() {
     { label: t("docs"), href: "/docs", localized: false },
     { label: t("quickstart"), href: "/docs/quickstart", localized: false },
     { label: t("rules"), href: "/docs/rules", localized: false },
+    { label: t("library"), href: "/docs/next", localized: false },
     { label: t("ci"), href: "/docs/ci", localized: false },
     { label: t("changelog"), href: "/changelog", localized: true },
     { label: t("legalNotice"), href: "/legal-notice", localized: true },

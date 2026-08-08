@@ -6,7 +6,10 @@ import { PROOF } from "@/lib/constants";
 export async function Faq() {
   const t = await getTranslations("home.faq");
 
-  const keys = ["source", "next", "chromium", "privacy", "free"] as const;
+  // `remedy` is the only mention of the library on this page, and it sits here
+  // on purpose. The landing sells the audit; someone who reads this far is
+  // asking the question the library answers.
+  const keys = ["source", "next", "remedy", "chromium", "privacy", "free"] as const;
 
   return (
     <FAQ
