@@ -9,11 +9,15 @@
     "start": "next start --port 3004",
     "clean": "rm -rf .next .content-collections",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "content-collections build && tsc --noEmit",
+    "typecheck": "pnpm --filter @goflag/next build && content-collections build && tsc --noEmit",
+    "test": "content-collections build && vitest run",
+    "test:unit": "content-collections build && vitest run",
+    "test:watch": "vitest",
     "build:local-origin": "APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 next build",
-    "seo": "pnpm build:local-origin && pnpm --filter @goflag/cli dev http://localhost:3004 --start \"APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 pnpm --filter @goflag/website start\" --static --no-external --depth 3 --locales en,fr,es,pt-br --ignore-holes /docs --ignore-holes \"/docs/**\""
+    "seo": "pnpm build:local-origin && pnpm --filter @goflag/cli dev http://localhost:3004 --start \"APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 pnpm --filter @goflag/website start\" --static --no-external --depth 3 --locales en,fr,es,pt --ignore-holes /docs --ignore-holes \"/docs/**\""
   },
   "dependencies": {
+    "@goflag/next": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
@@ -49,6 +53,7 @@
     "tailwindcss": "^4.0.12",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.7.2",
+    "vitest": "^2.1.9",
     "zod": "^4.3.6"
   }
 }

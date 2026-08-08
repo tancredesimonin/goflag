@@ -6,9 +6,8 @@ import { getLocale } from "next-intl/server";
 import { Analytics } from "@/components/providers/analytics";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { localeToBcp47 } from "@/i18n/config";
 import { SITE } from "@/lib/constants";
-import { getBaseUrl, rootRobots } from "@/lib/seo/metadata";
+import { requireLocale, site } from "@/lib/seo/site";
 
 import "./globals.css";
 
@@ -40,10 +39,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getBaseUrl()),
-  title: { default: SITE.name, template: `%s · ${SITE.name}` },
-  description: SITE.tagline,
-  robots: rootRobots(),
+  // `metadataBase`, the title template and the robots directives every child
+  // segment inherits all follow from the declaration in `lib/seo/site.ts`.
+  ...site.rootMetadata({ description: SITE.tagline }),
   other: {
     /**
      * Dark Reader honours this and stands down on the whole site.
@@ -75,7 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html
-      lang={localeToBcp47(locale)}
+      lang={site.lang(requireLocale(locale))}
       suppressHydrationWarning
       className={`${sans.variable} ${serif.variable} ${mono.variable}`}
     >
