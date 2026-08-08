@@ -41,7 +41,6 @@ stages:
   - release
 
 variables:
-  PNPM_VERSION: "11.18.0"
   CI: "true"
   # `pnpm install` runs the root `prepare` script, which installs the git hooks.
   # A runner has no commits to make, so that is pure setup for nothing — and
@@ -100,8 +99,13 @@ variables:
       - .pnpm-store
       - node_modules
   before_script:
+    # No version here on purpose. `packageManager` in package.json is the single
+    # declaration; corepack reads it on the first `pnpm` call and fetches that
+    # version. A `corepack prepare pnpm@<x> --activate` line alongside it is not
+    # a second safety net — it is a second number to keep in sync, and when the
+    # two drifted every job downloaded pnpm twice, the activate step being the
+    # wasted one. Same reason the Dockerfile says `corepack enable pnpm` bare.
     - corepack enable
-    - corepack prepare pnpm@${PNPM_VERSION} --activate
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
