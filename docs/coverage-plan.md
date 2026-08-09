@@ -39,9 +39,10 @@ Mesuré contre `develop.openfinanceguide.com`, même commande, trois fois :
 --max-pages 600   →  600 pages, 279 findings
 ```
 
-Le plafond est reproductible **tant qu'il est atteint**. Dès qu'il ne l'est
-pas, la course entre les fetches parallèles décide ce que le crawl a eu le
-temps de découvrir, et deux runs consécutifs voient 46 ou 600 pages.
+La cause a été trouvée depuis, et ce n'était pas le crawl : `fetchDoc`
+renvoyait la même forme pour un timeout et pour un 404, donc un sitemap de
+3,5 Mo qui expirait se lisait « ce site n'a pas de sitemap ». Le crawl perdait
+ses 4008 graines et retombait sur le suivi de liens. Corrigé en V-0.
 
 **C'est un gate instable, pas un gate partiel.** Une baseline capturée sur le
 run à 46 pages, comparée au run à 600, rapporte des centaines de findings
@@ -176,25 +177,27 @@ pas manqués.
 ## 6. Combien de temps, vraiment
 
 Mesuré contre `develop.openfinanceguide.com`, réseau réel, `--static
---no-external` :
+--no-external`. Les deux dernières lignes sont des runs réels de la
+fonctionnalité, pas des extrapolations :
 
-| Pages | Durée | Par page |
-| ----: | ----: | -------: |
-|    50 |  12 s |   240 ms |
-|   200 |  60 s |   300 ms |
-|   600 |  47 s |    78 ms |
+| Périmètre                  |   Pages |     Durée |   Par page |      Gabarits |
+| -------------------------- | ------: | --------: | ---------: | ------------: |
+| Plafond de 50              |      50 |      12 s |     240 ms |             — |
+| Plafond de 200 (actuel)    |     200 |      60 s |     300 ms |      4 sur 30 |
+| **Sélection structurelle** | **760** | **432 s** | **570 ms** | **30 sur 30** |
+| Tout le site (estimé)      |    4451 |   ~42 min |     570 ms |     30 sur 30 |
 
-La dernière ligne est le run instable ; à 600 pages effectives la moyenne
-retombe autour de 300 ms parce que le coût dominant est le fetch et qu'il
-parallélise.
+**L'estimation initiale de ce plan était fausse d'un facteur deux** : elle
+tablait sur ~300 pages et 1,5 minute. Les deux chiffres viennent d'être
+mesurés. Le nombre de pages est plus élevé parce que les sept versions du
+handbook restent des familles distinctes — elles sont sous le seuil, et le
+seuil fait son travail. Le coût par page est plus élevé parce que les pages
+sélectionnées sont les grosses : une page de schéma OpenAPI n'est pas une page
+de blog.
 
-**Extrapolation à 300 ms/page :**
-
-| Périmètre                      |    Pages | Durée estimée |
-| ------------------------------ | -------: | ------------: |
-| Aujourd'hui                    |      200 |         1 min |
-| Sélection structurelle (C1–C3) | **~300** |   **1,5 min** |
-| Tout le site                   |     4451 |   **~22 min** |
+Ce que la sélection achète, en revanche, ne change pas : **428 findings contre
+129**, en auditant 19 % du site. Le plafond n'en trouvait pas moins parce qu'il
+regardait moins de pages, mais parce qu'il regardait quatre gabarits sur trente.
 
 Le budget CI du groupe est de 400 minutes par mois. Auditer intégralement
 `openfinanceguide` à chaque merge request coûterait 22 minutes par MR — une
@@ -209,13 +212,13 @@ repose pas sur la vitesse.
 
 ## 7. Phasage
 
-| Étape   | Contenu                                                                            | État |
-| ------- | ---------------------------------------------------------------------------------- | ---- |
-| **V-0** | Rendre le crawl reproductible sous plafond — le défaut du §1, indépendant du reste | ⬜   |
-| **V-1** | Inférence des familles + `--coverage structural`, derrière un drapeau              | ⬜   |
-| **V-2** | La ligne `COVERAGE` au rapport et au JSON (C6)                                     | ⬜   |
-| **V-3** | `structural` par défaut, `--max-pages` redevient un garde-fou                      | ⬜   |
-| **V-4** | `.goflag/routes.json` lu s'il est là ; émis par `@goflag/next`                     | ⬜   |
+| Étape   | Contenu                                                             | État      |
+| ------- | ------------------------------------------------------------------- | --------- |
+| **V-0** | Un sitemap injoignable n'est plus lu comme absent — le défaut du §1 | ✅ livrée |
+| **V-1** | Inférence des familles + `--coverage structural`                    | ✅ livrée |
+| **V-2** | La ligne `COVERAGE` au rapport et au JSON (C6)                      | ✅ livrée |
+| **V-3** | `structural` par défaut, `--max-pages` redevient un garde-fou       | ⬜        |
+| **V-4** | `.goflag/routes.json` lu s'il est là ; émis par `@goflag/next`      | ⬜        |
 
 **V-0 avant tout le reste.** Le plafond instable est un défaut aujourd'hui, sur
 des sites qui l'ont configuré ; la sélection structurelle est une amélioration
@@ -228,7 +231,7 @@ de mentir.
 | Étape   | Critère                                                                                             |
 | ------- | --------------------------------------------------------------------------------------------------- |
 | **V-0** | Trois runs consécutifs, même site, même plafond non atteint → même nombre de pages                  |
-| **V-1** | `openfinanceguide` : 30 familles couvertes, moins de 400 pages auditées                             |
+| **V-1** | ✅ `openfinanceguide` : 18 familles échantillonnées, 760 pages sur 4008, 428 findings contre 129    |
 | **V-2** | Le rapport nomme chaque famille échantillonnée et son ratio                                         |
 | **V-3** | Les quatre sites passent leur gate avec un `--max-debt` recalculé, et aucun ne perd de finding réel |
 

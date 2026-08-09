@@ -29,6 +29,11 @@ Options:
   --report <file>        Write the (full) JSON report to <file>.
   --depth <n>            Crawl depth (0 = entry page only). Default: 2.
   --max-pages <n>        Hard cap on pages crawled. Default: 200.
+  --coverage <mode>      How to choose which pages to audit.
+                         "structural" (default when a sitemap is found) keeps
+                         every standalone page and samples families of pages
+                         built from one template. "all" audits everything the
+                         sitemap lists, up to --max-pages.
   --include <glob>       Only crawl paths matching <glob> (repeatable).
   --exclude <glob>       Skip paths matching <glob> (repeatable).
   --locales <list>       Comma-separated locales the site serves, e.g.
@@ -254,6 +259,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.options.depth = toInt(next(i, arg), arg);
         i++;
         break;
+      case "--coverage": {
+        const mode = next(i, arg);
+        if (mode !== "structural" && mode !== "all") {
+          throw new Error(`--coverage takes "structural" or "all", not ${JSON.stringify(mode)}`);
+        }
+        parsed.options.coverage = mode;
+        i += 1;
+        break;
+      }
       case "--max-pages":
         parsed.options.maxPages = toInt(next(i, arg), arg);
         i++;

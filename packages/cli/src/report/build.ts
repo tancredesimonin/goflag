@@ -21,6 +21,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { selectByStructure } from "../lib/core/coverage";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
 import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
@@ -96,6 +97,17 @@ export interface AuditOptions {
   depth?: number;
   /** Hard cap on pages crawled. Defaults to 200. */
   maxPages?: number;
+  /**
+   * How to choose which pages to audit.
+   *
+   * `structural` keeps every page that stands alone and samples families of
+   * pages built from one template — `docs/coverage-plan.md`. `all` is the old
+   * behaviour: take what the sitemap lists in order, until `maxPages`.
+   *
+   * Defaults to `structural` when a sitemap was found, `all` otherwise: with
+   * no list of URLs up front there is no structure to select from.
+   */
+  coverage?: "structural" | "all";
   /** Glob include filter on the URL pathname. */
   include?: string[];
   /** Glob exclude filter on the URL pathname. */
@@ -309,7 +321,36 @@ export async function runAudit(
         crawlFallback: false,
       }).catch(() => undefined);
 
-  const sitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
+  const allSitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
+
+  // Which pages to audit, chosen by the shape of the site rather than by the
+  // order the crawl happens to reach them. Only possible with a sitemap: with
+  // no list of URLs up front there is no structure to select from, so the
+  // fallback is the old behaviour and says so.
+  const coverageMode = options.coverage ?? (allSitemapUrls.length > 0 ? "structural" : "all");
+  const selection =
+    coverageMode === "structural" && allSitemapUrls.length > 0
+      ? selectByStructure(allSitemapUrls, { locales: options.locales })
+      : undefined;
+  const sitemapUrls = selection?.urls ?? allSitemapUrls;
+
+  // A selection is already the answer to "how many", so the 200-page default
+  // must not cut it short — that would reintroduce the arbitrary truncation it
+  // exists to replace.
+  //
+  // The headroom is not decoration. The crawl also fetches the entry URL and
+  // whatever it redirects to, and those are pages the selection never named: a
+  // cap set to the selection size exactly let the entry consume a slot and
+  // pushed a real page out. Measured on tancrede, which lost
+  // `/es/privacy-policy` to an off-by-one nobody would have noticed in a
+  // report that still looked complete.
+  //
+  // Keeping the default as a floor also preserves what a small site had
+  // before: room to follow a link to a page the sitemap forgot, which is a
+  // finding rather than noise.
+  const effectiveMaxPages = selection
+    ? Math.max(options.maxPages ?? maxPages, selection.urls.length + 5)
+    : maxPages;
 
   // Fetched independently of sitemap discovery: `--no-sitemap` must not also
   // blind the robots rules, and one small request is cheaper than the class of
@@ -324,7 +365,7 @@ export async function runAudit(
     entryUrl: entry,
     seedUrls: sitemapUrls,
     depth,
-    maxPages,
+    maxPages: effectiveMaxPages,
     include: options.include,
     exclude: options.exclude,
     inspectOptions: {
@@ -611,6 +652,19 @@ export async function runAudit(
       pagesFailed: linkReport.diagnostics.pagesFailed,
       truncated: crawlResult.truncated || linkReport.truncated,
       warnings,
+      // What the run actually looked at. A sampled audit that does not say so
+      // is a partial audit wearing the face of a complete one, which is worse
+      // than the cap it replaces.
+      coverage: {
+        mode: coverageMode,
+        ...(selection
+          ? {
+              considered: selection.total,
+              selected: selection.urls.length,
+              families: selection.families,
+            }
+          : {}),
+      },
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(duplicatePages > 0 ? { duplicatePages } : {}),
       ...(discovery
@@ -618,7 +672,7 @@ export async function runAudit(
             sitemap: {
               found: discovery.diagnostics.found,
               sitemapUrl: discovery.diagnostics.sitemapUrl,
-              urlCount: sitemapUrls.length,
+              urlCount: allSitemapUrls.length,
               uncrawled: countUncrawled(sitemapUrls, pages),
               ...(discovery.diagnostics.unreachable
                 ? { unreachable: discovery.diagnostics.unreachable }

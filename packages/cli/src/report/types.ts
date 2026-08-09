@@ -197,6 +197,16 @@ export interface GoflagReport {
      */
     duplicatePages?: number;
     /** Sitemap discovery outcome, when discovery ran. */
+    /** Which pages the run chose to audit, and what it therefore cannot promise. */
+    coverage?: {
+      mode: "structural" | "all";
+      /** URLs the sitemap listed. */
+      considered?: number;
+      /** URLs actually audited. */
+      selected?: number;
+      /** Families that were sampled rather than audited whole, largest first. */
+      families?: { pattern: string; size: number; sampled: number }[];
+    };
     sitemap?: {
       found: boolean;
       sitemapUrl?: string;
