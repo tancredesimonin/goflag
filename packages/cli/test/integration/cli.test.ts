@@ -228,6 +228,26 @@ describe("goflag CLI — --baseline", () => {
     expect(refreshed.stdout).toContain("0 newly accepted");
   }, 60_000);
 
+  it("creates the directory the baseline names", async () => {
+    // The adoption path, and the one that used to fail: a repository turning
+    // the gate on runs this against `.goflag/baseline.json` with no `.goflag/`
+    // yet. `writeFileSync` does not create parents, so the documented first
+    // step was the only command that threw — after the crawl had already run.
+    const file = join(dir, "nested", "deeper", "baseline.json");
+    const captured = await runCli([...auditArgs(), "--baseline", file, "--update-baseline"]);
+
+    expect(captured.status).toBe(0);
+    expect(JSON.parse(readFileSync(file, "utf8")).seoIssues.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it("creates the directory the report names", async () => {
+    const file = join(dir, "reports", "goflag.json");
+    const written = await runCli([...auditArgs(), "--fail-on", "never", "--report", file]);
+
+    expect(written.status).toBe(0);
+    expect(JSON.parse(readFileSync(file, "utf8")).summary).toBeDefined();
+  }, 60_000);
+
   it("refuses --update-baseline without a file to write to", async () => {
     const orphan = await runCli([...auditArgs(), "--update-baseline"]);
     expect(orphan.status).toBe(2);
