@@ -336,9 +336,21 @@ export async function runAudit(
 
   // A selection is already the answer to "how many", so the 200-page default
   // must not cut it short — that would reintroduce the arbitrary truncation it
-  // exists to replace. An explicit --max-pages still wins: it is a budget, and
-  // a budget is the user's to set.
-  const effectiveMaxPages = selection ? (options.maxPages ?? selection.urls.length) : maxPages;
+  // exists to replace.
+  //
+  // The headroom is not decoration. The crawl also fetches the entry URL and
+  // whatever it redirects to, and those are pages the selection never named: a
+  // cap set to the selection size exactly let the entry consume a slot and
+  // pushed a real page out. Measured on tancrede, which lost
+  // `/es/privacy-policy` to an off-by-one nobody would have noticed in a
+  // report that still looked complete.
+  //
+  // Keeping the default as a floor also preserves what a small site had
+  // before: room to follow a link to a page the sitemap forgot, which is a
+  // finding rather than noise.
+  const effectiveMaxPages = selection
+    ? Math.max(options.maxPages ?? maxPages, selection.urls.length + 5)
+    : maxPages;
 
   // Fetched independently of sitemap discovery: `--no-sitemap` must not also
   // blind the robots rules, and one small request is cheaper than the class of
