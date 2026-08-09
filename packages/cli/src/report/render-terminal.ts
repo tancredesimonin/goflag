@@ -55,6 +55,39 @@ export function renderTerminal(report: GoflagReport, options: RenderOptions = {}
           (report.profile === DEFAULT_PROFILE ? "" : `, profile ${report.profile}`),
       ),
   );
+  // --- Coverage ----------------------------------------------------------
+  //
+  // Printed whenever the run sampled, and only then. A sampled audit that says
+  // nothing is a partial audit wearing the face of a complete one: the summary
+  // below counts findings on 760 pages of 4451 and reads exactly like a
+  // summary of the whole site.
+  const coverage = report.diagnostics.coverage;
+  if (coverage?.families?.length && coverage.considered && coverage.selected) {
+    const biggest = coverage.families[0]!;
+
+    // Counted from what the run actually crawled, not from what it selected.
+    // `--max-pages` can still cut the selection short, and a line that reported
+    // the intent would be the exact untruth it exists to prevent.
+    const audited = report.diagnostics.pagesCrawled;
+    const capped = audited < coverage.selected ? `, capped by --max-pages` : "";
+
+    lines.push(
+      c(
+        ANSI.dim,
+        `COVERAGE  ${audited} of ${coverage.considered} pages audited${capped} · ` +
+          `${coverage.families.length} families sampled, largest ` +
+          `${biggest.sampled}/${biggest.size} ${biggest.pattern}`,
+      ),
+    );
+    lines.push(
+      c(
+        ANSI.dim,
+        `          Template rules are conclusive. Copy rules — title.length, ` +
+          `description.length — are sampled.`,
+      ),
+    );
+  }
+
   lines.push("");
 
   // --- Summary line ------------------------------------------------------
