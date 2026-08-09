@@ -203,6 +203,15 @@ export interface GoflagReport {
       urlCount: number;
       /** URLs the sitemap declared that the crawl never reached. */
       uncrawled: number;
+      /**
+       * Why the sitemap could not be fetched, when the failure was the network.
+       *
+       * Present means this run audited a different site from the one a run with
+       * a working sitemap audits, because the crawl lost its seeds and fell back
+       * to following links. Comparing such a run to a baseline is comparing two
+       * different questions, so the CLI exits 2 rather than reporting.
+       */
+      unreachable?: string;
     };
   };
 }

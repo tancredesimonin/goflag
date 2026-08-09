@@ -30,7 +30,12 @@ export interface DiscoverSitemapOptions {
 }
 
 const DEFAULTS = {
-  timeoutMs: 8_000,
+  // A sitemap is one document and it can be large: this repository's own
+  // openfinanceguide serves 3.5 MB across 4008 URLs, and that took 1.2 s on a
+  // good connection. Eight seconds was tight enough that the fetch failed
+  // intermittently, and every failure silently dropped the crawl to link
+  // following. Twenty is generous for a document fetched once per run.
+  timeoutMs: 20_000,
   maxUrls: 5_000,
   maxSitemaps: 50,
   crawlDepth: 1,
@@ -46,6 +51,12 @@ interface SitemapCandidate {
 interface FetchedDoc {
   status: number;
   body?: string;
+  /**
+   * Why the document could not be read, when the failure was the network
+   * rather than the server. A 404 leaves this unset: the site answered, and
+   * what it answered is that there is nothing there.
+   */
+  error?: string;
 }
 
 /**
@@ -110,6 +121,10 @@ export async function discoverSitemap(
     if (!doc.body) {
       // Remember the first observed status so the UI can show a 404 etc.
       if (diagnostics.status === 0) diagnostics.status = doc.status;
+      if (doc.error) {
+        diagnostics.unreachable ??= `${candidate.url}: ${doc.error}`;
+        diagnostics.warnings.push(`Sitemap unreachable at ${candidate.url} — ${doc.error}`);
+      }
       continue;
     }
     const parsed = parseSitemap(doc.body);
@@ -296,8 +311,12 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
       }
     }
     return { status: res.status, body: await res.text() };
-  } catch {
-    return { status: 0 };
+  } catch (err) {
+    // Timeouts land here, and a timeout is not a 404. Conflating them is what
+    // let a 3.5 MB sitemap intermittently read as "this site has no sitemap",
+    // which silently cost the crawl its seeds and 90% of its coverage.
+    const reason = err instanceof Error ? err.message : String(err);
+    return { status: 0, error: reason || "network error" };
   } finally {
     cleanup();
     restoreTls();
