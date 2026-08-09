@@ -117,6 +117,48 @@ collection(allLegals, {
 `lastModified` is per entry and per locale, because a translation is edited on
 its own day.
 
+## Keeping a page out of the sitemap
+
+Every route is listed by default. `sitemap: false` takes one out, and takes
+nothing else:
+
+```ts
+search: { path: "/search", sitemap: false },
+```
+
+On a collection it can be a predicate, evaluated per entry:
+
+```ts
+versions: collection(allVersions, {
+  path: (entry) => `/docs/${entry.version}`,
+  locale: (entry) => entry.locale,
+  sitemap: (entry) => entry.version === LATEST,
+});
+```
+
+**An excluded route keeps its canonical, its hreflang cluster and every refusal
+the registry makes.** It is still in its siblings' `alternates`, because
+reciprocity is a property of the pages and not of the sitemap. The flag says
+_not an entry point_, never _not a page_ — it cannot produce an orphan.
+
+### It does not hide anything
+
+Worth being blunt, because the field invites the opposite belief: **a sitemap
+aids discovery, it does not gate indexing.** A page that is linked and crawlable
+is indexed whether or not any sitemap mentions it, and a listed page is not
+guaranteed to be indexed either.
+
+| Belief                                         | Reality                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| Out of the sitemap means out of the index      | False when the page is linked. The crawl follows links              |
+| A large sitemap dilutes crawl budget           | The per-file ceiling is 50,000 URLs. A few thousand is not a volume |
+| Omitting it protects against duplicate content | No. `canonical` and `noindex` do that; an omission does neither     |
+
+So reach for it when the page should not be an **entry point** — a search
+result page, a faceted variant, a print view, a markdown mirror. Not to bury a
+page: if the goal is to keep something out of an index, the instruments are
+`noindex` and `canonical`, and this flag is neither.
+
 ## What the registry gives back
 
 | Call                                                    | Returns                        |

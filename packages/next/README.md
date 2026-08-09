@@ -62,6 +62,22 @@ export default () => routes.robots();
 export const metadata = site.rootMetadata({ description: "…" });
 ```
 
+### Keeping a page out of the sitemap
+
+```ts
+search: { path: "/search", sitemap: false },
+versions: collection(all, { path, locale, sitemap: (v) => v.version === LATEST }),
+```
+
+Listed by default; the omission is what gets declared. An excluded route keeps
+its canonical, its cluster and every refusal — it says _not an entry point_,
+never _not a page_.
+
+It hides nothing: a sitemap aids discovery and does not gate indexing, so a
+linked page is indexed whether or not it appears in one. Use it for pages that
+should not be entry points — search results, faceted variants, print views. To
+keep something out of an index, the instruments are `noindex` and `canonical`.
+
 ## What it refuses to do
 
 Every one of these is a defect that ships silently and is expensive to find
