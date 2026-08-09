@@ -63,12 +63,16 @@ function run(command, ...args) {
 /**
  * The newest tag in a namespace, by version order rather than by reachability.
  *
- * `git describe` would be the obvious call and it is the wrong one here: the
- * tag lives on main, on a merge commit that is not an ancestor of develop, so
- * describe answers "no names found" and every package looks like a first
- * release. Sorting the tag list has no such requirement — and the range it
- * feeds, `tag..HEAD`, is still exactly right, because everything that was on
- * develop when the tag was cut is reachable from the merge commit it points at.
+ * `git describe` would be the obvious call. It is avoided here because it
+ * answers only for tags it can reach, and this script decides whether to
+ * release before knowing that the tag it needs was placed somewhere reachable.
+ * Sorting the tag list has no such requirement.
+ *
+ * The CI job does now tag the develop side of each merge, precisely so that
+ * `git describe` works — `commit-and-tag-version` uses it internally to find
+ * the previous tag, and when it could not, it replayed the whole history into
+ * every changelog. That fix makes describe viable here too; this stays as it
+ * is because it is the more robust of the two and costs nothing.
  */
 function lastTag(prefix) {
   const tags = git("tag", "--list", `${prefix}[0-9]*`, "--sort=-v:refname")
