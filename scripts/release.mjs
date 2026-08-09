@@ -18,6 +18,7 @@
  * release is the decision you mean to make.
  */
 import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -34,12 +35,15 @@ const PACKAGES = [
     name: "@goflag/cli",
     tagPrefix: "v",
     manifest: "packages/cli/package.json",
+    /** The literal in `apps/website` that quotes this version. */
+    quotedAs: "PACKAGE",
     surface: ["packages/cli/src", "packages/cli/package.json", "README.md", "LICENSE"],
   },
   {
     name: "@goflag/next",
     tagPrefix: "next-v",
     manifest: "packages/next/package.json",
+    quotedAs: "LIB",
     surface: [
       "packages/next/src",
       "packages/next/package.json",
@@ -51,6 +55,29 @@ const PACKAGES = [
 
 /** A commit that earns a version number: a feature, a fix, or a break. */
 const RELEASABLE = /^(feat|fix|perf)(\(.+\))?!?:|^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE/m;
+
+/**
+ * Carry the new version into the literal `apps/website` quotes.
+ *
+ * The site writes both versions as string literals — `constants.ts` reaches
+ * client components, so reading a manifest there would make every one of them
+ * server-only. `constants.test.ts` guards the two against drift, which means
+ * every release fails the site's own test suite until this is done. Doing it
+ * here rather than by hand is the difference between a guard and a chore: the
+ * literal sat at `0.1.4` while `0.2.0` was on npm, which is exactly what a
+ * manual step produces.
+ */
+function quoteVersion(constant, version) {
+  const file = "apps/website/src/lib/constants.ts";
+  const source = readFileSync(file, "utf8");
+  const pattern = new RegExp(`(export const ${constant} = \\{[^}]*?version: ")[^"]+(")`, "s");
+
+  if (!pattern.test(source)) {
+    throw new Error(`Could not find ${constant}.version in ${file}`);
+  }
+
+  writeFileSync(file, source.replace(pattern, `$1${version}$2`), "utf8");
+}
 
 function git(...args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
@@ -163,6 +190,10 @@ for (const pkg of PACKAGES) {
       encoding: "utf8",
     }),
   ).version;
+
+  quoteVersion(pkg.quotedAs, version);
+  run("git", "add", "apps/website/src/lib/constants.ts");
+  run("git", "commit", "--amend", "--no-edit", "--no-verify");
 
   console.log(`${pkg.name}: ${version}\n`);
   released += 1;

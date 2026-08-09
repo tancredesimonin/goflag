@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.2](https://github.com/tancredesimonin/goflag/compare/v0.2.1...v0.2.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **cli:** create the directory a --baseline or --report path names ([3489c09](https://github.com/tancredesimonin/goflag/commit/3489c09604eec31099fbc6848fb4a0542062c701))
+
 ## [0.2.1](https://github.com/tancredesimonin/goflag/compare/v0.2.0...v0.2.1) (2026-08-08)
 
 
