@@ -396,13 +396,39 @@ export async function runAudit(
   // but never reach the rule layer, which only speaks about HTML documents.
   const documents = okPages.filter(isHtmlPage);
   const { kept: htmlPages, dropped: duplicatePages } = dropCanonicalDuplicates(documents);
-  const unreachablePages: UnreachablePage[] = pages
-    .filter((p) => !isOkStatus(p.fetch.status))
-    .map((p) => ({
-      id: fingerprint("page", routeKey(p.fetch.finalUrl)),
-      url: p.fetch.finalUrl,
-      status: p.fetch.status,
-    }));
+  // Two ways a page fails to be audited, and both belong here.
+  //
+  // A non-2xx answer is the obvious one. The other is a page that never
+  // answered at all — a timeout, a reset, a DNS failure — which `crawl` puts in
+  // `errors` rather than in `pages`. That one used to leave nothing behind but
+  // a warning line, and warnings do not gate: the run stayed green, the report
+  // looked complete, and the page silently left the audited set. Its slot in
+  // the crawl budget then went to whatever the frontier offered next, so the
+  // page *set* changed too.
+  //
+  // That is what poisons a baseline. Captured with four timeouts, a baseline
+  // holds four pages the next run will not have and misses four it will,
+  // and `--regressions-only` reports the difference as regressions on a branch
+  // that touched nothing. Measured on openfinanceguide 2026-08-09: four STET
+  // endpoint pages timed out at capture, and the merge request after it failed
+  // on one "new" finding that had been on that template all along.
+  //
+  // `status: 0` is what the schema already reserved for a network error. This
+  // is the first thing to produce it.
+  const unreachablePages: UnreachablePage[] = [
+    ...pages
+      .filter((p) => !isOkStatus(p.fetch.status))
+      .map((p) => ({
+        id: fingerprint("page", routeKey(p.fetch.finalUrl)),
+        url: p.fetch.finalUrl,
+        status: p.fetch.status,
+      })),
+    ...crawlResult.errors.map((e) => ({
+      id: fingerprint("page", routeKey(e.url)),
+      url: e.url,
+      status: 0,
+    })),
+  ];
 
   // --- SEO lint (healthy pages only) -------------------------------------
   //
@@ -534,12 +560,21 @@ export async function runAudit(
   });
 
   // --- Link audit over the healthy crawled page set ----------------------
+  //
+  // `effectiveMaxPages`, not `maxPages`. The crawl was told the selection is
+  // the answer to "how many"; this pass was still being told 200, so a
+  // structural run crawled and linted 748 pages and scanned links on the first
+  // 200 of them. Nothing said so usefully either — the report carried
+  // `truncated: true` and "Site has 753 pages; only the first 200 were
+  // scanned" while listing 748, which reads as a display bug rather than as
+  // the coverage claim it was. `0 broken links` then meant 200 pages, on a
+  // report that said 748.
   const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
   const linkReport = await runLinkAudit(linkDiscovery, {
     allowInsecureTls: options.allowInsecureTls,
     checkExternal,
     timeoutMs: options.timeoutMs,
-    maxPages,
+    maxPages: effectiveMaxPages,
     signal: options.signal,
     onProgress: (p) =>
       options.onProgress?.({
