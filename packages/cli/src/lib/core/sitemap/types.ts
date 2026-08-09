@@ -44,6 +44,16 @@ export interface SitemapDiagnostics {
   sitemapUrl?: string;
   /** HTTP status of the (root) sitemap fetch. `0` on network error. */
   status: number;
+  /**
+   * Set when the sitemap could not be fetched at all — timeout, DNS, TLS.
+   *
+   * Distinct from `found: false`, which also covers a site that simply has
+   * none. The difference decides whether the run is comparable to a baseline:
+   * a site with no sitemap is audited by crawling and always will be, while a
+   * site whose sitemap timed out is audited by crawling *this time*, and the
+   * two runs see different sites.
+   */
+  unreachable?: string;
   /** The sitemap URL was declared via `Sitemap:` in robots.txt. */
   declaredInRobots: boolean;
   /** robots.txt itself was reachable (200). */

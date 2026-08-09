@@ -620,6 +620,9 @@ export async function runAudit(
               sitemapUrl: discovery.diagnostics.sitemapUrl,
               urlCount: sitemapUrls.length,
               uncrawled: countUncrawled(sitemapUrls, pages),
+              ...(discovery.diagnostics.unreachable
+                ? { unreachable: discovery.diagnostics.unreachable }
+                : {}),
             },
           }
         : {}),
