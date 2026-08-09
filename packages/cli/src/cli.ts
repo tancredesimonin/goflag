@@ -111,6 +111,25 @@ async function main(): Promise<number> {
     await server?.stop();
   }
 
+  // A sitemap that timed out is not a site without one. The crawl seeds from
+  // the sitemap when there is one, so losing it drops the audit to link
+  // following and it sees a fraction of the pages — measured on
+  // openfinanceguide, 46 instead of 600, and 5 findings instead of 279.
+  //
+  // Reporting that as a result is how a gate goes red on nothing, or green on
+  // 8% of a site. Neither is worth having, so this is fatal: the run could not
+  // ask the question it was asked to ask.
+  const sitemap = report.diagnostics.sitemap;
+  if (sitemap?.unreachable) {
+    process.stderr.write(
+      `goflag: the sitemap could not be fetched — ${sitemap.unreachable}\n` +
+        `goflag: this run crawled links instead, so it saw a different site ` +
+        `from one that reads the sitemap, and its findings are not comparable.\n` +
+        `goflag: retry, or pass --no-sitemap to audit by crawling on purpose.\n`,
+    );
+    return 2;
+  }
+
   // A baseline changes the question from "is this site clean?" to "did this
   // change make it worse?" — the only one a site with a backlog can answer.
   if (args.baseline) {

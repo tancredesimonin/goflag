@@ -250,3 +250,47 @@ describe("discoverSitemap", () => {
     expect(result.urls).toHaveLength(1);
   });
 });
+
+describe("a sitemap that could not be fetched", () => {
+  it("is not reported as a site without one", async () => {
+    // The defect this covers: `fetchDoc` caught every failure and returned the
+    // same shape a 404 produces, so a timeout read as "this site has no
+    // sitemap". The crawl then lost its seeds and audited a fraction of the
+    // pages — 46 instead of 600 on openfinanceguide, silently.
+    routes.set("/sitemap.xml", {
+      status: 200,
+      contentType: "application/xml",
+      body: urlset("/a", "/b"),
+    });
+
+    const stalled = await discoverSitemap(baseUrl, { timeoutMs: 1, crawlFallback: false });
+
+    expect(stalled.diagnostics.found).toBe(false);
+    expect(stalled.diagnostics.unreachable).toBeDefined();
+    expect(stalled.diagnostics.warnings.join(" ")).toContain("unreachable");
+  });
+
+  it("leaves `unreachable` unset when the server answers 404", async () => {
+    // A site that answers is a site that told us something. Only the network
+    // failing to answer is undecided, and only that is worth stopping for.
+    const absent = await discoverSitemap(baseUrl, { crawlFallback: false });
+
+    expect(absent.diagnostics.found).toBe(false);
+    expect(absent.diagnostics.unreachable).toBeUndefined();
+  });
+
+  it("still reports it when a usable sitemap is found elsewhere", async () => {
+    // robots.txt names one that times out, `/sitemap.xml` works. The audit is
+    // fine, and the unreachable one is still a fact worth carrying.
+    routes.set("/sitemap.xml", {
+      status: 200,
+      contentType: "application/xml",
+      body: urlset("/a"),
+    });
+
+    const found = await discoverSitemap(baseUrl, { crawlFallback: false });
+
+    expect(found.diagnostics.found).toBe(true);
+    expect(found.urls).toHaveLength(1);
+  });
+});
