@@ -464,10 +464,34 @@ tag:
   stage: release
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    # The tag lands on the develop side of the merge, so the history has to be
+    # there to find it.
+    GIT_DEPTH: 0
   script:
     - git config user.name "goflag release"
     - git config user.email "39413504+tancredesimonin@users.noreply.github.com"
     - git remote set-url origin "https://oauth2:${RELEASE_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git"
+
+    # Tag the develop side of the merge, not the merge itself.
+    #
+    # A merge commit on main is never an ancestor of develop, so a tag placed on
+    # it is invisible from every future branch. `commit-and-tag-version` looks
+    # its previous tag up with `git describe`, which needs reachability — it
+    # found nothing, concluded this was a first release, and replayed the entire
+    # history into the changelog. `@goflag/next@0.3.0` was written listing every
+    # commit `0.2.0` already carried.
+    #
+    # The second parent is the develop head the merge brought in. It has the
+    # same manifest as the merge commit, since that is what the merge took, and
+    # it is on develop by definition — which is exactly what `git describe`
+    # needs from the next release.
+    #
+    # A fast-forward has no second parent, and then the merge commit and the
+    # develop head are the same commit anyway.
+    - |
+      TARGET="$(git rev-parse --verify --quiet "${CI_COMMIT_SHA}^2" || echo "$CI_COMMIT_SHA")"
+      echo "tagging $TARGET ($(git log -1 --format=%s "$TARGET"))"
 
     # One ref per push, and never `--tags` or `--follow-tags`. Both bundle
     # several refs into one payload, and GitLab declines the entire payload when
@@ -488,7 +512,7 @@ tag:
 
         # Annotated, like the ones commit-and-tag-version used to write: a
         # lightweight tag records neither who created it nor when.
-        git tag -a "$TAG" -m "$TAG" "$CI_COMMIT_SHA"
+        git tag -a "$TAG" -m "$TAG" "$TARGET"
         git push origin "refs/tags/$TAG"
         echo "$NAME: tagged $TAG"
       }

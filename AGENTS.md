@@ -121,6 +121,7 @@ pnpm release              on a branch cut off develop — bumps what moved,
   → merge request into develop
   → merge develop into main         the decision to publish
   → job `tag` on main               reads each manifest, creates the missing tag
+                          on the develop side of the merge, so the next release can see it
   → job `publish:npm` / `publish:next`   OIDC, one package each
 ```
 
