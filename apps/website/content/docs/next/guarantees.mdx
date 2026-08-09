@@ -33,12 +33,19 @@ library refuses it at build time instead, which is the only moment it is cheap.
 
 ## Two things it gets right that hand-written versions usually do not
 
-**It does not re-case your locale tag.** If your URLs are `/pt-br/`, the tag it
-emits is the one you declared. A library that rewrites the site's own identifier
-manufactures a disagreement between the URL and the tag, and the auditor
-correctly reports it. This was a real bug, found by the second site to migrate,
-and it produced a phantom "missing pt-BR" on a site already serving that
-language.
+**Your URL keeps the case you wrote, and the tag takes its canonical form.**
+Declare `pt-br` and you get `/pt-br/` in the canonical, `hreflang="pt-BR"` in
+the cluster, `lang="pt-BR"` on the document and `pt_BR` in `og:locale`. BCP 47
+makes case insignificant, so those are one tag and not two, and emitting the
+canonical form is what keeps `lang` and `hreflang` from answering the same
+question two different ways in one document.
+
+This is worth spelling out because the library did the opposite for a while. It
+used to echo the string you declared, to work around a crawler that compared the
+URL segment against the tag byte for byte and reported a translation hole for a
+language already served. That was the wrong layer to fix it in: goflag now folds
+the two to one identity, as BCP 47 says they are, and the library went back to
+emitting the canonical form in `0.2.0`.
 
 **`x-default` is in its own cluster.** A `x-default` that points outside the set
 of alternates is a cluster that does not close, and reciprocity checks fail on
