@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.3](https://github.com/tancredesimonin/goflag/compare/v0.2.2...v0.2.3) (2026-08-09)
+
+
+### Features
+
+* **cli:** choose pages by the shape of the site, not by a cap ([dad2d78](https://github.com/tancredesimonin/goflag/commit/dad2d78b91643ececd529749f862010e939b6a4e))
+
+
+### Bug Fixes
+
+* **cli:** an unreachable sitemap is not a site without one ([39c9fb2](https://github.com/tancredesimonin/goflag/commit/39c9fb2f47b5e9542c45ef37931d223d5a730138))
+* **cli:** leave the crawl room for pages the selection never named ([69d2130](https://github.com/tancredesimonin/goflag/commit/69d213087cdfe462c8bf705381e048b8fb3df2ec))
+
 ## [0.2.2](https://github.com/tancredesimonin/goflag/compare/v0.2.1...v0.2.2) (2026-08-09)
 
 
