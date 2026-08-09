@@ -309,3 +309,114 @@ describe("sitemap facts", () => {
     expect(() => site.routes({ x: { path: "/x", priority: -1 } })).toThrow(/between 0\.0 and 1\.0/);
   });
 });
+
+describe("sitemap scope", () => {
+  it("lists everything by default — the omission is what gets declared", () => {
+    const routes = site.routes({ home: { path: "" }, search: { path: "/search" } });
+
+    expect(routes.sitemap()).toHaveLength(site.locales.length * 2);
+  });
+
+  it("drops a hand-declared route from the sitemap, in every locale", () => {
+    const routes = site.routes({ home: { path: "" }, search: { path: "/search", sitemap: false } });
+
+    const urls = routes.sitemap().map((row) => row.url);
+
+    expect(urls).toHaveLength(site.locales.length);
+    expect(urls.some((url) => url.includes("/search"))).toBe(false);
+  });
+
+  it("drops a monolingual route", () => {
+    const routes = site.routes({
+      home: { path: "" },
+      raw: { path: "/raw", locale: "en-US", sitemap: false },
+    });
+
+    expect(routes.sitemap().some((row) => row.url.endsWith("/raw"))).toBe(false);
+  });
+
+  it("keeps serving the metadata of a route it does not list", () => {
+    const routes = site.routes({ search: { path: "/search", sitemap: false } });
+
+    // The whole point of S3: not an entry point is not the same as not a page.
+    const meta = routes.metadata({
+      path: "/search",
+      locale: "en-US",
+      title: "Search",
+      description: "Search",
+    });
+
+    expect(String(meta.alternates?.canonical)).toBe("https://goflag.tech/en-US/search");
+    expect(Object.keys(meta.alternates?.languages ?? {})).toContain("fr-FR");
+  });
+
+  it("takes the verdict per entry, which is the case that needed it", () => {
+    const versions = [
+      { v: "1.6.3", locale: "en-US" },
+      { v: "1.6.3", locale: "fr-FR" },
+      { v: "1.5.0", locale: "en-US" },
+      { v: "1.5.0", locale: "fr-FR" },
+    ];
+
+    const routes = site.routes({
+      versions: collection(versions, {
+        path: (entry) => `/stet/${entry.v}`,
+        locale: (entry) => entry.locale,
+        sitemap: (entry) => entry.v === "1.6.3",
+      }),
+    });
+
+    const urls = routes.sitemap().map((row) => row.url);
+
+    expect(urls).toHaveLength(2);
+    expect(urls.every((url) => url.includes("1.6.3"))).toBe(true);
+  });
+
+  it("excludes one translation without taking its siblings out", () => {
+    const routes = site.routes({
+      legal: collection(legals, {
+        path: (entry) => `/${entry.slug}`,
+        locale: (entry) => entry.locale,
+        sitemap: (entry) => entry.locale !== "fr-FR",
+      }),
+    });
+
+    const urls = routes.sitemap().map((row) => row.url);
+
+    expect(urls.some((url) => url === "https://goflag.tech/en-US/cookies")).toBe(true);
+    expect(urls.some((url) => url.includes("/fr-FR/"))).toBe(false);
+  });
+
+  it("leaves an unlisted translation in its siblings' cluster", () => {
+    // Reciprocity is a property of the pages, not of the sitemap. Dropping the
+    // excluded locale from `alternates` would be `hreflang.missing-reciprocal`
+    // manufactured by the exclusion itself.
+    const routes = site.routes({
+      legal: collection(legals, {
+        path: (entry) => `/${entry.slug}`,
+        locale: (entry) => entry.locale,
+        sitemap: (entry) => entry.locale !== "fr-FR",
+      }),
+    });
+
+    const row = routes.sitemap().find((entry) => entry.url.endsWith("/en-US/cookies"));
+    const meta = routes.metadata({
+      path: "/cookies",
+      locale: "en-US",
+      title: "Cookies",
+      description: "Cookies",
+    });
+
+    expect(Object.keys(row?.alternates?.languages ?? {})).toContain("fr-FR");
+    expect(Object.keys(meta.alternates?.languages ?? {})).toContain("fr-FR");
+  });
+
+  it("still refuses two routes on one path when one of them is unlisted", () => {
+    expect(() =>
+      site.routes({
+        a: { path: "/x" },
+        b: { path: "/x", sitemap: false },
+      }),
+    ).toThrow(/Duplicate route path/);
+  });
+});

@@ -43,6 +43,7 @@ export type RouteInput<L extends string> =
       locales?: readonly L[];
       locale?: never;
       ogType?: OgType;
+      sitemap?: boolean;
       lastModified?: Date | string | number;
     })
   | (SitemapFacts & {
@@ -51,6 +52,7 @@ export type RouteInput<L extends string> =
       locale: L;
       locales?: never;
       ogType?: OgType;
+      sitemap?: boolean;
       lastModified?: Date | string | number;
     });
 
@@ -62,6 +64,8 @@ export interface CollectionFamily {
   readonly rows: readonly {
     readonly path: string;
     readonly locale: string;
+    /** Absent means listed. Only the exclusion is ever recorded. */
+    readonly sitemap?: boolean;
     readonly lastModified?: Date;
   }[];
   readonly ogType?: OgType;
@@ -86,6 +90,7 @@ export function collection<E>(
     path: (entry: E) => string;
     locale: (entry: E) => string;
     ogType?: OgType;
+    sitemap?: boolean | ((entry: E) => boolean);
     lastModified?: (entry: E) => Date | string | number | undefined;
   },
 ): CollectionFamily;
@@ -95,6 +100,7 @@ export function collection<E>(
     path: (entry: E) => string;
     locale: string;
     ogType?: OgType;
+    sitemap?: boolean | ((entry: E) => boolean);
     lastModified?: (entry: E) => Date | string | number | undefined;
   },
 ): CollectionFamily;
@@ -104,6 +110,7 @@ export function collection<E>(
     path: (entry: E) => string;
     locale: string | ((entry: E) => string);
     ogType?: OgType;
+    sitemap?: boolean | ((entry: E) => boolean);
     lastModified?: (entry: E) => Date | string | number | undefined;
   },
 ): CollectionFamily {
@@ -117,9 +124,15 @@ export function collection<E>(
       const path = input.path(entry);
       const stamp = input.lastModified?.(entry);
 
+      const listed =
+        typeof input.sitemap === "function" ? input.sitemap(entry) : (input.sitemap ?? true);
+
       return {
         path,
         locale: typeof input.locale === "function" ? input.locale(entry) : input.locale,
+        // Recorded only when false. A row that says nothing is listed, which
+        // keeps the common case out of the data.
+        ...(listed ? {} : { sitemap: false as const }),
         ...(stamp === undefined ? {} : { lastModified: toDate(stamp, path) }),
       };
     }),
@@ -204,6 +217,7 @@ function resolveFamily<L extends string>(
           locale: assertServed(site, row.locale, row.path),
           ogType,
           ...facts,
+          ...(row.sitemap === false ? { sitemap: false } : {}),
           ...(row.lastModified ? { lastModified: row.lastModified } : {}),
         };
       });
@@ -212,19 +226,29 @@ function resolveFamily<L extends string>(
     // One route per path, carrying every locale that declared that path — and
     // that locale's own last-modified, since a translation is edited on its own
     // day and a single date per route would misreport three rows in four.
-    const byPath = new Map<string, Map<string, Date | undefined>>();
+    const byPath = new Map<string, Map<string, { lastModified?: Date; listed: boolean }>>();
     for (const row of input.rows) {
       assertPath(row.path, true);
       assertServed(site, row.locale, row.path);
-      const group = byPath.get(row.path) ?? new Map<string, Date | undefined>();
-      group.set(row.locale, row.lastModified);
+      const group =
+        byPath.get(row.path) ?? new Map<string, { lastModified?: Date; listed: boolean }>();
+      group.set(row.locale, { lastModified: row.lastModified, listed: row.sitemap !== false });
       byPath.set(row.path, group);
     }
 
     return [...byPath].map(([path, group]) => {
       const stamps = Object.fromEntries(
-        [...group].filter((pair): pair is [string, Date] => pair[1] !== undefined),
+        [...group]
+          .filter(
+            (pair): pair is [string, { lastModified: Date; listed: boolean }] =>
+              pair[1].lastModified !== undefined,
+          )
+          .map(([locale, value]) => [locale, value.lastModified]),
       ) as Partial<Record<L, Date>>;
+
+      const unlisted = Object.fromEntries(
+        [...group].filter(([, value]) => !value.listed).map(([locale]) => [locale, false]),
+      ) as Partial<Record<L, boolean>>;
 
       return {
         policy: "localized" as const,
@@ -236,6 +260,7 @@ function resolveFamily<L extends string>(
         locales: site.locales.filter((locale) => group.has(locale)),
         ogType,
         ...facts,
+        ...(Object.keys(unlisted).length > 0 ? { sitemap: unlisted } : {}),
         ...(Object.keys(stamps).length > 0 ? { lastModified: stamps } : {}),
       };
     });
@@ -255,6 +280,7 @@ function resolveFamily<L extends string>(
         locale: assertServed(site, input.locale, input.path),
         ogType,
         ...facts,
+        ...(input.sitemap === false ? { sitemap: false } : {}),
         ...(lastModified ? { lastModified } : {}),
       },
     ];
@@ -276,6 +302,16 @@ function resolveFamily<L extends string>(
       >)
     : undefined;
 
+  // A hand-declared route excludes every locale at once: there is one `path`
+  // and one flag, so there is nothing to say per locale. A collection is where
+  // the finer grain exists, because it has an entry per translation.
+  const unlisted =
+    input.sitemap === false
+      ? (Object.fromEntries(locales.map((locale) => [locale, false])) as Partial<
+          Record<L, boolean>
+        >)
+      : undefined;
+
   return [
     {
       policy: "localized",
@@ -284,6 +320,7 @@ function resolveFamily<L extends string>(
       locales,
       ogType,
       ...facts,
+      ...(unlisted ? { sitemap: unlisted } : {}),
       ...(stamps ? { lastModified: stamps } : {}),
     },
   ];
@@ -393,6 +430,8 @@ export function defineRoutes<L extends string, F extends Record<string, FamilyIn
         };
 
         if (route.policy === "monolingual") {
+          if (route.sitemap === false) return [];
+
           const lastModified = route.lastModified ?? fallback;
 
           // No `alternates` on a single-page cluster: the sitemap lists the
@@ -408,18 +447,24 @@ export function defineRoutes<L extends string, F extends Record<string, FamilyIn
           ];
         }
 
+        // The cluster is built from every locale the route serves, excluded
+        // ones included. A page left out of the sitemap is still a translation
+        // of its siblings, and dropping it from their `alternates` would break
+        // the reciprocity `hreflang.missing-reciprocal` checks for.
         const languages = clusterOf(site, route);
 
-        return route.locales.map((locale) => {
-          const lastModified = route.lastModified?.[locale] ?? fallback;
+        return route.locales
+          .filter((locale) => route.sitemap?.[locale] !== false)
+          .map((locale) => {
+            const lastModified = route.lastModified?.[locale] ?? fallback;
 
-          return {
-            url: locate(site, route, locale).url,
-            ...(lastModified ? { lastModified } : {}),
-            ...facts,
-            alternates: { languages },
-          };
-        });
+            return {
+              url: locate(site, route, locale).url,
+              ...(lastModified ? { lastModified } : {}),
+              ...facts,
+              alternates: { languages },
+            };
+          });
       });
     },
 

@@ -2,6 +2,14 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## 0.3.0 (2026-08-09)
+
+
+### Features
+
+* **next:** let a route be declared without being listed ([6aa12f8](https://github.com/tancredesimonin/goflag/commit/6aa12f86473133d44f0859bf905be0e8f9f5579e))
+
+
 ## 0.2.0 (2026-08-08)
 
 

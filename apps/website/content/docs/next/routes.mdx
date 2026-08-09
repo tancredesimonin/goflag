@@ -34,9 +34,13 @@ export const site = defineSite({
 Declare the shortest tag that is justified. `pt`, not `pt-BR`, unless you serve
 more than one Portuguese. Every tag is checked against ICU, at compile time and
 again at run time, and the derived forms follow: `hreflang` and `<html lang>`
-from the tag itself, `og:locale` from ICU's likely subtags. That last one
-answers `pt_BR` for `pt`, so a Brazilian unfurl still works without your site
-declaring a territory it does not target.
+take the tag's canonical form, `og:locale` comes from ICU's likely subtags. That
+last one answers `pt_BR` for `pt`, so a Brazilian unfurl still works without
+your site declaring a territory it does not target.
+
+Your URLs are untouched. Declaring `pt-br` gives canonicals on `/pt-br/` and a
+cluster keyed `pt-BR`, which is the same tag written the way each place expects
+it. See [what it refuses to build](/docs/next/guarantees#two-things-it-gets-right-that-hand-written-versions-usually-do-not).
 
 `indexable` is one flag on purpose. A site that forbids crawling while its pages
 ask to be indexed is exactly the `robots.conflict` finding, and leaving no way
@@ -112,6 +116,48 @@ collection(allLegals, {
 
 `lastModified` is per entry and per locale, because a translation is edited on
 its own day.
+
+## Keeping a page out of the sitemap
+
+Every route is listed by default. `sitemap: false` takes one out, and takes
+nothing else:
+
+```ts
+search: { path: "/search", sitemap: false },
+```
+
+On a collection it can be a predicate, evaluated per entry:
+
+```ts
+versions: collection(allVersions, {
+  path: (entry) => `/docs/${entry.version}`,
+  locale: (entry) => entry.locale,
+  sitemap: (entry) => entry.version === LATEST,
+});
+```
+
+**An excluded route keeps its canonical, its hreflang cluster and every refusal
+the registry makes.** It is still in its siblings' `alternates`, because
+reciprocity is a property of the pages and not of the sitemap. The flag says
+_not an entry point_, never _not a page_ — it cannot produce an orphan.
+
+### It does not hide anything
+
+Worth being blunt, because the field invites the opposite belief: **a sitemap
+aids discovery, it does not gate indexing.** A page that is linked and crawlable
+is indexed whether or not any sitemap mentions it, and a listed page is not
+guaranteed to be indexed either.
+
+| Belief                                         | Reality                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| Out of the sitemap means out of the index      | False when the page is linked. The crawl follows links              |
+| A large sitemap dilutes crawl budget           | The per-file ceiling is 50,000 URLs. A few thousand is not a volume |
+| Omitting it protects against duplicate content | No. `canonical` and `noindex` do that; an omission does neither     |
+
+So reach for it when the page should not be an **entry point** — a search
+result page, a faceted variant, a print view, a markdown mirror. Not to bury a
+page: if the goal is to keep something out of an index, the instruments are
+`noindex` and `canonical`, and this flag is neither.
 
 ## What the registry gives back
 

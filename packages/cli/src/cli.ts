@@ -36,6 +36,24 @@ async function readVersion(): Promise<string> {
   }
 }
 
+/**
+ * Write JSON to a path, creating the directory it names.
+ *
+ * `writeFileSync` does not, and the one moment that matters is the first: a
+ * repository adopting the gate runs `--update-baseline --baseline
+ * .goflag/baseline.json` with no `.goflag/` yet, and the command that the
+ * runbook documents as step one is the only one that fails. The audit had
+ * already run at that point, so the failure also threw away several minutes of
+ * crawling.
+ */
+async function writeJson(path: string, value: unknown): Promise<void> {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { dirname } = await import("node:path");
+
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
 async function main(): Promise<number> {
   let args: ParsedArgs;
   try {
@@ -117,8 +135,7 @@ async function main(): Promise<number> {
   // must not do is accept it quietly: a counter that drops without explanation
   // reads as "the problem went away".
   if (args.updateBaseline && args.baseline) {
-    const { writeFileSync } = await import("node:fs");
-    writeFileSync(args.baseline, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    await writeJson(args.baseline, report);
     const total = totalFindings(report);
     if (report.diff) {
       const { added, resolved } = report.diff;
@@ -143,8 +160,7 @@ async function main(): Promise<number> {
   if (args.report) {
     // The report file is always the full report — the source of truth a
     // baseline/diff can rely on, regardless of the --summary view choice.
-    const { writeFileSync } = await import("node:fs");
-    writeFileSync(args.report, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    await writeJson(args.report, report);
     process.stderr.write(`goflag: report written to ${args.report}\n`);
   }
 

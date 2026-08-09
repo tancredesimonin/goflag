@@ -22,6 +22,19 @@ export interface LocalizedRoute<L extends string> {
   readonly changeFrequency?: ChangeFrequency;
   readonly priority?: number;
   /**
+   * Which locales of this route the sitemap lists. Absent, or absent for a
+   * locale, means listed — the omission is what gets declared, never the
+   * inclusion.
+   *
+   * Per locale for the same reason `lastModified` is: a collection can exclude
+   * one translation and keep the others, and collapsing that to a single flag
+   * would silently take the whole cluster out.
+   *
+   * This changes the sitemap and nothing else. The canonical, the cluster and
+   * every refusal stay, because "not an entry point" is not "not a page".
+   */
+  readonly sitemap?: Readonly<Partial<Record<L, boolean>>>;
+  /**
    * Last-modified per locale, where the content supplied one.
    *
    * Per locale rather than per route because a translation is edited on its own
@@ -45,6 +58,8 @@ export interface MonolingualRoute<L extends string> {
   readonly ogType: OgType;
   readonly changeFrequency?: ChangeFrequency;
   readonly priority?: number;
+  /** Whether the sitemap lists it. Absent means listed. */
+  readonly sitemap?: boolean;
   readonly lastModified?: Date;
 }
 
