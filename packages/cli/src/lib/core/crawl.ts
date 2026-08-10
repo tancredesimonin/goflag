@@ -147,6 +147,27 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
   const errors: CrawlError[] = [];
   let truncated = false;
 
+  // `visitedSet` holds the URLs we *asked* for. This one holds the URLs we were
+  // *given*, and they are not the same set: a redirect makes two requests land
+  // on one document. `/` → `/en` while `/en` is also in the sitemap, `/stet` →
+  // `/stet/1.6.3`, `/privacy-policy` → `/en/privacy-policy`. Both requests
+  // succeed, both return the same page, and without this the crawl keeps both.
+  //
+  // Keeping both is not cosmetic. The page is linted twice, so every finding on
+  // it is emitted twice — with the same fingerprint, because the fingerprint is
+  // built from the final URL. `--max-debt` counts the copies (32 on tancredo
+  // for 31 real findings) while a baseline diff collapses them, so one of a
+  // pair can disappear and the gate sees nothing. The duplicate also spends a
+  // slot of the page budget on a document already audited: openfinanceguide
+  // crawled 753 pages to cover 748.
+  //
+  // First answer wins. The pages are identical, so which one is arbitrary.
+  //
+  // Filled only from pages actually kept — seeding it with the entry URL would
+  // pre-reject the document the entry resolves to, which is the one page every
+  // crawl must have.
+  const seenFinal = new Set<string>();
+
   while (queue.length > 0) {
     if (options.inspectOptions?.signal?.aborted) break;
 
@@ -175,6 +196,18 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
         errors.push({ url: result.item.url, message: result.error });
         continue;
       }
+
+      // A document already answered for. Its links were extracted from the
+      // copy we kept, so there is nothing here the frontier has not seen.
+      //
+      // That holds because the queue is BFS and never goes back up a level: the
+      // copy we kept is always the shallowest one, so it is the copy that had
+      // the most depth budget left to follow links with. Drop that ordering and
+      // this becomes a way to lose a subtree.
+      const finalUrl = canonicaliseUrl(result.page.fetch.finalUrl) ?? result.page.fetch.finalUrl;
+      if (seenFinal.has(finalUrl)) continue;
+      seenFinal.add(finalUrl);
+
       pages.push(result.page);
       if (options.onPage) {
         options.onPage(result.page, { visited: pages.length, queued: queue.length });
