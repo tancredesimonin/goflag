@@ -7,6 +7,14 @@ interface RouteHandler {
   status: number;
   contentType?: string;
   body: string | Buffer;
+  /**
+   * Accept the request and never answer it. The alternative — a 1 ms timeout
+   * racing a real response — is a coin flip decided by the machine: this
+   * server answers from memory over loopback, and on a fast host it wins,
+   * turning "the fetch timed out" into "the fetch succeeded" and failing the
+   * assertion for a reason that has nothing to do with the code under test.
+   */
+  hang?: boolean;
 }
 
 let server: Server;
@@ -21,6 +29,7 @@ beforeAll(async () => {
       res.writeHead(404).end("not found");
       return;
     }
+    if (route.hang) return;
     res.writeHead(route.status, route.contentType ? { "content-type": route.contentType } : {});
     res.end(route.body);
   });
@@ -30,7 +39,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await new Promise<void>((r) => server.close(() => r()));
+  await new Promise<void>((r) => {
+    server.close(() => r());
+    // A hung route still holds its socket, and `close` waits for every one of
+    // them before calling back.
+    server.closeAllConnections();
+  });
 });
 
 beforeEach(() => routes.clear());
@@ -261,9 +275,10 @@ describe("a sitemap that could not be fetched", () => {
       status: 200,
       contentType: "application/xml",
       body: urlset("/a", "/b"),
+      hang: true,
     });
 
-    const stalled = await discoverSitemap(baseUrl, { timeoutMs: 1, crawlFallback: false });
+    const stalled = await discoverSitemap(baseUrl, { timeoutMs: 50, crawlFallback: false });
 
     expect(stalled.diagnostics.found).toBe(false);
     expect(stalled.diagnostics.unreachable).toBeDefined();
