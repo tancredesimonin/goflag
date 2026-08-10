@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.4](https://github.com/tancredesimonin/goflag/compare/v0.2.3...v0.2.4) (2026-08-10)
+
+
+### Bug Fixes
+
+* **cli:** report the pages the audit meant to reach and did not ([8d7c2da](https://github.com/tancredesimonin/goflag/commit/8d7c2dab1e930d8c0f10c06db709bc34752c10c6))
+
 ## [0.2.3](https://github.com/tancredesimonin/goflag/compare/v0.2.2...v0.2.3) (2026-08-09)
 
 
