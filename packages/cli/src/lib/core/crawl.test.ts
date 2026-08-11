@@ -57,6 +57,76 @@ describe("crawl (BFS, depth, filters, dedupe)", () => {
     expect(visited).toEqual(["https://x.com/", "https://x.com/about"]);
   });
 
+  it("keeps one copy of a document two URLs redirect onto", async () => {
+    // The shape every site here has: the entry redirects to the default locale,
+    // and that locale root is also a sitemap seed. Two requests, one document.
+    //
+    // Keeping both is not cosmetic — the page is linted twice, so every finding
+    // on it is emitted twice under the same fingerprint (the fingerprint is
+    // built from the final URL). `--max-debt` counts the copies while a
+    // baseline diff collapses them, and the duplicate spends a slot of the page
+    // budget on a document already audited.
+    const inspectOptions = mockInspect({
+      "https://x.com/": { finalUrl: "https://x.com/en", body: '<a href="/en/about">about</a>' },
+      "https://x.com/en": { finalUrl: "https://x.com/en", body: '<a href="/en/about">about</a>' },
+      "https://x.com/en/about": "<title>About</title>",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      seedUrls: ["https://x.com/en"],
+      depth: 2,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.pages.map((p) => p.fetch.finalUrl).sort()).toEqual([
+      "https://x.com/en",
+      "https://x.com/en/about",
+    ]);
+  });
+
+  it("still follows the links of a document it reached through a redirect", async () => {
+    // The duplicate is dropped after the kept copy has been expanded, never
+    // before — otherwise this is a way to lose a whole subtree.
+    const inspectOptions = mockInspect({
+      "https://x.com/": { finalUrl: "https://x.com/en", body: '<a href="/en/deep">deep</a>' },
+      "https://x.com/en/deep": '<a href="/en/deeper">deeper</a>',
+      "https://x.com/en/deeper": "<title>Deeper</title>",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      depth: 2,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.pages.map((p) => p.fetch.finalUrl).sort()).toEqual([
+      "https://x.com/en",
+      "https://x.com/en/deep",
+      "https://x.com/en/deeper",
+    ]);
+  });
+
+  it("does not count a duplicate against the page budget", async () => {
+    const inspectOptions = mockInspect({
+      "https://x.com/": { finalUrl: "https://x.com/en", body: '<a href="/en/a">a</a>' },
+      "https://x.com/en": { finalUrl: "https://x.com/en", body: '<a href="/en/a">a</a>' },
+      "https://x.com/en/a": "<title>A</title>",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      seedUrls: ["https://x.com/en"],
+      depth: 2,
+      maxPages: 2,
+      inspectOptions,
+      followHreflang: false,
+    });
+    // Two slots, two distinct documents — the redirect twin does not eat one.
+    // Before this, the budget bought `/en` twice and `/en/a` was never reached.
+    expect(result.pages.map((p) => p.fetch.finalUrl).sort()).toEqual([
+      "https://x.com/en",
+      "https://x.com/en/a",
+    ]);
+  });
+
   it("applies include filters by pathname", async () => {
     const inspectOptions = mockInspect({
       "https://x.com/": '<a href="/blog/post-1">post 1</a><a href="/news/post-1">news 1</a>',
@@ -144,13 +214,15 @@ import { pageFromHtml } from "@/lib/rules/test-utils";
 vi.mock("./inspect", async () => {
   return {
     inspect: vi.fn(async (url: string) => {
-      const handler = (vi.mocked(inspectMockTable) as unknown as Map<string, string | Error>).get(
-        url,
-      );
-      if (handler === undefined) {
+      const entry = (vi.mocked(inspectMockTable) as unknown as Map<string, MockEntry>).get(url);
+      if (entry === undefined) {
         throw new Error(`crawl test: unexpected URL ${url}`);
       }
-      if (handler instanceof Error) throw handler;
+      if (entry instanceof Error) throw entry;
+      // A redirect: the request went to `url`, the document came back from
+      // somewhere else, and that is what `finalUrl` reports.
+      const handler = typeof entry === "string" ? entry : entry.body;
+      const url_ = typeof entry === "string" ? url : entry.finalUrl;
       // <link> belongs in <head>; everything else in <body>. This
       // keeps the per-test fixtures readable without spelling out the
       // full HTML envelope.
@@ -158,14 +230,17 @@ vi.mock("./inspect", async () => {
       const html = isHead
         ? `<html><head>${handler}</head><body></body></html>`
         : `<html><head></head><body>${handler}</body></html>`;
-      return pageFromHtml(html, { url });
+      return pageFromHtml(html, { url: url_ });
     }),
   };
 });
 
-const inspectMockTable = new Map<string, string | Error>();
+/** A body, a thrown failure, or a body served from a different final URL. */
+type MockEntry = string | Error | { finalUrl: string; body: string };
 
-function mockInspect(table: Record<string, string | Error>): undefined {
+const inspectMockTable = new Map<string, MockEntry>();
+
+function mockInspect(table: Record<string, MockEntry>): undefined {
   inspectMockTable.clear();
   for (const [url, body] of Object.entries(table)) {
     inspectMockTable.set(url, body);
