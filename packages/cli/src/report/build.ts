@@ -388,6 +388,20 @@ export async function runAudit(
   const pages: Page[] = crawlResult.pages;
   const warnings = crawlResult.errors.map((e) => `crawl: ${e.url} — ${e.message}`);
 
+  // Said out loud rather than absorbed. A retry that nobody hears about turns
+  // "the site answered" and "the site answered the second time we asked" into
+  // the same report, and the difference is the whole reason a page went
+  // missing from a baseline in the first place. It does not gate — the page was
+  // audited, there is no hole — but a number that climbs run after run is a
+  // site getting slower, and this is where you would see it.
+  if (crawlResult.recovered.length > 0) {
+    warnings.push(
+      `${crawlResult.recovered.length} page(s) failed once and answered on retry: ` +
+        `${crawlResult.recovered.slice(0, 3).join(", ")}` +
+        `${crawlResult.recovered.length > 3 ? `, +${crawlResult.recovered.length - 3} more` : ""}.`,
+    );
+  }
+
   // A page that returned a non-2xx status has no meaningful <head>, links,
   // or hreflang — linting it produces phantom "missing title/description/…"
   // findings. Split the healthy pages out and report the rest as errored.

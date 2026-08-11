@@ -105,6 +105,78 @@ describe("crawl (BFS, depth, filters, dedupe)", () => {
     ]);
   });
 
+  it("retries a page that never answered, and keeps it when the second try lands", async () => {
+    // The failure this exists for: one page times out under a cold start, the
+    // report calls it unreachable, and the run goes red on a site that is fine.
+    const inspectOptions = mockInspect({
+      "https://x.com/": '<a href="/slow">slow</a>',
+      "https://x.com/slow": { failTimes: 1, body: "<title>Slow</title>" },
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      depth: 1,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.pages.map((p) => p.fetch.finalUrl).sort()).toEqual([
+      "https://x.com/",
+      "https://x.com/slow",
+    ]);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("says so, rather than absorbing the retry silently", async () => {
+    // A run that recovered from six timeouts is not the same run as one that
+    // recovered from none, and only one of them is a site worth looking at.
+    const inspectOptions = mockInspect({
+      "https://x.com/": '<a href="/slow">slow</a>',
+      "https://x.com/slow": { failTimes: 1, body: "<title>Slow</title>" },
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      depth: 1,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.recovered).toEqual(["https://x.com/slow"]);
+  });
+
+  it("gives up after one retry, so a site that is down fails fast", async () => {
+    // Two attempts, not three: the page is a finding either way now, and a
+    // site that is genuinely down should not cost three times the wait.
+    const inspectOptions = mockInspect({
+      "https://x.com/": '<a href="/dead">dead</a>',
+      "https://x.com/dead": { failTimes: 99, body: "<title>never</title>" },
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      depth: 1,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.pages.map((p) => p.fetch.finalUrl)).toEqual(["https://x.com/"]);
+    expect(result.errors.map((e) => e.url)).toEqual(["https://x.com/dead"]);
+    expect(result.recovered).toEqual([]);
+    // The message is the second attempt's, so the log does not claim a page
+    // failed once when it failed twice.
+    expect(result.errors[0]?.message).toContain("attempt 2");
+  });
+
+  it("leaves `recovered` empty when nothing had to be retried", async () => {
+    const inspectOptions = mockInspect({
+      "https://x.com/": '<a href="/a">A</a>',
+      "https://x.com/a": "<title>A</title>",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      depth: 1,
+      inspectOptions,
+      followHreflang: false,
+    });
+    expect(result.recovered).toEqual([]);
+    expect(result.errors).toEqual([]);
+  });
+
   it("does not count a duplicate against the page budget", async () => {
     const inspectOptions = mockInspect({
       "https://x.com/": { finalUrl: "https://x.com/en", body: '<a href="/en/a">a</a>' },
@@ -219,10 +291,17 @@ vi.mock("./inspect", async () => {
         throw new Error(`crawl test: unexpected URL ${url}`);
       }
       if (entry instanceof Error) throw entry;
+      // A page that fails its first `failTimes` requests and then answers —
+      // the transient timeout the retry exists for.
+      if (typeof entry === "object" && "failTimes" in entry) {
+        const seen = (inspectAttempts.get(url) ?? 0) + 1;
+        inspectAttempts.set(url, seen);
+        if (seen <= entry.failTimes) throw new Error(`Request timed out (attempt ${seen})`);
+      }
       // A redirect: the request went to `url`, the document came back from
       // somewhere else, and that is what `finalUrl` reports.
       const handler = typeof entry === "string" ? entry : entry.body;
-      const url_ = typeof entry === "string" ? url : entry.finalUrl;
+      const url_ = typeof entry === "object" && "finalUrl" in entry ? entry.finalUrl : url;
       // <link> belongs in <head>; everything else in <body>. This
       // keeps the per-test fixtures readable without spelling out the
       // full HTML envelope.
@@ -235,13 +314,20 @@ vi.mock("./inspect", async () => {
   };
 });
 
-/** A body, a thrown failure, or a body served from a different final URL. */
-type MockEntry = string | Error | { finalUrl: string; body: string };
+/**
+ * A body, a thrown failure, a body served from a different final URL, or a
+ * body that only arrives after the first `failTimes` requests have thrown.
+ */
+type MockEntry =
+  string | Error | { finalUrl: string; body: string } | { failTimes: number; body: string };
 
 const inspectMockTable = new Map<string, MockEntry>();
+/** Requests seen per URL, so `failTimes` can count them. */
+const inspectAttempts = new Map<string, number>();
 
 function mockInspect(table: Record<string, MockEntry>): undefined {
   inspectMockTable.clear();
+  inspectAttempts.clear();
   for (const [url, body] of Object.entries(table)) {
     inspectMockTable.set(url, body);
   }

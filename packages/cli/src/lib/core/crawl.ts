@@ -93,8 +93,15 @@ export interface CrawlResult {
   pages: Page[];
   /** Canonicalized URLs that were either visited or attempted. */
   visited: string[];
-  /** Per-URL failures with the engine's error message. */
+  /** Per-URL failures with the engine's error message, after the retry. */
   errors: CrawlError[];
+  /**
+   * URLs that failed once and answered on the second attempt. Reported rather
+   * than swallowed: a page that needs two tries is a fact about the site, and
+   * a run that quietly recovered from six of them is not the same run as one
+   * that recovered from none.
+   */
+  recovered: string[];
   /** True when the crawl stopped because `maxPages` was hit. */
   truncated: boolean;
 }
@@ -102,7 +109,27 @@ export interface CrawlResult {
 interface QueueItem {
   url: string;
   depth: number;
+  /** How many times this URL has already been tried and thrown. */
+  attempt?: number;
 }
+
+/**
+ * One retry per URL, and the retry goes to the back of the frontier rather
+ * than firing straight away.
+ *
+ * Immediately is the wrong moment: a page that just timed out is a page whose
+ * server is cold or busy, and asking again in the same wave asks the same
+ * question of the same overloaded process. The back of the queue is minutes
+ * away on a crawl of any size, which is the spacing this needs and costs
+ * nothing to arrange.
+ *
+ * One, not three: the report now treats a page that never answered as a
+ * finding, so the cost of a false timeout is a red pipeline rather than a
+ * silent hole. That is worth one more request. It is not worth turning a site
+ * that is genuinely down into three times the load and three times the wait —
+ * `errors` is the honest answer there, and it arrives sooner.
+ */
+const MAX_ATTEMPTS = 2;
 
 /**
  * Public entry point. Resolves once the BFS frontier is empty, the
@@ -124,6 +151,7 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
       pages: [],
       visited: [],
       errors: [{ url: options.entryUrl, message: "entry URL is not a valid http(s) URL" }],
+      recovered: [],
       truncated: false,
     };
   }
@@ -145,6 +173,7 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
 
   const pages: Page[] = [];
   const errors: CrawlError[] = [];
+  const recovered: string[] = [];
   let truncated = false;
 
   // `visitedSet` holds the URLs we *asked* for. This one holds the URLs we were
@@ -193,9 +222,16 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
     const results = await Promise.all(inspections);
     for (const result of results) {
       if (result.kind === "err") {
+        const attempt = (result.item.attempt ?? 0) + 1;
+        if (attempt < MAX_ATTEMPTS) {
+          queue.push({ ...result.item, attempt });
+          continue;
+        }
         errors.push({ url: result.item.url, message: result.error });
         continue;
       }
+
+      if (result.item.attempt) recovered.push(result.item.url);
 
       // A document already answered for. Its links were extracted from the
       // copy we kept, so there is nothing here the frontier has not seen.
@@ -243,6 +279,7 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
     pages,
     visited: [...visitedSet],
     errors,
+    recovered,
     truncated,
   };
 }
