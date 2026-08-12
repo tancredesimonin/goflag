@@ -39,8 +39,11 @@ goflag https://example.com --report report.json   # also prints the terminal vie
     "source": "sitemap",
     "multilingual": true
   },
-  // The collections are elided here for space; in a real report the counts
-  // in `summary` always match them, and `pages` has one entry per crawled page.
+  // The collections are elided here for space; `pages` has one entry per
+  // crawled document. Every `summary` count is the length of the collection it
+  // names — except `brokenLinks`, which counts the *unique targets* whose
+  // verdict is `broken`, while the `brokenLinks` array has one entry per
+  // (page, target) pair and also carries `blocked` and `warning` targets.
   "pages": [
     {
       "url": "https://example.com/",
@@ -62,20 +65,38 @@ goflag https://example.com --report report.json   # also prints the terminal vie
     "pagesScanned": 128,
     "pagesFailed": 0,
     "truncated": false,
-    "warnings": []
+    "warnings": [],
+    // Always present: which pages the run chose to audit.
+    "coverage": {
+      "mode": "structural",
+      "considered": 412,
+      "selected": 128,
+      "families": [{ "pattern": "/{locale}/blog/{2}", "size": 117, "sampled": 3 }]
+    },
+    // Present whenever sitemap discovery ran, so unless `--no-sitemap`.
+    "sitemap": {
+      "found": true,
+      "sitemapUrl": "https://example.com/sitemap.xml",
+      "urlCount": 412,
+      "uncrawled": 0
+    }
   }
 }
 ```
 
-`verdict` is `green`, `yellow` or `red`. It is a summary of severities, not of
-counts: `red` means at least one error-level finding, `yellow` means warnings
-only, `green` means nothing at all.
+`verdict` is `green`, `yellow` or `red`. `red` means at least one of: a finding
+of `error` severity, a broken link, an unreachable page, a crawl that reached no
+page at all, or a link scan that scanned none. The last four carry no severity —
+a single timed-out page is enough to turn a run red, because a page the audit
+meant to judge and could not is a hole in the report rather than a clean result.
+`yellow` means findings exist but none of the above. `green` means nothing at
+all.
 
 ## Every finding has an `id`
 
 ```json
 {
-  "id": "seo:og.image.missing:/pricing",
+  "id": "seo-1a2b3c4d5e",
   "pageUrl": "https://example.com/pricing",
   "ruleId": "og.image.missing",
   "severity": "warning",
@@ -85,30 +106,36 @@ only, `green` means nothing at all.
 }
 ```
 
-`id` is the **fingerprint**: stable across runs, across environments, and across
-message rewordings. It is what [baseline gating](/docs/ci/baseline) matches on,
-and what you should key on if you store findings anywhere yourself. Do not parse
-it; treat it as opaque.
+`id` is the **fingerprint**: `<category>-<10 hex characters>`, stable across runs
+and across message rewordings. It is what [baseline gating](/docs/ci/baseline)
+matches on, and what you should key on if you store findings anywhere yourself.
+Do not parse it; treat it as opaque.
+
+It survives an environment change for every page-attributed finding, whose page
+URL is reduced to an origin-independent route. `brokenLinks` are the deliberate
+exception: a link's identity includes _where it points_, so its id keeps the
+target's origin, and a broken internal link fingerprints differently on
+`http://localhost:3000` and on `https://example.com`.
 
 `why` and `fix` are present when the rule offers them. `fix` assumes the Next.js
 App Router and says so; the finding is still correct on any stack.
 
 ## The finding collections
 
-| Field                             | What it holds                                                                                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `brokenLinks`                     | One entry per (page, target) pair, with `status`, `verdict` and a human `reason`. A footer link on 500 pages is probed once but reported per referring page. |
-| `unreachablePages`                | Crawled pages that answered non-2xx. `status: 0` means a network error rather than an HTTP status.                                                           |
-| `missingTranslations.holes`       | `{ route, presentLocales, missingLocales }`: a route served in some locales and not others.                                                                  |
-| `missingTranslations.reciprocity` | hreflang findings: `missing-back-link`, `x-default-missing`, `locale.invalid`, `self-mismatch`.                                                              |
-| `seoIssues`                       | Per-page findings from the [page rule registry](/docs/rules).                                                                                                |
-| `siteIssues`                      | Cross-page findings: same shape as `seoIssues`, but a statement about the whole site, so fixing one usually fixes a whole column.                            |
+| Field                             | What it holds                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `brokenLinks`                     | One entry per (page, target) pair, with `status`, `verdict` and a human `reason`. A footer link on 500 pages is probed once but reported per referring page.                                                                                                                   |
+| `unreachablePages`                | Pages the audit meant to judge and could not: crawled pages that answered non-2xx, plus pages that never answered at all (timeout, reset, DNS failure), which carry `status: 0` and have **no** entry in `pages` or in `pagesCrawled`. Any entry here makes the verdict `red`. |
+| `missingTranslations.holes`       | `{ route, presentLocales, missingLocales }`: a route served in some locales and not others.                                                                                                                                                                                    |
+| `missingTranslations.reciprocity` | hreflang findings: `missing-back-link`, `x-default-missing`, `locale.invalid`. Read out of the markup, so they are reported even when no locale axis was found.                                                                                                                |
+| `seoIssues`                       | Per-page findings from the [page rule registry](/docs/rules).                                                                                                                                                                                                                  |
+| `siteIssues`                      | Cross-page findings: same shape as `seoIssues`, but a statement about the whole site, so fixing one usually fixes a whole column.                                                                                                                                              |
 
 ## `localeAxis`
 
 ```json
 {
-  "locales": ["en", "fr"],
+  "locales": [],
   "source": "none",
   "multilingual": false,
   "candidates": [
@@ -124,7 +151,9 @@ App Router and says so; the finding is still correct on any stack.
 ```
 
 `source` is `explicit` (you passed `--locales`), `sitemap`, or `none`. When it is
-`none`, goflag did not guess an axis and the translation checks did not run;
+`none`, goflag did not guess an axis: `locales` is empty and no translation holes
+are reported. hreflang reciprocity is read out of the markup itself and still
+runs, so `missingTranslations.reciprocity` can be non-empty on such a report.
 `candidates` lists the locale-looking prefixes it saw with the evidence for and
 against each, as a suggestion for `--locales`. See
 [Translations](/docs/i18n#where-the-locale-axis-comes-from).
@@ -133,15 +162,16 @@ against each, as a suggestion for `--locales`. See
 
 The field to read before you trust a count.
 
-| Field                           | Why it matters                                                                                                                                                                                                 |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pagesCrawled` / `pagesScanned` | Scanned is the subset whose links were extracted.                                                                                                                                                              |
-| `pagesFailed`                   | Pages that could not be fetched at all.                                                                                                                                                                        |
-| `truncated`                     | `true` when a page or link cap cut the crawl short. **A report with `truncated: true` is a report about part of your site.**                                                                                   |
-| `warnings`                      | Non-fatal problems, in prose: a link blocked by an anti-bot filter, a sitemap that would not parse.                                                                                                            |
-| `ignoredHoles`                  | Translation gaps suppressed by `--ignore-holes`. A suppression cannot hide how much it is hiding.                                                                                                              |
-| `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page (the site's own statement that they are duplicates). Reported so a shrinking finding count is explicable. |
-| `sitemap`                       | `{ found, sitemapUrl, urlCount, uncrawled }`. `uncrawled` counts URLs the sitemap declared that the crawl never reached, which is usually a linking problem.                                                   |
+| Field                           | Why it matters                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pagesCrawled` / `pagesScanned` | Scanned is the subset whose links were extracted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `pagesFailed`                   | Pages whose HTML could not be re-fetched during the link scan, so their links were never extracted. Not the crawl's failures: a page the crawl could not fetch is in `unreachablePages` with `status: 0`.                                                                                                                                                                                                                                                                                                                              |
+| `truncated`                     | `true` when a page or link cap cut the crawl short. **A report with `truncated: true` is a report about part of your site** — but it is not the only such report: a sampled run leaves it `false`, so read `coverage` beside it.                                                                                                                                                                                                                                                                                                       |
+| `warnings`                      | Non-fatal problems, in prose: a link blocked by an anti-bot filter, a sitemap that would not parse.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `ignoredHoles`                  | Translation gaps suppressed by `--ignore-holes`. A suppression cannot hide how much it is hiding.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `duplicatePages`                | Pages excluded from the rule layer because they declare a canonical pointing at another crawled page (the site's own statement that they are duplicates). Reported so a shrinking finding count is explicable.                                                                                                                                                                                                                                                                                                                         |
+| `coverage`                      | `{ mode, considered?, selected?, families? }` — which pages the run chose to audit. `mode` is `structural` (the default whenever a sitemap is found) or `all`. Under `structural`, routes that stand alone are all audited and families built from one template are **sampled**: `considered` is how many URLs the sitemap listed, `selected` how many were audited, `families` names each sampled pattern with its `size` and how many were `sampled`. **`selected` far below `considered` is a report about a sample of your site.** |
+| `sitemap`                       | `{ found, sitemapUrl, urlCount, uncrawled, unreachable? }`. `urlCount` is every URL the sitemap listed; `uncrawled` counts only the URLs this run _selected_ and still never reached, so read `coverage` for what it skipped on purpose. `unreachable` is present when the sitemap itself could not be fetched: the crawl lost its seeds and followed links instead, so the run is not comparable to a baseline and the CLI exits `2` rather than reporting.                                                                           |
 
 ## `conformance` — asked for with `--conformance`
 
@@ -159,6 +189,7 @@ the missing view — every rule's status on every judged page.
     {
       "ruleId": "canonical.absolute",
       "kind": "boolean",
+      "title": "A canonical URL must be absolute",
       "rigor": "vendor-spec",
       "sources": ["ietf-rfc6596", "google-canonicalization", "whatwg-url"],
       "expected": "an absolute `http(s)://` canonical URL",
@@ -168,6 +199,10 @@ the missing view — every rule's status on every judged page.
     /* … one per rule the active profile left enabled */
   ],
   "pages": [
+    // A cell is `pass`, `fail`, `warn` or `na`. `crashed` is a totals bucket and
+    // never a cell: a rule whose evaluator threw on a page is *absent* from that
+    // page's `statuses`, and the crash is reported as an `engine.rule-crashed`
+    // issue instead.
     { "url": "https://example.com/", "statuses": { "canonical.absolute": "pass" } }
     /* … one per judged page */
   ]
@@ -212,6 +247,33 @@ makes it a real requirement, attaches the observed facts, and stops.
   }
 ]
 ```
+
+## `diff` — present when `--baseline` was given
+
+Attached to the report as soon as a baseline file is read, so `--json` and
+`--report` carry the comparison alongside the run itself. It is also inside the
+file `--update-baseline` writes, which is worth knowing if you validate baselines
+against a schema.
+
+{/* prettier-ignore */}
+```jsonc
+"diff": {
+  "baseline": { "url": "https://example.com/", "finishedAt": "…", "profile": "default" },
+  // Present only when this run was judged under a different profile than the
+  // baseline was captured under: reported loudly, gates nothing.
+  "profileMismatch": { "baseline": "default", "current": "strict" },
+  "added": [/* findings absent from the baseline — what fails CI */],
+  "resolved": [/* baseline findings now gone */],
+  "unchanged": 41
+}
+```
+
+A `DiffEntry` is `{ id, kind, severity, summary, pageUrl? }`, where `kind` is
+`brokenLink`, `unreachablePage`, `translationHole`, `reciprocity`, `seo` or
+`site`. `severity` is the finding's own for rule findings and mapped for the
+rest, to match the verdict: a broken link or an unreachable page is an `error`,
+a translation gap a `warning`. `summary` is built for the diff view — for a rule
+finding it is `"<ruleId> on <pageUrl>"`, not the finding's `message`.
 
 `verdict` is `needs-judgment` and nothing else — there is no code path in goflag
 that sets it otherwise. Advisories never touch `summary`, the verdict or the

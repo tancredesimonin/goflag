@@ -352,7 +352,7 @@ export const PAGE_RULES: readonly RuleDoc[] = [
     severity: "error",
     summary: "`robots`, `googlebot`, and `X-Robots-Tag` must not contradict each other",
     message:
-      "Conflicting indexing directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
+      "Conflicting robots directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
     rigor: "vendor-spec",
     sources: ["google-robots-meta"],
@@ -512,6 +512,10 @@ export const ALL_RULES: readonly RuleDoc[] = [...PAGE_RULES, ...SITE_RULES, ...P
  * registry — which is why they carry no severity of their own. Phase 3.5 of the
  * product plan absorbs them into the catalogue; until then they are documented
  * separately rather than described as rules they are not.
+ *
+ * Three codes, not four: `self-mismatch` exists in the engine's `ReciprocityCode`
+ * union and in a stale comment beside it, but no branch of `reciprocityIssues()`
+ * emits it. A catalogue that lists it promises a finding goflag cannot produce.
  */
 export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; why: string }> = [
   {
@@ -529,11 +533,6 @@ export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; w
     code: "locale.invalid",
     message: '`hreflang="pt_BR"` is not a valid BCP 47 tag.',
     why: "An invalid tag is not a fallback, it is ignored: underscore instead of hyphen is enough to void the entire alternate.",
-  },
-  {
-    code: "self-mismatch",
-    message: "A page's self-referential alternate does not point at its own canonical URL.",
-    why: "Every page in a cluster must list itself. A self-reference pointing elsewhere makes the page a member of somebody else's cluster.",
   },
 ];
 

@@ -21,15 +21,15 @@ export const site = defineSite({
 });
 ```
 
-| Field           | What it does                                                             |
-| --------------- | ------------------------------------------------------------------------ |
-| `baseUrl`       | Public origin. A trailing slash is dropped, a path is refused.           |
-| `name`          | `og:site_name`, and the default document title.                          |
-| `locales`       | Every locale served, in the order alternates should be listed.           |
-| `defaultLocale` | Where `x-default` points.                                                |
-| `indexable`     | Drives `robots.txt` **and** the `robots` meta tag, together.             |
-| `localeTags`    | Optional per-locale overrides, for the cases where deriving would guess. |
-| `twitter`       | Optional `summary` or `summary_large_image`, and the site handle.        |
+| Field           | What it does                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| `baseUrl`       | Public origin. A trailing slash is dropped, a path is refused.                            |
+| `name`          | `og:site_name`, and the default document title.                                           |
+| `locales`       | Every locale served, in the order alternates should be listed.                            |
+| `defaultLocale` | Where `x-default` points.                                                                 |
+| `indexable`     | Drives `robots.txt` **and** the `robots` meta tag, together.                              |
+| `localeTags`    | Optional per-locale overrides, for the cases where deriving would guess.                  |
+| `twitter`       | The card type and the site handle. Left out, every page still gets `summary_large_image`. |
 
 Declare the shortest tag that is justified. `pt`, not `pt-BR`, unless you serve
 more than one Portuguese. Every tag is checked against ICU, at compile time and
@@ -87,12 +87,16 @@ actually been translated. Both are on the same site.
 The rule is short: **a fixed `locale` means the route stands alone, a derived or
 absent one means it clusters.**
 
-| Declaration                   | Cluster                       | `x-default`     |
-| ----------------------------- | ----------------------------- | --------------- |
-| nothing                       | every locale the site serves  | `defaultLocale` |
-| `locales: ["en", "fr"]`       | only those                    | `defaultLocale` |
-| `locale: "en"`                | itself, self-referential      | itself          |
-| `locale: (doc) => doc.locale` | whatever the collection holds | `defaultLocale` |
+| Declaration                   | Cluster                       | `x-default`                                                       |
+| ----------------------------- | ----------------------------- | ----------------------------------------------------------------- |
+| nothing                       | every locale the site serves  | `defaultLocale`                                                   |
+| `locales: ["en", "fr"]`       | only those                    | `defaultLocale` if the route serves it, else its first locale     |
+| `locale: "en"`                | itself, self-referential      | itself                                                            |
+| `locale: (doc) => doc.locale` | whatever the collection holds | `defaultLocale` if the collection holds it, else its first locale |
+
+The fallback is the point. Aiming `x-default` at the site default unconditionally
+would make a page translated into two languages that exclude it advertise an
+`x-default` that 404s.
 
 A route that declares it exists in two locales is not a translation hole. It is
 an intention, and goflag stops reporting it as one.
@@ -161,14 +165,23 @@ page: if the goal is to keep something out of an index, the instruments are
 
 ## What the registry gives back
 
-| Call                                                    | Returns                        |
-| ------------------------------------------------------- | ------------------------------ |
-| `routes.metadata({ path, locale, title, description })` | `Metadata`                     |
-| `routes.sitemap({ lastModified })`                      | `MetadataRoute.Sitemap`        |
-| `routes.robots({ disallow })`                           | `MetadataRoute.Robots`         |
-| `site.rootMetadata({ description })`                    | `Metadata` for the root layout |
-| `routes.family("docs")`                                 | that family's routes           |
-| `site.servesLocale(segment)`                            | a type guard on the locale     |
+| Call                                                        | Returns                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------- |
+| `routes.metadata({ path, locale, title, description })`     | `Metadata`                                           |
+| `routes.sitemap({ lastModified })`                          | `MetadataRoute.Sitemap`                              |
+| `routes.robots({ disallow })`                               | `MetadataRoute.Robots`                               |
+| `site.rootMetadata({ description })`                        | `Metadata` for the root layout                       |
+| `routes.family("docs")`                                     | that family's routes                                 |
+| `routes.all` / `routes.find(path)` / `routes.require(path)` | every route, a lookup, a lookup that fails the build |
+| `site.resolveLocale(segment)`                               | the served locale a segment means, or `undefined`    |
+| `site.servesLocale(segment)`                                | a type guard — exact match on a declared locale      |
+| `site.lang(locale)` / `site.bcp47(locale)`                  | `<html lang>` and the `hreflang` tag                 |
+
+`resolveLocale` is RFC 4647 Lookup and folds case, so `/pt-BR/` and `/PT/` both
+find a site that serves `pt`; it never falls back to the default locale, which is
+what lets an unserved language 404 instead of answering 200 in the wrong one.
+`servesLocale` is the narrower guard: an exact match, for a segment you already
+trust.
 
 `routes.family` exists because the shape of a dynamic segment, `[slug]` against
 `[[...slug]]`, is a property of the filesystem route and not of the registry.
@@ -179,5 +192,6 @@ routes and your site turns them into params in three visible lines.
 `robots({ disallow })` adds paths while the site is indexable, and is ignored
 when it is not: a site that forbids everything has nothing to add to that. The
 non-standard `Host:` directive is off by default, because only Yandex ever read
-it and goflag reports it as `robotstxt.unknown-directive`. A library has no
-business producing output its own auditor warns about.
+it and Google ignores it; `robots({ host: true })` emits it where you serve
+Yandex. A library has no business producing output its own auditor will warn
+about once the robots.txt rules land.

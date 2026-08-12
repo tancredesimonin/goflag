@@ -6,12 +6,13 @@ group: start
 order: 1
 ---
 
-goflag crawls a site you name by URL and reports four classes of defect:
+goflag crawls a site you name by URL and reports five classes of defect:
 
 - **Broken links**: every link on every crawled page, probed and triaged.
 - **Missing translation pages**: a route that exists in one locale and not in another, plus the `hreflang` declarations that are supposed to tie them together.
 - **A `robots.txt` that contradicts the pages it serves**: a site that forbids crawling while every page asks to be indexed.
 - **Missing or misconfigured SEO metadata**: a battery of checks on the `<head>` of every page, each one listed in the [rule catalogue](/docs/rules).
+- **Pages the audit could not judge**: a crawled page that answered non-2xx, or that never answered at all after a second attempt. A hole in the audited set is reported rather than passed over, because a silent one is what poisons a baseline.
 
 It needs a URL and nothing else. No account, no API key, no configuration file, no access to your source code.
 
@@ -26,9 +27,11 @@ the whole job.
 
 ## What it is not
 
-goflag has no dashboard, no hosted service, and no score out of 100. It sends
-nothing anywhere: the only network traffic it generates is requests to the site
-you named. Findings name the rule that produced them, so a report can be argued
+goflag has no dashboard, no hosted service, and no score out of 100. It reports
+nothing back to us: the only network traffic it generates is requests to the site
+you named and, because a broken link has to be probed to be known, to the
+third-party URLs that site links to. `--no-external` confines a run to your own
+origin. Findings name the rule that produced them, so a report can be argued
 with instead of chased, and the list of what goflag deliberately does not
 check is in [Limits](/docs/limits#what-goflag-does-not-check).
 

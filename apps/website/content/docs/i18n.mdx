@@ -17,26 +17,60 @@ locales. A cell is filled when a page for that route and locale was found. An
 empty cell is a **hole**: a translation the site serves in one language and not
 in another.
 
+**The route is the URL, not the page identity.** goflag pairs translations by
+pathname, so it only recognises them when the slug is the same in every locale. A
+site that translates its slugs — `/en/pricing` and `/fr/tarifs` — produces two
+routes, each filled in one locale, and therefore two holes, however correct its
+`hreflang` is. On such a site the hole count is not meaningful: rely on the
+reciprocity findings and the two site-wide rules instead, and use
+`--ignore-holes` for the affected route families.
+
+**Coverage decides what the matrix can see.** When a sitemap is found, goflag
+defaults to [`--coverage structural`](/docs/cli#crawl), which samples three URLs
+per template family. The matrix is built from that selection, so a single missing
+translation inside a sampled family is likely never to be looked at, and
+`0 missing translations` then means "none in the sample". Run `--coverage all`
+when the translation matrix is the thing you care about.
+
 ## Where the locale axis comes from
 
 The axis is the list of locales the site is considered to serve. Everything else
 depends on it, so it is decided explicitly, in this order:
 
-1. **`--locales`**: authoritative. It overrides both of the following, and it is
-   the only way to make a locale the site does not serve _yet_ show up as
-   missing.
+1. **`--locales`**: your declaration of intent, and the only way to make a locale
+   the site does not serve _yet_ show up as missing. Its locales are **unioned**
+   with whatever the sitemap shows, never substituted for them: a locale your
+   sitemap demonstrably serves stays on the axis even when you leave it out of
+   the flag. The report labels the source `explicit` as soon as the flag is
+   present, even where part of the axis came from the sitemap.
 
    ```bash
    goflag https://example.com --locales "en,fr,es,pt-br"
    ```
 
-2. **The sitemap.** Locale prefixes seen in `sitemap.xml`, including sitemap
-   indexes. This is the reliable automatic source, because a sitemap lists pages
-   whether or not anything links to them.
+   Pass it on any locale-prefixed site, sitemap or not: it is also what folds
+   `/en/…` and `/fr/…` into one route family for
+   [structural coverage](/docs/cli#crawl). Without it, a site with many top-level
+   sections under `/en` can have those sections sampled as though they were one
+   family.
+
+2. **The sitemap.** Locale prefixes read from the **leading path segment** of
+   each `<loc>`, including sitemap indexes. This is the reliable automatic source
+   for path-prefixed sites, because a sitemap lists pages whether or not anything
+   links to them. Path prefixes are all it reads: if your locales live on
+   subdomains or ccTLDs, in a query parameter, or are declared with
+   `<xhtml:link rel="alternate" hreflang>` inside the sitemap, goflag sees no
+   locales, the axis has fewer than two entries, and every axis-dependent check
+   is silently off. Pass `--locales` on those sites — nothing warns you.
 
 3. **Nothing.** If there is no sitemap and no `--locales`, goflag **does not
    guess**. It reports the prefixes it saw during the crawl, with the evidence for
-   each, and turns the translation checks off.
+   each, and turns off every check that depends on the axis: translation holes,
+   [`hreflang.missing`](/docs/rules/hreflang.missing) and
+   [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch). The
+   reciprocity checks below do not depend on the axis and keep running, so a run
+   with no axis can still report `missingTranslations.reciprocity` entries and
+   still come out yellow.
 
 That third case used to be a guess, and the guess was wrong in a way that
 mattered. See below.
@@ -47,12 +81,16 @@ A filled matrix is not enough: the pages have to point at each other. These are
 reported under `missingTranslations.reciprocity`, with a code rather than a rule
 id, because they are computed cross-page rather than from the per-page registry:
 
-| Code                | What it means                                                                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `missing-back-link` | A declares an alternate to B, and B does not link back. hreflang is only honoured when reciprocal; a one-way declaration is discarded.  |
-| `x-default-missing` | The cluster advertises several locales but no `hreflang="x-default"`, which is where a visitor matching none of your languages is sent. |
-| `locale.invalid`    | The tag is not valid BCP 47. `pt_BR` with an underscore instead of a hyphen voids the whole alternate: it is ignored, not corrected.    |
-| `self-mismatch`     | A page's self-referential alternate does not point at its own canonical URL, which makes it a member of somebody else's cluster.        |
+| Code                | What it means                                                                                                                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missing-back-link` | A declares an alternate to B, and B does not link back. hreflang is only honoured when reciprocal; a one-way declaration is discarded. Only checked when goflag actually fetched B and its final URL matches the declared `href` exactly — an alternate outside the crawl is not checked at all.            |
+| `x-default-missing` | A page advertises two or more locales and no `hreflang="x-default"`, which is where a visitor matching none of your languages is sent. Reported per page, so a four-locale cluster that never declares it produces four findings.                                                                           |
+| `locale.invalid`    | The tag does not match the shape goflag accepts: two or three letters, optionally followed by a two-letter region or a three-digit UN M49 code (`fr`, `pt-br`, `es-419`), plus `x-default`. The check is **shape only** — it does not know which languages exist, so `qq` passes and `zh-Hant` is rejected. |
+
+A rejected tag voids the alternate for the reciprocity walk. It is **not**
+removed from the matrix: the tag still becomes a column of its own, so every
+route that does not declare it reports a hole in a locale that does not exist.
+Fix the tag rather than filtering the finding.
 
 ## Declaring a gap you meant to leave
 
@@ -92,5 +130,12 @@ Capturing the first baselines surfaced the same class of mistake twice more. The
 worst read the path segment `/cv` as Chuvash (a real ISO 639-1 code) and
 invented 31 translation holes that never existed.
 
-Both are fixed, and together they are why the axis is now either declared by you,
-taken from your sitemap, or not assumed at all.
+The first is fixed outright, and it is why the axis is now either declared by
+you, taken from your sitemap, or not assumed at all.
+
+The second is contained rather than eliminated. With no declared axis goflag no
+longer invents one, but the matrix itself still keys on path shape, so on a site
+that **does** have a declared axis a route like `/cv` still becomes a column and
+still reports holes. Add it to `--ignore-holes`, or check that its pages declare
+`<html lang>` — that cross-check is what the candidate report uses to tell a CV
+page from a Chuvash edition.

@@ -278,8 +278,9 @@ function RobotsFlow() {
   );
 }
 
-/* One head with a defect of each severity, and the two findings they become —
- * ids straight from the rule registry. */
+/* One head with two defects — a thin description and a missing canonical — and
+ * the two warnings they become; ids and severities straight from the rule
+ * registry. */
 function MetadataFlow() {
   return (
     <div className="grid items-stretch gap-x-2 lg:grid-cols-[1fr_3rem_1fr]">
@@ -315,7 +316,7 @@ function MetadataFlow() {
               <span className="text-terminal-dim">description.length</span>
             </span>,
             <span key="canonical">
-              <span className="text-flag-red">error</span>{" "}
+              <span className="text-flag-yellow">warning</span>{" "}
               <span className="text-terminal-dim">canonical.missing</span>
             </span>,
           ]}

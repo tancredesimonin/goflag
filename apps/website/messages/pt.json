@@ -179,11 +179,11 @@
       },
       "chromium": {
         "q": "Eu preciso do Chromium?",
-        "a": "Só sem --static. Uma página cujo head parece vazio é renderizada de novo em um Chromium headless, para que um app renderizado no cliente não seja reportado como se lhe faltasse tudo; --static desliga isso e nunca baixa um navegador."
+        "a": "Só se você quiser que as páginas renderizadas no cliente sejam renderizadas de novo. O goflag nunca embarca nem baixa um navegador: instale-o você mesmo com pnpm add -D playwright e pnpm exec playwright install chromium. Com ele, uma página cujo head parece vazio é renderizada de novo em um Chromium headless; sem ele — ou com --static — o goflag lê apenas o HTML estático, e não diz nada sobre a renderização que deixou de fazer."
       },
       "privacy": {
         "q": "O que sai da minha máquina?",
-        "a": "As requisições HTTP para o site que você indicou, e nada mais. O relatório é escrito no seu disco ou no seu stdout."
+        "a": "As requisições HTTP para o site que você indicou, e para as URLs de terceiros que ele referencia, porque um link quebrado só se constata sondando. --no-external confina a execução à sua própria origem. O relatório é escrito no seu disco ou no seu stdout, e nada é reportado de volta para nós."
       },
       "free": {
         "q": "Quanto custa?",
@@ -191,7 +191,7 @@
       },
       "scale": {
         "q": "Ele termina em um site grande?",
-        "a": "O maior site em que ele serve de gate tem {pages} páginas e leva cerca de {duration} com --static --no-external. --max-pages limita o rastreamento, --include e --exclude o estreitam, e uma execução que bateu em um limite diz isso em diagnostics, em vez de reportar um número menor como se fosse o site inteiro."
+        "a": "O maior site em que ele serve de gate tem {pages} páginas e leva cerca de {duration} com --static --no-external. Num site que publica um sitemap, o goflag não audita tudo: ele mantém cada página que fica sozinha e amostra três páginas por família de URLs de mesma forma, e o relatório imprime uma linha COVERAGE dizendo quantas páginas de quantas foram auditadas. --coverage all desliga a amostragem, --include e --exclude estreitam o rastreamento, e --max-pages é uma proteção que nunca corta uma seleção."
       }
     },
     "close": {
