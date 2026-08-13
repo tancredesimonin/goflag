@@ -207,7 +207,20 @@ export interface GoflagReport {
      * page exists: `conflicts` counts URLs a second entry claimed for a
      * different cluster, where the first declaration was kept.
      */
-    declaredClusters?: { count: number; conflicts?: number };
+    declaredClusters?: {
+      count: number;
+      conflicts?: number;
+      /**
+       * Of `count`, the clusters that exist only because a page's `<head>`
+       * declared them — rows the sitemap never mentioned.
+       */
+      fromHead?: number;
+      /**
+       * Clusters the site declared that goflag declined to use, because no
+       * `x-default` named the row (or the members disagreed about it).
+       */
+      refused?: number;
+    };
     /** Sitemap discovery outcome, when discovery ran. */
     /** Which pages the run chose to audit, and what it therefore cannot promise. */
     coverage?: {

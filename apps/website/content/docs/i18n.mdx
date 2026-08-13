@@ -20,24 +20,39 @@ taken on trust and never fetched, so a `<head>` advertising a translation the
 site does not serve hides that gap instead of reporting it. An empty cell is a
 **hole**: a translation the site serves in one language and not in another.
 
-**A route is a pathname, unless your sitemap says otherwise.** goflag pairs
+**A route is a pathname, unless you declare a cluster.** goflag pairs
 translations by pathname, so on its own it only recognises them when the slug is
 the same in every locale — a site that translates its slugs, `/en/pricing` and
 `/fr/tarifs`, would produce two routes, each filled in one locale, and two holes
 on a pair that is fully translated.
 
-Declaring the cluster in your sitemap fixes that. When a `<url>` entry carries
-`xhtml:link rel="alternate" hreflang` — the form Google documents — goflag reads
-it, and every member of the cluster shares one row whatever its path. The row is
-named after the `x-default` target, so it does not move when a locale joins, and
-the count is reported under `diagnostics.declaredClusters`. A **sitemap** cluster
-declaration decides identity only: it never fills a cell and never asserts that a
-page exists. An `hreflang` alternate in a page's `<head>` is the opposite — it
-fills a cell, as above.
+Declaring the cluster fixes that, and goflag reads two declarations:
+
+1. **Your sitemap.** When a `<url>` entry carries
+   `xhtml:link rel="alternate" hreflang` — the form Google documents — every
+   member of that cluster shares one row whatever its path. This is the source
+   that survives [`--coverage structural`](/docs/cli#crawl): a `<url>` entry
+   names its whole cluster whether or not any member was sampled.
+2. **Your pages' `<head>`.** Two crawled pages whose `hreflang` alternates point
+   at **each other** are one page in two languages. A one-sided declaration
+   forms nothing — the peer has to confirm it — and both pages have to have been
+   crawled, so on a large sampled site this source is often silent where the
+   sitemap one is not. The two are complementary; where they disagree, the
+   sitemap wins and the disagreement is reported in `diagnostics.warnings`.
+
+Either way the row is named after the `x-default` target, so it does not move
+when a locale joins, and the count is reported under
+`diagnostics.declaredClusters`. A cluster declaration decides identity only: it
+never fills a cell and never asserts that a page exists. An `hreflang` alternate
+in a page's `<head>` does both jobs — it pairs, _and_ it fills a cell, as above.
 
 A cluster with no `x-default` is not merged — the anchor has to be something the
 site states about itself, or the row would be renamed every time a locale is
-added, and every baseline would go red on a site where nothing changed.
+added, and every baseline would go red on a site where nothing changed. For the
+same reason a `<head>` cluster whose `x-default` points somewhere outside the
+cluster is not merged either: pointing every page's `x-default` at your home page
+is a common mistake, and merging on it would collapse your whole site into one
+route. Those refusals are counted under `declaredClusters.refused`.
 
 [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) reads the
 same declarations, so a declared cluster produces neither a hole nor a mismatch:
@@ -45,13 +60,18 @@ the rule groups both the sitemap's entries and the crawled pages by cluster
 before comparing them, which is what stops `/en/pricing` and `/fr/tarifs` from
 looking like two half-covered routes.
 
-Without a declaration there is nothing to pair on, and both fall back to the
-pathname. On a slug-translating site that declares none, the hole count is not
-meaningful and neither is that rule — it reports the `<head>` and the sitemap as
-disagreeing on exactly the pages that are correct. The trustworthy findings there
-are the reciprocity codes below and
+Without any declaration there is nothing to pair on, and everything falls back to
+the pathname. On a slug-translating site that declares neither way, the hole
+count is not meaningful and neither is that rule — it reports the `<head>` and
+the sitemap as disagreeing on exactly the pages that are correct. The trustworthy
+findings there are the reciprocity codes below and
 [`hreflang.missing`](/docs/rules/hreflang.missing) — read the rest knowing the
 pairing is wrong, and declare your clusters when you can.
+
+None of this touches a site with no `hreflang` at all. There are no alternates to
+pair on, so no cluster is formed, and `hreflang.missing` reports exactly what it
+always did. Cluster pairing can only ever move a row; it never fills a cell, so
+it cannot hide a hole.
 
 **Coverage decides what the matrix can see.** When a sitemap is found, goflag
 defaults to [`--coverage structural`](/docs/cli#crawl), which samples three URLs

@@ -22,7 +22,12 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
-import { buildClusterIndex } from "../lib/core/clusters";
+import {
+  buildClusterIndex,
+  buildHeadClusterIndex,
+  clustersOnlyFrom,
+  combineClusterIndexes,
+} from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
@@ -361,8 +366,9 @@ export async function runAudit(
   // `<url>` entry names its whole cluster whether or not a member was sampled.
   // That is the property that makes a sitemap declaration usable where pairing
   // from the crawled `<head>`s is not — the two locales of a slug-translating
-  // family draw disjoint samples (docs/i18n-cluster-plan.md §2).
-  const clusters = buildClusterIndex(discovery?.urls ?? []);
+  // family draw disjoint samples (docs/i18n-cluster-plan.md §2). The `<head>`
+  // index joins it after the crawl, below, and only where this one is silent.
+  const sitemapClusters = buildClusterIndex(discovery?.urls ?? []);
 
   // Which pages to audit, chosen by the shape of the site rather than by the
   // order the crawl happens to reach them. Only possible with a sitemap: with
@@ -570,6 +576,16 @@ export async function runAudit(
   // this report.
   if (!ICU_KNOWS_LANGUAGES) warnings.push(ICU_UNAVAILABLE_WARNING);
 
+  // The second pairing source, and the one most correct sites actually use:
+  // reciprocal `hreflang` in the crawled `<head>`s. It needs both members in
+  // hand, so it does nothing where sampling splits a family — which is exactly
+  // where the sitemap declaration works, and why the two are complementary
+  // rather than redundant (docs/i18n-cluster-plan.md §9). The sitemap wins
+  // wherever both answer.
+  const headClusters = buildHeadClusterIndex(htmlPages);
+  const clusters = combineClusterIndexes(sitemapClusters, headClusters);
+  const clustersFromHead = clustersOnlyFrom(sitemapClusters, headClusters);
+
   const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
@@ -579,8 +595,9 @@ export async function runAudit(
   // first declaration wins silently unless this says otherwise.
   if (clusters.conflicts.length > 0) {
     warnings.push(
-      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by the ` +
-        `sitemap; the first declaration was kept: ${clusters.conflicts.slice(0, 3).join(", ")}` +
+      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by ` +
+        `the sitemap and/or the pages' \`<head>\`; the sitemap's declaration was kept: ` +
+        `${clusters.conflicts.slice(0, 3).join(", ")}` +
         `${clusters.conflicts.length > 3 ? `, +${clusters.conflicts.length - 3} more` : ""}.`,
     );
   }
@@ -785,11 +802,19 @@ export async function runAudit(
       // Only when the site declared clusters. A merge that changes which rows
       // exist must be visible: the alternative is a hole count that moved for
       // a reason nothing in the report explains.
-      ...(clusters.size > 0
+      ...(clusters.size > 0 || clusters.refused > 0
         ? {
             declaredClusters: {
               count: clusters.size,
               ...(clusters.conflicts.length > 0 ? { conflicts: clusters.conflicts.length } : {}),
+              // Which source did the work. On a site that declares both ways
+              // the two indexes describe the same clusters, so this counts the
+              // rows only the `<head>` supplied rather than a difference of
+              // totals that would claim a gain that is not there.
+              ...(clustersFromHead > 0 ? { fromHead: clustersFromHead } : {}),
+              // Declared and not used, for want of an anchor to name the row
+              // after. A declaration we saw and did not act on has to be said.
+              ...(clusters.refused > 0 ? { refused: clusters.refused } : {}),
             },
           }
         : {}),
