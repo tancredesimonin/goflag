@@ -17,13 +17,25 @@ locales. A cell is filled when a page for that route and locale was found. An
 empty cell is a **hole**: a translation the site serves in one language and not
 in another.
 
-**The route is the URL, not the page identity.** goflag pairs translations by
-pathname, so it only recognises them when the slug is the same in every locale. A
-site that translates its slugs — `/en/pricing` and `/fr/tarifs` — produces two
-routes, each filled in one locale, and therefore two holes, however correct its
-`hreflang` is. On such a site the hole count is not meaningful: rely on the
-reciprocity findings and the two site-wide rules instead, and use
-`--ignore-holes` for the affected route families.
+**A route is a pathname, unless your sitemap says otherwise.** goflag pairs
+translations by pathname, so on its own it only recognises them when the slug is
+the same in every locale — a site that translates its slugs, `/en/pricing` and
+`/fr/tarifs`, would produce two routes, each filled in one locale, and two holes
+on a pair that is fully translated.
+
+Declaring the cluster in your sitemap fixes that. When a `<url>` entry carries
+`xhtml:link rel="alternate" hreflang` — the form Google documents — goflag reads
+it, and every member of the cluster shares one row whatever its path. The row is
+named after the `x-default` target, so it does not move when a locale joins, and
+the count is reported under `diagnostics.declaredClusters`. A declaration decides
+**identity only**: it never fills a cell and never asserts that a page exists.
+
+A cluster with no `x-default` is not merged — the anchor has to be something the
+site states about itself, or the row would be renamed every time a locale is
+added, and every baseline would go red on a site where nothing changed. Without
+a sitemap declaration the hole count on a slug-translating site is not
+meaningful: rely on the reciprocity findings and the two site-wide rules
+instead, and use `--ignore-holes` for the affected route families.
 
 **Coverage decides what the matrix can see.** When a sitemap is found, goflag
 defaults to [`--coverage structural`](/docs/cli#crawl), which samples three URLs

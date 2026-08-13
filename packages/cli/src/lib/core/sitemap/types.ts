@@ -14,6 +14,23 @@
  * DOM / React / Next.js coupling so it can move into `@goflag/core`.
  */
 
+/**
+ * One `<xhtml:link rel="alternate" hreflang>` inside a `<url>` entry.
+ *
+ * This is how Google documents declaring a translation cluster at the sitemap
+ * level, and it is the only pairing evidence that survives structural
+ * coverage: a `<url>` entry names its whole cluster whether or not any member
+ * was sampled. Pairing from the crawled `<head>`s cannot do that — the two
+ * locales of a slug-translating family draw disjoint samples
+ * (`docs/i18n-cluster-plan.md` §2).
+ */
+export interface SitemapAlternate {
+  /** The declared tag, verbatim. `x-default` included. */
+  hreflang: string;
+  /** The declared target, verbatim — absolute in every sitemap seen. */
+  href: string;
+}
+
 /** A single `<url>` entry from a `<urlset>` document. */
 export interface SitemapUrlEntry {
   /** Absolute URL from `<loc>`. */
@@ -24,6 +41,14 @@ export interface SitemapUrlEntry {
   changefreq?: string;
   /** `<priority>` when present (0.0 – 1.0, kept as a string). */
   priority?: string;
+  /**
+   * Declared translation alternates, when the entry carries any.
+   *
+   * Absent rather than empty when the sitemap declares none, so "this site
+   * does not declare clusters" and "this entry has an empty cluster" stay
+   * different facts.
+   */
+  alternates?: SitemapAlternate[];
 }
 
 /**

@@ -131,6 +131,16 @@ export interface BuildI18nMatrixOptions {
    * of silently shrinking the grid to the locales that happen to exist.
    */
   locales?: readonly string[];
+  /**
+   * Which row a URL belongs to, when the site declared it.
+   *
+   * Built from the sitemap's own `xhtml:link` cluster declarations
+   * (`./clusters`). It overrides the pathname-derived route and nothing else:
+   * it never adds a locale, never fills a cell, and never says a page exists.
+   * A site that declares no cluster — or one without `x-default` — keeps the
+   * pathname route and today's behaviour exactly.
+   */
+  clusterRouteOf?: (url: string) => string | undefined;
 }
 
 export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions = {}): I18nMatrix {
@@ -145,6 +155,16 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
   for (const locale of options.locales ?? []) {
     const tag = locale.trim().toLowerCase();
     if (tag) locales.add(tag);
+  }
+
+  /**
+   * The row a URL sits in: the cluster the site declared, when it declared
+   * one, and the pathname-derived route otherwise. This is the only place the
+   * cluster index is consulted — it moves a cell between rows and never
+   * creates one.
+   */
+  function rowOf(url: string, pathnameRoute: string): string {
+    return options.clusterRouteOf?.(url) ?? pathnameRoute;
   }
 
   function record(route: string, locale: string, url: string): void {
@@ -163,7 +183,7 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
   for (const page of pages) {
     const url = new URL(page.fetch.finalUrl);
     const { route: selfRoute, locale: selfLocale } = splitRoute(url.pathname);
-    record(selfRoute, selfLocale, page.fetch.finalUrl);
+    record(rowOf(page.fetch.finalUrl, selfRoute), selfLocale, page.fetch.finalUrl);
 
     for (const alt of page.links.alternates) {
       let altUrl: URL;
@@ -174,10 +194,10 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
       }
       const { route } = splitRoute(altUrl.pathname);
       const locale = alt.isXDefault ? "x-default" : localeIdentity(alt.hreflang);
-      // Use the alternate's *route* but trust the declared locale —
-      // some sites colocate hreflang URLs without a locale prefix
-      // (e.g. `/about` for both en and x-default).
-      record(route || selfRoute, locale, altUrl.toString());
+      // The declared locale is trusted; the row is the declared cluster when
+      // there is one, and the alternate's own path otherwise — which is what
+      // splits a slug-translating pair into two rows when nothing declared it.
+      record(rowOf(altUrl.toString(), route || selfRoute), locale, altUrl.toString());
     }
   }
 
@@ -191,7 +211,7 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
       continue;
     }
     const { route, locale } = splitRoute(url.pathname);
-    record(route, locale, url.toString());
+    record(rowOf(url.toString(), route), locale, url.toString());
   }
 
   const sortedLocales = sortLocales([...locales]);

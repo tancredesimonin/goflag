@@ -66,6 +66,58 @@ describe("isValidLocale", () => {
   });
 });
 
+describe("buildI18nMatrix — a site that translates its slugs", () => {
+  const CLUSTER = [
+    { hreflang: "en", href: "https://x.com/en/pricing" },
+    { hreflang: "fr", href: "https://x.com/fr/tarifs" },
+    { hreflang: "x-default", href: "https://x.com/en/pricing" },
+  ];
+  const pages = [
+    localePage("https://x.com/en/pricing", CLUSTER),
+    localePage("https://x.com/fr/tarifs", CLUSTER),
+  ];
+  const declaredUrls = ["https://x.com/en/pricing", "https://x.com/fr/tarifs"];
+
+  it("splits the pair into two rows when nothing declares the cluster", () => {
+    // The defect, pinned: two rows for one page, each filled in one locale,
+    // on a pair whose hreflang is fully reciprocal.
+    const matrix = buildI18nMatrix(pages, { declaredUrls, locales: ["en", "fr"] });
+
+    expect(matrix.routes).toContain("/pricing");
+    expect(matrix.routes).toContain("/tarifs");
+    expect(matrix.cells["/pricing"]?.fr?.url).toBeNull();
+    expect(matrix.cells["/tarifs"]?.en?.url).toBeNull();
+  });
+
+  it("puts the pair in one row when the sitemap declared the cluster", () => {
+    const matrix = buildI18nMatrix(pages, {
+      declaredUrls,
+      locales: ["en", "fr"],
+      clusterRouteOf: (url) =>
+        url.startsWith("https://x.com/en/pricing") || url.startsWith("https://x.com/fr/tarifs")
+          ? "/pricing"
+          : undefined,
+    });
+
+    expect(matrix.routes).not.toContain("/tarifs");
+    expect(matrix.cells["/pricing"]?.en?.url).toBe("https://x.com/en/pricing");
+    expect(matrix.cells["/pricing"]?.fr?.url).toBe("https://x.com/fr/tarifs");
+  });
+
+  it("leaves a route alone when the declaration does not cover it", () => {
+    // A cluster index answers `undefined` for everything the site did not
+    // declare, and those rows keep the pathname behaviour exactly.
+    const matrix = buildI18nMatrix(pages, {
+      declaredUrls,
+      locales: ["en", "fr"],
+      clusterRouteOf: () => undefined,
+    });
+
+    expect(matrix.routes).toContain("/pricing");
+    expect(matrix.routes).toContain("/tarifs");
+  });
+});
+
 describe("buildI18nMatrix", () => {
   it("derives routes by stripping the leading locale segment", () => {
     const pages = [
