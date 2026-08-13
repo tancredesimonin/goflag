@@ -2,6 +2,14 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.3.1](https://github.com/tancredesimonin/goflag/compare/next-v0.3.0...next-v0.3.1) (2026-08-13)
+
+
+### Documentation
+
+* correct what the documentation says the CLI does ([7bc8aeb](https://github.com/tancredesimonin/goflag/commit/7bc8aeb6510567482872ce1c273f837cd08bbf0a))
+* correct what this session's own documentation got wrong ([25b8c3a](https://github.com/tancredesimonin/goflag/commit/25b8c3ad98a3dde57180a843efc5660629cbd3d1))
+
 ## 0.3.0 (2026-08-09)
 
 
