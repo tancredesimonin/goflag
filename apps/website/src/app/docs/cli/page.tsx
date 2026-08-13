@@ -28,11 +28,22 @@ export default function CliPage() {
     <DocsPage title={TITLE} description={DESCRIPTION} href="/docs/cli">
       <div className="prose prose-neutral dark:prose-invert prose-a:text-link max-w-none">
         <pre className="bg-terminal text-terminal-foreground border-terminal-border overflow-x-auto rounded-lg border">
-          <code>goflag &lt;url&gt; [options]</code>
+          <code>
+            goflag &lt;url&gt; [options]
+            {"\n"}
+            goflag rules [--json]
+          </code>
         </pre>
         <p>
           The URL is positional and required. Everything else has a default that is safe to leave
           alone; the flags below are the ones worth knowing about when it is not.
+        </p>
+        <p>
+          <code>goflag rules</code> is the exception: it answers a question about goflag rather than
+          about a site, so it takes no URL and touches no network. It prints every rule with its
+          severity, its rigor and the documents it cites — as Markdown for a person, as JSON for
+          anything else. The <Link href="/docs/rules">rule catalogue</Link> on this site is the same
+          data.
         </p>
       </div>
 

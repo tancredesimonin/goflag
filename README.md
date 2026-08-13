@@ -130,6 +130,20 @@ npx @goflag/cli https://example.com --report report.json      # write JSON to a 
 
 The terminal view is just a render of that JSON.
 
+### The catalogue is data too
+
+```sh
+npx @goflag/cli rules                # every rule, as Markdown
+npx @goflag/cli rules --json         # the same, for a program
+```
+
+`rules` answers a question about goflag rather than about a site: no URL, no
+crawl, no network. Each entry carries its scope, severity, rigor, the documents
+it cites and its fix snippet, so anything that documents or consumes the
+catalogue derives it instead of copying it. It deliberately omits the message a
+finding prints — that is built at audit time from what the page actually says,
+so a static copy would be a sample rather than a fact.
+
 ### Options
 
 ```
