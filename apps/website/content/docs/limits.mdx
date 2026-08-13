@@ -9,15 +9,38 @@ A tool that only documents what it catches is not honest about what it misses.
 
 ## Engine caps
 
-These are compiled in, not configurable. They exist so a run on a large site
-finishes rather than melting somebody's laptop or somebody's origin. The
-values are listed in the [CLI reference](/docs/cli#engine-limits).
+Most of these are compiled in, not configurable. They exist so a run on a large
+site finishes rather than melting somebody's laptop or somebody's origin. The
+values are listed in the [CLI reference](/docs/cli#engine-limits). The one
+exception is the cap on pages scanned for links: the CLI always sets it to the
+run's own page budget, so it moves with `--max-pages` and with the size of a
+structural selection.
 
-The user-facing caps you _can_ move are `--max-pages` (default `200`) and
-`--depth` (default `2`). When any cap cuts a crawl short, `diagnostics.truncated`
-is `true` and the terminal prints `note: results truncated by a page/link cap`.
-**A truncated report is a report about part of your site**, and a green verdict on
-one means very little.
+The caps you _can_ move are `--depth` (default `2`), `--max-pages` (default
+`200`) and `--coverage`. `--max-pages` is not a plain ceiling: when a sitemap is
+found the run selects its pages by structure (`--coverage structural`, the
+default) and the budget is raised to the size of that selection plus five, so
+setting it lower than the selection needs changes nothing. It cuts a run short
+only under `--coverage all`, or when no sitemap was found.
+
+### A report can cover part of your site in four ways
+
+`diagnostics.truncated` is `true` only when a page or link cap actually cut the
+crawl or the link audit short; the terminal then prints
+`note: results truncated by a page/link cap`. It is not the only way a run sees
+less than the whole site:
+
+- a **structural** run samples families of pages built from one template. It says
+  so in `diagnostics.coverage` (`considered`, `selected`, `families`) and in the
+  terminal `COVERAGE` line, with `truncated` still `false`;
+- pages the run selected and never reached are counted in
+  `diagnostics.sitemap.uncrawled`, again with `truncated` still `false`;
+- a sitemap over 5,000 URLs, or an index with over 50 child sitemaps, is cut
+  during discovery — silently, with no warning and `truncated` still `false`.
+
+**A run that truncated, sampled, or missed selected pages is a report about part
+of your site**, and a green verdict on one means very little. Read
+`diagnostics.coverage` and `diagnostics.sitemap.uncrawled` beside `truncated`.
 
 ## What goflag does not check
 
@@ -40,18 +63,31 @@ These are decisions, not oversights:
 
 ## Failure modes worth knowing
 
-**Rate limiting looks like breakage.** A site that answers `429` under a crawl
-produces link findings that say more about the crawl than about the links.
-`--timeout` and a smaller `--max-pages` help; auditing your own origin from CI
-usually avoids it entirely.
+**Rate limiting looks like breakage, and it fails the build.** A `429` from a
+_link target_ is a `blocked` verdict. A `429` — or any non-2xx — from a page the
+_crawl_ asked for is an entry in `unreachablePages`, which is always a **red**
+verdict, so it fails the gate even under `--fail-on error`. A page that never
+answers at all (timeout, reset, DNS) is asked once more from the back of the
+queue and counted as unreachable only if the second attempt fails too; a page
+that needed the retry is reported as a warning line, not a finding. Raising
+`--timeout` helps. Lowering `--max-pages` does not, under structural coverage:
+narrow the run with `--include` / `--exclude`, or with
+`--coverage all --max-pages <n>`. Auditing your own origin from CI usually avoids
+the whole class.
 
 **Anti-bot filters return 403.** These are triaged apart from real breakage: the
-verdict is `blocked`, not `broken`, and it appears in `warnings`. A heavily
-protected third party can still produce noise. This is one reason `--no-external`
-belongs in a CI gate.
+verdict is `blocked`, not `broken`, and they are left out of
+`summary.brokenLinks`. They are not warnings, though — the entries sit in the
+report's `brokenLinks` array, print under "Broken links" in the terminal, and
+make the verdict yellow, so they fail a default `--fail-on warning` gate. This is
+one reason `--no-external` belongs in a CI gate.
 
-**Soft 404s are detected heuristically.** A page that returns `200` while saying
-"not found" is caught by pattern, not by proof. False negatives exist.
+**Soft 404s are detected heuristically, and only on links.** A _link target_ that
+answers `200` with a body under 2 KB matching "not found" is flagged, with the
+verdict `warning`. Two consequences: a page of your own site that the crawl
+visited is never tested for it, and a soft 404 served with the site's usual
+layout is over the size limit and never caught. False negatives are the norm
+here, not the exception.
 
 **The length thresholds are conventions, not specifications.** `title.length` and
 `description.length` cite no standard, because there is none to cite. They are
@@ -60,13 +96,25 @@ labelled as heuristics in the [catalogue](/docs/rules).
 **Client-rendered metadata needs the browser path.** By default, a page with an
 empty-looking head is re-rendered in Chromium. With `--static`, it is judged as
 served, which is correct for a crawler, and misleading if you expected the
-runtime result. See [Install](/docs/install#chromium) before opting in.
+runtime result. See [Install](/docs/install#chromium) before opting in. The same
+thing happens without the opt-in when Playwright or its Chromium binary is
+missing: the escalation is skipped, the page is judged as served, and **nothing
+in the report says so** — no warning, no diagnostics field. On an SPA that is a
+full column of phantom `title.missing` / `description.missing` findings. Install
+Chromium before you believe them.
+
+**Translations are paired by pathname.** A route is the URL with its locale
+segment removed, so goflag only recognises a pair when the slug is identical in
+every locale. A site that translates its slugs — `/en/pricing` and `/fr/tarifs` —
+produces two routes, each filled in one locale, and therefore two holes, however
+correct its `hreflang` is. See [Translations](/docs/i18n#the-matrix).
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
-known defects. That is what it is for. The output never says `clean` and always
-prints how many findings are being let through and how old the baseline is, but
-if nobody reads it, the number does not help. See
-[baseline gating](/docs/ci/baseline).
+known defects. That is what it is for. The output never goes green while findings
+are being let through: it prints `REGRESSION GATE`, how many known findings are
+not gating the build, and how old the baseline is. (A green `CLEAN` appears only
+when the baseline holds nothing and nothing is new.) But if nobody reads it, the
+number does not help. See [baseline gating](/docs/ci/baseline).
 
 ## Known false positives, and why they are documented
 

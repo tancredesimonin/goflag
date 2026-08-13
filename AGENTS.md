@@ -27,9 +27,12 @@ import from `packages/cli`. The two products must stay independently useful.
 ## Layout
 
 - `packages/cli/src/lib/core/**` — framework-agnostic engine: crawl, discovery,
-  fetch/extract (static and headless Chromium), link audit (`links/`), the i18n
-  matrix and reciprocity check, probes (`robots`, `sitemap`, `manifest`), and
-  the pure `lint()` / `lintSite()` runners.
+  page selection (`coverage.ts` — which pages get audited, by the shape of the
+  site rather than by a cap; plan: `docs/coverage-plan.md`), fetch/extract
+  (static and headless Chromium), link audit (`links/`), the i18n matrix and
+  reciprocity check, probes (`robots`, `sitemap`, `manifest`), and the pure
+  `lint()` / `lintSite()` runners. The selection is made in `report/build.ts`
+  before the crawl runs, and it also raises the crawl's `maxPages`.
 - `packages/cli/src/lib/rules/**` — the SEO metadata rule catalog. `index.ts`
   is the registry: each rule is a sourced descriptor with a pure evaluator over
   the `Extraction` model (`extraction/`), never over raw HTML. `sources/` is
@@ -41,8 +44,9 @@ import from `packages/cli`. The two products must stay independently useful.
 - `packages/cli/src/lib/runner/**` — boot-and-audit support for `--start`.
 - `packages/next/src/**` — the route registry. `site.ts` (`defineSite`),
   `routes.ts` (families, the registry, sitemap and robots projections),
-  `metadata.ts`, `locate.ts` (canonical + hreflang cluster), `locale.ts` (tag
-  forms). `conformance.test.ts` judges the library's own output by invariants
+  `metadata.ts`, `locate.ts` (canonical + hreflang cluster), `locale/` (tag
+  forms; `generated.ts` is written by `pnpm --filter @goflag/next
+generate:locales` — edit the generator, not the file). `conformance.test.ts` judges the library's own output by invariants
   named after the rules the CLI reports — provisional, and meant to be replaced
   by the real catalogue once it is exported.
 - `packages/cli/src/report/**` — the `GoflagReport` schema (`types.ts`), the
@@ -55,7 +59,7 @@ import from `packages/cli`. The two products must stay independently useful.
 - `packages/cli/fixtures/**` — static fixture sites. Prettier-ignored on
   purpose: they are captured verbatim and must stay byte-for-byte identical.
 - `apps/website/**` — the marketing and documentation site (`goflag.tech`).
-  Next.js + next-intl (`en`, `fr`, `es`, `pt-br`, default `en`), MDX content
+  Next.js + next-intl (`en`, `fr`, `es`, `pt`, default `en`), MDX content
   under `content/`. It is audited by the CLI it documents:
   `pnpm --filter @goflag/website seo`.
 - `Dockerfile`, `config/deploy*.yml`, `.kamal/**` — how that site is built and
@@ -66,7 +70,7 @@ import from `packages/cli`. The two products must stay independently useful.
 
 ## Toolchain
 
-- Node `>=22` (`engines`); `.nvmrc` pins `24.18.1`.
+- Node `>=22` (`engines`); `.nvmrc` pins `24.19.0`.
 - Repo pins pnpm via **`packageManager`** in the root `package.json` — that is
   the only place the version is written. Use `corepack enable` and let it read
   the pin; do not add a `corepack prepare pnpm@<version> --activate` line, which

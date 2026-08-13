@@ -11,25 +11,30 @@ library refuses it at build time instead, which is the only moment it is cheap.
 
 ## Routes
 
-| Refused                                               | Because                                                                 |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- |
-| A path no route declares                              | the page would render a canonical and be absent from the sitemap        |
-| Two routes on one path                                | the head and the sitemap would describe different routes under one URL  |
-| A locale a route does not serve                       | the canonical would name a page that was never built                    |
-| A collection entry in a locale the site omits         | the content and the declaration contradict each other, and neither wins |
-| A path that does not start with `/`, or ends with one | both double into every canonical and every alternate on the site        |
+| Refused                                               | Because                                                                                                  |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| A path no route declares                              | the page would render a canonical and be absent from the sitemap                                         |
+| Two routes on one path                                | the head and the sitemap would describe different routes under one URL                                   |
+| A locale a route does not serve                       | the canonical would name a page that was never built                                                     |
+| A collection entry in a locale the site omits         | the content and the declaration contradict each other, and neither wins                                  |
+| A path that does not start with `/`, or ends with one | both double into every canonical and every alternate on the site                                         |
+| `path: ""` on a route with a fixed `locale`           | the empty path is the home page under `/[locale]`; outside that segment it is `/`, a path like any other |
 
 ## Site
 
-| Refused                                     | Because                                                                       |
-| ------------------------------------------- | ----------------------------------------------------------------------------- |
-| `baseUrl` with a path, or a relative one    | it prefixes every absolute URL the site emits                                 |
-| `baseUrl` that is not http or https         | same, and the scheme reaches the sitemap                                      |
-| A site serving no locale                    | there is no cluster to build and no `x-default` to point anywhere             |
-| Duplicate locales                           | the alternates would list the same page twice                                 |
-| A malformed language tag                    | `locale.invalid`, which exists because these tables get copied wrong          |
-| `og:locale` for a territoryless locale      | ogp.me defines it as `language_TERRITORY`, and guessing one picks an audience |
-| A sitemap `priority` outside `0.0` to `1.0` | the value is silently dropped by crawlers rather than corrected               |
+| Refused                                     | Because                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `baseUrl` with a path, or a relative one    | it prefixes every absolute URL the site emits                           |
+| `baseUrl` that is not http or https         | same, and the scheme reaches the sitemap                                |
+| A site serving no locale                    | there is no cluster to build and no `x-default` to point anywhere       |
+| Duplicate locales                           | the alternates would list the same page twice                           |
+| A malformed language tag                    | `locale.invalid`, which exists because these tables get copied wrong    |
+| A locale ICU has no likely region for       | `og:locale` is `language_TERRITORY` and there is nothing to derive from |
+| A sitemap `priority` outside `0.0` to `1.0` | the value is silently dropped by crawlers rather than corrected         |
+
+A locale with no territory is not refused: `pt` becomes `pt_BR` and `en` becomes
+`en_US` from ICU's likely subtags, which is the same table both sides used to
+hand-copy. Only a tag ICU gives no likely region for needs `localeTags`.
 
 ## Two things it gets right that hand-written versions usually do not
 

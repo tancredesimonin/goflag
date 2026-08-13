@@ -19,7 +19,7 @@ export const SITE = {
 export const PACKAGE = {
   name: "@goflag/cli",
   bin: "goflag",
-  version: "0.2.5",
+  version: "0.2.6",
   npm: "https://www.npmjs.com/package/@goflag/cli",
   repo: "https://github.com/tancredesimonin/goflag",
   issues: "https://github.com/tancredesimonin/goflag/issues",
@@ -69,7 +69,7 @@ export const INSTALL = {
 export const PROOF = {
   pageRules: 11,
   siteRules: 3,
-  tests: 516,
+  tests: 651,
   sitesGated: 4,
   largestSitePages: 456,
   largestSiteDuration: "4 min",

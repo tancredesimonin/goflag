@@ -30,9 +30,10 @@ const G = (t: string): Span => ({ t, tone: "green" });
 const C = (t: string): Span => ({ t, tone: "cyan" });
 
 /**
- * The hero transcript. Shorter than `FULL_REPORT` on purpose — a hero that
- * needs scrolling is not a product shot — but the same shape: verdict line,
- * counts, then findings grouped under the page that carries them.
+ * A shortened transcript: same shape as `FULL_REPORT` — verdict line, counts,
+ * then findings grouped under the page that carries them — for any surface too
+ * small for the full one. Not rendered anywhere today; the hero is the check
+ * switcher, not a screenshot.
  */
 export const HERO_REPORT: TerminalSample = {
   id: "hero",
@@ -52,7 +53,13 @@ export const HERO_REPORT: TerminalSample = {
     [],
     [B("SEO issues")],
     ["  ", C("/pricing")],
-    ["    ", R("error"), " ", D("robots.conflict"), "  indexable page, disallowed by robots.txt"],
+    [
+      "    ",
+      R("error"),
+      " ",
+      D("robots.conflict"),
+      "  meta robots say noindex, meta googlebot say index",
+    ],
     ["    ", Y("warn "), " ", D("og.image.missing"), "  no og:image"],
   ],
 };
@@ -63,6 +70,16 @@ export const FULL_REPORT: TerminalSample = {
   lines: [
     [B("goflag"), " ", D("https://example.com/")],
     [R("RED FLAG"), "  ", D("128 pages crawled, 128 scanned")],
+    [
+      D(
+        "COVERAGE  128 of 412 pages audited · 9 families sampled, largest 3/117 /{locale}/blog/{2}",
+      ),
+    ],
+    [
+      D(
+        "          Template rules are conclusive. Copy rules — title.length, description.length — are sampled.",
+      ),
+    ],
     [],
     [
       Y("3 broken links"),
@@ -104,7 +121,7 @@ export const FULL_REPORT: TerminalSample = {
       R("error"),
       " ",
       D("robots.conflict"),
-      "  Page asks to be indexed while robots.txt disallows it.",
+      "  Conflicting robots directives: meta robots say noindex, meta googlebot say index.",
     ],
     ["    ", Y("warn "), " ", D("og.image.missing"), "  Page has no og:image."],
     [],
@@ -119,7 +136,7 @@ export const FULL_REPORT: TerminalSample = {
       "  Site serves 3 locales but declares no hreflang alternates.",
     ],
     [],
-    [D("note: 1 link returned 403 from an anti-bot filter, not counted as broken.")],
+    [D("note: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.")],
   ],
 };
 
@@ -144,22 +161,23 @@ export const SUMMARY_REPORT: TerminalSample = {
     [],
     [B("Broken links")],
     ["  ", R("[404]"), " https://example.com/guides/canonical-tags ", D("×3")],
-    ["    ", D("on /blog/hreflang-basics, /blog/sitemaps, /guides (+0 more)")],
+    ["    ", D("on /blog/hreflang-basics, /blog/sitemaps, /guides")],
     [],
     [B("SEO issues")],
     ["  ", Y("warn "), " ", C("og.image.missing"), " ", D("×9")],
-    ["    ", D("A shared link with no image is a bare text row in most clients.")],
-    ["    ", D("fix:"), " export const metadata = {"],
-    ["         ", D('  openGraph: { images: ["/og.png"] },')],
-    ["         ", D("}")],
+    ["    ", D("Provide at least one og:image so links unfurl with a preview")],
+    ["    ", D("fix:"), " // app/…/page.tsx"],
+    ["         ", D("export const metadata = {")],
+    ["         ", D('  openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },')],
+    ["         ", D("};")],
     ["    ", D("on /pricing, /about, /blog (+6 more)")],
     ["  ", Y("warn "), " ", C("canonical.missing"), " ", D("×4")],
-    ["    ", D("Without one, a page competes with its own query-string variants.")],
+    ["    ", D('Declare a <link rel="canonical"> so search engines pick the right URL')],
     ["    ", D("on /blog/hreflang-basics, /blog/sitemaps (+2 more)")],
     [],
     [B("Site-wide issues")],
     ["  ", R("error"), " ", C("hreflang.missing"), " ", D("×1")],
-    ["    ", D("Each translation competes with the others instead of consolidating.")],
+    ["    ", D("Pages on a multilingual site must advertise their locale alternates")],
     ["    ", D("on /")],
   ],
 };
@@ -186,14 +204,19 @@ export const GATE_REPORT: TerminalSample = {
       R("error"),
       " ",
       D("seo"),
-      "  canonical.absolute: canonical is relative",
-      D("  on /pricing"),
+      "  canonical.absolute on https://example.com/pricing",
     ],
     [],
     [B("Resolved")],
-    ["  ", G("-"), " ", Y("warn "), " ", D("seo"), "  og.image.missing", D("  on /about")],
-    [],
-    [D("exit 1")],
+    [
+      "  ",
+      G("-"),
+      " ",
+      Y("warn "),
+      " ",
+      D("seo"),
+      "  og.image.missing on https://example.com/about",
+    ],
   ],
 };
 

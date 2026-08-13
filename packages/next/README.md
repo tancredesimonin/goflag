@@ -27,7 +27,6 @@ export const site = defineSite({
   locales: ["en", "fr", "pt-br"],
   defaultLocale: "en",
   indexable: process.env.APP_ENV === "production",
-  localeTags: { en: { openGraph: "en_US" }, fr: { openGraph: "fr_FR" } },
 });
 
 export const routes = site.routes({
@@ -90,7 +89,7 @@ later, so it fails the build instead:
 | A locale a route does not serve                    | the canonical would name a page that was never built                         |
 | A collection entry in a locale the site omits      | the content and the declaration contradict each other; neither wins silently |
 | `baseUrl` with a path, or a malformed language tag | both double into every canonical and every `hreflang` on the site            |
-| `og:locale` for a territoryless locale             | ogp.me defines it as `language_TERRITORY`; guessing one picks an audience    |
+| A locale ICU has no likely region for              | `og:locale` is `language_TERRITORY` and there is nothing to derive from      |
 
 And two things it gets right that hand-written versions usually do not:
 

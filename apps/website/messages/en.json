@@ -179,11 +179,11 @@
       },
       "chromium": {
         "q": "Do I need Chromium?",
-        "a": "Only without --static. A page whose head looks empty is re-rendered in headless Chromium, so a client-rendered app is not reported as missing everything; --static turns that off and never downloads a browser."
+        "a": "Only if you want client-rendered pages re-rendered. goflag never ships or downloads a browser: install it yourself with pnpm add -D playwright and pnpm exec playwright install chromium. With it, a page whose head looks empty is re-rendered in headless Chromium; without it — or with --static — goflag reads the static HTML only, and says nothing about having skipped the re-render."
       },
       "privacy": {
         "q": "What leaves my machine?",
-        "a": "The HTTP requests to the site you named, and nothing else. The report is written to your disk or your stdout."
+        "a": "The HTTP requests to the site you named, and to the third-party URLs it links to, because a broken link has to be probed to be known. --no-external confines a run to your own origin. The report is written to your disk or your stdout, and nothing is reported back to us."
       },
       "free": {
         "q": "What does it cost?",
@@ -191,7 +191,7 @@
       },
       "scale": {
         "q": "Will it finish on a large site?",
-        "a": "The largest site it gates is {pages} pages and takes about {duration} with --static --no-external. --max-pages caps the crawl, --include and --exclude narrow it, and a run that hit a cap says so in diagnostics rather than reporting a smaller number as if it were the whole site."
+        "a": "The largest site it gates is {pages} pages and takes about {duration} with --static --no-external. On a site that serves a sitemap, goflag does not audit everything: it keeps every page that stands alone and samples three pages per family of same-shaped URLs, and the report prints a COVERAGE line saying how many of how many it audited. --coverage all turns the sampling off, --include and --exclude narrow the crawl, and --max-pages is a guard rail that never cuts a selection short."
       }
     },
     "close": {

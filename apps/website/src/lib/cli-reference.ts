@@ -66,17 +66,25 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
   {
     id: "crawl",
     title: "Crawl",
-    intro: "What gets visited. Every default here is a ceiling, not a target.",
+    intro: "What gets visited, and how the pages to audit are chosen.",
     flags: [
       {
         flag: "--depth <n>",
         default: "2",
-        description: "Crawl depth. 0 audits the entry page only.",
+        description:
+          "How far the crawl follows links out of each page it visits. 0 follows none. It does not bound the page set on its own: sitemap URLs are seeded at depth 0, so --depth 0 still audits every page the coverage selection named. Add --no-sitemap to audit the entry page alone.",
       },
       {
         flag: "--max-pages <n>",
         default: "200",
-        description: "Hard cap on pages crawled.",
+        description:
+          'The crawl\'s page budget. A hard cap under --coverage all, or when no sitemap was found. Under structural coverage the selection has already answered "how many", so the effective budget is max(--max-pages, pages selected + 5) and a run left at the default will audit as many pages as the selection needs. Narrow a structural run with --include/--exclude instead.',
+      },
+      {
+        flag: "--coverage <mode>",
+        default: "structural when a sitemap is found, all otherwise",
+        description:
+          'How the pages to audit are chosen. "structural" keeps every page that stands alone and samples three pages from each family of pages built from one template, so a site of thousands of pages is covered by its templates rather than by whichever URLs the crawl reached first. "all" audits what the sitemap lists, in order, up to --max-pages. A sitemap is required either way: with --no-sitemap, or when discovery finds nothing, the mode is "all" whatever you pass. Every run reports what it looked at under diagnostics.coverage.',
       },
       {
         flag: "--include <glob>",
@@ -102,7 +110,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
       {
         flag: "--locales <list>",
         description:
-          'Comma-separated locales the site serves, e.g. "fr,en,pt-br". Authoritative: it overrides what the sitemap and crawl suggest, and makes a locale the site does not serve yet show up as missing.',
+          'Comma-separated locales the site serves, e.g. "fr,en,pt-br". Your declaration of intent, and the only way to make a locale the site does not serve yet show up as missing. The list is unioned with the prefixes the sitemap shows, never substituted for them, so a locale your sitemap demonstrably serves stays on the axis; the report labels the source "explicit" as soon as the flag is present. It is also what folds /en/… and /fr/… into one route family for structural coverage, so it is worth passing on any locale-prefixed site.',
       },
       {
         flag: "--ignore-holes <glob>",
@@ -193,8 +201,9 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
       },
       {
         flag: "--timeout <ms>",
-        default: "8000",
-        description: "Per-request timeout.",
+        default: "8000 for link probes, 15000 for page fetches",
+        description:
+          "Per-request timeout, applied to page fetches and link probes alike. The two defaults differ when the flag is left off; headless navigation has its own and this flag does not reach it.",
       },
       {
         flag: "--allow-insecure-tls",
@@ -238,7 +247,7 @@ export const EXIT_CODES: ReadonlyArray<{
     code: 0,
     label: "clean",
     meaning:
-      "No findings at or above --fail-on. Also returned by --update-baseline, --help and --version.",
+      "No findings at or above --fail-on. With a baseline it means nothing got worse, not that the site is clean: known findings pass through by design. Also returned by --update-baseline, --help and --version.",
     tone: "green",
   },
   {
@@ -252,16 +261,21 @@ export const EXIT_CODES: ReadonlyArray<{
     code: 2,
     label: "fatal",
     meaning:
-      "The audit could not run: malformed URL, unreadable baseline, a --start command that never answered.",
+      "The audit could not run, or refused to report: malformed URL, a missing <url>, an unknown flag, an unreadable baseline, a --start command that never answered — or a sitemap that was declared and could not be fetched, which leaves the crawl following links and auditing a different site from the one a baseline was taken on.",
     tone: "red",
   },
 ];
 
-/** Caps the engine applies that no flag exposes. Documented because a truncated run says so in `diagnostics`, and the number should be findable. */
+/** The caps the engine applies. Documented because a truncated run says so in `diagnostics`, and the number should be findable. */
 export const ENGINE_LIMITS: ReadonlyArray<{ what: string; value: string }> = [
   { what: "Pages inspected in parallel", value: "4" },
-  { what: "Pages scanned for links", value: "500" },
+  {
+    what: "Pages scanned for links",
+    value: "the pages the crawl audited (--max-pages, or the structural selection)",
+  },
   { what: "Unique link targets probed", value: "10,000" },
   { what: "Link probes in parallel", value: "8 overall, 3 per host" },
   { what: "Redirect hops followed", value: "10, then reported as a loop" },
+  { what: "URLs collected from a sitemap", value: "5,000" },
+  { what: "Child sitemaps followed from an index", value: "50" },
 ];

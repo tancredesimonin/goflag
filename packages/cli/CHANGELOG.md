@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.6](https://github.com/tancredesimonin/goflag/compare/v0.2.5...v0.2.6) (2026-08-12)
+
+
+### Bug Fixes
+
+* **cli:** ask a second time before calling a page unreachable ([a972572](https://github.com/tancredesimonin/goflag/commit/a972572fa55b5aeaabf1ac86a069b13b06659315))
+
 ## [0.2.5](https://github.com/tancredesimonin/goflag/compare/v0.2.4...v0.2.5) (2026-08-10)
 
 

@@ -114,10 +114,24 @@ re-capture the baseline in the same merge request if the bump moves findings.
 
 ## Exit codes
 
-`0` is clean, `1` is the gate (findings at or above `--fail-on`, a regression,
-or `--max-debt` exceeded), and `2` means the run itself failed. Treat `2` as a
-broken job, not as a red site: goflag never got to judge anything. The full
-table is in the [CLI reference](/docs/cli#exit-codes).
+`2` means the run itself failed or refused to report. Treat it as a broken job,
+not as a red site: goflag never got to judge anything. Besides the obvious causes
+(a malformed URL, an unreadable baseline, a `--start` command that never
+answered), it is also what you get when the sitemap was declared and could not be
+fetched — the crawl then falls back to following links, sees a different site,
+and refuses to compare that against your baseline. Retry, or pass `--no-sitemap`
+to audit by crawling on purpose.
+
+What `0` and `1` mean depends on whether a baseline is loaded.
+
+| Mode                                | `0`                                                                             | `1`                                                             |
+| ----------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| No `--baseline`                     | No findings at or above `--fail-on`                                             | Findings at or above `--fail-on`                                |
+| `--baseline` + `--regressions-only` | No _new_ findings at or above `--fail-on`, and the total is within `--max-debt` | A new finding at or above `--fail-on`, or `--max-debt` exceeded |
+
+In baseline mode `0` is not "clean": known findings pass through by design, which
+is why the output prints `REGRESSION GATE` and the debt count instead of going
+green. The full table is in the [CLI reference](/docs/cli#exit-codes).
 
 ## Keep the JSON
 
