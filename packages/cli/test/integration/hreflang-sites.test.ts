@@ -34,6 +34,12 @@ import { startFixtureServer, type FixtureServer } from "../fixture-server";
  *     which `docs/i18n-cluster-plan.md` §7 names as the reason the cluster
  *     work was proven by unit tests and not end to end.
  *
+ *   - `translated-slugs-head-only` — the same site declaring its clusters in
+ *     the `<head>` and nowhere else, which is both correct and the common
+ *     shape: `hreflang` in the `<head>` is the canonical mechanism, and Google
+ *     treats the two forms as equivalent. It was earning 4 mismatch warnings
+ *     and 4 false holes (§9.1).
+ *
  * All of them run in `static` mode so no Chromium boots and the suite stays
  * fast and hermetic.
  */
@@ -276,4 +282,53 @@ describe("translated slugs — a correct site the path model cannot read", () =>
     expect(contact).toHaveLength(2);
     expect(report.siteIssues.filter((i) => i.pageUrl.endsWith("/contact"))).toEqual([]);
   });
+});
+
+describe("translated slugs declared in the <head> only", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/translated-slugs-head-only" });
+    report = await runAudit(`${server.url}/en/pricing`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("pairs the locales from reciprocal <head> alternates", () => {
+    // The sitemap here lists every URL and declares not one `xhtml:link`, so
+    // every cluster in the report came from the pages themselves.
+    expect(report.diagnostics.declaredClusters).toEqual({ count: 3, fromHead: 3 });
+  });
+
+  it("finds nothing to report, because there is nothing wrong", () => {
+    // Measured against this fixture before the fix: 4 `hreflang.sitemap-mismatch`
+    // warnings and 4 translation holes, on a site whose sitemap is complete and
+    // whose `<head>`s are reciprocal in both directions. Eight false findings,
+    // on the shape most correct multilingual sites actually have.
+    expect(report.siteIssues).toEqual([]);
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.missingTranslations.reciprocity).toEqual([]);
+    expect(report.summary.verdict).toBe("green");
+  });
+});
+
+describe("head pairing does not touch a site with no hreflang", () => {
+  it("leaves the founding bug exactly as visible as it was", async () => {
+    // The mechanism reads alternates to pair pages, and this site has none —
+    // so it is a no-op by construction, and `hreflang.missing` still fires on
+    // all eight pages. Worth an assertion rather than an argument: a pairing
+    // step that quietly filled cells would hide precisely the defect goflag
+    // exists to find (`apps/website/content/docs/i18n.mdx`).
+    const server = await startFixtureServer({ root: "fixtures/sites/silent-multilingual" });
+    try {
+      const report = await runAudit(`${server.url}/en`, { depth: 2, static: true });
+      expect(report.diagnostics.declaredClusters).toBeUndefined();
+      expect(report.siteIssues.filter((i) => i.ruleId === "hreflang.missing")).toHaveLength(8);
+    } finally {
+      await server.stop();
+    }
+  }, 60_000);
 });

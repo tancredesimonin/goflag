@@ -29,6 +29,7 @@
 | **X3** | `parseSitemap` jette une déclaration de cluster qu'un site de terrain émet déjà      | acquis (§3) |
 | **X4** | Une déclaration de traduction **ment**, et goflag la croit sans réserve aujourd'hui  | acquis (§4) |
 | **X5** | Identité par la déclaration du sitemap, repli en retrait de prétention               | arrêté (§6) |
+| **X6** | Le `<head>` apparie aussi, sous réciprocité et ancre membre ; le sitemap prime       | arrêté (§9) |
 
 ---
 
@@ -288,3 +289,98 @@ c'est le site, pas la chaîne.
   quand même : `SiteContext` est le seul canal par lequel une règle voit
   l'identité, donc tout nouveau modèle d'identité doit y passer, faute de quoi
   la moitié des findings raisonne encore sur les chemins.
+
+---
+
+## 9. X6 — le `<head>` apparie aussi
+
+> **Rédigé** 2026-08-13, après §7. **Branche** `feat/pair-from-head-alternates`.
+> **Ce que ça change à X5** : rien sur la primauté du sitemap ; ça ajoute une
+> seconde source, subordonnée, là où le sitemap se tait.
+
+### 9.1 Pourquoi X5 ne suffit pas, mesuré
+
+X5 a choisi le sitemap parce qu'une entrée `<url>` nomme son cluster entier même
+si aucun membre n'a été tiré (§2). C'est vrai, et ça reste la raison de le garder
+en tête de liste. Mais ça couvre la **mauvaise moitié** du parc : `hreflang` dans
+le `<head>` est le mécanisme canonique, Google traite les deux formes comme
+équivalentes, et un site qui déclare correctement dans son `<head>` sans rien
+mettre au sitemap **ne doit rien à personne**.
+
+Nouvelle fixture `translated-slugs-head-only` — mêmes pages que
+`translated-slugs`, sitemap complet (les six URL y sont) mais **sans un seul
+`xhtml:link`**. Audit en 0.2.7 + §7 :
+
+| Finding                     | Compte | Réalité                                      |
+| --------------------------- | ------ | -------------------------------------------- |
+| `hreflang.sitemap-mismatch` | **4**  | aucun désaccord : le sitemap liste tout      |
+| trous de traduction         | **4**  | les deux paires sont intégralement traduites |
+
+Huit findings faux sur un site sans défaut. C'est le pire mode d'échec de cet
+outil (`docs/locale-model-plan.md` §B.2), et c'est la forme la plus fréquente.
+
+### 9.2 Le mécanisme
+
+Une arête entre deux pages **explorées** `P` et `Q` si et seulement si le
+`<head>` de `P` déclare une alternative qui résout vers `Q` **et** celui de `Q`
+en déclare une qui résout vers `P`. Composantes connexes, puis :
+
+1. **Pas d'arête `canonical`.** Contrainte de §6, inchangée et non rediscutée.
+2. **Une déclaration non réciproque ne forme rien.** Une page qui pointe seule
+   vers une autre affirme une identité que l'autre ne confirme pas ; c'est
+   exactement la surface de fusion silencieuse que §6 refusait.
+3. **L'ancre est le `x-default` déclaré, et il doit être membre de la
+   composante.** Si les membres ne nomment pas tous le même `x-default`, ou si
+   la cible n'est pas elle-même dans la composante, **on ne fusionne pas** — on
+   compte le refus.
+4. **Le sitemap prime.** L'index du `<head>` ne répond que là où le sitemap
+   s'est tu. Un désaccord entre les deux est un conflit, compté comme les autres.
+
+La clause 3 n'est pas un ornement. `x-default` pointant vers la page d'accueil
+de tout le site est une erreur de terrain courante ; sans elle, chaque page
+tenterait de fusionner sur la ligne `/`, et goflag écraserait un site entier en
+une seule route. Avec elle, la page d'accueil n'est pas réciproquement liée à
+`/en/pricing`, donc rien ne fusionne. Le garde-fou est structurel, pas une liste
+d'exceptions.
+
+L'étiquette reste stable sous ajout d'un membre, comme l'exige §6 : elle est le
+`x-default`, une déclaration que le site fait sur lui-même, pas une fonction de
+l'appartenance.
+
+### 9.3 Ce que ça ne fait pas, et il faut le dire
+
+- **Sur un site sans aucun `hreflang`, c'est une non-opération**, par
+  construction : pas d'alternative, pas d'arête, pas de cluster. Mesuré sur
+  `silent-multilingual` — 8 pages, 0 alternative, 0 arête. Le bug fondateur
+  (`docs/i18n.mdx`, « The bug that started this ») n'est ni réglé ni masqué :
+  `hreflang.missing` lit `alternates.length === 0` et continue de tirer sur les
+  huit pages. Comme l'index sitemap, cet index **déplace une case et n'en crée
+  jamais**, donc il ne peut pas boucher un trou.
+- **Sous couverture structurelle, sur une famille à slugs traduits, c'est aussi
+  une non-opération** : les deux membres ne sont pas tirés (§2, 0 paire sur 8).
+  Mesuré sur `tancrede`, site de terrain : **0 arête réciproque** parmi les pages
+  échantillonnées. C'est la démonstration que cette source ne remplace pas le
+  sitemap et ne prétend pas le faire.
+- **Une redirection casse l'appariement.** La réciprocité se juge sur
+  `fetch.finalUrl` ; un site qui pointe ses alternates vers les URL d'avant
+  redirection ne forme pas d'arête. On rate plutôt que d'inventer, dans ce sens
+  et pas dans l'autre.
+
+### 9.4 Mesuré
+
+| Site                                           | Avant                | Après               |
+| ---------------------------------------------- | -------------------- | ------------------- |
+| `translated-slugs-head-only`                   | 4 warnings + 4 trous | **0 + 0**           |
+| `translated-slugs` (sitemap déclare déjà)      | 0 + 0                | 0 + 0               |
+| les 13 fixtures antérieures, `tancrede` inclus | —                    | **`rowsMoved = 0`** |
+
+L'appariement par le `<head>` ne déplace aucune ligne sur aucune fixture
+existante — même propriété que l'index sitemap, et pour la même raison : il
+n'agit que là où les chemins divergent.
+
+### 9.5 Reste dû
+
+- La mesure de terrain de §6 reste due, et le devient doublement : aucune des
+  deux fixtures à slugs traduits n'est un vrai site.
+- `--route-alias` (conception D) reste l'issue de secours pour un site qui ne
+  déclare **rien**, ni `<head>` ni sitemap. X6 ne l'entame pas.
