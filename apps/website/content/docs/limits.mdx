@@ -116,9 +116,11 @@ so install Chromium before you believe them.
 **Translations are paired by pathname unless the sitemap declares otherwise.** A
 route is the URL with its locale segment removed, so on its own goflag only
 recognises a pair when the slug is identical in every locale. Declaring the
-cluster with `xhtml:link` in your sitemap fixes it; a site that translates its
-slugs and declares nothing gets one hole per locale on pairs that are fully
-translated. See [Translations](/docs/i18n#the-matrix).
+cluster with `xhtml:link` in your sitemap fixes it, for the matrix and for
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) alike; a
+site that translates its slugs and declares nothing gets one hole per locale on
+pairs that are fully translated, and a mismatch warning on each half. See
+[Translations](/docs/i18n#the-matrix).
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
 known defects. That is what it is for. The output never goes green while findings

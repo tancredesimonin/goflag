@@ -614,6 +614,10 @@ export async function runAudit(
     localeAxis,
     discovery,
     robots,
+    // Same index the matrix was built from, so a rule that groups by route
+    // and the grid that reports holes cannot disagree about which URLs are
+    // one page.
+    clusterRouteOf: clusters.routeOf,
   };
   // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
   // a global index, so adding or reordering a rule cannot renumber unrelated
