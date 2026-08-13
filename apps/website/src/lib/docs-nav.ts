@@ -93,3 +93,32 @@ export function getDocsNeighbours(href: string): {
     next: sequence[index + 1] ?? null,
   };
 }
+
+/**
+ * Which sidebar entry a path lights up: the **longest** one that matches.
+ *
+ * Marking every entry whose href is a prefix of the path lights two at once as
+ * soon as the sidebar nests — on `/docs/next/routes`, both `/docs/next` and
+ * `/docs/next/routes` claim to be the page you are on, and a reader loses the
+ * one signal the sidebar owes them.
+ *
+ * The prefix rule is still needed, because pages exist that the sidebar does
+ * not list: a rule page (`/docs/rules/title.missing`) has to keep the catalogue
+ * entry highlighted. Taking the longest match serves both — the listed child
+ * wins where there is one, its parent wins where there is not.
+ *
+ * `/docs` stays out of the prefix rule. It is a prefix of every page here, and
+ * lighting the index up underneath a more specific page it does not contain was
+ * the defect this replaced.
+ */
+export function activeDocsHref(pathname: string, hrefs: readonly string[]): string | null {
+  let best: string | null = null;
+
+  for (const href of hrefs) {
+    const matches = pathname === href || (href !== "/docs" && pathname.startsWith(`${href}/`));
+    if (!matches) continue;
+    if (best === null || href.length > best.length) best = href;
+  }
+
+  return best;
+}
