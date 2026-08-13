@@ -108,6 +108,36 @@ describe("flags.json", () => {
     expect(committed.version).toBeUndefined();
   });
 
+  it("names every flag in the README that npm publishes, and no other", () => {
+    // The last hand-kept copy. `prepack` stages the repository README into the
+    // package, so that file *is* the npm page for `@goflag/cli` — and its
+    // options block is written by hand, exactly like the reference page on the
+    // site was before it started reading `flags.json`.
+    //
+    // The descriptions there are deliberately abridged, so this does not
+    // compare prose. It compares the set of flags, which is the drift that
+    // actually hurts: a flag shipped and never mentioned, or a flag removed and
+    // still advertised. That is the shape of three of the four defects the
+    // documentation audit found.
+    // The repository root README, which `prepack` copies in — not the
+    // gitignored copy a previous pack may have left in this package.
+    const readme = readFileSync(repoFile(join("..", "..", "README.md")), "utf8");
+    const options = /\n(--json[\s\S]*?)\n```/.exec(readme)?.[1];
+    expect(options).toBeDefined();
+
+    // Only the leading token or two of each entry: `--depth <n>  How far …`
+    // yields `--depth`, and `-h, --help  Show help.` yields both forms.
+    const documented = new Set(
+      options!
+        .split("\n")
+        .flatMap((line) => /^(-[^\s,]+)(?:,\s*(-[^\s,]+))?/.exec(line)?.slice(1) ?? [])
+        .filter((token): token is string => Boolean(token)),
+    );
+    const shipped = new Set(FLAGS.flatMap((f) => (f.short ? [f.name, f.short] : [f.name])));
+
+    expect([...documented].sort()).toEqual([...shipped].sort());
+  });
+
   it("ships in the published tarball", () => {
     // The site reads it out of `node_modules`, so leaving it out of `files`
     // would make the reference page empty in exactly the place nobody tests.
