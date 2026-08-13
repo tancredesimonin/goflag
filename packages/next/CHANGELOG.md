@@ -2,6 +2,13 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.3.2](https://github.com/tancredesimonin/goflag/compare/next-v0.3.1...next-v0.3.2) (2026-08-13)
+
+
+### Features
+
+* **next:** let a collection say which entries are one page ([e7cdf90](https://github.com/tancredesimonin/goflag/commit/e7cdf904270a12a676b7473e4dc83dc0138cdd32))
+
 ## [0.3.1](https://github.com/tancredesimonin/goflag/compare/next-v0.3.0...next-v0.3.1) (2026-08-13)
 
 

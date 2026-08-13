@@ -48,7 +48,7 @@ export const PACKAGE = {
  */
 export const LIB = {
   name: "@goflag/next",
-  version: "0.3.1",
+  version: "0.3.2",
   npm: "https://www.npmjs.com/package/@goflag/next",
   docs: "/docs/next",
 } as const;
