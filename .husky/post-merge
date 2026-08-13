@@ -1,0 +1,43 @@
+# node_modules follows the lockfile a pull brings in.
+#
+# A `git pull` that carries a new pnpm-lock.yaml leaves this checkout on the
+# previous dependency graph, and says nothing about it. Everything after it —
+# dev, build, ts:check, the pre-commit hook itself — then runs against a tree
+# the lockfile no longer describes: it fails strangely, or it passes for the
+# wrong reason, which is worse.
+#
+# The long-lived branches, because those are the ones that pull other people's
+# work. On a repository where `main` only ever moves through the GitLab
+# interface this fires on `develop` alone, and costs nothing on the branch it
+# never sees.
+BRANCHES="main develop"
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+case " $BRANCHES " in
+  *" $branch "*) ;;
+  *) exit 0 ;;
+esac
+
+lock=pnpm-lock.yaml
+marker=node_modules/.modules.yaml
+
+[ -f "$lock" ] || exit 0
+
+# Two mtimes, not a diff against ORIG_HEAD. pnpm rewrites the marker on every
+# install and git rewrites the lockfile only when the merge changed it, so
+# "lockfile newer than marker" means stale — and it stays true for drift this
+# pull did not cause, which a diff of the merge would walk straight past.
+if [ -f "$marker" ] && [ ! "$lock" -nt "$marker" ]; then
+  echo "husky - node_modules is in sync with $lock"
+  exit 0
+fi
+
+# `--frozen-lockfile`, like CI. The lockfile is what was just pulled and it is
+# what should be installed; a package.json that disagrees with it is a broken
+# merge, and this should say so rather than quietly write a third answer.
+echo "husky - $lock moved ahead of node_modules, installing"
+pnpm install --frozen-lockfile
+
+# A no-op install can leave the marker untouched, which would keep the lockfile
+# permanently newer and reinstall on every pull. Stamp it here instead.
+touch "$marker" 2>/dev/null || true
