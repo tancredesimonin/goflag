@@ -32,3 +32,17 @@ if git diff --cached --name-only | grep -q '^packages/cli/src/lib/rules/'; then
   pnpm --filter @goflag/cli generate:catalog >/dev/null
   git add packages/cli/rules.json
 fi
+
+# `packages/cli/flags.json` is the same arrangement for the CLI's flag table,
+# and it exists for the same reason: the reference page on the site cannot
+# import this package either, so it kept thirty flags by hand — and a
+# documentation audit found four drifts in that copy, including a flag it did
+# not mention at all.
+#
+# `flags.json` is not the guarantee any more than `rules.json` is:
+# `src/lib/flags/catalog.test.ts` compares the committed file against the table,
+# in the suite CI runs, which `--no-verify` cannot skip.
+if git diff --cached --name-only | grep -q '^packages/cli/src/lib/flags/'; then
+  pnpm --filter @goflag/cli generate:flags >/dev/null
+  git add packages/cli/flags.json
+fi

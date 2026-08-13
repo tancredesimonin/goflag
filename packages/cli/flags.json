@@ -1,0 +1,302 @@
+{
+  "flags": [
+    {
+      "name": "--advisories",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Attach the prose rules — the judgment calls goflag refuses to fake — each with the observed facts an agent needs to judge it. Never affects the gate."
+    },
+    {
+      "name": "--allow-insecure-tls",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "fetch",
+      "description": "Accept self-signed / invalid TLS (localhost, tunnels)."
+    },
+    {
+      "name": "--baseline",
+      "short": null,
+      "arg": "<file>",
+      "default": null,
+      "requires": null,
+      "group": "gate",
+      "description": "Stored report to compare against. Use with --regressions-only."
+    },
+    {
+      "name": "--conformance",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Report EVERY rule's status on every page (pass / fail / warn / na), not just the violations. Answers \"where do we stand against the catalog?\"; pairs with --json."
+    },
+    {
+      "name": "--coverage",
+      "short": null,
+      "arg": "<mode>",
+      "default": "structural when a sitemap is found, all otherwise",
+      "requires": null,
+      "group": "crawl",
+      "description": "How to choose which pages to audit. \"structural\" (default when a sitemap is found) keeps every standalone page and samples families of pages built from one template. \"all\" audits everything the sitemap lists, up to --max-pages."
+    },
+    {
+      "name": "--depth",
+      "short": null,
+      "arg": "<n>",
+      "default": "2",
+      "requires": null,
+      "group": "crawl",
+      "description": "How far to follow links out of each page (0 = follow none). Sitemap URLs are seeded regardless, so --depth 0 alone is not \"entry page only\" — add --no-sitemap for that. Default: 2."
+    },
+    {
+      "name": "--exclude",
+      "short": null,
+      "arg": "<glob>",
+      "default": null,
+      "requires": null,
+      "group": "crawl",
+      "description": "Skip paths matching <glob> (repeatable)."
+    },
+    {
+      "name": "--fail-on",
+      "short": null,
+      "arg": "<level>",
+      "default": "warning",
+      "requires": null,
+      "group": "gate",
+      "description": "Exit 1 at or above this severity: warning (default), error, or never."
+    },
+    {
+      "name": "--help",
+      "short": "-h",
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "terminal",
+      "description": "Show this help."
+    },
+    {
+      "name": "--ignore-holes",
+      "short": null,
+      "arg": "<glob>",
+      "default": null,
+      "requires": null,
+      "group": "i18n",
+      "description": "Route (locale-free) that is deliberately not translated everywhere, so its gaps are not reported as missing translations (repeatable)."
+    },
+    {
+      "name": "--include",
+      "short": null,
+      "arg": "<glob>",
+      "default": null,
+      "requires": null,
+      "group": "crawl",
+      "description": "Only crawl paths matching <glob> (repeatable)."
+    },
+    {
+      "name": "--json",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Print the JSON report to stdout (nothing else)."
+    },
+    {
+      "name": "--locales",
+      "short": null,
+      "arg": "<list>",
+      "default": null,
+      "requires": null,
+      "group": "i18n",
+      "description": "Comma-separated locales the site serves, e.g. \"fr,en,pt-br\". Unioned with what the sitemap shows, never substituted for it, and the only way to make a locale the site does not serve yet show up as missing. Also folds /en/… and /fr/… into one route family for structural coverage, so pass it on any locale-prefixed site."
+    },
+    {
+      "name": "--max-debt",
+      "short": null,
+      "arg": "<n>",
+      "default": null,
+      "requires": null,
+      "group": "gate",
+      "description": "Fail when the site carries more than <n> findings in total, whether new or known. Lower it as you fix, to stop a baseline from fossilising."
+    },
+    {
+      "name": "--max-pages",
+      "short": null,
+      "arg": "<n>",
+      "default": "200",
+      "requires": null,
+      "group": "crawl",
+      "description": "Page budget for the crawl. A hard cap under --coverage all; under structural coverage the selection wins and the budget is max(<n>, selected + 5). Default: 200."
+    },
+    {
+      "name": "--no-color",
+      "short": null,
+      "arg": null,
+      "default": "colour when stdout is a TTY and NO_COLOR is unset",
+      "requires": null,
+      "group": "terminal",
+      "description": "Disable coloured output."
+    },
+    {
+      "name": "--no-external",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "fetch",
+      "description": "Do not probe off-origin (external) links."
+    },
+    {
+      "name": "--no-sitemap",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "crawl",
+      "description": "Do not discover the sitemap; crawl from <url> only. Discovery is on by default because link-only crawling cannot find locales a site never links to."
+    },
+    {
+      "name": "--profile",
+      "short": null,
+      "arg": "<name>",
+      "default": "default",
+      "requires": null,
+      "group": "gate",
+      "description": "Policy overlay on the rule set — it changes how loudly a rule fires, never what it observes: default — rule severities exactly as authored strict — every spec-backed rule fails the build spec-only — heuristic rules switched off entirely marketing — snippet and unfurl metadata gaps are errors"
+    },
+    {
+      "name": "--quiet",
+      "short": "-q",
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "terminal",
+      "description": "Suppress the live progress output."
+    },
+    {
+      "name": "--regressions-only",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": "--baseline",
+      "group": "gate",
+      "description": "Weaken the gate: fail only on findings that are NEW relative to --baseline. Known findings stop blocking the build — a green run no longer means a clean site. Requires --baseline."
+    },
+    {
+      "name": "--report",
+      "short": null,
+      "arg": "<file>",
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Write the (full) JSON report to <file>."
+    },
+    {
+      "name": "--start",
+      "short": null,
+      "arg": "<cmd>",
+      "default": null,
+      "requires": null,
+      "group": "boot",
+      "description": "Boot <cmd>, wait for <url> to answer, audit, then stop it. Use to gate a merge on the built app before it ships."
+    },
+    {
+      "name": "--start-cwd",
+      "short": null,
+      "arg": "<dir>",
+      "default": "the current directory",
+      "requires": null,
+      "group": "boot",
+      "description": "Directory to run --start in. Defaults to the current one; set it when auditing a monorepo package from the repository root."
+    },
+    {
+      "name": "--start-timeout",
+      "short": null,
+      "arg": "<ms>",
+      "default": "60000",
+      "requires": null,
+      "group": "boot",
+      "description": "How long to wait for --start to answer. Default: 60000."
+    },
+    {
+      "name": "--static",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "fetch",
+      "description": "Static HTML only; never launch headless Chromium."
+    },
+    {
+      "name": "--summary",
+      "short": "-s",
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Roll findings up (dedup by link/rule/code). Pairs with --json for a compact, agent-friendly payload."
+    },
+    {
+      "name": "--timeout",
+      "short": null,
+      "arg": "<ms>",
+      "default": "8000 for link probes, 15000 for page fetches",
+      "requires": null,
+      "group": "fetch",
+      "description": "Per-request timeout in ms, for page fetches and link probes alike. Unset, the defaults differ: 8000 for link probes, 15000 for page fetches."
+    },
+    {
+      "name": "--update-baseline",
+      "short": null,
+      "arg": null,
+      "default": null,
+      "requires": "--baseline",
+      "group": "gate",
+      "description": "Write this run to --baseline and exit 0, instead of judging against it. Use it to capture a baseline, or to accept findings you have decided to live with — it says what it accepted."
+    },
+    {
+      "name": "--verbose",
+      "short": "-V",
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "terminal",
+      "description": "Log every page as it is analyzed."
+    },
+    {
+      "name": "--version",
+      "short": "-v",
+      "arg": null,
+      "default": null,
+      "requires": null,
+      "group": "terminal",
+      "description": "Show the version."
+    }
+  ],
+  "exitCodes": [
+    {
+      "code": 0,
+      "label": "clean"
+    },
+    {
+      "code": 1,
+      "label": "findings found"
+    },
+    {
+      "code": 2,
+      "label": "fatal error"
+    }
+  ],
+  "counts": {
+    "flags": 31,
+    "withShortForm": 5,
+    "takingValue": 16
+  }
+}

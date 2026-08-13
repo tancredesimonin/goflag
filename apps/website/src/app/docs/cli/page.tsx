@@ -32,6 +32,8 @@ export default function CliPage() {
             goflag &lt;url&gt; [options]
             {"\n"}
             goflag rules
+            {"\n"}
+            goflag flags
           </code>
         </pre>
         <p>
@@ -39,11 +41,17 @@ export default function CliPage() {
           alone; the flags below are the ones worth knowing about when it is not.
         </p>
         <p>
-          <code>goflag rules</code> is the exception: it answers a question about goflag rather than
-          about a site, so it takes no URL and touches no network. It prints every rule as JSON —
-          severity, rigor, the documents it cites, the fix snippet. The{" "}
-          <Link href="/docs/rules">rule catalogue</Link> on this site is not a description of that
-          data, it is that data: this page is built from the same file the command prints.
+          <code>goflag rules</code> and <code>goflag flags</code> are the exceptions: they answer a
+          question about goflag rather than about a site, so they take no URL and touch no network.
+          The first prints every rule as JSON — severity, rigor, the documents it cites, the fix
+          snippet. The second prints this page&rsquo;s flag table, the same one{" "}
+          <code>goflag --help</code> is rendered from and the argument parser dispatches on.
+        </p>
+        <p>
+          Neither the <Link href="/docs/rules">rule catalogue</Link> nor the flag list below is a
+          description of that data — each one <em>is</em> that data, read from the file the command
+          prints. That is not a detail: both pages used to be kept by hand, and both had drifted
+          from the engine by the time anybody checked.
         </p>
       </div>
 

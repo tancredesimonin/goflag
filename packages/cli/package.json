@@ -43,7 +43,8 @@
   },
   "files": [
     "dist",
-    "rules.json"
+    "rules.json",
+    "flags.json"
   ],
   "publishConfig": {
     "access": "public"
@@ -61,6 +62,8 @@
     "test:coverage": "vitest run --coverage",
     "validate:sources": "tsx scripts/validate-sources.ts",
     "generate:catalog": "tsx scripts/generate-catalog.ts",
+    "generate:flags": "tsx scripts/generate-flags.ts",
+    "generate:help-fixture": "tsx scripts/generate-help-fixture.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
     "release": "commit-and-tag-version --path . --skip.tag"
