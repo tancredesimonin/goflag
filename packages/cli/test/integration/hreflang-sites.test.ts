@@ -27,8 +27,26 @@ import { startFixtureServer, type FixtureServer } from "../fixture-server";
  *     that fires on *absence* is one bad gate away from flagging every
  *     monolingual site on earth.
  *
- * All three run in `static` mode so no Chromium boots and the suite stays fast
- * and hermetic.
+ *   - `translated-slugs` — a correct site whose locales do not share a slug
+ *     (`/en/pricing`, `/fr/tarifs`) and which declares its clusters in the
+ *     sitemap. Nothing is wrong with it, and every route-by-path grouping says
+ *     otherwise. It is the first fixture in the repo that translates its slugs,
+ *     which `docs/i18n-cluster-plan.md` §7 names as the reason the cluster
+ *     work was proven by unit tests and not end to end.
+ *
+ *   - `translated-slugs-head-only` — the same site declaring its clusters in
+ *     the `<head>` and nowhere else, which is both correct and the common
+ *     shape: `hreflang` in the `<head>` is the canonical mechanism, and Google
+ *     treats the two forms as equivalent. It was earning 4 mismatch warnings
+ *     and 4 false holes (§9.1).
+ *
+ *   - `advertised-not-served` — a page advertising a French translation the
+ *     site does not serve and the sitemap does not list. The declaration fills
+ *     the cell, so the route reads as fully translated: a false negative, and
+ *     the only kind of wrong nobody ever sees. Counted, never judged (§10).
+ *
+ * All of them run in `static` mode so no Chromium boots and the suite stays
+ * fast and hermetic.
  */
 
 function siteIssuesFor(report: GoflagReport, ruleId: string) {
@@ -226,4 +244,143 @@ describe("--locales declares a locale the site does not serve yet", () => {
       expect(hole.presentLocales.sort()).toEqual(["en", "es", "fr", "pt-br"]);
     }
   }, 60_000);
+});
+
+describe("translated slugs — a correct site the path model cannot read", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/translated-slugs" });
+    report = await runAudit(`${server.url}/en/pricing`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("reads the cluster declarations the sitemap carries", () => {
+    expect(report.diagnostics.declaredClusters).toEqual({ count: 3 });
+    expect(report.diagnostics.pagesCrawled).toBe(6);
+    expect(report.localeAxis.locales).toEqual(["en", "fr"]);
+  });
+
+  it("finds nothing to report, because there is nothing wrong", () => {
+    // Measured against this fixture before the fix: four
+    // `hreflang.sitemap-mismatch` warnings — one per slug-translating page —
+    // saying the `<head>` advertised a locale "the sitemap has no entry for",
+    // on a site where the sitemap lists every URL and declares every cluster.
+    // That is the false-positive class this repo treats as its worst failure
+    // (`docs/locale-model-plan.md` §B.2), and it survived 0.2.7 because the
+    // cluster index reached the matrix and not the rules.
+    expect(report.siteIssues).toEqual([]);
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.missingTranslations.reciprocity).toEqual([]);
+    expect(report.summary.verdict).toBe("green");
+  });
+
+  it("keeps the shared-slug control on the same footing", () => {
+    // `/contact` uses one slug in both locales, so it already grouped
+    // correctly by pathname. Following the declaration must leave it exactly
+    // where it was rather than merely happening to agree.
+    const contact = report.pages.filter((p) => p.url.endsWith("/contact"));
+    expect(contact).toHaveLength(2);
+    expect(report.siteIssues.filter((i) => i.pageUrl.endsWith("/contact"))).toEqual([]);
+  });
+});
+
+describe("translated slugs declared in the <head> only", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/translated-slugs-head-only" });
+    report = await runAudit(`${server.url}/en/pricing`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("pairs the locales from reciprocal <head> alternates", () => {
+    // The sitemap here lists every URL and declares not one `xhtml:link`, so
+    // every cluster in the report came from the pages themselves.
+    expect(report.diagnostics.declaredClusters).toEqual({ count: 3, fromHead: 3 });
+  });
+
+  it("finds nothing to report, because there is nothing wrong", () => {
+    // Measured against this fixture before the fix: 4 `hreflang.sitemap-mismatch`
+    // warnings and 4 translation holes, on a site whose sitemap is complete and
+    // whose `<head>`s are reciprocal in both directions. Eight false findings,
+    // on the shape most correct multilingual sites actually have.
+    expect(report.siteIssues).toEqual([]);
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.missingTranslations.reciprocity).toEqual([]);
+    expect(report.summary.verdict).toBe("green");
+  });
+});
+
+describe("head pairing does not touch a site with no hreflang", () => {
+  it("leaves the founding bug exactly as visible as it was", async () => {
+    // The mechanism reads alternates to pair pages, and this site has none —
+    // so it is a no-op by construction, and `hreflang.missing` still fires on
+    // all eight pages. Worth an assertion rather than an argument: a pairing
+    // step that quietly filled cells would hide precisely the defect goflag
+    // exists to find (`apps/website/content/docs/i18n.mdx`).
+    const server = await startFixtureServer({ root: "fixtures/sites/silent-multilingual" });
+    try {
+      const report = await runAudit(`${server.url}/en`, { depth: 2, static: true });
+      expect(report.diagnostics.declaredClusters).toBeUndefined();
+      expect(report.siteIssues.filter((i) => i.ruleId === "hreflang.missing")).toHaveLength(8);
+    } finally {
+      await server.stop();
+    }
+  }, 60_000);
+});
+
+describe("a translation advertised but not served", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/advertised-not-served" });
+    report = await runAudit(`${server.url}/en/guide`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("still counts the advertised translation as present", () => {
+    // Deliberately unchanged. Refusing to believe an alternate the sitemap
+    // does not list would invent holes on every site using `sitemap: false`,
+    // which `@goflag/next` supports on purpose — trading a false negative for
+    // a false positive, in the direction this tool forbids
+    // (`docs/i18n-cluster-plan.md` §10.3).
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.summary.missingTranslations).toBe(0);
+  });
+
+  it("counts the cell nothing vouches for, and says so in a warning", () => {
+    expect(report.diagnostics.unverifiedAlternates).toBe(1);
+    expect(report.diagnostics.warnings.join("\n")).toContain("vouched for only by an `hreflang`");
+  });
+
+  it("leaves the control route alone — both its locales are served and listed", () => {
+    // `/about` exists in both locales, in the sitemap and on disk, so nothing
+    // about it is a claim. If this ever counted, the number would be measuring
+    // sampling rather than unbacked declarations.
+    expect(report.pages.map((p) => p.url.replace(server.url, "")).sort()).toContain("/fr/about");
+  });
+
+  it("knew the page was unreachable and counted it as translated anyway", () => {
+    // The finding this fixture exists to pin, and it is worse than "goflag did
+    // not look": goflag fetched `/fr/guide`, got a 404, recorded it in
+    // `unreachablePages` — and the translation count never consulted that.
+    // Two facts in one report that do not meet.
+    expect(report.unreachablePages.map((p) => p.url.replace(server.url, ""))).toEqual([
+      "/fr/guide",
+    ]);
+    expect(report.summary.missingTranslations).toBe(0);
+  });
 });

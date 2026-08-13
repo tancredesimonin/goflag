@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A site that advertises a translation it does not serve.
+
+  `/en/guide` declares `hreflang="fr"` pointing at `/fr/guide`. That page is not
+  served and is not listed here. goflag fills the (`/guide`, `fr`) cell from the
+  declaration, so the route reads as fully translated and the real gap never
+  appears — a false negative, and a false negative is never seen.
+
+  `/about` is the control: both locales are served and listed, so its cells rest
+  on facts. The two rows must stay distinguishable.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>BASE/en/guide</loc></url>
+  <url><loc>BASE/en/about</loc></url>
+  <url><loc>BASE/fr/about</loc></url>
+</urlset>

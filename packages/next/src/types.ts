@@ -10,8 +10,27 @@ export interface LocalizedRoute<L extends string> {
   readonly policy: "localized";
   /** The family it was declared in. */
   readonly family: string;
-  /** Path after the locale segment. Empty string for the home page. */
+  /**
+   * Path after the locale segment. Empty string for the home page.
+   *
+   * The route's identity: what `routes.find`/`require` key on, and what the
+   * sitemap and `metadata()` fall back to. When the locales do not share a
+   * slug it is the **anchor locale's** path — the site default when this route
+   * serves it, otherwise the first locale it does serve, which is the rule
+   * `x-default` already follows. Anchoring rather than picking the smallest is
+   * what keeps the identity stable when a locale joins.
+   */
   readonly path: string;
+  /**
+   * Path per locale, present only when they differ (`docs/next-plan.md` N6).
+   *
+   * A collection grouped by `key` can hold `/pricing` in `en` and `/tarifs` in
+   * `fr`; without this the two would be separate routes, each advertising a
+   * one-locale cluster, which is exactly the defect goflag's cluster index
+   * exists to repair. Absent on every route whose locales share a slug, so the
+   * common case carries no extra data.
+   */
+  readonly paths?: Partial<Record<L, string>>;
   /**
    * The locales this route is *actually* served in — derived from the content,
    * never assumed to be every locale the site declares. A route that exists in

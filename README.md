@@ -16,7 +16,7 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 ## What it checks
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
-- **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless your sitemap declares its translation clusters with `xhtml:link` — then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`.
+- **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless the site declares its translation clusters — either with `xhtml:link` in the sitemap, or with reciprocal `hreflang` between two crawled pages' `<head>`. Then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`. The sitemap source survives `--coverage structural`, where the two locales of a slug-translating family are rarely both sampled; the `<head>` source needs both pages in hand and is what fixes the common site that declares properly there and nothing in its sitemap.
 - **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
 - **Unreachable pages** — a page the crawl reached that answered non-2xx, or that never answered at all (timeout, reset, DNS failure — recorded as `status: 0`), is reported in `unreachablePages`. goflag asks a second time, from the back of the queue, before calling a page unreachable. Each one is an `error`-severity finding: it turns the verdict red, counts toward `--max-debt`, and fails the build even under `--fail-on error`. A page that silently dropped out of the audited set is what poisons a baseline, so it is reported rather than warned about.
@@ -145,6 +145,18 @@ catalogue emits `rigor: null` with an empty `sources` rather than inventing an
 authority nobody assigned. Write your consumer against that. The same document
 ships inside the package as `rules.json`, if you would rather read it than run
 anything.
+
+The flag list below is data too:
+
+```sh
+npx @goflag/cli flags > flags.json
+```
+
+Same idea, one step further: `flags` prints the very table `goflag --help` is
+rendered from and the argument parser dispatches on, so a flag cannot exist in
+one and not the other. Each entry carries its long and short forms, its argument
+placeholder, its default, the group it belongs to and any flag it requires. It
+ships inside the package as `flags.json` as well.
 
 It deliberately omits the message a finding prints — that is built at audit time
 from what the page actually says, so a static copy would be a sample rather than
@@ -424,6 +436,17 @@ goflag https://example.com --ignore-holes /legal --ignore-holes "/blog/**"
 Suppressed gaps are counted in `diagnostics.ignoredHoles`, so a quiet report
 never means "nothing was wrong" by accident.
 
+The opposite failure is quieter still. A cell in the matrix can be filled by an
+`hreflang` on another page and by nothing else — not crawled, not listed in your
+sitemap — and a filled cell reads as a translation that exists. A page
+advertising a translation the site does not serve therefore plugs the very gap
+it should reveal. Those cells are counted in
+`diagnostics.unverifiedAlternates`, and goflag deliberately does **not** act on
+them: refusing to believe an alternate the sitemap omits would invent holes on
+every site using `@goflag/next`'s `sitemap: false` on purpose. Read that number
+next to `missingTranslations` — a `0` beside a non-zero count is the one place
+this report can be quietly wrong.
+
 ## In CI
 
 Two moments are worth auditing, and they answer different questions.
@@ -455,7 +478,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.7"
+  GOFLAG_VERSION: "0.2.8"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -507,7 +530,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.7 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.8 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

@@ -113,12 +113,18 @@ run says so: the pages that wanted the browser are counted in
 carry a full column of phantom `title.missing` / `description.missing` findings,
 so install Chromium before you believe them.
 
-**Translations are paired by pathname unless the sitemap declares otherwise.** A
-route is the URL with its locale segment removed, so on its own goflag only
-recognises a pair when the slug is identical in every locale. Declaring the
-cluster with `xhtml:link` in your sitemap fixes it; a site that translates its
-slugs and declares nothing gets one hole per locale on pairs that are fully
-translated. See [Translations](/docs/i18n#the-matrix).
+**Translations are paired by pathname unless a cluster is declared.** A route is
+the URL with its locale segment removed, so on its own goflag only recognises a
+pair when the slug is identical in every locale. Two declarations fix it, for the
+matrix and for
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) alike:
+`xhtml:link` in your sitemap, or reciprocal `hreflang` in the two pages'
+`<head>`. The `<head>` route needs both pages crawled, so under
+[`--coverage structural`](/docs/cli#crawl) it is often silent on the large
+sampled families where the sitemap one still works. A site that translates its
+slugs and declares neither way gets one hole per locale on pairs that are fully
+translated, and a mismatch warning on each half. See
+[Translations](/docs/i18n#the-matrix).
 
 **A baseline can hide a lot.** `--regressions-only` passes builds on sites with
 known defects. That is what it is for. The output never goes green while findings

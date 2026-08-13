@@ -420,3 +420,181 @@ describe("sitemap scope", () => {
     ).toThrow(/Duplicate route path/);
   });
 });
+
+/**
+ * A cluster whose locales do not share a slug (`docs/next-plan.md` N6).
+ *
+ * The library groups a collection's entries by path, so two documents whose
+ * slugs are translated used to become two routes, each advertising a cluster of
+ * itself — the exact defect goflag's cluster index exists to repair, emitted by
+ * the library meant to prevent it. Measured before this existed: one sitemap
+ * entry per locale, each with a one-language `alternates.languages`, and the
+ * auditor forming two rows out of one page.
+ */
+describe("a collection keyed by translation", () => {
+  interface Offer {
+    slug: string;
+    locale: string;
+    tid: string;
+  }
+
+  const offers: Offer[] = [
+    { slug: "pricing", locale: "en-US", tid: "offer" },
+    { slug: "tarifs", locale: "fr-FR", tid: "offer" },
+  ];
+
+  const keyed = () =>
+    site.routes({
+      offer: collection(offers, {
+        path: (o) => `/${o.slug}`,
+        locale: (o) => o.locale,
+        key: (o) => o.tid,
+      }),
+    });
+
+  it("leaves a collection without a key exactly as it was", () => {
+    // The acceptance criterion, and the reason `key` is optional: every
+    // collection already in the wild groups by path, and its sitemap must not
+    // move by a byte because this feature exists.
+    const plain = site.routes({
+      offer: collection(offers, { path: (o) => `/${o.slug}`, locale: (o) => o.locale }),
+    });
+
+    expect(plain.all).toHaveLength(2);
+    expect(plain.all.every((route) => route.policy === "localized")).toBe(true);
+    expect(plain.all.map((route) => route.path).sort()).toEqual(["/pricing", "/tarifs"]);
+    for (const route of plain.all) {
+      expect(route.policy === "localized" && route.paths).toBeUndefined();
+    }
+  });
+
+  it("makes one route out of the two, each locale keeping its own path", () => {
+    const routes = keyed();
+
+    expect(routes.all).toHaveLength(1);
+    const [route] = routes.all;
+    expect(route!.policy).toBe("localized");
+    expect(route!.policy === "localized" && route!.locales).toEqual(["en-US", "fr-FR"]);
+    expect(route!.path).toBe("/pricing");
+    expect(route!.policy === "localized" && route!.paths).toEqual({ "fr-FR": "/tarifs" });
+  });
+
+  it("advertises the whole cluster from either half", () => {
+    // What the auditor reads. Before the key, `/en-US/pricing` declared only
+    // itself, so nothing on the page or in the sitemap said the two were one.
+    const routes = keyed();
+
+    for (const [path, locale] of [
+      ["/pricing", "en-US"],
+      ["/tarifs", "fr-FR"],
+    ] as const) {
+      const meta = routes.metadata({ path, locale, title: "T", description: "D" });
+      expect(meta.alternates?.languages).toEqual({
+        "en-US": "https://goflag.tech/en-US/pricing",
+        "fr-FR": "https://goflag.tech/fr-FR/tarifs",
+        "x-default": "https://goflag.tech/en-US/pricing",
+      });
+    }
+  });
+
+  it("resolves from the slug the page actually knows", () => {
+    // A French page knows `/tarifs` and nothing else. Indexing only the anchor
+    // would make the feature unusable from the page that needs it.
+    const routes = keyed();
+
+    expect(routes.find("/tarifs")).toBe(routes.find("/pricing"));
+    expect(
+      routes.metadata({ path: "/tarifs", locale: "fr-FR", title: "T", description: "D" }).alternates
+        ?.canonical,
+    ).toBe("https://goflag.tech/fr-FR/tarifs");
+  });
+
+  it("lists both slugs in the sitemap, under one cluster", () => {
+    const rows = keyed().sitemap();
+
+    expect(rows.map((row) => row.url).sort()).toEqual([
+      "https://goflag.tech/en-US/pricing",
+      "https://goflag.tech/fr-FR/tarifs",
+    ]);
+    for (const row of rows) {
+      expect(Object.keys(row.alternates?.languages ?? {}).sort()).toEqual([
+        "en-US",
+        "fr-FR",
+        "x-default",
+      ]);
+    }
+  });
+
+  it("anchors on the site default, and falls back when the route excludes it", () => {
+    // The identity has to be stable when a locale joins, which is why it is the
+    // same rule `x-default` follows rather than a second one.
+    const withoutDefault = site.routes({
+      offer: collection(
+        [
+          { slug: "tarifs", locale: "fr-FR", tid: "offer" },
+          { slug: "precios", locale: "es-ES", tid: "offer" },
+        ],
+        {
+          path: (o: Offer) => `/${o.slug}`,
+          locale: (o: Offer) => o.locale,
+          key: (o: Offer) => o.tid,
+        },
+      ),
+    });
+
+    expect(withoutDefault.all[0]!.path).toBe("/tarifs");
+    expect(
+      withoutDefault.metadata({ path: "/tarifs", locale: "fr-FR", title: "T", description: "D" })
+        .alternates?.languages,
+    ).toMatchObject({ "x-default": "https://goflag.tech/fr-FR/tarifs" });
+  });
+
+  it("keeps the anchor when a locale joins the cluster", () => {
+    const grown = site.routes({
+      offer: collection([...offers, { slug: "precios", locale: "es-ES", tid: "offer" }], {
+        path: (o: Offer) => `/${o.slug}`,
+        locale: (o: Offer) => o.locale,
+        key: (o: Offer) => o.tid,
+      }),
+    });
+
+    expect(grown.all[0]!.path).toBe(keyed().all[0]!.path);
+  });
+
+  it("refuses two paths for one locale of one page", () => {
+    // Picking either would make the canonical and the cluster describe
+    // different URLs under one page, which is the class of defect this library
+    // fails the build over rather than shipping.
+    expect(() =>
+      site.routes({
+        offer: collection(
+          [
+            { slug: "pricing", locale: "en-US", tid: "offer" },
+            { slug: "prices", locale: "en-US", tid: "offer" },
+          ],
+          {
+            path: (o: Offer) => `/${o.slug}`,
+            locale: (o: Offer) => o.locale,
+            key: (o: Offer) => o.tid,
+          },
+        ),
+      }),
+    ).toThrow(/two paths for locale/);
+  });
+
+  it("still keeps one locale out of the sitemap without dropping it from the cluster", () => {
+    // A page left out of the sitemap is still a translation of its siblings.
+    const routes = site.routes({
+      offer: collection(offers, {
+        path: (o) => `/${o.slug}`,
+        locale: (o) => o.locale,
+        key: (o) => o.tid,
+        sitemap: (o) => o.locale !== "fr-FR",
+      }),
+    });
+
+    const rows = routes.sitemap();
+    expect(rows.map((row) => row.url)).toEqual(["https://goflag.tech/en-US/pricing"]);
+    expect(Object.keys(rows[0]!.alternates?.languages ?? {})).toContain("fr-FR");
+  });
+});

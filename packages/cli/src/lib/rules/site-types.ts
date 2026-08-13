@@ -52,6 +52,16 @@ export interface SiteContext {
    * gracefully rather than assume it is present.
    */
   discovery?: SiteDiscovery;
+  /**
+   * The row a URL belongs to when the site declared a cluster for it, and
+   * `undefined` otherwise — the same function `buildI18nMatrix` uses to place
+   * a cell (`../core/clusters.ts`). A rule that groups URLs by route must call
+   * this before falling back to `splitRoute`, or it will split a
+   * slug-translating pair (`/en/pricing`, `/fr/tarifs`) into two groups that
+   * each look half-covered. Optional for the same reason `discovery` is: with
+   * no sitemap there is nothing to declare a cluster.
+   */
+  clusterRouteOf?: (url: string) => string | undefined;
 }
 
 /** Helpers handed to a site rule's `check()`, mirroring `RuleContext`. */

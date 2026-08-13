@@ -37,6 +37,24 @@ function declaredLocales(page: Page): Set<string> {
   return out;
 }
 
+/**
+ * The row a URL sits in: the cluster the site declared, when it declared one,
+ * and the pathname-derived route otherwise.
+ *
+ * Both sides of `hreflang.sitemap-mismatch` have to agree on what "the same
+ * route" means, and `splitRoute` alone answers with the path. On a site that
+ * translates its slugs that is the wrong answer twice over: `/fr/tarifs`
+ * yields route `/tarifs`, where the sitemap lists only `fr`, while its English
+ * twin sits under `/pricing` — so a correct pair reads as two half-covered
+ * routes and earns two warnings. Consulting the declared cluster first is the
+ * same move `buildI18nMatrix` already makes (`../core/i18n.ts`); it only ever
+ * moves a URL into a row, never invents one, so a site that declares no
+ * cluster is byte-for-byte unaffected.
+ */
+function rowOf(site: SiteContext, url: string, pathname: string): string {
+  return site.clusterRouteOf?.(url) ?? splitRoute(pathname).route;
+}
+
 /** Route → locales the sitemap lists a URL for. */
 function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
   const byRoute = new Map<string, Set<string>>();
@@ -47,8 +65,9 @@ function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
     } catch {
       continue;
     }
-    const { route, locale } = splitRoute(pathname);
+    const { locale } = splitRoute(pathname);
     if (locale === "x-default") continue;
+    const route = rowOf(site, entry.loc, pathname);
     const set = byRoute.get(route) ?? new Set<string>();
     set.add(locale.toLowerCase());
     byRoute.set(route, set);
@@ -142,7 +161,7 @@ const hreflangSitemapMismatch: SiteRule = {
       } catch {
         continue;
       }
-      const { route } = splitRoute(pathname);
+      const route = rowOf(site, page.fetch.finalUrl, pathname);
       const inSitemap = bySitemap.get(route);
       if (!inSitemap || inSitemap.size === 0) continue;
 

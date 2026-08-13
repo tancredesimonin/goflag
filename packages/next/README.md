@@ -42,6 +42,23 @@ only English. A legal notice says `locale: (doc) => doc.locale` because its
 cluster is whatever has actually been translated — derived from the content, not
 declared a second time.
 
+Entries group into a cluster by their **path**. When your locales use different
+slugs — `/pricing` in English and `/tarifs` in French — nothing in the paths says
+they are one page, so they become two routes, each advertising a cluster of
+itself, and goflag reports a translation hole on a pair that is fully translated.
+Say it with `key`:
+
+```ts
+docs: collection(allDocs, {
+  path: (d) => `/${d.slug}`,
+  locale: (d) => d.locale,
+  key: (d) => d.translationId,
+}),
+```
+
+Entries sharing a key become one route, each locale keeping its own path. Leave
+it out and grouping is by path, exactly as before.
+
 Then three files stop containing logic:
 
 ```ts

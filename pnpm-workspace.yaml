@@ -46,7 +46,13 @@ allowBuilds:
 # Security floors, moved verbatim from the package.json `pnpm.overrides` block — pnpm 11 no
 # longer reads that field, so leaving them there would have dropped both pins silently.
 overrides:
-  nanoid: "^3.3.17"
+  # 3.3.18 patches GHSA-2v37-7h3g-55p8 (high): a custom generator loops forever
+  # when asked for size 0. Reached only through `next` → `postcss` → `nanoid` in
+  # `apps/website`, so no consumer of either published package was ever exposed
+  # — neither `@goflag/cli` nor `@goflag/next` depends on it, directly or not.
+  # The floor is raised anyway: the audit job reads the whole workspace, and a
+  # `high` left standing is one nobody looks at twice.
+  nanoid: "^3.3.18"
   undici: ^7.28.0
   fast-uri: ^3.1.2
 

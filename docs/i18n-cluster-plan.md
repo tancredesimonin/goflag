@@ -12,20 +12,25 @@
 > **Lié** — `docs/locale-model-plan.md` (le bug fondateur, §B.2 la sévérité
 > propre à un auditeur), `docs/coverage-plan.md` (l'échantillonnage, qui décide
 > ici), `docs/sitemap-robots-plan.md`.
-> **État** — X5 tranché le 2026-08-13 (§6) ; l'implémentation suit sur sa propre
-> branche. Les §1 à §4 sont mesurés et restent vrais quoi qu'il arrive ensuite.
+> **État** — X5 tranché le 2026-08-13 (§6), livré en deux temps : la matrice
+> (`feat/cluster-identity-from-sitemap`, v0.2.7) puis les règles de site
+> (`fix/site-rules-follow-declared-clusters`, 2026-08-13). Les §1 à §4 sont
+> mesurés et restent vrais quoi qu'il arrive ensuite. Ce qui reste ouvert est
+> en fin de §7 — l'appariement depuis le `<head>` au premier chef.
 
 ---
 
 ## 0. Ce que ce plan tranche, et ce qu'il laisse ouvert
 
-| #      | Décision                                                                             | État        |
-| ------ | ------------------------------------------------------------------------------------ | ----------- |
-| **X1** | Le défaut est réel, mesuré, et il produit des faux positifs — pas seulement du bruit | acquis (§1) |
-| **X2** | Aucune conception qui exige que **les deux** côtés soient explorés ne peut marcher   | acquis (§2) |
-| **X3** | `parseSitemap` jette une déclaration de cluster qu'un site de terrain émet déjà      | acquis (§3) |
-| **X4** | Une déclaration de traduction **ment**, et goflag la croit sans réserve aujourd'hui  | acquis (§4) |
-| **X5** | Identité par la déclaration du sitemap, repli en retrait de prétention               | arrêté (§6) |
+| #      | Décision                                                                             | État         |
+| ------ | ------------------------------------------------------------------------------------ | ------------ |
+| **X1** | Le défaut est réel, mesuré, et il produit des faux positifs — pas seulement du bruit | acquis (§1)  |
+| **X2** | Aucune conception qui exige que **les deux** côtés soient explorés ne peut marcher   | acquis (§2)  |
+| **X3** | `parseSitemap` jette une déclaration de cluster qu'un site de terrain émet déjà      | acquis (§3)  |
+| **X4** | Une déclaration de traduction **ment**, et goflag la croit sans réserve aujourd'hui  | acquis (§4)  |
+| **X5** | Identité par la déclaration du sitemap, repli en retrait de prétention               | arrêté (§6)  |
+| **X6** | Le `<head>` apparie aussi, sous réciprocité et ancre membre ; le sitemap prime       | arrêté (§9)  |
+| **X7** | Une case que seule une alternative nomme est marquée et comptée, jamais jugée        | arrêté (§10) |
 
 ---
 
@@ -126,6 +131,15 @@ le défaut qui a ouvert ce plan**, parce qu'un faux négatif ne se voit jamais.
 Toute conception qui tire l'identité des alternatives doit donc répondre à :
 _que fait-on d'une déclaration qui nomme une page inexistante ?_ La réponse
 « on la croit » est celle d'aujourd'hui et elle est fausse.
+
+> **Correction, 2026-08-13 (§10.4).** Le défaut décrit ici est réel, mais les
+> 36 cibles comptées ci-dessus sont des `xhtml:link` du **sitemap**, et
+> celles-là ne remplissent aucune case — le sitemap ne sert qu'à l'identité.
+> Ce qui remplit une case, c'est le `<head>` d'une page **explorée**
+> (`i18n.ts:234`). Les « six trous invisibles » ne sont donc pas observables
+> sur cette fixture : `tancrede` n'explore qu'une page, son sitemap codant en
+> dur `http://localhost:3000` (§8). Le mécanisme est exact, la mesure qui
+> l'illustrait ne l'était pas ; la bonne est en §10.4.
 
 ---
 
@@ -232,6 +246,25 @@ mécanisme ne change donc rien à aucun site existant et n'agit que là où le
 défaut est. C'est la propriété qu'on voulait, et c'est aussi l'aveu que la preuve
 reste synthétique.
 
+**Livré ensuite** (`fix/site-rules-follow-declared-clusters`, 2026-08-13) :
+
+- `SiteContext` porte `clusterRouteOf`, alimenté depuis `report/build.ts` par
+  l'index déjà construit pour la matrice. `hreflang.sitemap-mismatch` groupe ses
+  **deux** côtés — la table du sitemap et la page explorée — par cluster avant
+  de les comparer, au lieu de `splitRoute` seul.
+- Fixture `translated-slugs` : deux paires à slugs traduits (`/en/pricing` ⇄
+  `/fr/tarifs`, `/en/about-us` ⇄ `/fr/qui-sommes-nous`) plus un témoin à slug
+  partagé (`/contact`), clusters déclarés au sitemap. C'est la première fixture
+  du dépôt qui traduit ses slugs.
+
+**Mesuré** : sur `translated-slugs`, **4 `hreflang.sitemap-mismatch` → 0**, et
+le rapport complet passe au vert (0 trou, 0 réciprocité, 0 finding SEO). Sur les
+treize autres fixtures, le digest complet du rapport — `siteIssues`, trous,
+réciprocité, `summary`, `declaredClusters` — est **identique octet pour octet**
+avant et après, `tancrede` (9 clusters déclarés) compris. Le gain est désormais
+prouvé de bout en bout et plus seulement en unitaire ; ce qui reste synthétique,
+c'est le site, pas la chaîne.
+
 **Pas livré, et assumé :**
 
 - **§4 n'est pas réglé.** Les alternatives du `<head>` remplissent toujours une
@@ -240,11 +273,13 @@ reste synthétique.
   peut faire apparaître des trous sur des pages qui existent mais n'ont été ni
   explorées ni listées : c'est un changement à mesurer sur un vrai site, pas à
   déduire.
-- **`site-rules.ts` n'est pas branché.** `hreflang.sitemap-mismatch` découpe
-  encore les routes par `splitRoute`, donc la moitié des faux findings de §1
-  subsiste sur un site à slugs traduits.
-- **Aucune fixture ne traduit ses slugs.** Tant qu'il n'y en a pas, le gain est
-  prouvé par des tests unitaires et pas par un audit de bout en bout.
+- **L'appariement ne vient toujours que du sitemap.** Un site à slugs traduits
+  qui déclare correctement dans son `<head>` et rien au sitemap reste cassé,
+  matrice et règle comprises — et c'est le cas fréquent, `hreflang` dans le
+  `<head>` étant le mécanisme canonique et suffisant. §2 dit pourquoi ça n'a pas
+  été fait d'abord ; ça ne dit pas que ça ne doit pas l'être.
+- **La mesure sur un vrai site reste due** (§6). `translated-slugs` est une
+  fixture écrite pour ce défaut : elle prouve la chaîne, pas le terrain.
 
 ---
 
@@ -258,6 +293,225 @@ reste synthétique.
 - **`route || selfRoute` (`i18n.ts:180`) est du code mort.** `splitRoute` ne
   renvoie jamais `""`. Le commentaire au-dessus décrit une intention — gérer une
   alternative sans préfixe de locale — que le code n'implémente pas.
-- **La règle `hreflang.sitemap-mismatch` hérite du défaut** (§1). Toute
+- **`tancrede` ne s'audite pas.** Son `sitemap.xml` et ses `<head>` codent en dur
+  `http://localhost:3000` au lieu du jeton `BASE` que le serveur de fixtures
+  réécrit. Contre ce serveur, aucune graine ne résout : **1 page explorée sur 30
+  `<loc>`**. C'est un instantané de sitemap — parfait pour `parseSitemap` et
+  `buildClusterIndex`, inutile pour toute mesure de bout en bout. Mesuré en §10.4,
+  après qu'une conclusion s'y est appuyée à tort. À réparer avant la prochaine
+  affirmation « mesuré sur tancrede ».
+- ~~**La règle `hreflang.sitemap-mismatch` hérite du défaut** (§1). Toute
   correction de l'identité doit passer par `site-rules.ts`, sinon la moitié des
-  faux findings reste.
+  faux findings reste.~~ Réglé le 2026-08-13 (§7). La leçon générale tient
+  quand même : `SiteContext` est le seul canal par lequel une règle voit
+  l'identité, donc tout nouveau modèle d'identité doit y passer, faute de quoi
+  la moitié des findings raisonne encore sur les chemins.
+
+---
+
+## 9. X6 — le `<head>` apparie aussi
+
+> **Rédigé** 2026-08-13, après §7. **Branche** `feat/pair-from-head-alternates`.
+> **Ce que ça change à X5** : rien sur la primauté du sitemap ; ça ajoute une
+> seconde source, subordonnée, là où le sitemap se tait.
+
+### 9.1 Pourquoi X5 ne suffit pas, mesuré
+
+X5 a choisi le sitemap parce qu'une entrée `<url>` nomme son cluster entier même
+si aucun membre n'a été tiré (§2). C'est vrai, et ça reste la raison de le garder
+en tête de liste. Mais ça couvre la **mauvaise moitié** du parc : `hreflang` dans
+le `<head>` est le mécanisme canonique, Google traite les deux formes comme
+équivalentes, et un site qui déclare correctement dans son `<head>` sans rien
+mettre au sitemap **ne doit rien à personne**.
+
+Nouvelle fixture `translated-slugs-head-only` — mêmes pages que
+`translated-slugs`, sitemap complet (les six URL y sont) mais **sans un seul
+`xhtml:link`**. Audit en 0.2.7 + §7 :
+
+| Finding                     | Compte | Réalité                                      |
+| --------------------------- | ------ | -------------------------------------------- |
+| `hreflang.sitemap-mismatch` | **4**  | aucun désaccord : le sitemap liste tout      |
+| trous de traduction         | **4**  | les deux paires sont intégralement traduites |
+
+Huit findings faux sur un site sans défaut. C'est le pire mode d'échec de cet
+outil (`docs/locale-model-plan.md` §B.2), et c'est la forme la plus fréquente.
+
+### 9.2 Le mécanisme
+
+Une arête entre deux pages **explorées** `P` et `Q` si et seulement si le
+`<head>` de `P` déclare une alternative qui résout vers `Q` **et** celui de `Q`
+en déclare une qui résout vers `P`. Composantes connexes, puis :
+
+1. **Pas d'arête `canonical`.** Contrainte de §6, inchangée et non rediscutée.
+2. **Une déclaration non réciproque ne forme rien.** Une page qui pointe seule
+   vers une autre affirme une identité que l'autre ne confirme pas ; c'est
+   exactement la surface de fusion silencieuse que §6 refusait.
+3. **L'ancre est le `x-default` déclaré, et il doit être membre de la
+   composante.** Si les membres ne nomment pas tous le même `x-default`, ou si
+   la cible n'est pas elle-même dans la composante, **on ne fusionne pas** — on
+   compte le refus.
+4. **Le sitemap prime.** L'index du `<head>` ne répond que là où le sitemap
+   s'est tu. Un désaccord entre les deux est un conflit, compté comme les autres.
+
+La clause 3 n'est pas un ornement. `x-default` pointant vers la page d'accueil
+de tout le site est une erreur de terrain courante ; sans elle, chaque page
+tenterait de fusionner sur la ligne `/`, et goflag écraserait un site entier en
+une seule route. Avec elle, la page d'accueil n'est pas réciproquement liée à
+`/en/pricing`, donc rien ne fusionne. Le garde-fou est structurel, pas une liste
+d'exceptions.
+
+L'étiquette reste stable sous ajout d'un membre, comme l'exige §6 : elle est le
+`x-default`, une déclaration que le site fait sur lui-même, pas une fonction de
+l'appartenance.
+
+### 9.3 Ce que ça ne fait pas, et il faut le dire
+
+- **Sur un site sans aucun `hreflang`, c'est une non-opération**, par
+  construction : pas d'alternative, pas d'arête, pas de cluster. Mesuré sur
+  `silent-multilingual` — 8 pages, 0 alternative, 0 arête. Le bug fondateur
+  (`docs/i18n.mdx`, « The bug that started this ») n'est ni réglé ni masqué :
+  `hreflang.missing` lit `alternates.length === 0` et continue de tirer sur les
+  huit pages. Comme l'index sitemap, cet index **déplace une case et n'en crée
+  jamais**, donc il ne peut pas boucher un trou.
+- **Sous couverture structurelle, sur une famille à slugs traduits, c'est aussi
+  une non-opération** : les deux membres ne sont pas tirés (§2, 0 paire sur 8).
+  Mesuré sur `tancrede`, site de terrain : **0 arête réciproque** parmi les pages
+  échantillonnées. C'est la démonstration que cette source ne remplace pas le
+  sitemap et ne prétend pas le faire.
+- **Une redirection casse l'appariement.** La réciprocité se juge sur
+  `fetch.finalUrl` ; un site qui pointe ses alternates vers les URL d'avant
+  redirection ne forme pas d'arête. On rate plutôt que d'inventer, dans ce sens
+  et pas dans l'autre.
+
+### 9.4 Mesuré
+
+| Site                                           | Avant                | Après               |
+| ---------------------------------------------- | -------------------- | ------------------- |
+| `translated-slugs-head-only`                   | 4 warnings + 4 trous | **0 + 0**           |
+| `translated-slugs` (sitemap déclare déjà)      | 0 + 0                | 0 + 0               |
+| les 13 fixtures antérieures, `tancrede` inclus | —                    | **`rowsMoved = 0`** |
+
+L'appariement par le `<head>` ne déplace aucune ligne sur aucune fixture
+existante — même propriété que l'index sitemap, et pour la même raison : il
+n'agit que là où les chemins divergent.
+
+### 9.5 Reste dû
+
+- La mesure de terrain de §6 reste due, et le devient doublement : aucune des
+  deux fixtures à slugs traduits n'est un vrai site.
+- `--route-alias` (conception D) reste l'issue de secours pour un site qui ne
+  déclare **rien**, ni `<head>` ni sitemap. X6 ne l'entame pas.
+
+---
+
+## 10. X7 — la case déclarée que personne n'a vue
+
+> **Rédigé** 2026-08-13, après X6. **Branche** `feat/declared-but-never-seen`.
+> **Ce que ça tranche** : la moitié de §4 qui reste ouverte depuis §7.
+> **Ce que ça ne change pas** : aucun verdict, aucun compte de trous, aucune
+> empreinte.
+
+### 10.1 Le défaut, revérifié à la main
+
+Trois choses remplissent une case : une page explorée, une `<loc>` du sitemap, et
+un `<link rel="alternate">` d'un `<head>` (`i18n.ts:201`). La troisième n'est
+jamais vérifiée, et `deriveTranslationHoles` ne lit que `cell.url`
+(`report/build.ts:245`) — jamais `cell.inspected`. **Une page qui annonce une
+traduction que le site ne sert pas bouche donc le trou.**
+
+Recompté sur `fixtures/sites/tancrede/sitemap.xml`, pas repris de §4 :
+
+```
+<loc>                          : 30
+cibles distinctes d'alternates : 36
+cibles absentes du jeu de <loc> :  6
+   /{en,es,pt-br}/blog/architecture-api-dsp2
+   /{en,es,pt-br}/blog/comprendre-psd2-visuellement
+```
+
+Six vrais trous invisibles. Faux négatif, et un faux négatif ne se voit jamais.
+
+### 10.2 Ce qui est décidé
+
+**Marquer, compter, ne rien juger.**
+
+1. Chaque case remplie porte la **provenance de son URL** :
+   `crawled` (la page a été explorée), `sitemap` (elle est dans les `<loc>`),
+   `alternate` (ni l'un ni l'autre : seule une alternative d'un `<head>` la
+   nomme). La provenance se déduit de l'URL gagnante, pas de l'ordre d'écriture
+   — donc l'ordre de `record` ne bouge pas et aucune empreinte non plus.
+2. `diagnostics.unverifiedAlternates` publie le compte de la classe `alternate`.
+3. **Aucun verdict ne change.** `deriveTranslationHoles` continue de lire
+   `cell.url` seul.
+
+Pourquoi cette forme et pas une autre : elle **ne peut pas créer de faux
+positif**, ce qui est la contrainte dominante de cet outil
+(`docs/locale-model-plan.md` §B.2) ; c'est la forme des trois correctifs déjà
+livrés ; et c'est elle qui produit le chiffre qui manque pour trancher ensuite si
+une case non vérifiée doit gater. On ne peut pas décider avec une mesure qu'on
+n'a pas.
+
+**Un seul chiffre, pas deux.** Le total des cases non inspectées serait dominé
+par l'échantillonnage — sous couverture structurelle la plupart des cases
+viennent d'une `<loc>` non explorée, ce que `diagnostics.coverage` dit déjà. Le
+nombre qui porte de l'information est celui des cases dont **aucune** liste ne
+témoigne.
+
+### 10.3 Ce qui est écarté, et pourquoi
+
+- **« Cesser de croire une alternative que le sitemap ne liste pas. »** Piégé :
+  `sitemap: false` est une déclaration délibérée et supportée par `@goflag/next`
+  (`docs/sitemap-scope-plan.md`). Absent du sitemap ≠ absent du site. On
+  inventerait des trous sur les sites qui utilisent une fonctionnalité livrée
+  exprès — c'est-à-dire qu'on échangerait un faux négatif contre un faux
+  positif, dans le sens interdit.
+- **Sonder les cibles pour transformer la déclaration en fait.** C'est la seule
+  voie qui règle §4 pour de bon, mais elle exige d'allumer `includeAssets` dans
+  le scan de liens (`links/extract.ts:39-44` — aujourd'hui seuls les `<a href>`
+  sont sondés), donc des requêtes en plus sur chaque page d'un audit. C'est une
+  décision de coût, pas un détail : elle se prend séparément, avec le chiffre que
+  X7 va produire.
+
+### 10.4 Mesuré
+
+**Première mesure, fausse, et pourquoi.** Un premier comptage fait sur les
+fichiers des fixtures donnait « 2 sur `synthetic`, et `tancrede` comme raison
+d'être ». Passé en audit réel, le compteur sort **0 partout**. Le proxy comptait
+les alternatives de tous les fichiers HTML du disque ; l'audit ne remplit une
+case que depuis le `<head>` d'une page **explorée**. Les deux ne mesurent pas la
+même chose. La conclusion écrite avant l'exécution était fausse ; celle-ci a été
+exécutée.
+
+**Deux choses que cette mesure a apprises et qui n'étaient écrites nulle part :**
+
+1. **Les 36 cibles de §4 ne remplissent aucune case.** Elles sont des
+   `xhtml:link` du **sitemap**, et le sitemap ne sert qu'à l'identité
+   (`buildClusterIndex`) — jamais à remplir. Les six trous invisibles de §4 sont
+   un défaut réel du _modèle_, mais le raisonnement de §4 s'appuyait sur la
+   mauvaise source. Ce qui remplit une case, c'est le `<head>` d'une page
+   explorée (`i18n.ts:234`).
+2. **`tancrede` est inerte en bout en bout.** Son sitemap code en dur
+   `http://localhost:3000`, donc contre le serveur de fixtures aucune graine ne
+   s'amorce : **une page explorée sur trente `<loc>`**. Toute mesure annoncée
+   « sur tancrede » de bout en bout ne mesure rien. C'est un instantané de
+   sitemap, bon pour le parsing et l'identité, pas pour un audit.
+
+**Donc aucune fixture ne reproduisait le défaut**, et un compteur que rien
+n'exerce est un compteur qui cesse de marcher sans que personne ne le voie.
+Nouvelle fixture `advertised-not-served` : `/en/guide` annonce un
+`hreflang="fr"` vers `/fr/guide`, que le site ne sert pas et que le sitemap ne
+liste pas ; `/about` est le témoin, servi et listé dans les deux locales.
+
+| Mesure                      | Valeur                             |
+| --------------------------- | ---------------------------------- |
+| `unverifiedAlternates`      | **1** (la case `(/guide, fr)`)     |
+| `missingTranslations.holes` | **0** — inchangé, et c'est voulu   |
+| les 15 autres fixtures      | **0**, et pas un finding qui bouge |
+
+**Le détail que la mesure a donné en plus** : sur cette fixture, goflag _sait_
+que `/fr/guide` répond 404 — il est dans `unreachablePages`. Et il compte quand
+même la traduction comme présente. Les deux faits ne se rencontrent jamais. Le
+faux négatif n'est donc pas « goflag n'a pas regardé », c'est « goflag a regardé,
+a vu, et le compte de traductions n'utilise pas ce qu'il a vu ». C'est un
+argument de plus pour la voie du sondage (§10.3), et il ne coûterait ici aucune
+requête supplémentaire.

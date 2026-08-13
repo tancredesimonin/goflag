@@ -16,13 +16,19 @@ import { lintSite } from "../lib/core/lint-site";
 import { ICU_KNOWS_LANGUAGES, ICU_UNAVAILABLE_WARNING } from "../lib/core/bcp47";
 import {
   buildI18nMatrix,
+  countUnverifiedAlternates,
   looksLikeLocaleSegment,
   reciprocityIssues,
   type I18nMatrix,
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
-import { buildClusterIndex } from "../lib/core/clusters";
+import {
+  buildClusterIndex,
+  buildHeadClusterIndex,
+  clustersOnlyFrom,
+  combineClusterIndexes,
+} from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
@@ -361,8 +367,9 @@ export async function runAudit(
   // `<url>` entry names its whole cluster whether or not a member was sampled.
   // That is the property that makes a sitemap declaration usable where pairing
   // from the crawled `<head>`s is not — the two locales of a slug-translating
-  // family draw disjoint samples (docs/i18n-cluster-plan.md §2).
-  const clusters = buildClusterIndex(discovery?.urls ?? []);
+  // family draw disjoint samples (docs/i18n-cluster-plan.md §2). The `<head>`
+  // index joins it after the crawl, below, and only where this one is silent.
+  const sitemapClusters = buildClusterIndex(discovery?.urls ?? []);
 
   // Which pages to audit, chosen by the shape of the site rather than by the
   // order the crawl happens to reach them. Only possible with a sitemap: with
@@ -570,6 +577,16 @@ export async function runAudit(
   // this report.
   if (!ICU_KNOWS_LANGUAGES) warnings.push(ICU_UNAVAILABLE_WARNING);
 
+  // The second pairing source, and the one most correct sites actually use:
+  // reciprocal `hreflang` in the crawled `<head>`s. It needs both members in
+  // hand, so it does nothing where sampling splits a family — which is exactly
+  // where the sitemap declaration works, and why the two are complementary
+  // rather than redundant (docs/i18n-cluster-plan.md §9). The sitemap wins
+  // wherever both answer.
+  const headClusters = buildHeadClusterIndex(htmlPages);
+  const clusters = combineClusterIndexes(sitemapClusters, headClusters);
+  const clustersFromHead = clustersOnlyFrom(sitemapClusters, headClusters);
+
   const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
@@ -579,11 +596,28 @@ export async function runAudit(
   // first declaration wins silently unless this says otherwise.
   if (clusters.conflicts.length > 0) {
     warnings.push(
-      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by the ` +
-        `sitemap; the first declaration was kept: ${clusters.conflicts.slice(0, 3).join(", ")}` +
+      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by ` +
+        `the sitemap and/or the pages' \`<head>\`; the sitemap's declaration was kept: ` +
+        `${clusters.conflicts.slice(0, 3).join(", ")}` +
         `${clusters.conflicts.length > 3 ? `, +${clusters.conflicts.length - 3} more` : ""}.`,
     );
   }
+  // Cells nothing vouches for: filled by an `hreflang` on some page, absent
+  // from the sitemap, never fetched. They fill the cell, so they hide the hole
+  // they might be — and this changes no verdict, on purpose. Refusing to
+  // believe them would invent holes on every site using `sitemap: false`
+  // (docs/i18n-cluster-plan.md §10.3); the count is what lets that call be made
+  // on a measurement later instead of an argument now.
+  const unverifiedAlternates = countUnverifiedAlternates(matrix);
+  if (unverifiedAlternates > 0) {
+    warnings.push(
+      `${unverifiedAlternates} translation${unverifiedAlternates === 1 ? "" : "s"} in the matrix ` +
+        `${unverifiedAlternates === 1 ? "is" : "are"} vouched for only by an \`hreflang\` on ` +
+        `another page — not crawled, and not in the sitemap. They are counted as present, so a ` +
+        `page advertised but not served reads as translated rather than missing.`,
+    );
+  }
+
   // Holes are a claim about locale coverage. With no declared axis we have
   // just refused to claim the site is multilingual, so claiming it is missing
   // translations would contradict that — and it is exactly how `/cv` (a CV
@@ -614,6 +648,10 @@ export async function runAudit(
     localeAxis,
     discovery,
     robots,
+    // Same index the matrix was built from, so a rule that groups by route
+    // and the grid that reports holes cannot disagree about which URLs are
+    // one page.
+    clusterRouteOf: clusters.routeOf,
   };
   // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
   // a global index, so adding or reordering a rule cannot renumber unrelated
@@ -778,14 +816,23 @@ export async function runAudit(
       },
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(duplicatePages > 0 ? { duplicatePages } : {}),
+      ...(unverifiedAlternates > 0 ? { unverifiedAlternates } : {}),
       // Only when the site declared clusters. A merge that changes which rows
       // exist must be visible: the alternative is a hole count that moved for
       // a reason nothing in the report explains.
-      ...(clusters.size > 0
+      ...(clusters.size > 0 || clusters.refused > 0
         ? {
             declaredClusters: {
               count: clusters.size,
               ...(clusters.conflicts.length > 0 ? { conflicts: clusters.conflicts.length } : {}),
+              // Which source did the work. On a site that declares both ways
+              // the two indexes describe the same clusters, so this counts the
+              // rows only the `<head>` supplied rather than a difference of
+              // totals that would claim a gain that is not there.
+              ...(clustersFromHead > 0 ? { fromHead: clustersFromHead } : {}),
+              // Declared and not used, for want of an anchor to name the row
+              // after. A declaration we saw and did not act on has to be said.
+              ...(clusters.refused > 0 ? { refused: clusters.refused } : {}),
             },
           }
         : {}),

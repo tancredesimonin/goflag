@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The same site as `translated-slugs`, declaring its clusters in the `<head>`
+  and nowhere else.
+
+  This is the common, correct shape: `hreflang` in the `<head>` is the canonical
+  mechanism and Google treats it as equivalent to the sitemap form, so a site
+  that emits reciprocal alternates here owes nothing to its sitemap. Every URL
+  is still listed below — the sitemap is complete, it just declares no cluster.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>BASE/en/pricing</loc>
+  </url>
+  <url>
+    <loc>BASE/fr/tarifs</loc>
+  </url>
+  <url>
+    <loc>BASE/en/about-us</loc>
+  </url>
+  <url>
+    <loc>BASE/fr/qui-sommes-nous</loc>
+  </url>
+  <url>
+    <loc>BASE/en/contact</loc>
+  </url>
+  <url>
+    <loc>BASE/fr/contact</loc>
+  </url>
+</urlset>
