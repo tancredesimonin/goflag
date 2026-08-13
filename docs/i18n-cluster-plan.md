@@ -12,8 +12,8 @@
 > **Lié** — `docs/locale-model-plan.md` (le bug fondateur, §B.2 la sévérité
 > propre à un auditeur), `docs/coverage-plan.md` (l'échantillonnage, qui décide
 > ici), `docs/sitemap-robots-plan.md`.
-> **État** — **rien n'est implémenté.** §6 porte une décision ouverte qui n'est
-> pas la mienne à prendre.
+> **État** — X5 tranché le 2026-08-13 (§6) ; l'implémentation suit sur sa propre
+> branche. Les §1 à §4 sont mesurés et restent vrais quoi qu'il arrive ensuite.
 
 ---
 
@@ -25,7 +25,7 @@
 | **X2** | Aucune conception qui exige que **les deux** côtés soient explorés ne peut marcher   | acquis (§2) |
 | **X3** | `parseSitemap` jette une déclaration de cluster qu'un site de terrain émet déjà      | acquis (§3) |
 | **X4** | Une déclaration de traduction **ment**, et goflag la croit sans réserve aujourd'hui  | acquis (§4) |
-| **X5** | Quoi faire : réparer l'appariement, retirer la prétention, ou demander à l'opérateur | **ouvert**  |
+| **X5** | Identité par la déclaration du sitemap, repli en retrait de prétention               | arrêté (§6) |
 
 ---
 
@@ -164,7 +164,7 @@ Ce que chaque angle a vu :
 
 ---
 
-## 6. La décision ouverte (X5)
+## 6. X5 — tranché
 
 Elle n'est pas technique, elle est éditoriale : **que doit dire goflag quand il
 ne sait pas apparier ?**
@@ -176,17 +176,40 @@ ne sait pas apparier ?**
 | **Demander** (D)  | « dis-moi la carte, je ne devinerai pas »            | le défaut par défaut reste, et l'opérateur doit le savoir |
 | **Ne rien faire** | ce que fait la 0.2.6                                 | 16 faux trous sur 17 routes, documentés comme une limite  |
 
-Ma recommandation, à valider : **B pour l'identité, C comme repli.** Lire les
-`xhtml:link` du sitemap (§3, consommateur réel, donnée déjà produite et jetée),
-s'en servir pour l'identité de ligne **et jamais pour remplir une case** — ce
-qui règle §4 du même geste, puisqu'une cible non listée cesse de boucher un
-trou — et, là où aucune déclaration de cluster n'existe et où les chemins
-divergent, retirer la prétention plutôt que de compter faux. D reste l'issue de
-secours si l'inférence se révèle insuffisante sur un vrai site.
+**Arrêté le 2026-08-13 : B pour l'identité, C comme repli.**
 
-**Ce qui manque pour trancher est une mesure, pas un avis** : passer la version
-actuelle sur un site à slugs traduits qui n'est pas une fixture. Les cinq sites
-maison n'en sont pas — `apps/website` partage ses slugs entre `en/fr/es/pt`.
+1. **Lire les `xhtml:link` du sitemap** (§3). La donnée existe, un site de
+   terrain la produit, on la détruit au parsing.
+2. **S'en servir pour l'identité de ligne, et jamais pour remplir une case.**
+   C'est la ligne de sûreté de toute la conception, et elle règle §4 du même
+   geste : une cible que le sitemap ne liste pas cesse de boucher un trou, donc
+   les six faux négatifs de `tancrede` réapparaissent comme les trous qu'ils
+   sont. Quiconque la franchit plus tard réintroduit le pire des deux défauts.
+3. **Là où aucune déclaration de cluster n'existe et où les chemins divergent,
+   retirer la prétention** plutôt que compter faux.
+
+Deux reproches des juges sont retenus comme contraintes d'implémentation, pas
+comme détails :
+
+- **Pas d'arête `canonical`.** Le canonical est auto-référentiel par locale sur
+  toutes les fixtures et tous les sites de terrain, il est déjà consommé comme
+  signal de duplicat (`build.ts`, `dropCanonicalDuplicates`), et c'est la plus
+  grosse surface de fusion silencieuse de la conception. Elle n'achète rien de
+  mesuré : elle ne part pas.
+- **L'étiquette de cluster ne doit pas dépendre de l'appartenance.** Prendre la
+  route lexicographiquement la plus petite renomme la ligne quand une locale
+  s'ajoute, donc déplace toutes les empreintes et fait crier une baseline sans
+  qu'un défaut ait bougé. L'étiquette doit être stable sous ajout d'un membre.
+
+D (`--route-alias`) reste l'issue de secours si l'inférence se révèle
+insuffisante sur un vrai site, et le seul recours pour un site sans aucun
+hreflang ni `xhtml:link` — cas où B et C sont, de leur propre aveu, des
+non-opérations.
+
+**La mesure reste due** : passer la version sur un site à slugs traduits qui
+n'est pas une fixture. Les cinq sites maison n'en sont pas — `apps/website`
+partage ses slugs entre `en/fr/es/pt`. Ce que l'implémentation ne peut pas
+prouver depuis l'intérieur du dépôt doit être dit comme tel.
 
 ---
 
