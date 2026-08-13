@@ -146,6 +146,18 @@ authority nobody assigned. Write your consumer against that. The same document
 ships inside the package as `rules.json`, if you would rather read it than run
 anything.
 
+The flag list below is data too:
+
+```sh
+npx @goflag/cli flags > flags.json
+```
+
+Same idea, one step further: `flags` prints the very table `goflag --help` is
+rendered from and the argument parser dispatches on, so a flag cannot exist in
+one and not the other. Each entry carries its long and short forms, its argument
+placeholder, its default, the group it belongs to and any flag it requires. It
+ships inside the package as `flags.json` as well.
+
 It deliberately omits the message a finding prints — that is built at audit time
 from what the page actually says, so a static copy would be a sample rather than
 a fact, and a sample presented as the truth is how this project's own

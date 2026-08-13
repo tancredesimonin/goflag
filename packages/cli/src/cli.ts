@@ -23,6 +23,7 @@ import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
 import { buildRuleCatalog, serialiseCatalog } from "./lib/rules/catalog";
+import { buildFlagCatalog, serialiseFlags } from "./lib/flags/catalog";
 
 async function readVersion(): Promise<string> {
   try {
@@ -79,6 +80,14 @@ async function main(): Promise<number> {
   // mirror had drifted in three places by the time anybody checked.
   if (args.command === "rules") {
     process.stdout.write(serialiseCatalog(buildRuleCatalog(await readVersion())));
+    return 0;
+  }
+
+  // The same table `--help` is rendered from and the parser dispatches on, so
+  // a consumer that reads this cannot be describing a flag goflag does not
+  // have — which is exactly what the hand-written mirror on the site was doing.
+  if (args.command === "flags") {
+    process.stdout.write(serialiseFlags(buildFlagCatalog(await readVersion())));
     return 0;
   }
 

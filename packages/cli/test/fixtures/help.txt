@@ -1,0 +1,92 @@
+goflag — audit a site for broken links, missing translations, and SEO metadata
+
+Usage:
+  goflag <url> [options]
+  goflag rules              Print the rule catalogue as JSON and exit. No crawl
+                            and no network: every rule with its severity, its
+                            rigor and the documents it cites.
+  goflag flags              Print this flag reference as JSON and exit. The same
+                            table this help is rendered from, so the two cannot
+                            disagree.
+
+Options:
+  --json                 Print the JSON report to stdout (nothing else).
+  --summary, -s          Roll findings up (dedup by link/rule/code). Pairs
+                         with --json for a compact, agent-friendly payload.
+  --report <file>        Write the (full) JSON report to <file>.
+  --depth <n>            How far to follow links out of each page (0 = follow
+                         none). Sitemap URLs are seeded regardless, so --depth 0
+                         alone is not "entry page only" — add --no-sitemap for
+                         that. Default: 2.
+  --max-pages <n>        Page budget for the crawl. A hard cap under
+                         --coverage all; under structural coverage the selection
+                         wins and the budget is max(<n>, selected + 5).
+                         Default: 200.
+  --coverage <mode>      How to choose which pages to audit.
+                         "structural" (default when a sitemap is found) keeps
+                         every standalone page and samples families of pages
+                         built from one template. "all" audits everything the
+                         sitemap lists, up to --max-pages.
+  --include <glob>       Only crawl paths matching <glob> (repeatable).
+  --exclude <glob>       Skip paths matching <glob> (repeatable).
+  --locales <list>       Comma-separated locales the site serves, e.g.
+                         "fr,en,pt-br". Unioned with what the sitemap shows,
+                         never substituted for it, and the only way to make a
+                         locale the site does not serve yet show up as missing.
+                         Also folds /en/… and /fr/… into one route family for
+                         structural coverage, so pass it on any locale-prefixed
+                         site.
+  --ignore-holes <glob>  Route (locale-free) that is deliberately not
+                         translated everywhere, so its gaps are not reported
+                         as missing translations (repeatable).
+  --no-sitemap           Do not discover the sitemap; crawl from <url> only.
+                         Discovery is on by default because link-only crawling
+                         cannot find locales a site never links to.
+  --profile <name>       Policy overlay on the rule set — it changes how
+                         loudly a rule fires, never what it observes:
+                         default — rule severities exactly as authored
+                         strict — every spec-backed rule fails the build
+                         spec-only — heuristic rules switched off entirely
+                         marketing — snippet and unfurl metadata gaps are errors
+  --conformance          Report EVERY rule's status on every page (pass /
+                         fail / warn / na), not just the violations. Answers
+                         "where do we stand against the catalog?"; pairs with
+                         --json.
+  --advisories           Attach the prose rules — the judgment calls goflag
+                         refuses to fake — each with the observed facts an
+                         agent needs to judge it. Never affects the gate.
+  --fail-on <level>      Exit 1 at or above this severity: warning (default),
+                         error, or never.
+  --regressions-only     Weaken the gate: fail only on findings that are NEW
+                         relative to --baseline. Known findings stop blocking
+                         the build — a green run no longer means a clean site.
+                         Requires --baseline.
+  --baseline <file>      Stored report to compare against. Use with
+                         --regressions-only.
+  --update-baseline      Write this run to --baseline and exit 0, instead of
+                         judging against it. Use it to capture a baseline, or
+                         to accept findings you have decided to live with —
+                         it says what it accepted.
+  --max-debt <n>         Fail when the site carries more than <n> findings in
+                         total, whether new or known. Lower it as you fix, to
+                         stop a baseline from fossilising.
+  --start <cmd>          Boot <cmd>, wait for <url> to answer, audit, then
+                         stop it. Use to gate a merge on the built app before
+                         it ships.
+  --start-cwd <dir>      Directory to run --start in. Defaults to the current
+                         one; set it when auditing a monorepo package from the
+                         repository root.
+  --start-timeout <ms>   How long to wait for --start to answer. Default: 60000.
+  --no-external          Do not probe off-origin (external) links.
+  --static               Static HTML only; never launch headless Chromium.
+  --allow-insecure-tls   Accept self-signed / invalid TLS (localhost, tunnels).
+  --timeout <ms>         Per-request timeout in ms, for page fetches and link
+                         probes alike. Unset, the defaults differ: 8000 for link
+                         probes, 15000 for page fetches.
+  --verbose, -V          Log every page as it is analyzed.
+  --quiet, -q            Suppress the live progress output.
+  --no-color             Disable coloured output.
+  -h, --help             Show this help.
+  -v, --version          Show the version.
+
+Exit codes: 0 clean, 1 findings found, 2 fatal error.
