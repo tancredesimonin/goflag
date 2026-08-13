@@ -20,6 +20,7 @@
 | **N3** | La politique de locales est **par route**, pas par site — le premier consommateur l'exige déjà      |
 | **N4** | `apps/website` est le consommateur n°1, `stereo-house` le n°2 et le test d'ergonomie                |
 | **N5** | Le manifeste `.goflag/routes.json` et `llms.txt` sont **hors v0**, et le registre les rend triviaux |
+| **N6** | Une `key` facultative sur `collection()` groupe des traductions dont les slugs diffèrent (§9)       |
 
 ---
 
@@ -360,3 +361,100 @@ l'API n'a pas été tirée.
 - Pas de `defineSite` générique multi-framework — I5, scope Next App Router.
   Le paquet frère `@goflag/og`, lui, est agnostique par construction ; voir
   `docs/og-plan.md` §2.
+
+---
+
+## 9. N6 — un cluster dont les slugs diffèrent
+
+> **Rédigé** 2026-08-13, après la ligne de travail « identité de cluster » côté
+> CLI (`docs/i18n-cluster-plan.md` X5–X7).
+> **Statut** — arrêté ; l'implémentation suit sur `feat/next-translation-key`.
+
+### 9.1 Le constat, mesuré en faisant composer les deux paquets
+
+Le CLI sait désormais lire une déclaration de cluster, du sitemap (X5) comme du
+`<head>` (X6). Question posée à la mesure, pas à la lecture : **qu'est-ce qu'un
+site bâti avec `@goflag/next` lui donne à lire ?**
+
+Slugs partagés — les deux paquets composent, et personne ne l'a écrit :
+
+```
+sitemap /en/pricing → { en, fr, x-default: /en/pricing }
+buildClusterIndex   → 2 clusters, 0 refusé, chaque URL sur la bonne ligne
+```
+
+Slugs traduits, via `collection(docs, { path: (d) => `/${d.slug}`, locale: (d) => d.locale })`
+sur deux documents `{slug:"pricing",locale:"en"}` et `{slug:"tarifs",locale:"fr"}` :
+
+```
+sitemap /en/pricing → { en: /en/pricing,  x-default: /en/pricing }
+        /fr/tarifs  → { fr: /fr/tarifs,   x-default: /fr/tarifs  }
+<head>  identique des deux côtés
+buildClusterIndex   → 2 clusters d'une locale, au lieu d'un de deux
+```
+
+**La lib produit exactement le défaut que X5–X7 corrigent.** Et aucune des trois
+corrections ne peut le rattraper : il n'y a rien à lire. Le site déclare, en
+toutes lettres et deux fois, que ces pages ne sont pas des traductions l'une de
+l'autre.
+
+### 9.2 La cause, dans le modèle
+
+`resolveFamily` groupe les lignes d'une collection **par `path`**
+(`routes.ts:229`), et `LocalizedRoute` porte **un seul `path`** partagé par
+toutes ses locales (`types.ts:14`). Deux chemins différents sont donc deux
+routes, par construction. Ce n'est pas un oubli : c'est l'hypothèse sur laquelle
+`locate`, `byPath`, `metadata({ path })` et le contrôle de collision reposent
+tous.
+
+### 9.3 Ce qui est arrêté
+
+**Une clé de regroupement facultative sur `collection()`.**
+
+```ts
+docs: collection(allDocs, {
+  path: (d) => `/${d.slug}`,
+  locale: (d) => d.locale,
+  key: (d) => d.translationId, // nouveau, facultatif
+});
+```
+
+1. **Absente, rien ne change.** Le regroupement reste par `path`, donc tout site
+   existant produit le même sitemap et les mêmes `<head>`, octet pour octet.
+   C'est la condition d'acceptation, pas une intention.
+2. **Présente, elle groupe** : toutes les entrées partageant une clé forment une
+   route, chaque locale gardant **son** chemin.
+3. **`LocalizedRoute` gagne `paths`**, un chemin par locale, et **garde `path`**
+   comme identité de la route. `path` est celui de la locale d'ancrage — la
+   locale par défaut du site quand la route la sert, sinon la première dans
+   l'ordre du site. C'est exactement la règle déjà en vigueur pour `x-default`
+   (`routes.mdx`, « A locale policy belongs to a route ») ; on n'en invente pas
+   une seconde.
+4. **`byPath` indexe tous les chemins** de la route. `metadata({ path: "/tarifs" })`
+   doit répondre : une page connaît son propre slug, pas celui de sa sœur.
+5. **Deux entrées de même clé et de même locale sont une contradiction** et
+   échouent au build, comme toute autre incohérence dans cette lib. Deux clés
+   distinctes qui produisent le même chemin restent attrapées par le contrôle de
+   collision existant.
+
+### 9.4 Ce qui est écarté
+
+- **Grouper par `path` après normalisation** (retirer le segment de locale, etc.)
+  — c'est précisément l'inférence par le chemin dont X5 a démontré qu'elle ne
+  peut pas marcher sur des slugs traduits. On ne réintroduit pas côté producteur
+  l'heuristique qu'on a retirée côté auditeur.
+- **Déduire la clé du nom de fichier ou de l'ordre des entrées.** Une identité
+  qui dépend de l'ordre d'une collection change quand un document est ajouté,
+  donc déplace les empreintes. Même objection que celle qui a fait ancrer les
+  clusters sur `x-default`.
+- **Rendre `key` obligatoire.** Elle casserait tous les consommateurs pour un
+  cas qu'ils n'ont pas.
+
+### 9.5 Critère d'acceptation
+
+- Sans `key` : sortie de `sitemap()` et de `metadata()` **identique octet pour
+  octet** sur les deux sites consommateurs et sur toutes les fixtures de tests.
+- Avec `key` sur une paire à slugs traduits : **un** cluster, `x-default` ancré
+  sur la locale par défaut, `metadata({ path })` répond pour les deux chemins,
+  et `buildClusterIndex` du CLI en forme **une** ligne — vérifié en faisant
+  composer les deux paquets, pas en le déduisant.

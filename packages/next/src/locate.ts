@@ -9,12 +9,33 @@ import type { LocalizedRoute, PageLocation, Route } from "./types";
  * the cheapest place to catch it is the build that would have emitted it.
  */
 
+/**
+ * The path this route is served at in one locale.
+ *
+ * `paths` is present only when a `collection` grouped entries whose slugs
+ * differ (`docs/next-plan.md` N6); everything else shares one path across its
+ * locales and the fallback is the whole story. Reading it through one helper is
+ * what keeps a translated slug from leaking a URL that was never built.
+ */
+export function pathIn<L extends string>(route: LocalizedRoute<L>, locale: string): string {
+  return route.paths?.[locale as L] ?? route.path;
+}
+
+/** The absolute URL of one locale of a localized route. */
+export function urlIn<L extends string>(
+  site: Site<L>,
+  route: LocalizedRoute<L>,
+  locale: string,
+): string {
+  return `${site.baseUrl}/${locale}${pathIn(route, locale)}`;
+}
+
 function localizedUrls<L extends string>(
   site: Site<L>,
   route: LocalizedRoute<L>,
 ): Record<string, string> {
   return Object.fromEntries(
-    route.locales.map((locale) => [site.bcp47(locale), `${site.baseUrl}/${locale}${route.path}`]),
+    route.locales.map((locale) => [site.bcp47(locale), urlIn(site, route, locale)]),
   );
 }
 
@@ -34,7 +55,7 @@ function xDefaultUrl<L extends string>(site: Site<L>, route: LocalizedRoute<L>):
     throw new Error(`Route ${JSON.stringify(route.path)} serves no locale`);
   }
 
-  return `${site.baseUrl}/${locale}${route.path}`;
+  return urlIn(site, route, locale);
 }
 
 /** Every hreflang a localized route declares, `x-default` included. */
@@ -80,7 +101,7 @@ export function locate<L extends string>(
   }
 
   return {
-    url: `${site.baseUrl}/${locale}${route.path}`,
+    url: urlIn(site, route, locale),
     languages: clusterOf(site, route),
   };
 }
