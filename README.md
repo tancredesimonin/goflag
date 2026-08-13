@@ -455,7 +455,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.5"
+  GOFLAG_VERSION: "0.2.7"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -507,7 +507,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.5 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.7 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

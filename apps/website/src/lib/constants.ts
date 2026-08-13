@@ -19,7 +19,7 @@ export const SITE = {
 export const PACKAGE = {
   name: "@goflag/cli",
   bin: "goflag",
-  version: "0.2.6",
+  version: "0.2.7",
   npm: "https://www.npmjs.com/package/@goflag/cli",
   repo: "https://github.com/tancredesimonin/goflag",
   issues: "https://github.com/tancredesimonin/goflag/issues",

@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.7](https://github.com/tancredesimonin/goflag/compare/v0.2.5...v0.2.7) (2026-08-13)
+
+
+### Features
+
+* **cli:** goflag rules — the catalogue as data, not as a copy ([5e56afc](https://github.com/tancredesimonin/goflag/commit/5e56afc204ebfdd4c1433dcdb5905c530419b136))
+* **cli:** let the sitemap say which URLs are the same page ([e9dda38](https://github.com/tancredesimonin/goflag/commit/e9dda380dc22f4c88f4c6ede9dda5cf245002b39))
+* the site reads the rule catalogue instead of copying it ([e07c24d](https://github.com/tancredesimonin/goflag/commit/e07c24d4d8820a8b906406ea15b91e0b47dbde20))
+
+
+### Bug Fixes
+
+* **cli:** ask a second time before calling a page unreachable ([a972572](https://github.com/tancredesimonin/goflag/commit/a972572fa55b5aeaabf1ac86a069b13b06659315))
+* **cli:** ask ICU whether a language tag exists, not a regex ([b3e6f8d](https://github.com/tancredesimonin/goflag/commit/b3e6f8d03c43fdfba251b44294ef40931ef71016))
+* **cli:** say when a page was judged without the browser it needed ([cc03dbe](https://github.com/tancredesimonin/goflag/commit/cc03dbe087d9efad3e7aa1027055af15c51e5d54))
+
+
+### Documentation
+
+* correct what the documentation says the CLI does ([7bc8aeb](https://github.com/tancredesimonin/goflag/commit/7bc8aeb6510567482872ce1c273f837cd08bbf0a))
+
 ## [0.2.6](https://github.com/tancredesimonin/goflag/compare/v0.2.5...v0.2.6) (2026-08-12)
 
 
