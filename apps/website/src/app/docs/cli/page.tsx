@@ -31,7 +31,7 @@ export default function CliPage() {
           <code>
             goflag &lt;url&gt; [options]
             {"\n"}
-            goflag rules [--json]
+            goflag rules
           </code>
         </pre>
         <p>
@@ -40,10 +40,10 @@ export default function CliPage() {
         </p>
         <p>
           <code>goflag rules</code> is the exception: it answers a question about goflag rather than
-          about a site, so it takes no URL and touches no network. It prints every rule with its
-          severity, its rigor and the documents it cites — as Markdown for a person, as JSON for
-          anything else. The <Link href="/docs/rules">rule catalogue</Link> on this site is the same
-          data.
+          about a site, so it takes no URL and touches no network. It prints every rule as JSON —
+          severity, rigor, the documents it cites, the fix snippet. The{" "}
+          <Link href="/docs/rules">rule catalogue</Link> on this site is not a description of that
+          data, it is that data: this page is built from the same file the command prints.
         </p>
       </div>
 

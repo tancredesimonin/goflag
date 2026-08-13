@@ -1,0 +1,142 @@
+/**
+ * The two things the exported catalogue cannot carry, kept where writing belongs.
+ *
+ * `packages/cli/rules.json` is generated from the rule registry and holds
+ * everything the engine knows about itself: id, scope, severity, rigor, sources,
+ * fix snippet. It deliberately stops there.
+ *
+ * - **`why`** is editorial. The registry's own `why` is the rationale for the
+ *   policy; this is what the mistake *costs the person reading*, which is
+ *   writing and not data.
+ * - **`message`** is a sample. The real one is built at audit time out of what
+ *   the page actually said (`Title is 74 characters — long of…`), so a static
+ *   copy can only ever be an example, and saying otherwise is how the previous
+ *   mirror shipped `Conflicting indexing directives` for four versions while the
+ *   engine printed `Conflicting robots directives`.
+ *
+ * `rules-catalog.test.ts` fails when an id here has no rule, or a rule has no
+ * entry here — so adding a rule cannot silently ship without its prose, and
+ * deleting one cannot leave an orphan paragraph behind.
+ */
+
+export interface RuleEditorial {
+  /** What the mistake costs, in the site's voice. */
+  why: string;
+  /**
+   * An example of the message goflag prints, with values filled in.
+   *
+   * Absent on a prose rule: its message *is* the question, the engine carries
+   * it, and a copy here would be one more string free to drift.
+   */
+  message?: string;
+}
+
+export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
+  "title.missing": {
+    why: "The title is the clickable line in every search result and the label of every browser tab. Without one, the engine invents a replacement from the page body, and the page competes with a heading someone wrote for a different purpose.",
+    message: "Page is missing a `<title>` element (or it is empty).",
+  },
+  "title.length": {
+    why: "Past roughly sixty characters the result gets truncated, and the truncation lands wherever it lands. A title that ends mid-word is a title whose promise the reader never saw.",
+    message: "Title is 74 characters — long of the recommended 10–60 window.",
+  },
+  "description.missing": {
+    why: "The description is not a ranking factor, and it is the only sentence you control between the title and the click. With none, the engine assembles one from whatever text sits near the matched query.",
+    message: 'Page has no `<meta name="description">`.',
+  },
+  "description.length": {
+    why: "Too short and the snippet gets padded with body text you did not choose; too long and it is cut. The window is a heuristic, not a specification; see the note on rigor below.",
+    message: "Description is 31 characters — short of the recommended 50–160 window.",
+  },
+  "canonical.missing": {
+    why: "Any tracking parameter, trailing slash or uppercase path creates a second URL serving the same page. Without a canonical, the engine picks which one to keep, and it does not have to pick yours.",
+    message: 'Page is missing `<link rel="canonical">`.',
+  },
+  "canonical.absolute": {
+    why: "This is the failure that de-indexes a site without anybody touching a page. A relative canonical resolves against `metadataBase`, which defaults to localhost, so production ships canonicals pointing at a host no crawler can reach.",
+    message:
+      'Canonical is "/the-page" — must be an absolute http(s) URL (consumers see the raw value, not the resolved "https://example.com/the-page").',
+  },
+  "viewport.missing": {
+    why: "Without it a phone renders the page at desktop width and scales it down. The layout is not broken, only unreadable, which is why it survives review.",
+    message: 'Page has no `<meta name="viewport">` — mobile browsers will render at desktop width.',
+  },
+  "og.title.missing": {
+    why: "A search title and a shared-link title have different jobs: one ends in the site name for disambiguation, the other does not need it. Relying on the fallback means every share carries the search variant.",
+    message: "Page has no `og:title`; consumers will fall back to `<title>` (or nothing).",
+  },
+  "og.description.missing": {
+    why: "Only flagged when the page already carries other `og:*` tags. A page that opted into Open Graph and then skipped the description almost always did so by accident.",
+    message:
+      "Page has `og:*` tags but no `og:description`; unfurls will fall back to the meta description (or nothing).",
+  },
+  "og.image.missing": {
+    why: "A link pasted into Slack, LinkedIn or iMessage with no image is a grey rectangle of text. The cost is not aesthetic: it is the click that does not happen.",
+    message:
+      "Page has no `og:image`. Link unfurls will fall back to text-only or a random body image.",
+  },
+  "robots.conflict": {
+    why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
+    message:
+      "Conflicting robots directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
+  },
+  "hreflang.missing": {
+    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority.",
+    message:
+      "Page declares no `hreflang` alternates, but the site serves 4 locales (en, es, fr, pt-br, per the sitemap). Locale variants of this route cannot be associated with each other.",
+  },
+  "hreflang.sitemap-mismatch": {
+    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. Under-declaring hides real translations; over-declaring points hreflang at URLs the site itself does not list, which is read as a broken cluster.",
+    message:
+      "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
+  },
+  "robots.blocks-site": {
+    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
+    message:
+      '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
+  },
+  "title.descriptive": {
+    why: "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",
+  },
+  "description.accurate": {
+    why: "The description is the one sentence you get to write in a search result. A boilerplate line repeated site-wide, or one that promises something the page does not deliver, gets replaced by improvised page text — or gets the click and loses the visitor.",
+  },
+  "lang.matches-content": {
+    why: "A wrong `lang` is worse than a missing one: screen readers switch to the wrong pronunciation rules, browsers offer to translate a page that is already in the reader's language, and search engines file the page under the wrong audience. Nothing in the markup contradicts it, so no mechanical check can catch it.",
+  },
+  "og.image.representative": {
+    why: "The preview image is the whole payload of a shared link. A generic site-wide banner, or artwork whose subject sits outside the ~1.91:1 crop, is present enough to pass every mechanical check and still communicate nothing.",
+  },
+};
+
+/**
+ * hreflang reciprocity findings, which are not rules.
+ *
+ * They are computed cross-page in the engine's `core/i18n.ts` and reported
+ * under `missingTranslations`, not through the rule registry — which is why
+ * they carry no severity and why the generated catalogue does not know about
+ * them. Phase 3.5 of the product plan absorbs them into the registry; until it
+ * does, they are written here rather than described as rules they are not.
+ *
+ * Three codes, not four: `self-mismatch` was declared in the engine and emitted
+ * by no branch, so a catalogue listing it promised a finding goflag could not
+ * produce. The declaration is gone as of 0.2.7.
+ */
+export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; why: string }> = [
+  {
+    code: "missing-back-link",
+    message:
+      "`/fr/pricing` declares an alternate to `/es/precios` but the peer does not link back.",
+    why: "hreflang is only honoured when it is reciprocal. A one-way declaration is discarded, so the cluster silently degrades to no cluster at all.",
+  },
+  {
+    code: "x-default-missing",
+    message: 'Page advertises 4 locales but no `hreflang="x-default"`.',
+    why: "`x-default` is what a visitor whose language matches none of yours is sent to. Without it the engine guesses, and it guesses per query.",
+  },
+  {
+    code: "locale.invalid",
+    message: '`hreflang="pt_BR"` is not a valid BCP 47 tag.',
+    why: "An invalid tag is not a fallback, it is ignored: underscore instead of hyphen is enough to void the entire alternate.",
+  },
+];

@@ -15,6 +15,12 @@ pnpm-lock.yaml
 # Author-controlled docs — never auto-format
 **/CHANGELOG.md
 
+# Generated from the rule registry by `pnpm --filter @goflag/cli
+# generate:catalog`, and compared against it byte for byte by `catalog.test.ts`.
+# Prettier's JSON output differs from the generator's, so formatting it here
+# breaks that comparison — the file has exactly one author and it is a script.
+packages/cli/rules.json
+
 # Test fixtures — captured verbatim from real sites and synthetic edge cases;
 # keep byte-for-byte identical. Globbed from any depth so the pattern survives
 # packages moving around the workspace.

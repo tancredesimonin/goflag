@@ -1,4 +1,4 @@
-# Formatting only, and only on what is staged.
+# Formatting only, and only on what is staged — plus one generated file.
 #
 # `format-check` is the single most frequent CI failure in this repository —
 # more than the next three causes combined — and every one of them is the same
@@ -13,3 +13,22 @@
 # paths lint-staged hands it, and `--ignore-unknown` skips file types it has
 # no parser for (images, .ico, .nvmrc) rather than failing the commit.
 pnpm lint-staged
+
+# `packages/cli/rules.json` is generated from the rule registry and read by the
+# documentation site, which cannot import the package (invariant I3). Regenerate
+# it here so a rule change and its published description land in the same
+# commit, rather than in a CI failure minutes later or — as happened before this
+# existed — in nothing at all, leaving the site describing a rule the engine
+# stopped having.
+#
+# Conditional and quiet: it runs only when a rule file is actually staged, which
+# is a handful of commits a month, and costs about a second when it does. The
+# same narrowness the rest of this hook is built on.
+#
+# Not the guarantee. `--no-verify` skips all of this, so `catalog.test.ts`
+# compares the committed file against the registry in the suite CI already runs.
+# The hook is the fast path; the test is the one that cannot be skipped.
+if git diff --cached --name-only | grep -q '^packages/cli/src/lib/rules/'; then
+  pnpm --filter @goflag/cli generate:catalog >/dev/null
+  git add packages/cli/rules.json
+fi

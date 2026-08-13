@@ -22,7 +22,7 @@ import { renderSummaryTerminal } from "./report/render-summary";
 import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
-import { buildRuleCatalog, renderCatalogMarkdown } from "./lib/rules/catalog";
+import { buildRuleCatalog, serialiseCatalog } from "./lib/rules/catalog";
 
 async function readVersion(): Promise<string> {
   try {
@@ -78,10 +78,7 @@ async function main(): Promise<number> {
   // hand — `apps/website` cannot import this package (I3) and its hand-written
   // mirror had drifted in three places by the time anybody checked.
   if (args.command === "rules") {
-    const catalog = buildRuleCatalog(await readVersion());
-    process.stdout.write(
-      args.json ? `${JSON.stringify(catalog, null, 2)}\n` : `${renderCatalogMarkdown(catalog)}\n`,
-    );
+    process.stdout.write(serialiseCatalog(buildRuleCatalog(await readVersion())));
     return 0;
   }
 

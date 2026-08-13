@@ -80,16 +80,8 @@ describe("goflag CLI (spawned process)", () => {
     expect(r.stderr).toContain("missing <url>");
   });
 
-  it("prints the rule catalogue as Markdown, with no URL and no network", async () => {
+  it("prints the rule catalogue with no URL and no network", async () => {
     const r = await runCli(["rules"]);
-    expect(r.status).toBe(0);
-    expect(r.stdout).toContain("# goflag rules");
-    expect(r.stdout).toContain("`title.missing`");
-    expect(r.stdout).toContain("## Sources");
-  });
-
-  it("prints the rule catalogue as JSON, which is what a consumer reads", async () => {
-    const r = await runCli(["rules", "--json"]);
     expect(r.status).toBe(0);
 
     const catalog = JSON.parse(r.stdout);

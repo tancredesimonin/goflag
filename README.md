@@ -133,16 +133,19 @@ The terminal view is just a render of that JSON.
 ### The catalogue is data too
 
 ```sh
-npx @goflag/cli rules                # every rule, as Markdown
-npx @goflag/cli rules --json         # the same, for a program
+npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
 crawl, no network. Each entry carries its scope, severity, rigor, the documents
 it cites and its fix snippet, so anything that documents or consumes the
-catalogue derives it instead of copying it. It deliberately omits the message a
-finding prints — that is built at audit time from what the page actually says,
-so a static copy would be a sample rather than a fact.
+catalogue derives it instead of copying it. The same document ships inside the
+package as `rules.json`, if you would rather read it than run anything.
+
+It deliberately omits the message a finding prints — that is built at audit time
+from what the page actually says, so a static copy would be a sample rather than
+a fact, and a sample presented as the truth is how this project's own
+documentation site came to quote a message the engine had stopped printing.
 
 ### Options
 

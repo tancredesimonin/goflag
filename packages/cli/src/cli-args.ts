@@ -21,9 +21,9 @@ export const HELP = `goflag — audit a site for broken links, missing translati
 
 Usage:
   goflag <url> [options]
-  goflag rules [--json]     Print the rule catalogue and exit. No crawl, no
-                            network: every rule with its severity, rigor and
-                            cited sources, as Markdown or as JSON.
+  goflag rules              Print the rule catalogue as JSON and exit. No crawl
+                            and no network: every rule with its severity, its
+                            rigor and the documents it cites.
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).

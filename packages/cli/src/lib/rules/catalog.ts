@@ -93,8 +93,16 @@ export interface SourceDoc {
 }
 
 export interface RuleCatalog {
-  /** The `@goflag/cli` version this catalogue came out of. */
-  version: string;
+  /**
+   * The `@goflag/cli` version, stamped by the command that prints it.
+   *
+   * Absent from the committed `rules.json` on purpose: a file carrying the
+   * version changes on every release, so the generated artefact would go stale
+   * during `pnpm release` itself and turn the release commit red. The file
+   * answers "what does goflag check"; the version answers "which goflag", and
+   * only the caller knows that.
+   */
+  version?: string;
   counts: { page: number; site: number; prose: number };
   /** Only the documents the shipped rules cite, keyed by id. */
   sources: Record<string, SourceDoc>;
@@ -111,7 +119,7 @@ function fixOf(fix: { title: string; snippet: string; language?: string } | unde
  * can diff two versions of it without sorting first — a generated file that
  * reorders itself is a generated file nobody will commit.
  */
-export function buildRuleCatalog(version: string): RuleCatalog {
+export function buildRuleCatalog(version?: string): RuleCatalog {
   const rules: CatalogRule[] = [];
 
   for (const rule of RULES) {
@@ -184,7 +192,7 @@ export function buildRuleCatalog(version: string): RuleCatalog {
   }
 
   return {
-    version,
+    ...(version ? { version } : {}),
     counts: {
       page: RULES.length,
       site: SITE_RULES.length,
@@ -195,58 +203,7 @@ export function buildRuleCatalog(version: string): RuleCatalog {
   };
 }
 
-/**
- * The catalogue as Markdown, for a human at a terminal or a file in a repo.
- *
- * The plan asks for both forms (3.3) and they answer different questions:
- * the JSON is what another program reads, this is what somebody scanning for
- * "what does goflag actually check?" reads without piping anything.
- */
-export function renderCatalogMarkdown(catalog: RuleCatalog): string {
-  const lines: string[] = [];
-  const { page, site, prose } = catalog.counts;
-
-  lines.push(`# goflag rules — ${catalog.version}`);
-  lines.push("");
-  lines.push(
-    `${page} page rules, ${site} site rules, ${prose} prose rules, citing ` +
-      `${Object.keys(catalog.sources).length} sources.`,
-  );
-  lines.push("");
-
-  const scopes: Array<[RuleScope, string, string]> = [
-    ["page", "Page rules", "Judged on one page's `<head>`."],
-    ["site", "Site rules", "Judged across the whole crawl."],
-    ["prose", "Prose rules", "Questions goflag refuses to answer. They never gate."],
-  ];
-
-  for (const [scope, title, blurb] of scopes) {
-    const inScope = catalog.rules.filter((r) => r.scope === scope);
-    if (inScope.length === 0) continue;
-
-    lines.push(`## ${title}`);
-    lines.push("");
-    lines.push(blurb);
-    lines.push("");
-    lines.push("| Rule | Severity | Rigor | Sources | What it enforces |");
-    lines.push("| --- | --- | --- | --- | --- |");
-    for (const rule of inScope) {
-      lines.push(
-        `| \`${rule.id}\` | ${rule.severity ?? "—"} | ${rule.rigor ?? "—"} | ` +
-          `${rule.sources.join(", ") || "—"} | ${rule.summary.replace(/\|/g, "\\|")} |`,
-      );
-    }
-    lines.push("");
-  }
-
-  lines.push("## Sources");
-  lines.push("");
-  lines.push("| Id | Publisher | Rigor | Document |");
-  lines.push("| --- | --- | --- | --- |");
-  for (const doc of Object.values(catalog.sources)) {
-    lines.push(`| \`${doc.id}\` | ${doc.publisher} | ${doc.rigor} | [${doc.title}](${doc.url}) |`);
-  }
-  lines.push("");
-
-  return lines.join("\n");
+/** The exact bytes `rules.json` must contain, so a comparison is a string one. */
+export function serialiseCatalog(catalog: RuleCatalog): string {
+  return `${JSON.stringify(catalog, null, 2)}\n`;
 }

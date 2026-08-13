@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { buildRuleCatalog, renderCatalogMarkdown } from "./catalog";
+import { buildRuleCatalog, serialiseCatalog } from "./catalog";
 import { RULES } from "./index";
 import { PROSE_RULES } from "./prose";
 import { SITE_RULES } from "./site-rules";
@@ -93,18 +96,26 @@ describe("buildRuleCatalog", () => {
   });
 });
 
-describe("renderCatalogMarkdown", () => {
-  it("names every rule and links every source", () => {
-    const md = renderCatalogMarkdown(catalog);
-    for (const rule of catalog.rules) expect(md).toContain(`\`${rule.id}\``);
-    for (const doc of Object.values(catalog.sources)) expect(md).toContain(doc.url);
+describe("rules.json", () => {
+  it("matches the registry, byte for byte", () => {
+    // This is the guarantee. The pre-commit hook regenerates the file when a
+    // rule file is staged, but a hook can be skipped with --no-verify and this
+    // cannot: a rule added without regenerating fails here, in the suite CI
+    // already runs, instead of reaching a documentation site that says
+    // something false for four versions.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const committed = readFileSync(join(here, "..", "..", "..", "rules.json"), "utf8");
+
+    expect(committed).toBe(serialiseCatalog(buildRuleCatalog()));
   });
 
-  it("escapes a pipe so one summary cannot break the table", () => {
-    const md = renderCatalogMarkdown({
-      ...catalog,
-      rules: [{ ...catalog.rules[0]!, summary: "a | b" }],
-    });
-    expect(md).toContain("a \\| b");
+  it("carries no version, so a release cannot make it stale", () => {
+    const committed = JSON.parse(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "rules.json"),
+        "utf8",
+      ),
+    );
+    expect(committed.version).toBeUndefined();
   });
 });
