@@ -1,6 +1,6 @@
 # goflag — Plan de développement
 
-> **Rédigé** 2026-07-29 · **Mis à jour** 2026-08-02
+> **Rédigé** 2026-07-29 · **Mis à jour** 2026-08-13
 > **Portée** — `goflag` (le produit), `@goflag/next` (un second outil sous la
 > même marque), et les 4 sites qui servent de terrain : `openfinanceguide`,
 > `stereo-house`, `tancrede`, `tancredo`.
@@ -10,34 +10,54 @@
 
 ## 0. Où on en est
 
-| Phase                                     | État                                             |
-| ----------------------------------------- | ------------------------------------------------ |
-| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                  |
-| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)            |
-| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6) |
-| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                  |
-| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                          |
-| **Distribution**                          | ✅ livrée — `@goflag/cli@0.1.3` sur npm          |
-| **3** — Durcir la spec                    | ⬜ **prochaine**                                 |
-| **4 à 7** — La lib, le contenu, public    | ⬜ à faire                                       |
+| Phase                                     | État                                                                    |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                                         |
+| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)                                   |
+| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6)                        |
+| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                                         |
+| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                                                 |
+| **Distribution**                          | ✅ livrée — `@goflag/cli` et `@goflag/next` sur npm, en OIDC            |
+| **3** — Durcir la spec                    | ⏳ `rigor` et `Source` livrés ; **reste 3.3 et 3.5**                    |
+| **4** — Le cœur de la lib                 | ✅ livrée — `@goflag/next@0.3.0`, `apps/website` et stereo-house dessus |
+| **5** — Autres consommateurs + manifeste  | ⏳ le manifeste (5.2/5.3) reste ; 3 sites non migrés (§6)               |
+| **6** — Contenu / AI                      | ⏳ `/raw/` et `llms.txt` servis par le site ; pas dérivés du registre   |
+| **7** — Public                            | ⏳ npm et le scope faits ; miroir et README refaits                     |
 
-**Chiffres actuels** : 516 tests, 12 règles par page + 3 règles site, monorepo
-en place, publié en `0.1.3`. Release et publication automatisées, sans aucune
-credential npm en CI — voir §2, « Distribution ».
+**Chiffres au 2026-08-13** : 651 tests, **11 règles par page** + 3 règles site +
+4 règles prose, `@goflag/cli@0.2.5` publié (`0.2.6` fusionnée dans `develop`,
+pas encore sur `main`), `@goflag/next@0.3.0`. Release et publication
+automatisées, sans aucune credential npm en CI — voir §2, « Distribution ».
+
+> Ces chiffres sont datés parce qu'ils rotent. `516 tests, 12 règles par page`
+> est resté ici pendant quatre versions, et c'est exactement le genre d'écart
+> que l'audit de doc du 2026-08-13 a payé ailleurs : un état écrit une fois et
+> jamais revérifié ment plus qu'il n'informe. `goflag rules --json` (3.3) est
+> ce qui rendra la moitié de cette ligne dérivable.
 
 ### Ce qu'il reste à faire, dans l'ordre
 
-| #   | Quoi                                                                                                                        | Qui                                                                             |
-| --- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 1   | `GOFLAG_VERSION` de stereo-house à `0.1.3` — la CI y épingle encore `0.1.0`, dont le `bin` est cassé                        | Renovate le proposera sous 3 jours (plancher `minimumReleaseAge`), ou à la main |
-| 2   | Capturer la baseline de stereo-house : le premier audit publie `goflag-report.json`, à committer en `.goflag/baseline.json` | après le premier `deploy-develop`                                               |
-| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                                                            | voir §2, « Dette laissée derrière »                                             |
-| 4   | Étendre le gate aux 3 autres sites                                                                                          | après la baseline de stereo-house                                               |
-| 5   | **Phase 3** — `rigor` et `Source` par règle, `goflag rules --json`                                                          | le vrai travail suivant                                                         |
+| #   | Quoi                                                                                  | État                                                 |
+| --- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 1   | `GOFLAG_VERSION` de stereo-house — la CI y épinglait `0.1.0`, dont le `bin` est cassé | ❔ hors de ce dépôt, à vérifier là-bas               |
+| 2   | Capturer la baseline de stereo-house et la committer                                  | ❔ hors de ce dépôt, à vérifier là-bas               |
+| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                      | ✅ `scripts/release.mjs`, liste `surface` par paquet |
+| 4   | Étendre le gate aux 3 autres sites                                                    | ❔ hors de ce dépôt                                  |
+| 5   | **3.3** — `goflag rules --json`, et la commande Markdown qui va avec                  | ⬜ **le travail suivant**                            |
+| 6   | **3.5** — absorber `missingTranslations` (trous + réciprocité) dans le registre       | ⬜ dette de la phase 1, à faire avec 3.3             |
 
-Les points 1 à 4 sont de la finition sur ce qui vient d'être livré. **Le travail
-qui compte est la phase 3** : l'outil est installable et gaté en CI ; ce qui
-manque, c'est qu'une règle puisse citer sa source.
+**Le travail qui compte est 3.3**, et il a gagné une raison que le plan n'avait
+pas prévue. `apps/website` porte deux miroirs écrits à la main — le catalogue de
+règles et la référence des flags — parce que l'invariant I3 interdit à `apps/**`
+d'importer `packages/**`. L'audit de documentation du 2026-08-13 a trouvé 89
+écarts entre la doc et le code, dont six dans ces deux fichiers : un message de
+règle faux depuis quatre versions, un code de finding annoncé et impossible à
+émettre, un flag entier jamais documenté. Exporter le catalogue supprime la
+classe au lieu de la re-corriger à chaque release.
+
+C'est aussi ce qu'attend l'invariant B.4 de `docs/locale-model-plan.md` — « tout
+tag que la lib émet doit passer le validateur du CLI » — aujourd'hui écrit et
+jamais exécuté, faute d'un catalogue que le test puisse lire.
 
 ---
 
@@ -426,7 +446,7 @@ CI ciblés par `rules:changes`, historique préservé (renommages détectés).
 
 ---
 
-## Phase 3 — Durcir la spec ⬜
+## Phase 3 — Durcir la spec ⏳
 
 **Objectif** — transformer un jeu de règles en artefact citable.
 
@@ -451,7 +471,7 @@ consommateur).
 
 ---
 
-## Phase 4 — Le cœur de la lib ⬜
+## Phase 4 — Le cœur de la lib ✅
 
 **Objectif** — déclarer les routes une fois, en dériver metadata + sitemap +
 robots + URL OG.

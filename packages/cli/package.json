@@ -42,7 +42,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "rules.json"
   ],
   "publishConfig": {
     "access": "public"
@@ -59,6 +60,7 @@
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
     "validate:sources": "tsx scripts/validate-sources.ts",
+    "generate:catalog": "tsx scripts/generate-catalog.ts",
     "prepack": "node ../../scripts/stage-package-docs.mjs",
     "prepublishOnly": "pnpm build",
     "release": "commit-and-tag-version --path . --skip.tag"

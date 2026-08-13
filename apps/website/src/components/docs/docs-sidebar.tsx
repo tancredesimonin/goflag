@@ -3,11 +3,18 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
-import type { DocsNavGroup } from "@/lib/docs-nav";
+import { activeDocsHref, type DocsNavGroup } from "@/lib/docs-nav";
 import { cn } from "@/lib/utils";
 
 export function DocsSidebar({ groups }: { groups: DocsNavGroup[] }) {
   const pathname = usePathname();
+  // Computed once across every group, not per item: "is this the closest entry
+  // to where I am?" is a question about the whole sidebar, and asking it per
+  // item is what let a parent and its child both answer yes.
+  const current = activeDocsHref(
+    pathname,
+    groups.flatMap((group) => group.items.map((item) => item.href)),
+  );
 
   return (
     <nav aria-label="Documentation" className="space-y-7 text-sm">
@@ -18,16 +25,7 @@ export function DocsSidebar({ groups }: { groups: DocsNavGroup[] }) {
           </p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
-              // A rule page (`/docs/rules/title.missing`) keeps the catalogue
-              // entry highlighted, so the reader never loses their place.
-              //
-              // The index is excluded from that prefix rule, because `/docs` is
-              // a prefix of every page here and it lit up on all of them. It
-              // only showed as a duplicate highlight once a second section
-              // arrived, but it was wrong from the first nested page.
-              const active =
-                pathname === item.href ||
-                (item.href !== "/docs" && pathname.startsWith(`${item.href}/`));
+              const active = item.href === current;
 
               return (
                 <li key={item.href}>

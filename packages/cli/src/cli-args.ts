@@ -21,6 +21,9 @@ export const HELP = `goflag — audit a site for broken links, missing translati
 
 Usage:
   goflag <url> [options]
+  goflag rules              Print the rule catalogue as JSON and exit. No crawl
+                            and no network: every rule with its severity, its
+                            rigor and the documents it cites.
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).
@@ -102,6 +105,13 @@ ${PROFILE_HELP}
 Exit codes: 0 clean, 1 findings found, 2 fatal error.`;
 
 export interface ParsedArgs {
+  /**
+   * A subcommand instead of an audit. Absent for the usual `goflag <url>`.
+   *
+   * `rules` prints the catalogue and exits without touching the network — the
+   * one thing goflag can answer about itself rather than about a site.
+   */
+  command?: "rules";
   url?: string;
   json: boolean;
   summary: boolean;
@@ -297,7 +307,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       default:
         if (arg && arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
-        if (arg && !parsed.url) parsed.url = arg;
+        // `rules` is the one word that is a command rather than a URL. It is
+        // accepted only in first position: `goflag https://x.test rules` is a
+        // typo, and treating it as a command would audit nothing while looking
+        // like it worked.
+        if (arg === "rules" && i === 0) parsed.command = "rules";
+        else if (arg && !parsed.url) parsed.url = arg;
         else if (arg) throw new Error(`unexpected argument: ${arg}`);
     }
   }

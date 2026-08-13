@@ -80,6 +80,28 @@ describe("goflag CLI (spawned process)", () => {
     expect(r.stderr).toContain("missing <url>");
   });
 
+  it("prints the rule catalogue with no URL and no network", async () => {
+    const r = await runCli(["rules"]);
+    expect(r.status).toBe(0);
+
+    const catalog = JSON.parse(r.stdout);
+    expect(catalog.version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(catalog.rules.length).toBe(
+      catalog.counts.page + catalog.counts.site + catalog.counts.prose,
+    );
+    const rule = catalog.rules.find((r: { id: string }) => r.id === "title.missing");
+    expect(rule).toMatchObject({ scope: "page", severity: "error", rigor: "spec-required" });
+    expect(catalog.sources[rule.sources[0]]).toHaveProperty("url");
+  });
+
+  it("treats `rules` after a URL as the typo it is", async () => {
+    // Accepting it in any position would audit nothing while looking like it
+    // worked, which is worse than an error.
+    const r = await runCli([server.url, "rules"]);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain("unexpected argument");
+  });
+
   it("exits 2 on an invalid URL", async () => {
     const r = await runCli(["not a url", "--json"]);
     expect(r.status).toBe(2);

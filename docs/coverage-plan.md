@@ -217,7 +217,7 @@ repose pas sur la vitesse.
 | **V-0** | Un sitemap injoignable n'est plus lu comme absent — le défaut du §1 | ✅ livrée |
 | **V-1** | Inférence des familles + `--coverage structural`                    | ✅ livrée |
 | **V-2** | La ligne `COVERAGE` au rapport et au JSON (C6)                      | ✅ livrée |
-| **V-3** | `structural` par défaut, `--max-pages` redevient un garde-fou       | ⬜        |
+| **V-3** | `structural` par défaut, `--max-pages` redevient un garde-fou       | ✅ livrée |
 | **V-4** | `.goflag/routes.json` lu s'il est là ; émis par `@goflag/next`      | ⬜        |
 
 **V-0 avant tout le reste.** Le plafond instable est un défaut aujourd'hui, sur
