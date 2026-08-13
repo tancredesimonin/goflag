@@ -179,7 +179,7 @@
       },
       "chromium": {
         "q": "Ai-je besoin de Chromium ?",
-        "a": "Seulement si vous voulez que les pages rendues côté client soient réaffichées. goflag n’embarque ni ne télécharge jamais de navigateur : installez-le vous-même avec pnpm add -D playwright et pnpm exec playwright install chromium. Avec lui, une page dont le head paraît vide est réaffichée dans un Chromium headless ; sans lui — ou avec --static — goflag ne lit que le HTML statique, et ne dit rien du réaffichage qu’il a sauté."
+        "a": "Seulement si vous voulez que les pages rendues côté client soient réaffichées. goflag n’embarque ni ne télécharge jamais de navigateur : installez-le vous-même avec pnpm add -D playwright et pnpm exec playwright install chromium. Avec lui, une page dont le head paraît vide est réaffichée dans un Chromium headless ; sans lui, goflag ne lit que le HTML statique et signale dans les diagnostics que ces pages ont été jugées sur une coquille. --static demande le HTML statique délibérément, et ne signale rien."
       },
       "privacy": {
         "q": "Qu’est-ce qui quitte ma machine ?",

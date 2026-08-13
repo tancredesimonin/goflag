@@ -300,6 +300,18 @@ export interface ExtractorMeta {
   escalated: boolean;
   /** Human-readable trigger for the escalation (only set when `escalated`). */
   escalationReason?: string;
+  /**
+   * Why the escalation this page needed could not run — Playwright absent, or
+   * its Chromium missing.
+   *
+   * Separate from `escalationReason` because the two are opposite facts and
+   * one used to carry both as prose. A page that wanted the browser and did
+   * not get it is judged on an unhydrated shell, which invents a full column
+   * of `title.missing` / `description.missing` findings; the report has to say
+   * so rather than let the reader believe the site is empty. `report/build.ts`
+   * turns any page carrying this into a diagnostics warning.
+   */
+  escalationBlocked?: string;
 }
 
 /**

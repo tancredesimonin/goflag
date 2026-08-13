@@ -13,6 +13,7 @@ import { crawl } from "../lib/core/crawl";
 import { matchesAny } from "../lib/core/glob";
 import { sortIssues } from "../lib/core/lint";
 import { lintSite } from "../lib/core/lint-site";
+import { ICU_KNOWS_LANGUAGES, ICU_UNAVAILABLE_WARNING } from "../lib/core/bcp47";
 import {
   buildI18nMatrix,
   looksLikeLocaleSegment,
@@ -21,6 +22,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { buildClusterIndex } from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
@@ -175,6 +177,37 @@ function localeOfUrl(url: string): string | null {
 }
 
 /**
+ * The warning owed by pages that asked for the browser and did not get it.
+ *
+ * A page whose `<head>` looks empty is re-rendered in Chromium precisely so a
+ * client-rendered app is not reported as missing everything it declares at
+ * runtime. When Playwright or its binary is absent the escalation is skipped
+ * and the page is judged on its unhydrated shell — which produces the exact
+ * phantom findings the escalation exists to prevent, a full column of
+ * `title.missing` and `description.missing` down an SPA.
+ *
+ * Until now the reason was written onto the `Page` and copied nowhere: not into
+ * the report, not into `warnings`, not onto the terminal. Somebody reading
+ * "missing everything" had no way to tell a broken site from a missing browser,
+ * and the install docs told them to wait for a note that was never printed.
+ *
+ * Returns `null` when nothing was blocked, so the caller adds no empty noise.
+ */
+export function blockedEscalationWarning(pages: readonly Page[]): string | null {
+  const blocked = pages.filter((p) => p.extractor.escalationBlocked);
+  if (blocked.length === 0) return null;
+
+  // One message, not one per page: the cause is the runtime, so N copies of it
+  // would bury every other warning on a site that is entirely client-rendered.
+  return (
+    `${blocked.length} page(s) looked client-rendered and were judged on their static ` +
+    `HTML, because the browser could not be started: ${blocked[0]!.extractor.escalationBlocked} ` +
+    `Their metadata findings may be phantoms — install Playwright and Chromium, or pass ` +
+    `--static to say the static HTML is what you meant to judge.`
+  );
+}
+
+/**
  * Routes present in some locales but absent in others. A "hole" is exactly
  * the "missing translation page" the tool exists to find. `x-default` is a
  * fallback pointer, not a real translation, so it never counts as a locale
@@ -323,6 +356,14 @@ export async function runAudit(
 
   const allSitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
 
+  // Built from the WHOLE sitemap, never from the selection: structural
+  // coverage decides which pages get cells, never which clusters exist, and a
+  // `<url>` entry names its whole cluster whether or not a member was sampled.
+  // That is the property that makes a sitemap declaration usable where pairing
+  // from the crawled `<head>`s is not — the two locales of a slug-translating
+  // family draw disjoint samples (docs/i18n-cluster-plan.md §2).
+  const clusters = buildClusterIndex(discovery?.urls ?? []);
+
   // Which pages to audit, chosen by the shape of the site rather than by the
   // order the crawl happens to reach them. Only possible with a sitemap: with
   // no list of URLs up front there is no structure to select from, so the
@@ -401,6 +442,9 @@ export async function runAudit(
         `${crawlResult.recovered.length > 3 ? `, +${crawlResult.recovered.length - 3} more` : ""}.`,
     );
   }
+
+  const escalationWarning = blockedEscalationWarning(pages);
+  if (escalationWarning) warnings.push(escalationWarning);
 
   // A page that returned a non-2xx status has no meaningful <head>, links,
   // or hreflang — linting it produces phantom "missing title/description/…"
@@ -518,10 +562,28 @@ export async function runAudit(
     );
   }
 
+  // `locale.invalid` asks ICU whether a tag names a language that exists. On a
+  // small-icu Node it cannot, and falls back to checking the shape — which is
+  // the right call for an auditor, since the alternative is a page of findings
+  // that are all false. It is not the right call to keep quiet about: a check
+  // that stopped checking has to say so, like every other partial answer in
+  // this report.
+  if (!ICU_KNOWS_LANGUAGES) warnings.push(ICU_UNAVAILABLE_WARNING);
+
   const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
+    clusterRouteOf: clusters.routeOf,
   });
+  // A site that puts one URL in two clusters is contradicting itself, and the
+  // first declaration wins silently unless this says otherwise.
+  if (clusters.conflicts.length > 0) {
+    warnings.push(
+      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by the ` +
+        `sitemap; the first declaration was kept: ${clusters.conflicts.slice(0, 3).join(", ")}` +
+        `${clusters.conflicts.length > 3 ? `, +${clusters.conflicts.length - 3} more` : ""}.`,
+    );
+  }
   // Holes are a claim about locale coverage. With no declared axis we have
   // just refused to claim the site is multilingual, so claiming it is missing
   // translations would contradict that — and it is exactly how `/cv` (a CV
@@ -716,6 +778,17 @@ export async function runAudit(
       },
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(duplicatePages > 0 ? { duplicatePages } : {}),
+      // Only when the site declared clusters. A merge that changes which rows
+      // exist must be visible: the alternative is a hole count that moved for
+      // a reason nothing in the report explains.
+      ...(clusters.size > 0
+        ? {
+            declaredClusters: {
+              count: clusters.size,
+              ...(clusters.conflicts.length > 0 ? { conflicts: clusters.conflicts.length } : {}),
+            },
+          }
+        : {}),
       ...(discovery
         ? {
             sitemap: {

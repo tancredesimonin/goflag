@@ -196,6 +196,18 @@ export interface GoflagReport {
      * are duplicates. Reported so a shrinking finding count is explicable.
      */
     duplicatePages?: number;
+    /**
+     * Translation clusters the sitemap declared with `xhtml:link`, when it
+     * declared any.
+     *
+     * A declared cluster decides which rows the translation matrix has — two
+     * URLs the site names as one page share a row, whatever their paths — so a
+     * site that translates its slugs stops reporting a hole per locale on a
+     * pair that is fully translated. It never fills a cell and never says a
+     * page exists: `conflicts` counts URLs a second entry claimed for a
+     * different cluster, where the first declaration was kept.
+     */
+    declaredClusters?: { count: number; conflicts?: number };
     /** Sitemap discovery outcome, when discovery ran. */
     /** Which pages the run chose to audit, and what it therefore cannot promise. */
     coverage?: {
