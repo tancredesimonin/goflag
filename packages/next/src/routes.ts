@@ -64,6 +64,13 @@ export interface CollectionFamily {
   readonly rows: readonly {
     readonly path: string;
     readonly locale: string;
+    /**
+     * Groups this row with the other locales of the same page, when the paths
+     * do not (`docs/next-plan.md` N6). Absent on every collection that does not
+     * pass `key`, which is what keeps their grouping — and their output —
+     * exactly as it was.
+     */
+    readonly key?: string;
     /** Absent means listed. Only the exclusion is ever recorded. */
     readonly sitemap?: boolean;
     readonly lastModified?: Date;
@@ -89,6 +96,15 @@ export function collection<E>(
   input: SitemapFacts & {
     path: (entry: E) => string;
     locale: (entry: E) => string;
+    /**
+     * Groups entries that are one page in several languages, when their slugs
+     * do not say so. Two entries sharing a key become one route, each locale
+     * keeping its own path (`docs/next-plan.md` N6).
+     *
+     * Omit it and entries group by path, which is what every existing
+     * collection does and what every existing sitemap depends on.
+     */
+    key?: (entry: E) => string;
     ogType?: OgType;
     sitemap?: boolean | ((entry: E) => boolean);
     lastModified?: (entry: E) => Date | string | number | undefined;
@@ -109,6 +125,7 @@ export function collection<E>(
   input: SitemapFacts & {
     path: (entry: E) => string;
     locale: string | ((entry: E) => string);
+    key?: (entry: E) => string;
     ogType?: OgType;
     sitemap?: boolean | ((entry: E) => boolean);
     lastModified?: (entry: E) => Date | string | number | undefined;
@@ -130,6 +147,7 @@ export function collection<E>(
       return {
         path,
         locale: typeof input.locale === "function" ? input.locale(entry) : input.locale,
+        ...(input.key ? { key: input.key(entry) } : {}),
         // Recorded only when false. A row that says nothing is listed, which
         // keeps the common case out of the data.
         ...(listed ? {} : { sitemap: false as const }),
@@ -223,24 +241,57 @@ function resolveFamily<L extends string>(
       });
     }
 
-    // One route per path, carrying every locale that declared that path — and
-    // that locale's own last-modified, since a translation is edited on its own
-    // day and a single date per route would misreport three rows in four.
-    const byPath = new Map<string, Map<string, { lastModified?: Date; listed: boolean }>>();
+    // One route per group, carrying every locale that joined it — and that
+    // locale's own last-modified, since a translation is edited on its own day
+    // and a single date per route would misreport three rows in four.
+    //
+    // The group is the row's `key` when the collection supplies one, and its
+    // path otherwise. Grouping by path is what every collection did before
+    // `key` existed, and it is why two documents whose slugs are translated
+    // used to become two one-locale routes, each advertising a cluster of
+    // itself — the defect goflag's cluster index exists to repair, emitted by
+    // the library meant to prevent it (`docs/next-plan.md` §9.1).
+    type Member = { path: string; lastModified?: Date; listed: boolean };
+    const groups = new Map<string, Map<string, Member>>();
     for (const row of input.rows) {
       assertPath(row.path, true);
       assertServed(site, row.locale, row.path);
-      const group =
-        byPath.get(row.path) ?? new Map<string, { lastModified?: Date; listed: boolean }>();
-      group.set(row.locale, { lastModified: row.lastModified, listed: row.sitemap !== false });
-      byPath.set(row.path, group);
+      const id = row.key ?? row.path;
+      const group = groups.get(id) ?? new Map<string, Member>();
+      const clash = group.get(row.locale);
+      if (clash && clash.path !== row.path) {
+        // Two paths claiming one locale of one page. Picking either would make
+        // the canonical and the cluster describe different URLs, so it fails
+        // here rather than in a crawl weeks later.
+        throw new Error(
+          `Collection key ${JSON.stringify(id)} has two paths for locale ` +
+            `${JSON.stringify(row.locale)}: ${JSON.stringify(clash.path)} and ` +
+            `${JSON.stringify(row.path)}`,
+        );
+      }
+      group.set(row.locale, {
+        path: row.path,
+        lastModified: row.lastModified,
+        listed: row.sitemap !== false,
+      });
+      groups.set(id, group);
     }
 
-    return [...byPath].map(([path, group]) => {
+    return [...groups].map(([, group]) => {
+      const locales = site.locales.filter((locale) => group.has(locale));
+      // The anchor: the site default when this route serves it, otherwise the
+      // first locale it does. Identical to the rule `x-default` follows, so
+      // there is one notion of "which locale speaks for this route" and not
+      // two — and it does not move when a locale joins.
+      const anchor = locales.includes(site.defaultLocale) ? site.defaultLocale : locales[0];
+      const path = anchor === undefined ? "" : group.get(anchor)!.path;
+      const paths = Object.fromEntries(
+        [...group].filter(([, member]) => member.path !== path).map(([l, m]) => [l, m.path]),
+      ) as Partial<Record<L, string>>;
       const stamps = Object.fromEntries(
         [...group]
           .filter(
-            (pair): pair is [string, { lastModified: Date; listed: boolean }] =>
+            (pair): pair is [string, Member & { lastModified: Date }] =>
               pair[1].lastModified !== undefined,
           )
           .map(([locale, value]) => [locale, value.lastModified]),
@@ -257,7 +308,8 @@ function resolveFamily<L extends string>(
         // Ordered by the site's own locale order, so a collection returning its
         // entries in a different sequence cannot reorder `alternates.languages`
         // and make every sitemap diff unreadable.
-        locales: site.locales.filter((locale) => group.has(locale)),
+        locales,
+        ...(Object.keys(paths).length > 0 ? { paths } : {}),
         ogType,
         ...facts,
         ...(Object.keys(unlisted).length > 0 ? { sitemap: unlisted } : {}),
@@ -379,15 +431,27 @@ export function defineRoutes<L extends string, F extends Record<string, FamilyIn
 
   for (const [name, input] of Object.entries(families) as [string, FamilyInput<L>][]) {
     for (const route of resolveFamily(site, name, input)) {
-      const existing = byPath.get(route.path);
-      if (existing) {
-        throw new Error(
-          `Duplicate route path ${JSON.stringify(route.path)}, declared by both ` +
-            `${JSON.stringify(existing.family)} and ${JSON.stringify(route.family)}`,
-        );
+      // Every path the route answers on, not just its anchor: a page whose
+      // locales use different slugs knows its own slug and no other, so
+      // `metadata({ path: "/tarifs" })` has to resolve exactly as
+      // `metadata({ path: "/pricing" })` does. Indexing only the anchor would
+      // make the feature unusable from the page that needs it.
+      const paths =
+        route.policy === "localized" && route.paths
+          ? [route.path, ...Object.values<string>(route.paths as Record<string, string>)]
+          : [route.path];
+
+      for (const path of paths) {
+        const existing = byPath.get(path);
+        if (existing) {
+          throw new Error(
+            `Duplicate route path ${JSON.stringify(path)}, declared by both ` +
+              `${JSON.stringify(existing.family)} and ${JSON.stringify(route.family)}`,
+          );
+        }
+        byPath.set(path, route);
       }
 
-      byPath.set(route.path, route);
       all.push(route);
     }
   }

@@ -75,6 +75,22 @@ Each returns the native Next type (`Metadata`, `MetadataRoute.Sitemap`,
 output without adopting the others. A library you can only adopt whole does not
 get adopted.
 
+## What goflag reads back
+
+The two halves meet in one artefact. Every localized route emits its whole
+hreflang cluster — in the `<head>` and as `xhtml:link` in the sitemap, with an
+`x-default` that always points at a page the site serves. That is precisely the
+declaration [goflag reads](/docs/i18n#the-matrix) to decide which URLs are one
+page in several languages.
+
+The consequence is worth stating plainly: on a site built from this registry,
+the auditor's translation matrix rests on what the site declares rather than on
+what its paths happen to look like. A route whose locales use different slugs
+still needs
+[a `key`](/docs/next/routes#when-your-slugs-are-translated) to say so — that is
+the one thing the registry cannot infer, and the one thing that turns a fully
+translated pair into a phantom hole if it goes unsaid.
+
 ## What it is worth
 
 Measured on the two sites that migrated, not estimated:

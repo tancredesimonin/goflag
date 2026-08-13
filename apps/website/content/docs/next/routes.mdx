@@ -121,6 +121,35 @@ collection(allLegals, {
 `lastModified` is per entry and per locale, because a translation is edited on
 its own day.
 
+### When your slugs are translated
+
+Entries group into one cluster by their **path**, so `/pricing` and `/tarifs`
+become two routes, each advertising a cluster containing only itself. That is
+correct if they really are two pages — and wrong, invisibly, if they are one
+page in two languages. goflag then reports a translation hole on a pair that is
+fully translated, and nothing in your output says otherwise.
+
+Nothing in a path can tell those two cases apart, so `key` is how you say it:
+
+```ts
+collection(allDocs, {
+  path: (doc) => `/${doc.slug}`, // /pricing in en, /tarifs in fr
+  locale: (doc) => doc.locale,
+  key: (doc) => doc.translationId, // …and these are the same page
+});
+```
+
+Entries sharing a key become one route. Each locale keeps its own path, the
+cluster names them all, and `x-default` points at the site's default locale when
+the route serves it — the same rule every other route follows, so adding a
+locale does not rename anything.
+
+Two entries with the same key and the same locale fail the build: picking either
+would make the canonical and the cluster describe different URLs under one page.
+
+Leave `key` out and grouping is by path, exactly as before. Every collection
+written before this option existed produces the same sitemap, byte for byte.
+
 ## Keeping a page out of the sitemap
 
 Every route is listed by default. `sitemap: false` takes one out, and takes
