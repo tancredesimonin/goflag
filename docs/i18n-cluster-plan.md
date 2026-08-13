@@ -12,8 +12,11 @@
 > **Lié** — `docs/locale-model-plan.md` (le bug fondateur, §B.2 la sévérité
 > propre à un auditeur), `docs/coverage-plan.md` (l'échantillonnage, qui décide
 > ici), `docs/sitemap-robots-plan.md`.
-> **État** — X5 tranché le 2026-08-13 (§6) ; l'implémentation suit sur sa propre
-> branche. Les §1 à §4 sont mesurés et restent vrais quoi qu'il arrive ensuite.
+> **État** — X5 tranché le 2026-08-13 (§6), livré en deux temps : la matrice
+> (`feat/cluster-identity-from-sitemap`, v0.2.7) puis les règles de site
+> (`fix/site-rules-follow-declared-clusters`, 2026-08-13). Les §1 à §4 sont
+> mesurés et restent vrais quoi qu'il arrive ensuite. Ce qui reste ouvert est
+> en fin de §7 — l'appariement depuis le `<head>` au premier chef.
 
 ---
 
@@ -232,6 +235,25 @@ mécanisme ne change donc rien à aucun site existant et n'agit que là où le
 défaut est. C'est la propriété qu'on voulait, et c'est aussi l'aveu que la preuve
 reste synthétique.
 
+**Livré ensuite** (`fix/site-rules-follow-declared-clusters`, 2026-08-13) :
+
+- `SiteContext` porte `clusterRouteOf`, alimenté depuis `report/build.ts` par
+  l'index déjà construit pour la matrice. `hreflang.sitemap-mismatch` groupe ses
+  **deux** côtés — la table du sitemap et la page explorée — par cluster avant
+  de les comparer, au lieu de `splitRoute` seul.
+- Fixture `translated-slugs` : deux paires à slugs traduits (`/en/pricing` ⇄
+  `/fr/tarifs`, `/en/about-us` ⇄ `/fr/qui-sommes-nous`) plus un témoin à slug
+  partagé (`/contact`), clusters déclarés au sitemap. C'est la première fixture
+  du dépôt qui traduit ses slugs.
+
+**Mesuré** : sur `translated-slugs`, **4 `hreflang.sitemap-mismatch` → 0**, et
+le rapport complet passe au vert (0 trou, 0 réciprocité, 0 finding SEO). Sur les
+treize autres fixtures, le digest complet du rapport — `siteIssues`, trous,
+réciprocité, `summary`, `declaredClusters` — est **identique octet pour octet**
+avant et après, `tancrede` (9 clusters déclarés) compris. Le gain est désormais
+prouvé de bout en bout et plus seulement en unitaire ; ce qui reste synthétique,
+c'est le site, pas la chaîne.
+
 **Pas livré, et assumé :**
 
 - **§4 n'est pas réglé.** Les alternatives du `<head>` remplissent toujours une
@@ -240,11 +262,13 @@ reste synthétique.
   peut faire apparaître des trous sur des pages qui existent mais n'ont été ni
   explorées ni listées : c'est un changement à mesurer sur un vrai site, pas à
   déduire.
-- **`site-rules.ts` n'est pas branché.** `hreflang.sitemap-mismatch` découpe
-  encore les routes par `splitRoute`, donc la moitié des faux findings de §1
-  subsiste sur un site à slugs traduits.
-- **Aucune fixture ne traduit ses slugs.** Tant qu'il n'y en a pas, le gain est
-  prouvé par des tests unitaires et pas par un audit de bout en bout.
+- **L'appariement ne vient toujours que du sitemap.** Un site à slugs traduits
+  qui déclare correctement dans son `<head>` et rien au sitemap reste cassé,
+  matrice et règle comprises — et c'est le cas fréquent, `hreflang` dans le
+  `<head>` étant le mécanisme canonique et suffisant. §2 dit pourquoi ça n'a pas
+  été fait d'abord ; ça ne dit pas que ça ne doit pas l'être.
+- **La mesure sur un vrai site reste due** (§6). `translated-slugs` est une
+  fixture écrite pour ce défaut : elle prouve la chaîne, pas le terrain.
 
 ---
 
@@ -258,6 +282,9 @@ reste synthétique.
 - **`route || selfRoute` (`i18n.ts:180`) est du code mort.** `splitRoute` ne
   renvoie jamais `""`. Le commentaire au-dessus décrit une intention — gérer une
   alternative sans préfixe de locale — que le code n'implémente pas.
-- **La règle `hreflang.sitemap-mismatch` hérite du défaut** (§1). Toute
+- ~~**La règle `hreflang.sitemap-mismatch` hérite du défaut** (§1). Toute
   correction de l'identité doit passer par `site-rules.ts`, sinon la moitié des
-  faux findings reste.
+  faux findings reste.~~ Réglé le 2026-08-13 (§7). La leçon générale tient
+  quand même : `SiteContext` est le seul canal par lequel une règle voit
+  l'identité, donc tout nouveau modèle d'identité doit y passer, faute de quoi
+  la moitié des findings raisonne encore sur les chemins.

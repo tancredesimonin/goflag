@@ -27,8 +27,15 @@ import { startFixtureServer, type FixtureServer } from "../fixture-server";
  *     that fires on *absence* is one bad gate away from flagging every
  *     monolingual site on earth.
  *
- * All three run in `static` mode so no Chromium boots and the suite stays fast
- * and hermetic.
+ *   - `translated-slugs` — a correct site whose locales do not share a slug
+ *     (`/en/pricing`, `/fr/tarifs`) and which declares its clusters in the
+ *     sitemap. Nothing is wrong with it, and every route-by-path grouping says
+ *     otherwise. It is the first fixture in the repo that translates its slugs,
+ *     which `docs/i18n-cluster-plan.md` §7 names as the reason the cluster
+ *     work was proven by unit tests and not end to end.
+ *
+ * All of them run in `static` mode so no Chromium boots and the suite stays
+ * fast and hermetic.
  */
 
 function siteIssuesFor(report: GoflagReport, ruleId: string) {
@@ -226,4 +233,47 @@ describe("--locales declares a locale the site does not serve yet", () => {
       expect(hole.presentLocales.sort()).toEqual(["en", "es", "fr", "pt-br"]);
     }
   }, 60_000);
+});
+
+describe("translated slugs — a correct site the path model cannot read", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/translated-slugs" });
+    report = await runAudit(`${server.url}/en/pricing`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("reads the cluster declarations the sitemap carries", () => {
+    expect(report.diagnostics.declaredClusters).toEqual({ count: 3 });
+    expect(report.diagnostics.pagesCrawled).toBe(6);
+    expect(report.localeAxis.locales).toEqual(["en", "fr"]);
+  });
+
+  it("finds nothing to report, because there is nothing wrong", () => {
+    // Measured against this fixture before the fix: four
+    // `hreflang.sitemap-mismatch` warnings — one per slug-translating page —
+    // saying the `<head>` advertised a locale "the sitemap has no entry for",
+    // on a site where the sitemap lists every URL and declares every cluster.
+    // That is the false-positive class this repo treats as its worst failure
+    // (`docs/locale-model-plan.md` §B.2), and it survived 0.2.7 because the
+    // cluster index reached the matrix and not the rules.
+    expect(report.siteIssues).toEqual([]);
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.missingTranslations.reciprocity).toEqual([]);
+    expect(report.summary.verdict).toBe("green");
+  });
+
+  it("keeps the shared-slug control on the same footing", () => {
+    // `/contact` uses one slug in both locales, so it already grouped
+    // correctly by pathname. Following the declaration must leave it exactly
+    // where it was rather than merely happening to agree.
+    const contact = report.pages.filter((p) => p.url.endsWith("/contact"));
+    expect(contact).toHaveLength(2);
+    expect(report.siteIssues.filter((i) => i.pageUrl.endsWith("/contact"))).toEqual([]);
+  });
 });

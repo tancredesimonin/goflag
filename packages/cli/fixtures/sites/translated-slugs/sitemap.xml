@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A site that translates its slugs, and says so.
+
+  `/en/pricing` and `/fr/tarifs` are one page; so are `/en/about-us` and
+  `/fr/qui-sommes-nous`. Nothing in the two pathnames says that, so every
+  route-by-path grouping splits each pair in two and reads a correct site as
+  half-covered twice over. The `xhtml:link` declarations below are the site
+  telling us what the paths cannot.
+
+  `/contact` is the control: one slug, both locales, cluster declared anyway.
+  It must behave identically with and without the declaration.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>BASE/en/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/pricing" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/pricing" />
+  </url>
+  <url>
+    <loc>BASE/fr/tarifs</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/pricing" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/pricing" />
+  </url>
+  <url>
+    <loc>BASE/en/about-us</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/about-us" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/qui-sommes-nous" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/about-us" />
+  </url>
+  <url>
+    <loc>BASE/fr/qui-sommes-nous</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/about-us" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/qui-sommes-nous" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/about-us" />
+  </url>
+  <url>
+    <loc>BASE/en/contact</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/contact" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/contact" />
+  </url>
+  <url>
+    <loc>BASE/fr/contact</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="BASE/en/contact" />
+    <xhtml:link rel="alternate" hreflang="fr" href="BASE/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="BASE/en/contact" />
+  </url>
+</urlset>

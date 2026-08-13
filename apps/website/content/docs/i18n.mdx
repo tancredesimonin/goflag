@@ -39,12 +39,17 @@ A cluster with no `x-default` is not merged — the anchor has to be something t
 site states about itself, or the row would be renamed every time a locale is
 added, and every baseline would go red on a site where nothing changed.
 
-Without a sitemap declaration, the hole count on a slug-translating site is not
-meaningful, and neither is
-[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch): that rule
-splits routes by pathname too, so it reports the `<head>` and the sitemap as
-disagreeing on exactly the pages that are correct. On such a site the
-trustworthy findings are the reciprocity codes below and
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) reads the
+same declarations, so a declared cluster produces neither a hole nor a mismatch:
+the rule groups both the sitemap's entries and the crawled pages by cluster
+before comparing them, which is what stops `/en/pricing` and `/fr/tarifs` from
+looking like two half-covered routes.
+
+Without a declaration there is nothing to pair on, and both fall back to the
+pathname. On a slug-translating site that declares none, the hole count is not
+meaningful and neither is that rule — it reports the `<head>` and the sitemap as
+disagreeing on exactly the pages that are correct. The trustworthy findings there
+are the reciprocity codes below and
 [`hreflang.missing`](/docs/rules/hreflang.missing) — read the rest knowing the
 pairing is wrong, and declare your clusters when you can.
 
