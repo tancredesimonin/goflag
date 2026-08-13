@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.8](https://github.com/tancredesimonin/goflag/compare/v0.2.7...v0.2.8) (2026-08-13)
+
+
+### Features
+
+* **cli:** render the help and the parser from one flag table ([0d38ec6](https://github.com/tancredesimonin/goflag/commit/0d38ec6e4a78f06bf73edd46ffe343d3fcc82181))
+* **i18n:** count the translations nothing vouches for ([273847a](https://github.com/tancredesimonin/goflag/commit/273847a319f3d22128a0d15c4d2cd731b5acecda))
+* **i18n:** pair translations from reciprocal <head> alternates too ([9f9cc3a](https://github.com/tancredesimonin/goflag/commit/9f9cc3a8a15586ec3dbdefacf2e381d253e2a945))
+
+
+### Bug Fixes
+
+* **rules:** follow declared clusters in hreflang.sitemap-mismatch ([0f934f4](https://github.com/tancredesimonin/goflag/commit/0f934f4aaf6b567dd84d35eb2f73fa042abbd6ed))
+
+
+### Documentation
+
+* **cli:** document `goflag flags`, and guard the README's flag list ([7372ff0](https://github.com/tancredesimonin/goflag/commit/7372ff0c33fe55f077e651019b04fe7aa1a6817e))
+
 ## [0.2.7](https://github.com/tancredesimonin/goflag/compare/v0.2.5...v0.2.7) (2026-08-13)
 
 
