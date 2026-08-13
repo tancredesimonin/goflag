@@ -53,8 +53,10 @@ Two flags are worth reaching for immediately:
 
 `--max-pages 50` caps a run only when there is no sitemap, or when you also pass
 `--coverage all`: under structural coverage the selection has already decided how
-many pages to audit, and the flag can only raise that number. To explore a
-smaller slice, narrow it with `--include` / `--exclude`.
+many pages to audit, and the flag cannot cut below it. `--include` and
+`--exclude` do not help either — they filter the links the crawl discovers, not
+the sitemap selection it starts from. To explore a genuinely smaller slice, use
+`--coverage all --max-pages 50`.
 
 One flag is worth knowing about but **not** reaching for yet: `--static` makes
 the run several times faster and is only safe on fully server-rendered

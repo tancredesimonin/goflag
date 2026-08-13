@@ -79,6 +79,34 @@ function quoteVersion(constant, version) {
   writeFileSync(file, source.replace(pattern, `$1${version}$2`), "utf8");
 }
 
+/**
+ * Carry the new version into the pins the README's CI samples show.
+ *
+ * The samples exist to be copied, so they pin a version rather than floating —
+ * which is the advice the README itself gives two sections earlier. A pinned
+ * literal nobody moves is a literal that lies: at 0.2.6 both jobs referenced a
+ * version that had never reached npm, so anyone copying them got
+ * `npx: version not found` on their first run.
+ *
+ * Carried here for the same reason as the site's constant: a hand-updated
+ * number is a chore, and a chore that only fails somebody else's build is one
+ * nobody remembers. Only the CLI has pins to move.
+ */
+function quoteVersionInReadme(version) {
+  const file = "README.md";
+  const source = readFileSync(file, "utf8");
+
+  const updated = source
+    .replace(/(GOFLAG_VERSION: ")[^"]+(")/g, `$1${version}$2`)
+    .replace(/(@goflag\/cli@)\d+\.\d+\.\d+/g, `$1${version}`);
+
+  if (updated === source) {
+    throw new Error(`Found no version pin to update in ${file}`);
+  }
+
+  writeFileSync(file, updated, "utf8");
+}
+
 function git(...args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
@@ -193,6 +221,10 @@ for (const pkg of PACKAGES) {
 
   quoteVersion(pkg.quotedAs, version);
   run("git", "add", "apps/website/src/lib/constants.ts");
+  if (pkg.name === "@goflag/cli") {
+    quoteVersionInReadme(version);
+    run("git", "add", "README.md");
+  }
   run("git", "commit", "--amend", "--no-edit", "--no-verify");
 
   console.log(`${pkg.name}: ${version}\n`);
