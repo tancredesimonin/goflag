@@ -20,8 +20,14 @@ The caps you _can_ move are `--depth` (default `2`), `--max-pages` (default
 `200`) and `--coverage`. `--max-pages` is not a plain ceiling: when a sitemap is
 found the run selects its pages by structure (`--coverage structural`, the
 default) and the budget is raised to the size of that selection plus five, so
-setting it lower than the selection needs changes nothing. It cuts a run short
-only under `--coverage all`, or when no sitemap was found.
+setting it below what the selection needs changes nothing about the pages it
+audits. It cuts the run short under `--coverage all`, or when no sitemap was
+found — and, on a structural run, it still bounds the room left for pages the
+crawl reaches by following links.
+
+`--include` and `--exclude` filter links the crawl discovers. They do not filter
+the sitemap selection, which is seeded straight into the crawl, so on the default
+path they cannot make a run smaller.
 
 ### A report can cover part of your site in four ways
 
@@ -70,10 +76,13 @@ verdict, so it fails the gate even under `--fail-on error`. A page that never
 answers at all (timeout, reset, DNS) is asked once more from the back of the
 queue and counted as unreachable only if the second attempt fails too; a page
 that needed the retry is reported as a warning line, not a finding. Raising
-`--timeout` helps. Lowering `--max-pages` does not, under structural coverage:
-narrow the run with `--include` / `--exclude`, or with
-`--coverage all --max-pages <n>`. Auditing your own origin from CI usually avoids
-the whole class.
+`--timeout` helps. Lowering `--max-pages` does not, under structural coverage —
+and neither do `--include` / `--exclude`, because the pages a structural run
+audits come from the sitemap and are seeded into the crawl without passing
+through those globs. They filter links the crawl discovers, not the selection it
+starts from. To make such a run genuinely smaller, use
+`--coverage all --max-pages <n>`, or `--no-sitemap` with the globs. Auditing your
+own origin from CI usually avoids the whole class.
 
 **Anti-bot filters return 403.** These are triaged apart from real breakage: the
 verdict is `blocked`, not `broken`, and they are left out of
@@ -129,9 +138,15 @@ was wrong. Two are worth reading because they shaped the design:
 - A trailing slash was stripped before probing, which declared 159 working
   citation links dead and sent somebody to fix content that was already correct.
 
-All five are fixed. They are published rather than buried because a tool that
-reports defects has to be auditable itself, and because the second one cost
-somebody an afternoon.
+Four of the five are fixed outright. The `/cv` one is **contained, not cured**:
+the locale axis stopped guessing, but the matrix still splits a path on its
+leading segment whenever that segment merely looks like a tag — so on a site
+with a declared axis, `/cv` still becomes a locale column and still invents
+holes, and no flag suppresses it. The full account, and what to do meanwhile, is
+in [Translations](/docs/i18n#the-bug-that-started-this).
+
+They are published rather than buried because a tool that reports defects has to
+be auditable itself, and because the second one cost somebody an afternoon.
 
 ## Reporting a wrong finding
 

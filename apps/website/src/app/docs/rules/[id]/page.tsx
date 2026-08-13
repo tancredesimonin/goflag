@@ -136,9 +136,9 @@ export default async function RulePage({ params }: PageProps) {
         <section className="mt-10">
           <h2 className="font-display text-xl font-semibold tracking-tight">How to fix it</h2>
           <p className="text-muted-foreground mt-3 leading-relaxed">
-            This rule ships no snippet, because the remedy is a judgement rather than a line of
-            code: the finding tells you what is out of range, and what to put there is yours to
-            decide.
+            {rule.scope === "site"
+              ? "The catalogue carries no snippet for a site rule: a cross-page rule builds its remedy from what the crawl found, so goflag attaches the fix to the finding itself rather than to the rule. Run it and read the finding."
+              : "This rule ships no snippet, because the remedy is a judgement rather than a line of code: the finding tells you what is out of range, and what to put there is yours to decide."}
           </p>
         </section>
       )}

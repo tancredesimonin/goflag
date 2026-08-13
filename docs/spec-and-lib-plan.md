@@ -18,7 +18,7 @@
 | **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                                         |
 | **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                                                 |
 | **Distribution**                          | ✅ livrée — `@goflag/cli` et `@goflag/next` sur npm, en OIDC            |
-| **3** — Durcir la spec                    | ⏳ `rigor` et `Source` livrés ; **reste 3.3 et 3.5**                    |
+| **3** — Durcir la spec                    | ⏳ `rigor`, `Source` et l'export livrés ; **reste 3.5**                 |
 | **4** — Le cœur de la lib                 | ✅ livrée — `@goflag/next@0.3.0`, `apps/website` et stereo-house dessus |
 | **5** — Autres consommateurs + manifeste  | ⏳ le manifeste (5.2/5.3) reste ; 3 sites non migrés (§6)               |
 | **6** — Contenu / AI                      | ⏳ `/raw/` et `llms.txt` servis par le site ; pas dérivés du registre   |
@@ -32,28 +32,29 @@ automatisées, sans aucune credential npm en CI — voir §2, « Distribution »
 > Ces chiffres sont datés parce qu'ils rotent. `516 tests, 12 règles par page`
 > est resté ici pendant quatre versions, et c'est exactement le genre d'écart
 > que l'audit de doc du 2026-08-13 a payé ailleurs : un état écrit une fois et
-> jamais revérifié ment plus qu'il n'informe. `goflag rules --json` (3.3) est
-> ce qui rendra la moitié de cette ligne dérivable.
+> jamais revérifié ment plus qu'il n'informe. Le compte de règles, lui, n'est
+> plus à recopier : `goflag rules` l'exporte et le site le lit.
 
 ### Ce qu'il reste à faire, dans l'ordre
 
-| #   | Quoi                                                                                  | État                                                 |
-| --- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| 1   | `GOFLAG_VERSION` de stereo-house — la CI y épinglait `0.1.0`, dont le `bin` est cassé | ❔ hors de ce dépôt, à vérifier là-bas               |
-| 2   | Capturer la baseline de stereo-house et la committer                                  | ❔ hors de ce dépôt, à vérifier là-bas               |
-| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                      | ✅ `scripts/release.mjs`, liste `surface` par paquet |
-| 4   | Étendre le gate aux 3 autres sites                                                    | ❔ hors de ce dépôt                                  |
-| 5   | **3.3** — `goflag rules --json`, et la commande Markdown qui va avec                  | ⬜ **le travail suivant**                            |
-| 6   | **3.5** — absorber `missingTranslations` (trous + réciprocité) dans le registre       | ⬜ dette de la phase 1, à faire avec 3.3             |
+| #   | Quoi                                                                                  | État                                                   |
+| --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 1   | `GOFLAG_VERSION` de stereo-house — la CI y épinglait `0.1.0`, dont le `bin` est cassé | ❔ hors de ce dépôt, à vérifier là-bas                 |
+| 2   | Capturer la baseline de stereo-house et la committer                                  | ❔ hors de ce dépôt, à vérifier là-bas                 |
+| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                      | ✅ `scripts/release.mjs`, liste `surface` par paquet   |
+| 4   | Étendre le gate aux 3 autres sites                                                    | ❔ hors de ce dépôt                                    |
+| 5   | **3.3** — l'export du catalogue                                                       | ✅ `goflag rules`, `rules.json` généré, le site le lit |
+| 6   | **3.5** — absorber `missingTranslations` (trous + réciprocité) dans le registre       | ⬜ **le travail suivant**, dette de la phase 1         |
 
-**Le travail qui compte est 3.3**, et il a gagné une raison que le plan n'avait
-pas prévue. `apps/website` porte deux miroirs écrits à la main — le catalogue de
+**3.3 est livré, et il a été fait pour une raison que le plan n'avait pas
+prévue.** `apps/website` portait deux miroirs écrits à la main — le catalogue de
 règles et la référence des flags — parce que l'invariant I3 interdit à `apps/**`
 d'importer `packages/**`. L'audit de documentation du 2026-08-13 a trouvé 89
 écarts entre la doc et le code, dont six dans ces deux fichiers : un message de
 règle faux depuis quatre versions, un code de finding annoncé et impossible à
-émettre, un flag entier jamais documenté. Exporter le catalogue supprime la
-classe au lieu de la re-corriger à chaque release.
+émettre, un flag entier jamais documenté. Le catalogue est désormais généré,
+committé et lu ; **la référence des flags reste un miroir à la main**, et c'est
+la prochaine du même genre.
 
 C'est aussi ce qu'attend l'invariant B.4 de `docs/locale-model-plan.md` — « tout
 tag que la lib émet doit passer le validateur du CLI » — aujourd'hui écrit et

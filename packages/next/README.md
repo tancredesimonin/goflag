@@ -82,14 +82,15 @@ keep something out of an index, the instruments are `noindex` and `canonical`.
 Every one of these is a defect that ships silently and is expensive to find
 later, so it fails the build instead:
 
-| Refused                                            | Because                                                                      |
-| -------------------------------------------------- | ---------------------------------------------------------------------------- |
-| A path no route declares                           | the page would render a canonical and be absent from the sitemap             |
-| Two routes on one path                             | the head and the sitemap would describe different routes under one URL       |
-| A locale a route does not serve                    | the canonical would name a page that was never built                         |
-| A collection entry in a locale the site omits      | the content and the declaration contradict each other; neither wins silently |
-| `baseUrl` with a path, or a malformed language tag | both double into every canonical and every `hreflang` on the site            |
-| A locale ICU has no likely region for              | `og:locale` is `language_TERRITORY` and there is nothing to derive from      |
+| Refused                                               | Because                                                                                                                                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A path no route declares                              | the page would render a canonical and be absent from the sitemap                                                                                                                            |
+| Two routes on one path                                | the head and the sitemap would describe different routes under one URL                                                                                                                      |
+| A locale a route does not serve                       | the canonical would name a page that was never built                                                                                                                                        |
+| A collection entry in a locale the site omits         | the content and the declaration contradict each other; neither wins silently                                                                                                                |
+| `baseUrl` with a path, or a malformed language tag    | both double into every canonical and every `hreflang` on the site                                                                                                                           |
+| A locale ICU has no likely region for                 | `og:locale` is `language_TERRITORY` and there is nothing to derive from                                                                                                                     |
+| A tag carrying a script subtag (`zh-Hant`, `sr-Latn`) | not supported yet — the cluster forms are derived, and deriving them for a script tag is unwritten. `@goflag/cli` accepts these, so a site serving them needs the auditor, not this library |
 
 And two things it gets right that hand-written versions usually do not:
 

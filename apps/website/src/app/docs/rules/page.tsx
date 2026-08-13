@@ -192,8 +192,12 @@ export default function RulesPage() {
           What rigor means
         </h2>
         <p className="text-muted-foreground mt-2 leading-relaxed">
-          Every rule records how authoritative the requirement behind it is, and cites at least one
-          document that backs it. This is the honest answer to &ldquo;says who?&rdquo;: a{" "}
+          Every rule judged on a single page records how authoritative the requirement behind it is,
+          and cites at least one document that backs it. The three site rules do not yet — they run
+          on the contract that predates the catalogue, so the table above shows{" "}
+          <code className="font-mono text-sm">—</code> for them, and the exported catalogue emits{" "}
+          <code className="font-mono text-sm">rigor: null</code> rather than a rigor nobody
+          assigned. This is the honest answer to &ldquo;says who?&rdquo;: a{" "}
           <code className="font-mono text-sm">heuristic</code> is folklore you may knowingly ignore,
           a <code className="font-mono text-sm">spec-required</code> is not. A rule can never claim
           more authority than its strongest source carries — that is enforced in CI, not left to

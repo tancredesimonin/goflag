@@ -16,7 +16,7 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 ## What it checks
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
-- **Missing translation pages** — builds a `route × locale` matrix from the crawl and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and invalid locale tags.
+- **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless your sitemap declares its translation clusters with `xhtml:link` — then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`.
 - **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
 - **Unreachable pages** — a page the crawl reached that answered non-2xx, or that never answered at all (timeout, reset, DNS failure — recorded as `status: 0`), is reported in `unreachablePages`. goflag asks a second time, from the back of the queue, before calling a page unreachable. Each one is an `error`-severity finding: it turns the verdict red, counts toward `--max-debt`, and fails the build even under `--fail-on error`. A page that silently dropped out of the audited set is what poisons a baseline, so it is reported rather than warned about.
@@ -137,10 +137,14 @@ npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
-crawl, no network. Each entry carries its scope, severity, rigor, the documents
-it cites and its fix snippet, so anything that documents or consumes the
-catalogue derives it instead of copying it. The same document ships inside the
-package as `rules.json`, if you would rather read it than run anything.
+crawl, no network. Every entry carries its scope, severity and summary; the
+eleven page rules and four prose rules also carry a rigor, the documents they
+cite and — where a remedy is a line of code — a fix snippet. The three site
+rules carry none of those three: `SiteRule` has no rigor field yet, and the
+catalogue emits `rigor: null` with an empty `sources` rather than inventing an
+authority nobody assigned. Write your consumer against that. The same document
+ships inside the package as `rules.json`, if you would rather read it than run
+anything.
 
 It deliberately omits the message a finding prints — that is built at audit time
 from what the page actually says, so a static copy would be a sample rather than
@@ -171,9 +175,12 @@ documentation site came to quote a message the engine had stopped printing.
 --include <glob>       Only crawl paths matching <glob> (repeatable).
 --exclude <glob>       Skip paths matching <glob> (repeatable).
 --locales <list>       Comma-separated locales the site serves ("fr,en,pt-br").
-                       Authoritative for the locale axis, and also what folds
-                       /en/… and /fr/… into one route family for structural
-                       coverage — pass it on any locale-prefixed site.
+                       Unioned with the prefixes your sitemap shows, never
+                       substituted for them, so a locale the sitemap serves
+                       stays on the axis whether or not you list it. Also what
+                       folds /en/… and /fr/… into one route family for
+                       structural coverage — pass it on any locale-prefixed
+                       site.
 --ignore-holes <glob>  Route deliberately not translated everywhere
                        (repeatable).
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
@@ -448,7 +455,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.6"
+  GOFLAG_VERSION: "0.2.5"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -500,7 +507,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.6 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.5 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

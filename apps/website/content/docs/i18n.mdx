@@ -13,9 +13,12 @@ See [the failure that started it](#the-bug-that-started-this).
 
 goflag builds a **route × locale** matrix. A route is a URL with its locale
 segment removed: `/fr/pricing` and `/en/pricing` are one route, `/pricing`, in two
-locales. A cell is filled when a page for that route and locale was found. An
-empty cell is a **hole**: a translation the site serves in one language and not
-in another.
+locales. A cell is filled when a page for that route and locale was **found or
+declared**: a page the crawl fetched, a URL your sitemap lists, or a
+`<link rel="alternate" hreflang>` a crawled page points at. That last one is
+taken on trust and never fetched, so a `<head>` advertising a translation the
+site does not serve hides that gap instead of reporting it. An empty cell is a
+**hole**: a translation the site serves in one language and not in another.
 
 **A route is a pathname, unless your sitemap says otherwise.** goflag pairs
 translations by pathname, so on its own it only recognises them when the slug is
@@ -27,15 +30,23 @@ Declaring the cluster in your sitemap fixes that. When a `<url>` entry carries
 `xhtml:link rel="alternate" hreflang` — the form Google documents — goflag reads
 it, and every member of the cluster shares one row whatever its path. The row is
 named after the `x-default` target, so it does not move when a locale joins, and
-the count is reported under `diagnostics.declaredClusters`. A declaration decides
-**identity only**: it never fills a cell and never asserts that a page exists.
+the count is reported under `diagnostics.declaredClusters`. A **sitemap** cluster
+declaration decides identity only: it never fills a cell and never asserts that a
+page exists. An `hreflang` alternate in a page's `<head>` is the opposite — it
+fills a cell, as above.
 
 A cluster with no `x-default` is not merged — the anchor has to be something the
 site states about itself, or the row would be renamed every time a locale is
-added, and every baseline would go red on a site where nothing changed. Without
-a sitemap declaration the hole count on a slug-translating site is not
-meaningful: rely on the reciprocity findings and the two site-wide rules
-instead, and use `--ignore-holes` for the affected route families.
+added, and every baseline would go red on a site where nothing changed.
+
+Without a sitemap declaration, the hole count on a slug-translating site is not
+meaningful, and neither is
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch): that rule
+splits routes by pathname too, so it reports the `<head>` and the sitemap as
+disagreeing on exactly the pages that are correct. On such a site the
+trustworthy findings are the reciprocity codes below and
+[`hreflang.missing`](/docs/rules/hreflang.missing) — read the rest knowing the
+pairing is wrong, and declare your clusters when you can.
 
 **Coverage decides what the matrix can see.** When a sitemap is found, goflag
 defaults to [`--coverage structural`](/docs/cli#crawl), which samples three URLs
@@ -147,7 +158,18 @@ you, taken from your sitemap, or not assumed at all.
 
 The second is contained rather than eliminated. With no declared axis goflag no
 longer invents one, but the matrix itself still keys on path shape, so on a site
-that **does** have a declared axis a route like `/cv` still becomes a column and
-still reports holes. Add it to `--ignore-holes`, or check that its pages declare
-`<html lang>` — that cross-check is what the candidate report uses to tell a CV
-page from a Chuvash edition.
+that **does** have a declared axis a page at `/cv` still becomes a **locale**:
+`/cv` is read as route `/` in locale `cv`, and every other route then reports a
+hole in a language the site does not serve.
+
+`--ignore-holes` cannot suppress those. It globs the **route**, and the phantom
+gaps land on every route _except_ the one the `/cv` page occupies — there is no
+route named `/cv` to match. `--exclude` does not help either when your sitemap
+lists the page, because sitemap URLs are seeded into the crawl without passing
+through the glob filters.
+
+So until goflag can be told that a segment is not a locale, the recourse is to
+read those findings knowing the column is spurious: each one names `cv` as the
+missing locale, and the pages under it declare `<html lang="fr">` rather than
+`cv` — the cross-check the candidate report already uses to tell a CV page from
+a Chuvash edition.

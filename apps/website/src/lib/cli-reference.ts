@@ -84,7 +84,7 @@ export const FLAG_GROUPS: readonly FlagGroup[] = [
         flag: "--coverage <mode>",
         default: "structural when a sitemap is found, all otherwise",
         description:
-          'How the pages to audit are chosen. "structural" keeps every page that stands alone and samples three pages from each family of pages built from one template, so a site of thousands of pages is covered by its templates rather than by whichever URLs the crawl reached first. "all" audits what the sitemap lists, in order, up to --max-pages. A sitemap is required either way: with --no-sitemap, or when discovery finds nothing, the mode is "all" whatever you pass. Every run reports what it looked at under diagnostics.coverage.',
+          'How the pages to audit are chosen. "structural" keeps every page that stands alone and samples three pages from each family of pages built from one template, so a site of thousands of pages is covered by its templates rather than by whichever URLs the crawl reached first. "all" audits what the sitemap lists, in order, up to --max-pages. Selecting needs a sitemap: with --no-sitemap, or when discovery finds nothing, there is nothing to select from and the run behaves as "all" — though diagnostics.coverage.mode still echoes the value you passed, with no considered/selected/families beside it, which is how you tell the two apart.',
       },
       {
         flag: "--include <glob>",
