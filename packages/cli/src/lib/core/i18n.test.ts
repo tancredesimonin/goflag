@@ -17,7 +17,6 @@ describe("isValidLocale", () => {
   it("accepts BCP 47 basics + x-default", () => {
     expect(isValidLocale("fr")).toBe(true);
     expect(isValidLocale("en-US")).toBe(true);
-    expect(isValidLocale("zh-Hant")).toBe(false); // we deliberately reject script subtags in v1
     expect(isValidLocale("x-default")).toBe(true);
     expect(isValidLocale("english")).toBe(false);
   });
@@ -28,6 +27,42 @@ describe("isValidLocale", () => {
     expect(isValidLocale("pt-BR")).toBe(true);
     expect(isValidLocale("en-us")).toBe(true);
     expect(isValidLocale("FR")).toBe(true);
+  });
+
+  it("accepts a script subtag, which the shape check used to reject", () => {
+    // The rule fired on every Chinese and Serbian site it audited. Rejecting
+    // a valid tag is the failure mode an auditor can least afford, and it is
+    // why the check asks ICU rather than a regex (plan §B.5).
+    expect(isValidLocale("zh-Hant")).toBe(true);
+    expect(isValidLocale("zh-Hant-TW")).toBe(true);
+    expect(isValidLocale("sr-Latn-RS")).toBe(true);
+  });
+
+  it("rejects a tag whose language, region or script does not exist", () => {
+    // The other half of §B.5: the shape check passed all of these, so a rule
+    // named `locale.invalid` was silent on the tags it exists to catch.
+    expect(isValidLocale("qq")).toBe(false);
+    expect(isValidLocale("xx-YZ")).toBe(false);
+    expect(isValidLocale("pt-ZZ")).toBe(false); // ZZ is CLDR's *unknown* region
+    expect(isValidLocale("pt-XA")).toBe(false); // ICU pseudo-locale
+    expect(isValidLocale("fr-Zzzz")).toBe(false);
+  });
+
+  it("rejects a tag that names no audience", () => {
+    expect(isValidLocale("und")).toBe(false);
+    expect(isValidLocale("zxx")).toBe(false);
+    expect(isValidLocale("mul")).toBe(false);
+    expect(isValidLocale("")).toBe(false);
+  });
+
+  it("rejects malformed structure, underscore included", () => {
+    // `pt_BR` is the malformation that actually shows up in the wild.
+    expect(isValidLocale("pt_BR")).toBe(false);
+    expect(isValidLocale("en--US")).toBe(false);
+  });
+
+  it("keeps the macro-regions Google documents", () => {
+    expect(isValidLocale("es-419")).toBe(true);
   });
 });
 

@@ -17,15 +17,26 @@
  * I/O. The crawler in `crawl.ts` calls them once after the BFS
  * finishes to populate the inspect-cache i18n payload.
  *
- * Locale code validity: we accept anything that matches BCP 47's
- * basic shape (`[a-z]{2,3}(-[A-Z]{2})?`) plus `x-default`. Anything
- * else flags as `locale.invalid`.
+ * Locale code validity is decided in `./bcp47`, by ICU rather than by a
+ * shape: a tag whose language, script or region does not exist flags as
+ * `locale.invalid`, and `x-default` is always accepted.
  */
 
+import { isValidLocale, looksLikeLocaleSegment } from "./bcp47";
 import type { Page } from "./types";
 
-export type ReciprocityCode =
-  "missing-back-link" | "self-mismatch" | "x-default-missing" | "locale.invalid";
+/**
+ * The codes `reciprocityIssues` emits — all three of them.
+ *
+ * `self-mismatch` used to sit here too, declared and unreachable: no branch
+ * ever produced it, so the site's rule catalogue advertised a check goflag
+ * could not perform, and a reader took silence for a pass. The declaration is
+ * gone rather than the check implemented, because a page whose self-reference
+ * points elsewhere is already caught as a `missing-back-link` on the peer it
+ * names. If it is ever worth its own code, it comes back with the branch that
+ * emits it.
+ */
+export type ReciprocityCode = "missing-back-link" | "x-default-missing" | "locale.invalid";
 
 export interface ReciprocityIssue {
   code: ReciprocityCode;
@@ -58,17 +69,12 @@ export interface I18nMatrix {
   cells: Record<string, Record<string, I18nCell>>;
 }
 
-// hreflang / lang values are case-insensitive per the HTML spec, so a
-// lowercase region subtag like `pt-br` is just as valid as canonical
-// `pt-BR`. The `i` flag keeps us from flagging real, common tags as invalid.
-const BCP47_LOOSE = /^[a-z]{2,3}(-[a-z]{2}|-\d{3})?$/i;
-
 /**
  * Fold a language tag to the form the matrix keys on.
  *
  * BCP 47 §2.1.1 makes tags case-insensitive, and says the conventional
  * capitalisation "MUST NOT be taken to carry meaning". This file already knew
- * that — it is why `BCP47_LOOSE` carries the `i` flag — but it applied it to
+ * that — validation has always been case-insensitive — but it applied it to
  * *validation* only. Identity kept the raw string, so a site routing on
  * `/pt-br/` while declaring `hreflang="pt-BR"` grew two columns for one
  * language, and every route in it reported a translation hole in a language
@@ -81,15 +87,18 @@ export function localeIdentity(tag: string): string {
   return tag.trim().toLowerCase();
 }
 
-/** True when a URL path segment looks like a locale tag (`/fr`, `/pt-br`, …). */
-export function looksLikeLocaleSegment(segment: string): boolean {
-  return BCP47_LOOSE.test(segment);
-}
-
-export function isValidLocale(tag: string): boolean {
-  if (tag === "x-default") return true;
-  return BCP47_LOOSE.test(tag);
-}
+/**
+ * Tag validity lives in `./bcp47`, which asks ICU rather than a regex. Both
+ * are re-exported here because this module is where the matrix and the
+ * reciprocity walk consume them, and the call sites read better for it.
+ *
+ * They answer two different questions, and the split is the point:
+ * `looksLikeLocaleSegment` judges a URL segment on shape alone — `/de/` and
+ * `/api/` are indistinguishable to a crawler, and the axis is what decides
+ * between them — while `isValidLocale` judges a tag a site actually declared,
+ * where an invented language is the defect being looked for.
+ */
+export { isValidLocale, looksLikeLocaleSegment };
 
 /**
  * Build the (route, locale) grid from a set of inspected pages.
@@ -206,11 +215,10 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
  *   - Every alternate `A → B` must be matched by `B → A` (both must
  *     point at each other). When `B` was crawled and lacks the back
  *     link, emit `missing-back-link`.
- *   - When `A` declares `hreflang="fr"` pointing at itself but `A`'s
- *     own URL says `/en/...`, emit `self-mismatch`.
- *   - When a route has 2+ locales but no `x-default`, emit
- *     `x-default-missing` once per route on the canonical entry.
- *   - When a locale tag fails BCP 47, emit `locale.invalid`.
+ *   - When a page advertises 2+ locales and no `x-default`, emit
+ *     `x-default-missing` — once per page, not once per cluster.
+ *   - When a locale tag names a language, script or region that does not
+ *     exist, emit `locale.invalid`.
  */
 export function reciprocityIssues(pages: Page[]): ReciprocityIssue[] {
   const issues: ReciprocityIssue[] = [];

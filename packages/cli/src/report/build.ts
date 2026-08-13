@@ -13,6 +13,7 @@ import { crawl } from "../lib/core/crawl";
 import { matchesAny } from "../lib/core/glob";
 import { sortIssues } from "../lib/core/lint";
 import { lintSite } from "../lib/core/lint-site";
+import { ICU_KNOWS_LANGUAGES, ICU_UNAVAILABLE_WARNING } from "../lib/core/bcp47";
 import {
   buildI18nMatrix,
   looksLikeLocaleSegment,
@@ -517,6 +518,14 @@ export async function runAudit(
             .join(", ")}) do not look like locales; pass --locales if any of them is one.`,
     );
   }
+
+  // `locale.invalid` asks ICU whether a tag names a language that exists. On a
+  // small-icu Node it cannot, and falls back to checking the shape — which is
+  // the right call for an auditor, since the alternative is a page of findings
+  // that are all false. It is not the right call to keep quiet about: a check
+  // that stopped checking has to say so, like every other partial answer in
+  // this report.
+  if (!ICU_KNOWS_LANGUAGES) warnings.push(ICU_UNAVAILABLE_WARNING);
 
   const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,

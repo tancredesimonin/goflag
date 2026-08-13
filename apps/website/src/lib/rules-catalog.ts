@@ -513,9 +513,9 @@ export const ALL_RULES: readonly RuleDoc[] = [...PAGE_RULES, ...SITE_RULES, ...P
  * product plan absorbs them into the catalogue; until then they are documented
  * separately rather than described as rules they are not.
  *
- * Three codes, not four: `self-mismatch` exists in the engine's `ReciprocityCode`
- * union and in a stale comment beside it, but no branch of `reciprocityIssues()`
- * emits it. A catalogue that lists it promises a finding goflag cannot produce.
+ * Three codes, not four: `self-mismatch` was declared in the engine and emitted
+ * by no branch of `reciprocityIssues()`, so a catalogue listing it promised a
+ * finding goflag could not produce. The declaration is gone as of 0.2.7.
  */
 export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; why: string }> = [
   {

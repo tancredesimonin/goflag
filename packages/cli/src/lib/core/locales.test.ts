@@ -28,7 +28,7 @@ describe("localePrefixOf", () => {
 });
 
 describe("isKnownLanguageTag", () => {
-  it("accepts registered ISO 639-1 languages, including their region form", () => {
+  it("accepts languages ICU knows, including their region form", () => {
     expect(isKnownLanguageTag("fr")).toBe(true);
     expect(isKnownLanguageTag("pt-br")).toBe(true);
     // Chuvash. Real language, and exactly why shape alone is not enough:
@@ -38,6 +38,12 @@ describe("isKnownLanguageTag", () => {
 
   it("rejects locale-shaped route segments", () => {
     for (const tag of ["api", "faq", "doc", "cms", "app"]) {
+      expect(isKnownLanguageTag(tag)).toBe(false);
+    }
+  });
+
+  it("rejects a code that names no language, however well shaped", () => {
+    for (const tag of ["qq", "xx", "und", "zxx", ""]) {
       expect(isKnownLanguageTag(tag)).toBe(false);
     }
   });
