@@ -213,7 +213,42 @@ prouver depuis l'intérieur du dépôt doit être dit comme tel.
 
 ---
 
-## 7. Dette annexe, mesurée en chemin
+## 7. Ce qui est livré, et ce qui ne l'est pas
+
+**Livré** (`feat/cluster-identity-from-sitemap`) :
+
+- `parseSitemap` lit les `xhtml:link` — 150 déclarations récupérées sur la seule
+  fixture qui en porte, contre zéro avant ;
+- `buildClusterIndex` (`lib/core/clusters.ts`) forme les clusters, ancrés sur
+  `x-default`, sans arête `canonical` ;
+- `buildI18nMatrix` prend un `clusterRouteOf` qui **déplace** une case et n'en
+  crée jamais ; `diagnostics.declaredClusters` dit combien de clusters, et
+  combien de contradictions.
+
+**Mesuré** : sur une paire à slugs traduits, 2 faux trous → 0, le témoin à slugs
+partagés inchangé. Sur **les treize fixtures du dépôt, `rowsMoved = 0`** — y
+compris `tancrede`, qui déclare neuf clusters mais ne traduit pas ses slugs. Le
+mécanisme ne change donc rien à aucun site existant et n'agit que là où le
+défaut est. C'est la propriété qu'on voulait, et c'est aussi l'aveu que la preuve
+reste synthétique.
+
+**Pas livré, et assumé :**
+
+- **§4 n'est pas réglé.** Les alternatives du `<head>` remplissent toujours une
+  case, donc les six cibles que `tancrede` annonce sans les servir bouchent
+  toujours six vrais trous. Changer ça touche la sémantique de remplissage et
+  peut faire apparaître des trous sur des pages qui existent mais n'ont été ni
+  explorées ni listées : c'est un changement à mesurer sur un vrai site, pas à
+  déduire.
+- **`site-rules.ts` n'est pas branché.** `hreflang.sitemap-mismatch` découpe
+  encore les routes par `splitRoute`, donc la moitié des faux findings de §1
+  subsiste sur un site à slugs traduits.
+- **Aucune fixture ne traduit ses slugs.** Tant qu'il n'y en a pas, le gain est
+  prouvé par des tests unitaires et pas par un audit de bout en bout.
+
+---
+
+## 8. Dette annexe, mesurée en chemin
 
 - **`splitRoute` est asymétrique sur le slash final.** `/fr/about/` → route
   `/about` ; `/about/` → route `/about/` et locale `x-default`. Deux URL de la

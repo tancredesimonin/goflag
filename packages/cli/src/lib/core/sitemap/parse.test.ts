@@ -62,6 +62,48 @@ describe("parseSitemap", () => {
     expect(result.urls).toEqual([{ loc: "https://x.com/a" }]);
   });
 
+  it("reads the xhtml:link cluster declarations a real sitemap carries", () => {
+    // `find("link")` matches none of these: cheerio keeps the prefix on
+    // tagName in xmlMode, which is how 150 of them in the tancrede fixture
+    // were discarded without anybody noticing.
+    const body = `<urlset xmlns:xhtml="http://www.w3.org/1999/xhtml">
+        <url>
+          <loc>https://x.com/en/pricing</loc>
+          <xhtml:link rel="alternate" hreflang="en" href="https://x.com/en/pricing" />
+          <xhtml:link rel="alternate" hreflang="fr" href="https://x.com/fr/tarifs" />
+          <xhtml:link rel="alternate" hreflang="x-default" href="https://x.com/en/pricing" />
+        </url>
+      </urlset>`;
+    const result = parseSitemap(body);
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls[0]?.alternates).toEqual([
+      { hreflang: "en", href: "https://x.com/en/pricing" },
+      { hreflang: "fr", href: "https://x.com/fr/tarifs" },
+      { hreflang: "x-default", href: "https://x.com/en/pricing" },
+    ]);
+  });
+
+  it("reads an unprefixed <link> too, and drops one missing an attribute", () => {
+    const body = `<urlset>
+        <url>
+          <loc>https://x.com/a</loc>
+          <link rel="alternate" hreflang="fr" href="https://x.com/fr/a" />
+          <link rel="alternate" hreflang="de" />
+          <link rel="stylesheet" hreflang="es" href="https://x.com/es/a" />
+        </url>
+      </urlset>`;
+    const result = parseSitemap(body);
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls[0]?.alternates).toEqual([{ hreflang: "fr", href: "https://x.com/fr/a" }]);
+  });
+
+  it("leaves alternates absent when the sitemap declares none", () => {
+    const body = `<urlset><url><loc>https://x.com/a</loc></url></urlset>`;
+    const result = parseSitemap(body);
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls[0]).toEqual({ loc: "https://x.com/a" });
+  });
+
   it("returns unknown for an empty body", () => {
     const result = parseSitemap("   ");
     expect(result.kind).toBe("unknown");

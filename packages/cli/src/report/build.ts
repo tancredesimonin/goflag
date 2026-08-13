@@ -22,6 +22,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { buildClusterIndex } from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
@@ -355,6 +356,14 @@ export async function runAudit(
 
   const allSitemapUrls = (discovery?.urls ?? []).map((u) => u.loc);
 
+  // Built from the WHOLE sitemap, never from the selection: structural
+  // coverage decides which pages get cells, never which clusters exist, and a
+  // `<url>` entry names its whole cluster whether or not a member was sampled.
+  // That is the property that makes a sitemap declaration usable where pairing
+  // from the crawled `<head>`s is not — the two locales of a slug-translating
+  // family draw disjoint samples (docs/i18n-cluster-plan.md §2).
+  const clusters = buildClusterIndex(discovery?.urls ?? []);
+
   // Which pages to audit, chosen by the shape of the site rather than by the
   // order the crawl happens to reach them. Only possible with a sitemap: with
   // no list of URLs up front there is no structure to select from, so the
@@ -564,7 +573,17 @@ export async function runAudit(
   const matrix = buildI18nMatrix(htmlPages, {
     declaredUrls: sitemapUrls,
     locales: localeAxis.locales,
+    clusterRouteOf: clusters.routeOf,
   });
+  // A site that puts one URL in two clusters is contradicting itself, and the
+  // first declaration wins silently unless this says otherwise.
+  if (clusters.conflicts.length > 0) {
+    warnings.push(
+      `${clusters.conflicts.length} URL(s) are declared in two different hreflang clusters by the ` +
+        `sitemap; the first declaration was kept: ${clusters.conflicts.slice(0, 3).join(", ")}` +
+        `${clusters.conflicts.length > 3 ? `, +${clusters.conflicts.length - 3} more` : ""}.`,
+    );
+  }
   // Holes are a claim about locale coverage. With no declared axis we have
   // just refused to claim the site is multilingual, so claiming it is missing
   // translations would contradict that — and it is exactly how `/cv` (a CV
@@ -759,6 +778,17 @@ export async function runAudit(
       },
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(duplicatePages > 0 ? { duplicatePages } : {}),
+      // Only when the site declared clusters. A merge that changes which rows
+      // exist must be visible: the alternative is a hole count that moved for
+      // a reason nothing in the report explains.
+      ...(clusters.size > 0
+        ? {
+            declaredClusters: {
+              count: clusters.size,
+              ...(clusters.conflicts.length > 0 ? { conflicts: clusters.conflicts.length } : {}),
+            },
+          }
+        : {}),
       ...(discovery
         ? {
             sitemap: {
