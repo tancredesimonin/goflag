@@ -49,12 +49,30 @@ export interface ReciprocityIssue {
   message: string;
 }
 
+/**
+ * What the audit actually knows about the URL in a cell.
+ *
+ *   - `crawled` — fetched and inspected. The only one that is a fact.
+ *   - `sitemap` — the site's own `<loc>` list names it, but the crawl did not
+ *     reach it. Under structural coverage this is most of the grid.
+ *   - `alternate` — **no list names it**: the only evidence is a
+ *     `<link rel="alternate">` on some page. It still fills the cell, so it
+ *     still hides a hole, and nothing has checked that the page is there.
+ *
+ * Derived from the winning URL rather than from which writer got there first,
+ * so `record`'s ordering — and every fingerprint that depends on it — is
+ * untouched (`docs/i18n-cluster-plan.md` §10).
+ */
+export type I18nCellSource = "crawled" | "sitemap" | "alternate";
+
 export interface I18nCell {
   /** Absolute URL serving this (route, locale) cell. `null` when
    *  no page in the crawl filled this cell. */
   url: string | null;
   /** True when the page was actually inspected (vs. discovered only). */
   inspected: boolean;
+  /** How the URL got here. Absent when `url` is null — nothing to source. */
+  source?: I18nCellSource;
 }
 
 export interface I18nMatrix {
@@ -147,10 +165,13 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
   const inspectedByUrl = new Map<string, Page>();
   for (const page of pages) inspectedByUrl.set(page.fetch.finalUrl, page);
 
-  type Slot = { url: string; inspected: boolean };
+  type Slot = { url: string; inspected: boolean; source: I18nCellSource };
   const grid = new Map<string, Map<string, Slot>>();
   const locales = new Set<string>();
   const routes = new Set<string>();
+  // The site's own URL list, for telling "the sitemap says this page exists"
+  // from "only an `hreflang` on some page says so".
+  const declaredSet = new Set(options.declaredUrls ?? []);
 
   for (const locale of options.locales ?? []) {
     const tag = locale.trim().toLowerCase();
@@ -167,6 +188,19 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
     return options.clusterRouteOf?.(url) ?? pathnameRoute;
   }
 
+  /**
+   * What we know about a URL, read off the URL itself.
+   *
+   * Deliberately not "who wrote the cell first": `record` keeps the first
+   * writer and the writers run in a fixed order, so an alternate can win a
+   * cell whose URL the sitemap also lists. Sourcing by writer would then call
+   * that cell unverified when the site's own list vouches for it.
+   */
+  function sourceOf(url: string): I18nCellSource {
+    if (inspectedByUrl.has(url)) return "crawled";
+    return declaredSet.has(url) ? "sitemap" : "alternate";
+  }
+
   function record(route: string, locale: string, url: string): void {
     routes.add(route);
     locales.add(locale);
@@ -176,7 +210,7 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
       grid.set(route, row);
     }
     if (!row.has(locale)) {
-      row.set(locale, { url, inspected: inspectedByUrl.has(url) });
+      row.set(locale, { url, inspected: inspectedByUrl.has(url), source: sourceOf(url) });
     }
   }
 
@@ -222,11 +256,38 @@ export function buildI18nMatrix(pages: Page[], options: BuildI18nMatrixOptions =
     for (const locale of sortedLocales) {
       const slot = grid.get(route)?.get(locale);
       cells[route][locale] = slot
-        ? { url: slot.url, inspected: slot.inspected }
+        ? { url: slot.url, inspected: slot.inspected, source: slot.source }
         : { url: null, inspected: false };
     }
   }
   return { locales: sortedLocales, routes: sortedRoutes, cells };
+}
+
+/**
+ * Cells whose only evidence is an `hreflang` on some page: not crawled, and
+ * not in the site's own URL list either.
+ *
+ * These are the ones that can hide a real gap. A cell is filled by the
+ * declaration, `deriveTranslationHoles` reads `cell.url` and sees a translation
+ * — and nothing ever checked that the page is served. Measured on the
+ * `tancrede` snapshot: six alternate targets absent from thirty `<loc>`, so six
+ * true holes invisible (`docs/i18n-cluster-plan.md` §10.1).
+ *
+ * This **counts**; it does not judge. Refusing to believe an unlisted alternate
+ * would invent holes on every site using `sitemap: false`, a deliberate and
+ * supported `@goflag/next` feature (`docs/sitemap-scope-plan.md`) — trading a
+ * false negative for a false positive, in the direction this tool forbids. The
+ * number exists so the next decision can be made on a measurement rather than
+ * on an argument.
+ */
+export function countUnverifiedAlternates(matrix: I18nMatrix): number {
+  let count = 0;
+  for (const route of matrix.routes) {
+    for (const locale of matrix.locales) {
+      if (matrix.cells[route]?.[locale]?.source === "alternate") count++;
+    }
+  }
+  return count;
 }
 
 /**

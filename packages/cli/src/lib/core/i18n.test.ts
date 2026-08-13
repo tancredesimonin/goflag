@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { buildI18nMatrix, isValidLocale, localeIdentity, reciprocityIssues } from "./i18n";
+import {
+  buildI18nMatrix,
+  countUnverifiedAlternates,
+  isValidLocale,
+  localeIdentity,
+  reciprocityIssues,
+} from "./i18n";
 import { pageFromHtml } from "@/lib/rules/test-utils";
 
 function localePage(
@@ -287,5 +293,90 @@ describe("locale identity is case-folded", () => {
     expect(issue?.code).toBe("locale.invalid");
     expect(issue?.message).toContain('hreflang="ENGLISH"');
     expect(issue?.locale).toBe("ENGLISH");
+  });
+});
+
+describe("countUnverifiedAlternates", () => {
+  const page = (url: string, alts: Array<[string, string]>) =>
+    localePage(
+      url,
+      alts.map(([hreflang, href]) => ({ hreflang, href })),
+    );
+
+  it("counts a cell no list vouches for", () => {
+    // `/fr/tarifs` is advertised by the English page, is not in `declaredUrls`,
+    // and was never crawled. It still fills the cell — that is the false
+    // negative — so the count is the only thing that says so.
+    const matrix = buildI18nMatrix(
+      [
+        page("https://x.com/en/pricing", [
+          ["en", "https://x.com/en/pricing"],
+          ["fr", "https://x.com/fr/tarifs"],
+        ]),
+      ],
+      { declaredUrls: ["https://x.com/en/pricing"], locales: ["en", "fr"] },
+    );
+
+    expect(matrix.cells["/tarifs"]?.fr?.url).toBe("https://x.com/fr/tarifs");
+    expect(matrix.cells["/tarifs"]?.fr?.source).toBe("alternate");
+    expect(countUnverifiedAlternates(matrix)).toBe(1);
+  });
+
+  it("does not count a cell the sitemap lists, even when the crawl missed it", () => {
+    // The site's own URL list is evidence. Counting this would make the number
+    // a measure of sampling rather than of unbacked claims — and under
+    // structural coverage most cells are exactly this.
+    const matrix = buildI18nMatrix(
+      [
+        page("https://x.com/en/pricing", [
+          ["en", "https://x.com/en/pricing"],
+          ["fr", "https://x.com/fr/tarifs"],
+        ]),
+      ],
+      {
+        declaredUrls: ["https://x.com/en/pricing", "https://x.com/fr/tarifs"],
+        locales: ["en", "fr"],
+      },
+    );
+
+    expect(matrix.cells["/tarifs"]?.fr?.source).toBe("sitemap");
+    expect(countUnverifiedAlternates(matrix)).toBe(0);
+  });
+
+  it("does not count a cell whose page was crawled", () => {
+    const matrix = buildI18nMatrix(
+      [
+        page("https://x.com/en/about", [
+          ["en", "https://x.com/en/about"],
+          ["fr", "https://x.com/fr/about"],
+        ]),
+        page("https://x.com/fr/about", [
+          ["en", "https://x.com/en/about"],
+          ["fr", "https://x.com/fr/about"],
+        ]),
+      ],
+      { locales: ["en", "fr"] },
+    );
+
+    expect(matrix.cells["/about"]?.fr?.source).toBe("crawled");
+    expect(countUnverifiedAlternates(matrix)).toBe(0);
+  });
+
+  it("sources a cell from its URL, not from whoever wrote it first", () => {
+    // `record` keeps the first writer and alternates run before declared URLs,
+    // so this cell is written by the alternate. Sourcing by writer would call
+    // it unverified while the site's own sitemap vouches for it.
+    const matrix = buildI18nMatrix(
+      [
+        page("https://x.com/en/pricing", [
+          ["en", "https://x.com/en/pricing"],
+          ["fr", "https://x.com/fr/tarifs"],
+        ]),
+      ],
+      { declaredUrls: ["https://x.com/fr/tarifs"], locales: ["en", "fr"] },
+    );
+
+    expect(matrix.cells["/tarifs"]?.fr?.source).toBe("sitemap");
+    expect(countUnverifiedAlternates(matrix)).toBe(0);
   });
 });

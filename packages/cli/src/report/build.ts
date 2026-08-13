@@ -16,6 +16,7 @@ import { lintSite } from "../lib/core/lint-site";
 import { ICU_KNOWS_LANGUAGES, ICU_UNAVAILABLE_WARNING } from "../lib/core/bcp47";
 import {
   buildI18nMatrix,
+  countUnverifiedAlternates,
   looksLikeLocaleSegment,
   reciprocityIssues,
   type I18nMatrix,
@@ -601,6 +602,22 @@ export async function runAudit(
         `${clusters.conflicts.length > 3 ? `, +${clusters.conflicts.length - 3} more` : ""}.`,
     );
   }
+  // Cells nothing vouches for: filled by an `hreflang` on some page, absent
+  // from the sitemap, never fetched. They fill the cell, so they hide the hole
+  // they might be — and this changes no verdict, on purpose. Refusing to
+  // believe them would invent holes on every site using `sitemap: false`
+  // (docs/i18n-cluster-plan.md §10.3); the count is what lets that call be made
+  // on a measurement later instead of an argument now.
+  const unverifiedAlternates = countUnverifiedAlternates(matrix);
+  if (unverifiedAlternates > 0) {
+    warnings.push(
+      `${unverifiedAlternates} translation${unverifiedAlternates === 1 ? "" : "s"} in the matrix ` +
+        `${unverifiedAlternates === 1 ? "is" : "are"} vouched for only by an \`hreflang\` on ` +
+        `another page — not crawled, and not in the sitemap. They are counted as present, so a ` +
+        `page advertised but not served reads as translated rather than missing.`,
+    );
+  }
+
   // Holes are a claim about locale coverage. With no declared axis we have
   // just refused to claim the site is multilingual, so claiming it is missing
   // translations would contradict that — and it is exactly how `/cv` (a CV
@@ -799,6 +816,7 @@ export async function runAudit(
       },
       ...(ignoredHoles > 0 ? { ignoredHoles } : {}),
       ...(duplicatePages > 0 ? { duplicatePages } : {}),
+      ...(unverifiedAlternates > 0 ? { unverifiedAlternates } : {}),
       // Only when the site declared clusters. A merge that changes which rows
       // exist must be visible: the alternative is a hole count that moved for
       // a reason nothing in the report explains.

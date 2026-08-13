@@ -40,6 +40,11 @@ import { startFixtureServer, type FixtureServer } from "../fixture-server";
  *     treats the two forms as equivalent. It was earning 4 mismatch warnings
  *     and 4 false holes (§9.1).
  *
+ *   - `advertised-not-served` — a page advertising a French translation the
+ *     site does not serve and the sitemap does not list. The declaration fills
+ *     the cell, so the route reads as fully translated: a false negative, and
+ *     the only kind of wrong nobody ever sees. Counted, never judged (§10).
+ *
  * All of them run in `static` mode so no Chromium boots and the suite stays
  * fast and hermetic.
  */
@@ -331,4 +336,51 @@ describe("head pairing does not touch a site with no hreflang", () => {
       await server.stop();
     }
   }, 60_000);
+});
+
+describe("a translation advertised but not served", () => {
+  let server: FixtureServer;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/advertised-not-served" });
+    report = await runAudit(`${server.url}/en/guide`, { depth: 2, static: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("still counts the advertised translation as present", () => {
+    // Deliberately unchanged. Refusing to believe an alternate the sitemap
+    // does not list would invent holes on every site using `sitemap: false`,
+    // which `@goflag/next` supports on purpose — trading a false negative for
+    // a false positive, in the direction this tool forbids
+    // (`docs/i18n-cluster-plan.md` §10.3).
+    expect(report.missingTranslations.holes).toEqual([]);
+    expect(report.summary.missingTranslations).toBe(0);
+  });
+
+  it("counts the cell nothing vouches for, and says so in a warning", () => {
+    expect(report.diagnostics.unverifiedAlternates).toBe(1);
+    expect(report.diagnostics.warnings.join("\n")).toContain("vouched for only by an `hreflang`");
+  });
+
+  it("leaves the control route alone — both its locales are served and listed", () => {
+    // `/about` exists in both locales, in the sitemap and on disk, so nothing
+    // about it is a claim. If this ever counted, the number would be measuring
+    // sampling rather than unbacked declarations.
+    expect(report.pages.map((p) => p.url.replace(server.url, "")).sort()).toContain("/fr/about");
+  });
+
+  it("knew the page was unreachable and counted it as translated anyway", () => {
+    // The finding this fixture exists to pin, and it is worse than "goflag did
+    // not look": goflag fetched `/fr/guide`, got a 404, recorded it in
+    // `unreachablePages` — and the translation count never consulted that.
+    // Two facts in one report that do not meet.
+    expect(report.unreachablePages.map((p) => p.url.replace(server.url, ""))).toEqual([
+      "/fr/guide",
+    ]);
+    expect(report.summary.missingTranslations).toBe(0);
+  });
 });
