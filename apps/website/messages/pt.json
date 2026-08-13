@@ -179,7 +179,7 @@
       },
       "chromium": {
         "q": "Eu preciso do Chromium?",
-        "a": "Só se você quiser que as páginas renderizadas no cliente sejam renderizadas de novo. O goflag nunca embarca nem baixa um navegador: instale-o você mesmo com pnpm add -D playwright e pnpm exec playwright install chromium. Com ele, uma página cujo head parece vazio é renderizada de novo em um Chromium headless; sem ele — ou com --static — o goflag lê apenas o HTML estático, e não diz nada sobre a renderização que deixou de fazer."
+        "a": "Só se você quiser que as páginas renderizadas no cliente sejam renderizadas de novo. O goflag nunca embarca nem baixa um navegador: instale-o você mesmo com pnpm add -D playwright e pnpm exec playwright install chromium. Com ele, uma página cujo head parece vazio é renderizada de novo em um Chromium headless; sem ele, o goflag lê apenas o HTML estático e avisa, nos diagnósticos, que essas páginas foram julgadas sobre uma casca. --static pede o HTML estático de propósito, e não avisa de nada."
       },
       "privacy": {
         "q": "O que sai da minha máquina?",

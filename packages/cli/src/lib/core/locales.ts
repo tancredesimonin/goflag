@@ -34,8 +34,10 @@
  * method) needs no new machinery, only a decision.
  */
 
-import { looksLikeLocaleSegment } from "./i18n";
+import { isKnownLanguageTag, looksLikeLocaleSegment } from "./bcp47";
 import type { Page } from "./types";
+
+export { isKnownLanguageTag };
 
 /** How the locale axis was established. */
 export type LocaleAxisSource = "explicit" | "sitemap" | "none";
@@ -88,27 +90,6 @@ export interface DeriveLocaleAxisInput {
   sitemapUrls?: readonly string[];
   /** Crawled pages, used only to describe candidates when nothing is declared. */
   pages?: readonly Page[];
-}
-
-/**
- * ISO 639-1 two-letter language codes. A closed list on purpose: the point is
- * membership, not shape, and the set has not changed in years.
- */
-const ISO_639_1 = new Set(
-  (
-    "aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy " +
-    "da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu " +
-    "hy hz ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb " +
-    "lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om " +
-    "or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw " +
-    "ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu"
-  ).split(" "),
-);
-
-/** True when the primary subtag is a registered ISO 639-1 language. */
-export function isKnownLanguageTag(tag: string): boolean {
-  const primary = tag.toLowerCase().split("-")[0] ?? "";
-  return ISO_639_1.has(primary);
 }
 
 /** Leading path segment of `url` when it is shaped like a locale tag, else null. */

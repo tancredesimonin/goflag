@@ -69,7 +69,7 @@ export const INSTALL = {
 export const PROOF = {
   pageRules: 11,
   siteRules: 3,
-  tests: 665,
+  tests: 686,
   sitesGated: 4,
   largestSitePages: 456,
   largestSiteDuration: "4 min",

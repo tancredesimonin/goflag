@@ -120,7 +120,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
  *
  * Three codes, not four: `self-mismatch` was declared in the engine and emitted
  * by no branch, so a catalogue listing it promised a finding goflag could not
- * produce. The declaration is gone as of 0.2.7.
+ * produce. The declaration is gone as of 0.3.0.
  */
 export const RECIPROCITY_CODES: ReadonlyArray<{ code: string; message: string; why: string }> = [
   {

@@ -179,7 +179,7 @@
       },
       "chromium": {
         "q": "Do I need Chromium?",
-        "a": "Only if you want client-rendered pages re-rendered. goflag never ships or downloads a browser: install it yourself with pnpm add -D playwright and pnpm exec playwright install chromium. With it, a page whose head looks empty is re-rendered in headless Chromium; without it — or with --static — goflag reads the static HTML only, and says nothing about having skipped the re-render."
+        "a": "Only if you want client-rendered pages re-rendered. goflag never ships or downloads a browser: install it yourself with pnpm add -D playwright and pnpm exec playwright install chromium. With it, a page whose head looks empty is re-rendered in headless Chromium; without it goflag reads the static HTML only and warns, in diagnostics, that those pages were judged on a shell. --static asks for the static HTML deliberately, and warns about nothing."
       },
       "privacy": {
         "q": "What leaves my machine?",
