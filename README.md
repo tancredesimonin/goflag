@@ -424,6 +424,17 @@ goflag https://example.com --ignore-holes /legal --ignore-holes "/blog/**"
 Suppressed gaps are counted in `diagnostics.ignoredHoles`, so a quiet report
 never means "nothing was wrong" by accident.
 
+The opposite failure is quieter still. A cell in the matrix can be filled by an
+`hreflang` on another page and by nothing else — not crawled, not listed in your
+sitemap — and a filled cell reads as a translation that exists. A page
+advertising a translation the site does not serve therefore plugs the very gap
+it should reveal. Those cells are counted in
+`diagnostics.unverifiedAlternates`, and goflag deliberately does **not** act on
+them: refusing to believe an alternate the sitemap omits would invent holes on
+every site using `@goflag/next`'s `sitemap: false` on purpose. Read that number
+next to `missingTranslations` — a `0` beside a non-zero count is the one place
+this report can be quietly wrong.
+
 ## In CI
 
 Two moments are worth auditing, and they answer different questions.

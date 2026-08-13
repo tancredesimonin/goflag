@@ -197,6 +197,13 @@ export interface GoflagReport {
      */
     duplicatePages?: number;
     /**
+     * Matrix cells filled by an `hreflang` on another page and by nothing
+     * else: not crawled, and not listed in the sitemap. They count as a
+     * present translation, so each one may be hiding the hole it claims to
+     * fill. Reported, never judged — see `docs/i18n-cluster-plan.md` §10.
+     */
+    unverifiedAlternates?: number;
+    /**
      * Translation clusters the sitemap declared with `xhtml:link`, when it
      * declared any.
      *

@@ -15,10 +15,18 @@ goflag builds a **route × locale** matrix. A route is a URL with its locale
 segment removed: `/fr/pricing` and `/en/pricing` are one route, `/pricing`, in two
 locales. A cell is filled when a page for that route and locale was **found or
 declared**: a page the crawl fetched, a URL your sitemap lists, or a
-`<link rel="alternate" hreflang>` a crawled page points at. That last one is
-taken on trust and never fetched, so a `<head>` advertising a translation the
-site does not serve hides that gap instead of reporting it. An empty cell is a
+`<link rel="alternate" hreflang>` a crawled page points at. An empty cell is a
 **hole**: a translation the site serves in one language and not in another.
+
+That third source is taken on trust: a `<head>` advertising a translation the
+site does not serve fills the cell anyway, so the gap reads as translated
+instead of missing. goflag counts those cells —
+`diagnostics.unverifiedAlternates`, the ones neither crawled nor listed in your
+sitemap — and **changes no verdict on them**. Refusing to believe an unlisted
+alternate would invent holes on every site that uses
+[`sitemap: false`](/docs/next/routes#keeping-a-page-out-of-the-sitemap)
+deliberately, which is trading a miss for a false alarm. Read that number next to `missingTranslations`: a `0` beside a
+non-zero count is the one place this report can be quietly wrong.
 
 **A route is a pathname, unless you declare a cluster.** goflag pairs
 translations by pathname, so on its own it only recognises them when the slug is
