@@ -98,10 +98,11 @@ empty-looking head is re-rendered in Chromium. With `--static`, it is judged as
 served, which is correct for a crawler, and misleading if you expected the
 runtime result. See [Install](/docs/install#chromium) before opting in. The same
 thing happens without the opt-in when Playwright or its Chromium binary is
-missing: the escalation is skipped, the page is judged as served, and **nothing
-in the report says so** — no warning, no diagnostics field. On an SPA that is a
-full column of phantom `title.missing` / `description.missing` findings. Install
-Chromium before you believe them.
+missing — the escalation is skipped and the page is judged as served — but the
+run says so: the pages that wanted the browser are counted in
+`diagnostics.warnings`, with what could not be started. On an SPA those pages
+carry a full column of phantom `title.missing` / `description.missing` findings,
+so install Chromium before you believe them.
 
 **Translations are paired by pathname.** A route is the URL with its locale
 segment removed, so goflag only recognises a pair when the slug is identical in

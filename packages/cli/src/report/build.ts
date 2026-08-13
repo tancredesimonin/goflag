@@ -176,6 +176,37 @@ function localeOfUrl(url: string): string | null {
 }
 
 /**
+ * The warning owed by pages that asked for the browser and did not get it.
+ *
+ * A page whose `<head>` looks empty is re-rendered in Chromium precisely so a
+ * client-rendered app is not reported as missing everything it declares at
+ * runtime. When Playwright or its binary is absent the escalation is skipped
+ * and the page is judged on its unhydrated shell — which produces the exact
+ * phantom findings the escalation exists to prevent, a full column of
+ * `title.missing` and `description.missing` down an SPA.
+ *
+ * Until now the reason was written onto the `Page` and copied nowhere: not into
+ * the report, not into `warnings`, not onto the terminal. Somebody reading
+ * "missing everything" had no way to tell a broken site from a missing browser,
+ * and the install docs told them to wait for a note that was never printed.
+ *
+ * Returns `null` when nothing was blocked, so the caller adds no empty noise.
+ */
+export function blockedEscalationWarning(pages: readonly Page[]): string | null {
+  const blocked = pages.filter((p) => p.extractor.escalationBlocked);
+  if (blocked.length === 0) return null;
+
+  // One message, not one per page: the cause is the runtime, so N copies of it
+  // would bury every other warning on a site that is entirely client-rendered.
+  return (
+    `${blocked.length} page(s) looked client-rendered and were judged on their static ` +
+    `HTML, because the browser could not be started: ${blocked[0]!.extractor.escalationBlocked} ` +
+    `Their metadata findings may be phantoms — install Playwright and Chromium, or pass ` +
+    `--static to say the static HTML is what you meant to judge.`
+  );
+}
+
+/**
  * Routes present in some locales but absent in others. A "hole" is exactly
  * the "missing translation page" the tool exists to find. `x-default` is a
  * fallback pointer, not a real translation, so it never counts as a locale
@@ -402,6 +433,9 @@ export async function runAudit(
         `${crawlResult.recovered.length > 3 ? `, +${crawlResult.recovered.length - 3} more` : ""}.`,
     );
   }
+
+  const escalationWarning = blockedEscalationWarning(pages);
+  if (escalationWarning) warnings.push(escalationWarning);
 
   // A page that returned a non-2xx status has no meaningful <head>, links,
   // or hreflang — linting it produces phantom "missing title/description/…"

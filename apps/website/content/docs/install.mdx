@@ -92,11 +92,11 @@ is downloaded unless you ask for it.
   bun={"bun add -d playwright\nbunx playwright install chromium"}
 />
 
-Without it, goflag does not fail: the page is judged on its static HTML, and
-nothing in the report says so — the skipped re-render is silent today. If a
-page's findings read as "missing everything" and the metadata is really filled in
-the browser, that is the symptom. Install Playwright and Chromium, re-run, and
-compare.
+Without it, goflag does not fail: the page is judged on its static HTML, and the
+report says so. Any page that wanted the browser and did not get it is counted in
+`diagnostics.warnings`, naming what could not be started and warning that the
+metadata findings on those pages may be phantoms. That warning is the signal to
+install Chromium and re-run before believing a page is missing everything.
 
 ### `--static`, if you are certain
 
