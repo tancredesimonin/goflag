@@ -45,14 +45,28 @@ goflag: baseline updated — 2 newly accepted, 5 resolved, 10 findings now grand
 ## What a finding is matched by
 
 Findings are matched by **fingerprint**, not by list position. A fingerprint is
-built from the stable parts of a finding: the rule that produced it, the route it
-was found on, and the thing it points at (a link target, a locale, a missing
-tag). It deliberately excludes anything that moves without the defect moving:
+built from the stable parts of a finding: the rule (or finding class) that
+produced it, the route it was found on, and one discriminator — the absolute link
+target for a broken link, the peer route and locale for an hreflang reciprocity
+issue, an occurrence counter for a metadata rule that fires more than once on a
+page. A translation hole is fingerprinted by its route alone, so a hole that
+widens from one missing locale to three is the _same_ finding:
+`--regressions-only` gates on a hole existing, not on its size.
 
-- **The origin.** Page URLs are normalised to origin-independent routes, so a
-  baseline captured against `https://example.com` compares cleanly with a run
-  against `http://localhost:3000`. This is what makes the merge-request job
-  possible at all.
+A fingerprint deliberately excludes anything that moves without the defect
+moving:
+
+- **The origin of the page.** Page URLs are normalised to origin-independent
+  routes, so an SEO, site, translation or unreachable-page finding captured
+  against `https://example.com` matches the same finding on
+  `http://localhost:3000`. This is what makes the merge-request job possible at
+  all. **Broken links are the exception**: a link finding is identified by (page
+  route, _absolute_ link target), and the target keeps its origin, because two
+  hosts are two different targets. A baseline captured on production therefore
+  reports every pre-existing broken _internal_ link as new when it is compared
+  against a `--start` run on localhost. Capture the baseline in the environment
+  the merge-request job audits — run `--update-baseline` once behind `--start` —
+  or accept that internal link debt is re-proposed the first time.
 - **Counts and ordering.** Adding a page does not renumber existing findings.
 - **Message text.** Rewording a rule's message in a new version of goflag does not
   invalidate your baseline.
@@ -68,11 +82,15 @@ REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
 baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
 
 New findings
-  + error seo  canonical.absolute: canonical is relative  on /pricing
+  + error seo  canonical.absolute on https://example.com/pricing
 
 Resolved
-  - warn  seo  og.image.missing  on /about
+  - warn  seo  og.image.missing on https://example.com/about
 ```
+
+The diff lists rule ids and absolute page URLs, not messages: it is a list of
+what moved, not a report. Run without `--regressions-only`, or read the
+`--report` JSON, for the message and the fix.
 
 The headline changes with the state of the run: `REGRESSION` when new findings
 exist, `REGRESSION GATE` when only known debt is passing through, `CLEAN` when

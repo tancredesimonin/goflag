@@ -116,9 +116,11 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
   }
 
   // Escalation path: render in Chromium and reparse. If headless is
-  // unavailable, fall back to the static result with a clear marker — the
-  // CLI surfaces a hint, but we never crash a default `inspect` run just
-  // because Playwright is missing.
+  // unavailable, fall back to the static result and record why on
+  // `escalationBlocked`, which `report/build.ts` turns into a diagnostics
+  // warning: judging an unhydrated shell produces a page of findings that are
+  // all false, and the reader has no way to know unless the report says it.
+  // We still never crash a default `inspect` run over a missing Playwright.
   let renderedBody: string | undefined;
   let renderedFetch: FetchMeta | undefined;
   try {
@@ -144,7 +146,8 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       extractor: {
         mode: "static",
         escalated: false,
-        escalationReason: `would-have-escalated (${heuristic.reason}) but ${err.message}`,
+        escalationReason: heuristic.reason,
+        escalationBlocked: err.message,
       },
       html: { static: staticBody },
       probes,

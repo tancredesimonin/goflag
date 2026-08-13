@@ -16,9 +16,14 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 ## What it checks
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
-- **Missing translation pages** — builds a `route × locale` matrix from the crawl and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and invalid locale tags.
+- **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless your sitemap declares its translation clusters with `xhtml:link` — then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`.
 - **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
+- **Unreachable pages** — a page the crawl reached that answered non-2xx, or that never answered at all (timeout, reset, DNS failure — recorded as `status: 0`), is reported in `unreachablePages`. goflag asks a second time, from the back of the queue, before calling a page unreachable. Each one is an `error`-severity finding: it turns the verdict red, counts toward `--max-debt`, and fails the build even under `--fail-on error`. A page that silently dropped out of the audited set is what poisons a baseline, so it is reported rather than warned about.
+
+**Which pages get audited.** When goflag finds a sitemap it does not audit every URL in it. It groups URLs that share a path shape — and therefore a template — into families, audits every page that stands alone, and samples three pages per family. A cap answers "how many" and never "which": on a site of thousands of pages built from thirty templates, the first 200 pages a crawl reaches are four templates out of thirty.
+
+The trade is stated in every report rather than hidden. Template rules (`canonical.*`, `hreflang.*`, `og.image.missing`) are conclusive on a sampled family; copy rules (`title.length`, `description.length`), broken links and the translation matrix are only conclusive on the pages that were drawn. The terminal prints a `COVERAGE` line, and `diagnostics.coverage` carries `mode`, `considered`, `selected` and every sampled family with its ratio. Pass `--coverage all` to audit what the sitemap lists in order, up to `--max-pages`, which is the pre-0.2.3 behaviour.
 
 Pages that declare a `<link rel="canonical">` pointing at another crawled page are excluded from the checks — the site has said they are duplicates, so linting them would multiply every finding by the number of filtered variants. The count is reported as `diagnostics.duplicatePages`.
 
@@ -125,16 +130,57 @@ npx @goflag/cli https://example.com --report report.json      # write JSON to a 
 
 The terminal view is just a render of that JSON.
 
+### The catalogue is data too
+
+```sh
+npx @goflag/cli rules > rules.json
+```
+
+`rules` answers a question about goflag rather than about a site: no URL, no
+crawl, no network. Every entry carries its scope, severity and summary; the
+eleven page rules and four prose rules also carry a rigor, the documents they
+cite and — where a remedy is a line of code — a fix snippet. The three site
+rules carry none of those three: `SiteRule` has no rigor field yet, and the
+catalogue emits `rigor: null` with an empty `sources` rather than inventing an
+authority nobody assigned. Write your consumer against that. The same document
+ships inside the package as `rules.json`, if you would rather read it than run
+anything.
+
+It deliberately omits the message a finding prints — that is built at audit time
+from what the page actually says, so a static copy would be a sample rather than
+a fact, and a sample presented as the truth is how this project's own
+documentation site came to quote a message the engine had stopped printing.
+
 ### Options
 
 ```
 --json                 Print the JSON report to stdout (nothing else).
+--summary, -s          Roll findings up (dedup by link/rule/code). Pairs with
+                       --json for a compact payload; --report always writes
+                       the full report regardless.
 --report <file>        Write the JSON report to <file>.
---depth <n>            Crawl depth (0 = entry page only). Default: 2.
---max-pages <n>        Hard cap on pages crawled. Default: 200.
+--depth <n>            How far to follow links out of each page (0 = follow
+                       none). Sitemap URLs are seeded regardless, so --depth 0
+                       alone is not "entry page only" — add --no-sitemap.
+                       Default: 2.
+--max-pages <n>        Page budget for the crawl. Default: 200. A hard cap
+                       under --coverage all; under structural coverage the
+                       selection wins and the budget is max(<n>, selected + 5),
+                       so a lower value cannot cut the run short.
+--coverage <mode>      How pages are chosen: "structural" (default when a
+                       sitemap is found) keeps every standalone page and
+                       samples three pages per family of template-generated
+                       pages; "all" audits what the sitemap lists, in order,
+                       up to --max-pages.
 --include <glob>       Only crawl paths matching <glob> (repeatable).
 --exclude <glob>       Skip paths matching <glob> (repeatable).
 --locales <list>       Comma-separated locales the site serves ("fr,en,pt-br").
+                       Unioned with the prefixes your sitemap shows, never
+                       substituted for them, so a locale the sitemap serves
+                       stays on the axis whether or not you list it. Also what
+                       folds /en/… and /fr/… into one route family for
+                       structural coverage — pass it on any locale-prefixed
+                       site.
 --ignore-holes <glob>  Route deliberately not translated everywhere
                        (repeatable).
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
@@ -160,7 +206,11 @@ The terminal view is just a render of that JSON.
 --no-external          Do not probe off-origin (external) links.
 --static               Static HTML only; never launch headless Chromium.
 --allow-insecure-tls   Accept self-signed / invalid TLS (localhost, tunnels).
---timeout <ms>         Per-request timeout in ms. Default: 8000.
+--timeout <ms>         Per-request timeout in ms, for page fetches and link
+                       probes alike. Unset, the defaults differ: 8000 for link
+                       probes, 15000 for page fetches.
+--verbose, -V          Log every page as it is analyzed.
+--quiet, -q            Suppress the live progress output.
 --no-color             Disable coloured output.
 -h, --help             Show help.
 -v, --version          Show the version.
@@ -351,9 +401,16 @@ goflag https://example.com --locales fr,en,pt-br
 
 When a site publishes no usable sitemap and you pass no `--locales`, goflag
 does **not** guess the locale axis — it reports the prefixes it saw with the
-evidence for each and turns the i18n checks off. Guessing from path shape alone
-once turned `/cv` (a CV page served in French) into a locale, because `cv` is a
-registered ISO 639-1 code, and produced 31 findings that were never real.
+evidence for each and turns the axis-dependent checks off (holes,
+`hreflang.missing`, `hreflang.sitemap-mismatch`; the reciprocity checks read the
+markup and keep running). Guessing from path shape alone once turned `/cv` (a CV
+page served in French) into a locale, because `cv` is a registered ISO 639-1
+code, and produced 31 findings that were never real.
+
+Pass `--locales` even when the sitemap is fine. It is the axis goflag folds when
+it groups URLs into route families, so without it a site with many top-level
+sections under `/en` can have those sections sampled as one family instead of
+audited.
 
 Some pages are meant to exist in one locale and not another — a
 jurisdiction-specific legal notice, a post written for one market. A site has
@@ -398,7 +455,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.1.4"
+  GOFLAG_VERSION: "0.2.7"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -412,6 +469,7 @@ seo:mr:
     - npx --yes "@goflag/cli@$GOFLAG_VERSION" http://localhost:3000
       --start "pnpm start" --static --no-external
       --baseline .goflag/baseline.json --regressions-only --max-debt 41
+      --report goflag-report.json
   artifacts:
     when: always
     paths: [goflag-report.json]
@@ -449,9 +507,10 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.1.4 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.7 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
-            --baseline .goflag/baseline.json --regressions-only --max-debt 41
+            --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
+            --report goflag-report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -484,7 +543,8 @@ you what it accepted, and that number belongs in the commit message.
 import { runAudit } from "@goflag/cli";
 
 const report = await runAudit("https://example.com", { depth: 2 });
-console.log(report.summary); // { brokenLinks, missingTranslations, seoIssues, verdict }
+console.log(report.summary);
+// { brokenLinks, missingTranslations, seoIssues, siteIssues, unreachablePages, verdict }
 ```
 
 `runAudit` returns the same `GoflagReport` object the CLI emits.
@@ -543,9 +603,11 @@ pnpm typecheck                 # tsc --noEmit
 pnpm format                    # prettier
 ```
 
-`lint`, `format` and `format:check` run once over the whole repository; the
-rest fan out across workspace packages with `pnpm -r`. To work on one package,
-filter: `pnpm --filter @goflag/cli test`.
+`format` and `format:check` run once over the whole repository. `lint` runs
+eslint once at the root and then fans out to any package that defines its own
+`lint` script — `apps/website` does, with the Next config — and the rest fan out
+across workspace packages with `pnpm -r`. To work on one package, filter:
+`pnpm --filter @goflag/cli test`.
 
 The engine is framework-agnostic and lives in [`packages/cli/src/lib/core/`](packages/cli/src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`packages/cli/src/lib/rules/`](packages/cli/src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`packages/cli/src/report/`](packages/cli/src/report) and [`packages/cli/src/cli.ts`](packages/cli/src/cli.ts).
 

@@ -212,9 +212,9 @@ fonctionnalité crée le cas, donc elle arrive avec la question.
 
 | Étape   | Contenu                                                                                    | État |
 | ------- | ------------------------------------------------------------------------------------------ | ---- |
-| **X-0** | `sitemap?: boolean` sur une route simple, `boolean \| (entry) => boolean` sur `collection` | ⬜   |
-| **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs        | ⬜   |
-| **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2              | ⬜   |
+| **X-0** | `sitemap?: boolean` sur une route simple, `boolean \| (entry) => boolean` sur `collection` | ✅   |
+| **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs        | ✅   |
+| **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2              | ✅   |
 | **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)              | ⬜   |
 | **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue                                         | ⬜   |
 

@@ -22,6 +22,7 @@ import { renderSummaryTerminal } from "./report/render-summary";
 import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
+import { buildRuleCatalog, serialiseCatalog } from "./lib/rules/catalog";
 
 async function readVersion(): Promise<string> {
   try {
@@ -71,6 +72,16 @@ async function main(): Promise<number> {
     process.stdout.write(`${await readVersion()}\n`);
     return 0;
   }
+
+  // Answers a question about goflag rather than about a site: no crawl, no
+  // network, no URL. It exists so a consumer stops copying the catalogue by
+  // hand — `apps/website` cannot import this package (I3) and its hand-written
+  // mirror had drifted in three places by the time anybody checked.
+  if (args.command === "rules") {
+    process.stdout.write(serialiseCatalog(buildRuleCatalog(await readVersion())));
+    return 0;
+  }
+
   if (!args.url) {
     process.stderr.write(`goflag: missing <url>\n\n${HELP}\n`);
     return 2;

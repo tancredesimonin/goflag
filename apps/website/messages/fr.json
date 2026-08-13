@@ -179,11 +179,11 @@
       },
       "chromium": {
         "q": "Ai-je besoin de Chromium ?",
-        "a": "Seulement sans --static. Une page dont le head paraît vide est réaffichée dans un Chromium headless, pour qu’une application rendue côté client ne soit pas signalée comme dépourvue de tout ; --static désactive cela et ne télécharge jamais de navigateur."
+        "a": "Seulement si vous voulez que les pages rendues côté client soient réaffichées. goflag n’embarque ni ne télécharge jamais de navigateur : installez-le vous-même avec pnpm add -D playwright et pnpm exec playwright install chromium. Avec lui, une page dont le head paraît vide est réaffichée dans un Chromium headless ; sans lui, goflag ne lit que le HTML statique et signale dans les diagnostics que ces pages ont été jugées sur une coquille. --static demande le HTML statique délibérément, et ne signale rien."
       },
       "privacy": {
         "q": "Qu’est-ce qui quitte ma machine ?",
-        "a": "Les requêtes HTTP vers le site que vous avez nommé, et rien d’autre. Le rapport est écrit sur votre disque ou sur votre stdout."
+        "a": "Les requêtes HTTP vers le site que vous avez nommé, et vers les URL tierces qu’il référence, puisqu’un lien mort ne se constate qu’en le sondant. --no-external confine l’exécution à votre propre origine. Le rapport est écrit sur votre disque ou sur votre stdout, et rien ne nous est remonté."
       },
       "free": {
         "q": "Combien ça coûte ?",
@@ -191,7 +191,7 @@
       },
       "scale": {
         "q": "Va-t-il aller au bout sur un gros site ?",
-        "a": "Le plus gros site sur lequel il sert de garde-fou fait {pages} pages et prend environ {duration} avec --static --no-external. --max-pages limite l’exploration, --include et --exclude la restreignent, et une exécution qui a atteint une limite le dit dans les diagnostics plutôt que d’annoncer un nombre plus petit comme s’il s’agissait du site entier."
+        "a": "Le plus gros site sur lequel il sert de garde-fou fait {pages} pages et prend environ {duration} avec --static --no-external. Sur un site qui publie un sitemap, goflag n’audite pas tout : il garde chaque page isolée et échantillonne trois pages par famille d’URL de même forme, et le rapport imprime une ligne COVERAGE disant combien de pages sur combien ont été auditées. --coverage all désactive l’échantillonnage, --include et --exclude restreignent l’exploration, et --max-pages est un garde-fou qui ne tronque jamais une sélection."
       }
     },
     "close": {

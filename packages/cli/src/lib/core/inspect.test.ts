@@ -178,8 +178,11 @@ describe("inspect — mode plumbing with injected headless launcher", () => {
     });
     expect(page.extractor.mode).toBe("static");
     expect(page.extractor.escalated).toBe(false);
-    expect(page.extractor.escalationReason).toContain("would-have-escalated");
-    expect(page.extractor.escalationReason).toContain("Chromium not installed");
+    // The trigger and the obstacle are two facts, and the report needs the
+    // second one on its own: it is what turns a column of phantom findings
+    // into a diagnostics warning instead of a silent lie.
+    expect(page.extractor.escalationReason).toBeTruthy();
+    expect(page.extractor.escalationBlocked).toContain("Chromium not installed");
     expect(page.html.rendered).toBeUndefined();
   });
 

@@ -1,6 +1,6 @@
 {
   "name": "@goflag/next",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Declare a Next.js App Router site's routes once, and derive the metadata, hreflang cluster, sitemap and robots.txt that goflag audits for.",
   "keywords": [

@@ -14,11 +14,14 @@ exist precisely so you can gate a site that is not clean yet.
 Start with the entry page only, so you can read every finding:
 
 ```bash
-pnpm dlx @goflag/cli https://example.com --depth 0
+pnpm dlx @goflag/cli https://example.com --depth 0 --no-sitemap
 ```
 
-`--depth 0` audits the URL you named and follows nothing. This is the fastest way
-to see whether the metadata rules agree with what you think your site declares.
+`--depth 0` stops the crawl following links, but sitemap discovery is on by
+default and every URL the sitemap lists is seeded into the crawl at depth 0 — so
+`--depth 0` alone still audits the whole selected page set. `--no-sitemap` is
+what reduces the run to the single URL you named. This is the fastest way to see
+whether the metadata rules agree with what you think your site declares.
 
 ## 2. Crawl the site
 
@@ -30,13 +33,30 @@ pnpm dlx @goflag/cli https://example.com --summary
 affected pages, instead of repeating the same finding under 40 URLs. On a site
 with a real backlog it is the only readable view.
 
+On a site with a sitemap, this run does not audit every page. goflag selects by
+structure: every page that stands alone is audited, and families of pages built
+from one template (eight or more URLs of the same shape) are sampled — three per
+family. Template rules (`canonical.missing`, `hreflang.missing`,
+`og.image.missing`) are conclusive on a sample; copy rules (`title.length`,
+`description.length`) are not. The run prints a `COVERAGE` line and records what
+it looked at under `diagnostics.coverage`, family by family. Pass
+`--coverage all` to audit everything the sitemap lists instead, up to
+`--max-pages`.
+
 Two flags are worth reaching for immediately:
 
 - `--no-external` skips off-origin links, the ones you cannot fix. [CI](/docs/ci)
   explains why they never belong in a gate.
-- `--max-pages 50` caps the crawl while you are still exploring. A run that hit a
-  cap says so under `diagnostics`, rather than reporting a smaller number as if
-  it were the whole site.
+- `--locales "en,fr"` on any locale-prefixed site. It fixes the locale axis, and
+  it also keeps your top-level sections from being folded into one sampled
+  family.
+
+`--max-pages 50` caps a run only when there is no sitemap, or when you also pass
+`--coverage all`: under structural coverage the selection has already decided how
+many pages to audit, and the flag cannot cut below it. `--include` and
+`--exclude` do not help either — they filter the links the crawl discovers, not
+the sitemap selection it starts from. To explore a genuinely smaller slice, use
+`--coverage all --max-pages 50`.
 
 One flag is worth knowing about but **not** reaching for yet: `--static` makes
 the run several times faster and is only safe on fully server-rendered
@@ -65,9 +85,14 @@ goflag http://localhost:3000 --no-external \
   --baseline .goflag/baseline.json --regressions-only
 ```
 
-Only findings that are **new** relative to the baseline fail the build. Matching
-survives the environment change (a baseline captured against production gates a
-run against `localhost`), and [Baseline gating](/docs/ci/baseline) explains how.
+Only findings that are **new** relative to the baseline fail the build. Page URLs
+are normalised to origin-independent routes, so SEO, site, translation and
+unreachable-page findings survive the environment change — a baseline captured
+against production gates a run against `localhost`. Broken links are the
+exception: a link's identity includes where it points, so an internal broken link
+fingerprints differently on each origin. Capture the baseline in the environment
+you gate in, or gate with `--no-external` against the origin the baseline came
+from. [Baseline gating](/docs/ci/baseline) explains the rest.
 
 The output never goes green while findings are outstanding; it says how many are
 being let through and how old the baseline is:

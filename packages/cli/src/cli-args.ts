@@ -21,14 +21,23 @@ export const HELP = `goflag — audit a site for broken links, missing translati
 
 Usage:
   goflag <url> [options]
+  goflag rules              Print the rule catalogue as JSON and exit. No crawl
+                            and no network: every rule with its severity, its
+                            rigor and the documents it cites.
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).
   --summary, -s          Roll findings up (dedup by link/rule/code). Pairs
                          with --json for a compact, agent-friendly payload.
   --report <file>        Write the (full) JSON report to <file>.
-  --depth <n>            Crawl depth (0 = entry page only). Default: 2.
-  --max-pages <n>        Hard cap on pages crawled. Default: 200.
+  --depth <n>            How far to follow links out of each page (0 = follow
+                         none). Sitemap URLs are seeded regardless, so --depth 0
+                         alone is not "entry page only" — add --no-sitemap for
+                         that. Default: 2.
+  --max-pages <n>        Page budget for the crawl. A hard cap under
+                         --coverage all; under structural coverage the selection
+                         wins and the budget is max(<n>, selected + 5).
+                         Default: 200.
   --coverage <mode>      How to choose which pages to audit.
                          "structural" (default when a sitemap is found) keeps
                          every standalone page and samples families of pages
@@ -37,9 +46,12 @@ Options:
   --include <glob>       Only crawl paths matching <glob> (repeatable).
   --exclude <glob>       Skip paths matching <glob> (repeatable).
   --locales <list>       Comma-separated locales the site serves, e.g.
-                         "fr,en,pt-br". Authoritative: overrides what the
-                         sitemap and crawl suggest, and makes a locale the
-                         site does not serve yet show up as missing.
+                         "fr,en,pt-br". Unioned with what the sitemap shows,
+                         never substituted for it, and the only way to make a
+                         locale the site does not serve yet show up as missing.
+                         Also folds /en/… and /fr/… into one route family for
+                         structural coverage, so pass it on any locale-prefixed
+                         site.
   --ignore-holes <glob>  Route (locale-free) that is deliberately not
                          translated everywhere, so its gaps are not reported
                          as missing translations (repeatable).
@@ -81,7 +93,9 @@ ${PROFILE_HELP}
   --no-external          Do not probe off-origin (external) links.
   --static               Static HTML only; never launch headless Chromium.
   --allow-insecure-tls   Accept self-signed / invalid TLS (localhost, tunnels).
-  --timeout <ms>         Per-request timeout in ms. Default: 8000.
+  --timeout <ms>         Per-request timeout in ms, for page fetches and link
+                         probes alike. Unset, the defaults differ: 8000 for link
+                         probes, 15000 for page fetches.
   --verbose, -V          Log every page as it is analyzed.
   --quiet, -q            Suppress the live progress output.
   --no-color             Disable coloured output.
@@ -91,6 +105,13 @@ ${PROFILE_HELP}
 Exit codes: 0 clean, 1 findings found, 2 fatal error.`;
 
 export interface ParsedArgs {
+  /**
+   * A subcommand instead of an audit. Absent for the usual `goflag <url>`.
+   *
+   * `rules` prints the catalogue and exits without touching the network — the
+   * one thing goflag can answer about itself rather than about a site.
+   */
+  command?: "rules";
   url?: string;
   json: boolean;
   summary: boolean;
@@ -286,7 +307,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       default:
         if (arg && arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
-        if (arg && !parsed.url) parsed.url = arg;
+        // `rules` is the one word that is a command rather than a URL. It is
+        // accepted only in first position: `goflag https://x.test rules` is a
+        // typo, and treating it as a command would audit nothing while looking
+        // like it worked.
+        if (arg === "rules" && i === 0) parsed.command = "rules";
+        else if (arg && !parsed.url) parsed.url = arg;
         else if (arg) throw new Error(`unexpected argument: ${arg}`);
     }
   }

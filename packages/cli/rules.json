@@ -1,0 +1,517 @@
+{
+  "counts": {
+    "page": 11,
+    "site": 3,
+    "prose": 4
+  },
+  "sources": {
+    "bing-webmaster-guidelines": {
+      "id": "bing-webmaster-guidelines",
+      "publisher": "Microsoft",
+      "title": "Bing Webmaster Guidelines",
+      "rigor": "guideline",
+      "url": "https://www.bing.com/webmasters/help/webmasters-guidelines-30fba23a"
+    },
+    "google-canonicalization": {
+      "id": "google-canonicalization",
+      "publisher": "Google",
+      "title": "Consolidate duplicate URLs (canonicalization)",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls"
+    },
+    "google-robots-meta": {
+      "id": "google-robots-meta",
+      "publisher": "Google",
+      "title": "Robots meta tag and X-Robots-Tag",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag"
+    },
+    "google-snippet": {
+      "id": "google-snippet",
+      "publisher": "Google",
+      "title": "Control your snippets in search results",
+      "rigor": "guideline",
+      "url": "https://developers.google.com/search/docs/appearance/snippet"
+    },
+    "google-title-link": {
+      "id": "google-title-link",
+      "publisher": "Google",
+      "title": "Influence your title links in search results",
+      "rigor": "guideline",
+      "url": "https://developers.google.com/search/docs/appearance/title-link"
+    },
+    "ietf-rfc6596": {
+      "id": "ietf-rfc6596",
+      "publisher": "IETF",
+      "title": "RFC 6596 — The Canonical Link Relation",
+      "rigor": "normative",
+      "url": "https://www.rfc-editor.org/rfc/rfc6596"
+    },
+    "mdn-viewport": {
+      "id": "mdn-viewport",
+      "publisher": "MDN / Mozilla",
+      "title": "MDN — Viewport meta tag",
+      "rigor": "guideline",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag"
+    },
+    "meta-og-sharing": {
+      "id": "meta-og-sharing",
+      "publisher": "Meta",
+      "title": "Sharing — webmasters (Open Graph usage)",
+      "rigor": "vendor-spec",
+      "url": "https://developers.facebook.com/docs/sharing/webmasters/"
+    },
+    "moz-meta-description": {
+      "id": "moz-meta-description",
+      "publisher": "Moz",
+      "title": "Meta description best practices",
+      "rigor": "heuristic",
+      "url": "https://moz.com/learn/seo/meta-description"
+    },
+    "moz-title-tag": {
+      "id": "moz-title-tag",
+      "publisher": "Moz",
+      "title": "Title tag best practices",
+      "rigor": "heuristic",
+      "url": "https://moz.com/learn/seo/title-tag"
+    },
+    "ogp": {
+      "id": "ogp",
+      "publisher": "ogp.me",
+      "title": "The Open Graph protocol",
+      "rigor": "vendor-spec",
+      "url": "https://ogp.me/"
+    },
+    "w3c-i18n-language-tags": {
+      "id": "w3c-i18n-language-tags",
+      "publisher": "W3C",
+      "title": "W3C i18n — Language tags in HTML and XML",
+      "rigor": "guideline",
+      "url": "https://www.w3.org/International/articles/language-tags/"
+    },
+    "whatwg-html-lang": {
+      "id": "whatwg-html-lang",
+      "publisher": "WHATWG",
+      "title": "HTML Living Standard — the lang and xml:lang attributes",
+      "rigor": "normative",
+      "url": "https://html.spec.whatwg.org/multipage/dom.html"
+    },
+    "whatwg-html-standard-metadata-names": {
+      "id": "whatwg-html-standard-metadata-names",
+      "publisher": "WHATWG",
+      "title": "HTML Living Standard — standard metadata names",
+      "rigor": "normative",
+      "url": "https://html.spec.whatwg.org/multipage/semantics.html"
+    },
+    "whatwg-html-title": {
+      "id": "whatwg-html-title",
+      "publisher": "WHATWG",
+      "title": "HTML Living Standard — the title element",
+      "rigor": "normative",
+      "url": "https://html.spec.whatwg.org/multipage/semantics.html"
+    },
+    "whatwg-url": {
+      "id": "whatwg-url",
+      "publisher": "WHATWG",
+      "title": "URL Standard",
+      "rigor": "normative",
+      "url": "https://url.spec.whatwg.org/"
+    }
+  },
+  "rules": [
+    {
+      "id": "canonical.absolute",
+      "scope": "page",
+      "category": "canonical",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "`rel=\"canonical\"` must be an absolute, fully-qualified URL",
+      "why": "Consumers read the literal attribute value, not the browser-resolved URL. A relative canonical means every consumer resolves it against whatever base it assumes — including the wrong origin.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc6596",
+        "google-canonicalization",
+        "whatwg-url"
+      ],
+      "reads": [
+        "meta.canonical"
+      ],
+      "relates": [
+        "canonical.missing"
+      ],
+      "expected": "an absolute `http(s)://` canonical URL"
+    },
+    {
+      "id": "canonical.missing",
+      "scope": "page",
+      "category": "canonical",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare a `<link rel=\"canonical\">` so search engines pick the right URL",
+      "why": "Without a canonical, engines choose among duplicate URLs (tracking params, http/https, trailing slashes) themselves — and may split ranking signals across them.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc6596",
+        "google-canonicalization"
+      ],
+      "reads": [
+        "meta.canonical"
+      ],
+      "relates": [
+        "canonical.absolute"
+      ],
+      "expected": "a `<link rel=\"canonical\">` declaration",
+      "fix": {
+        "title": "Declare the canonical URL",
+        "snippet": "// app/…/page.tsx — relative canonicals resolve against metadataBase,\n// which defaults to localhost and silently breaks in production.\nexport const metadata = {\n  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),\n  alternates: { canonical: \"/the-page\" },\n};",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "description.accurate",
+      "scope": "prose",
+      "category": "meta",
+      "severity": null,
+      "kind": "prose",
+      "summary": "The meta description summarizes this page truthfully",
+      "why": "The description is the one sentence you get to write in a search result. A boilerplate line repeated site-wide, or one that promises something the page does not deliver, gets replaced by improvised page text — or gets the click and loses the visitor.",
+      "rigor": "guideline",
+      "sources": [
+        "google-snippet",
+        "moz-meta-description"
+      ],
+      "reads": [
+        "meta.description",
+        "document.title",
+        "http.finalUrl"
+      ],
+      "prose": "Does the description accurately summarize this page's content, and is it written for this page rather than copied across the site?"
+    },
+    {
+      "id": "description.length",
+      "scope": "page",
+      "category": "meta",
+      "severity": "warning",
+      "kind": "scored",
+      "summary": "Keep descriptions between 50 and 160 characters",
+      "why": "Snippets truncate around 160 characters and very short descriptions get replaced by improvised page text. Display folklore, not spec.",
+      "rigor": "heuristic",
+      "sources": [
+        "google-snippet",
+        "moz-meta-description"
+      ],
+      "reads": [
+        "meta.description"
+      ],
+      "relates": [
+        "description.missing"
+      ],
+      "expected": "50–160 characters",
+      "bands": {
+        "ideal": [
+          50,
+          160
+        ],
+        "acceptable": [
+          25,
+          200
+        ]
+      },
+      "severityByBand": {
+        "acceptable": "warning",
+        "poor": "warning"
+      }
+    },
+    {
+      "id": "description.missing",
+      "scope": "page",
+      "category": "meta",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Provide a `<meta name=\"description\">` on every indexable page",
+      "why": "The description feeds the search-result snippet. Without one, engines improvise from page text — usually worse than a sentence you wrote.",
+      "rigor": "spec-recommended",
+      "sources": [
+        "whatwg-html-standard-metadata-names",
+        "google-snippet"
+      ],
+      "reads": [
+        "meta.description"
+      ],
+      "relates": [
+        "description.length",
+        "og.description.missing"
+      ],
+      "expected": "a non-empty `<meta name=\"description\">`",
+      "fix": {
+        "title": "Add a meta description",
+        "snippet": "// app/…/page.tsx\nexport const metadata = {\n  description: \"One sentence that promises what this page delivers.\",\n};",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "hreflang.missing",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Pages on a multilingual site must advertise their locale alternates",
+      "rigor": null,
+      "sources": []
+    },
+    {
+      "id": "hreflang.sitemap-mismatch",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`<head>` alternates and sitemap locale coverage must agree",
+      "rigor": null,
+      "sources": []
+    },
+    {
+      "id": "lang.matches-content",
+      "scope": "prose",
+      "category": "i18n",
+      "severity": null,
+      "kind": "prose",
+      "summary": "The declared `lang` is the language the page is actually written in",
+      "why": "A wrong `lang` is worse than a missing one: screen readers switch to the wrong pronunciation rules, browsers offer to translate a page that is already in the reader's language, and search engines file the page under the wrong audience. Nothing in the markup contradicts it, so no mechanical check can catch it.",
+      "rigor": "spec-required",
+      "sources": [
+        "whatwg-html-lang",
+        "w3c-i18n-language-tags"
+      ],
+      "reads": [
+        "document.lang",
+        "document.title",
+        "meta.description",
+        "openGraph.locale"
+      ],
+      "prose": "Is the text of this page actually written in the language its `lang` attribute declares?"
+    },
+    {
+      "id": "og.description.missing",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Set an explicit `og:description` for richer link unfurls",
+      "why": "A page that opted into Open Graph but omitted og:description gets unfurls that fall back to the meta description — or to nothing.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.description",
+        "openGraph.title",
+        "openGraph.images",
+        "openGraph.url"
+      ],
+      "relates": [
+        "description.missing"
+      ],
+      "expected": "an `og:description` alongside the other `og:*` tags"
+    },
+    {
+      "id": "og.image.missing",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Provide at least one `og:image` so links unfurl with a preview",
+      "why": "og:image is one of the four required Open Graph properties, and the one with the most visible payoff: without it, unfurls are text-only or pick a random body image.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.title.missing"
+      ],
+      "expected": "at least one `og:image`",
+      "fix": {
+        "title": "Add an og:image",
+        "snippet": "// app/…/page.tsx\nexport const metadata = {\n  openGraph: { images: [{ url: \"/og.png\", width: 1200, height: 630 }] },\n};\n// Or generate one per page: app/…/opengraph-image.tsx with ImageResponse.",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.representative",
+      "scope": "prose",
+      "category": "opengraph",
+      "severity": null,
+      "kind": "prose",
+      "summary": "The `og:image` represents this page and survives the unfurl crop",
+      "why": "The preview image is the whole payload of a shared link. A generic site-wide banner, or artwork whose subject sits outside the ~1.91:1 crop, is present enough to pass every mechanical check and still communicate nothing.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images",
+        "openGraph.title",
+        "document.title",
+        "http.finalUrl"
+      ],
+      "prose": "Does the og:image represent what this page is about, rather than being a site-wide default, and does its subject survive being cropped to the 1.91:1 aspect ratio consumers render?"
+    },
+    {
+      "id": "og.title.missing",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Set an explicit `og:title` instead of relying on `<title>` fallback",
+      "why": "og:title is one of the four properties the Open Graph protocol requires. Consumers that fall back to `<title>` drag site-name boilerplate into the unfurl.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.title"
+      ],
+      "relates": [
+        "title.missing",
+        "og.image.missing"
+      ],
+      "expected": "an explicit `og:title`"
+    },
+    {
+      "id": "robots.blocks-site",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "`robots.txt` must not forbid crawling a site that asks to be indexed",
+      "rigor": null,
+      "sources": []
+    },
+    {
+      "id": "robots.conflict",
+      "scope": "page",
+      "category": "robots",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "`robots`, `googlebot`, and `X-Robots-Tag` must not contradict each other",
+      "why": "When directives conflict, crawlers resolve them with the most restrictive interpretation — a stray `noindex` wins over the `index` you meant, and the page silently drops out of search.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-robots-meta"
+      ],
+      "reads": [
+        "meta.robots",
+        "meta.googlebot",
+        "http.headers"
+      ],
+      "expected": "consistent indexing directives across meta tags and headers"
+    },
+    {
+      "id": "title.descriptive",
+      "scope": "prose",
+      "category": "document",
+      "severity": null,
+      "kind": "prose",
+      "summary": "The `<title>` describes this specific page",
+      "why": "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",
+      "rigor": "guideline",
+      "sources": [
+        "google-title-link",
+        "bing-webmaster-guidelines"
+      ],
+      "reads": [
+        "document.title",
+        "meta.description",
+        "openGraph.title",
+        "http.finalUrl"
+      ],
+      "prose": "Does the title describe what is on THIS page specifically — not the site, not the section — and would it be distinguishable from the other pages of this site in a list of search results?"
+    },
+    {
+      "id": "title.length",
+      "scope": "page",
+      "category": "document",
+      "severity": "warning",
+      "kind": "scored",
+      "summary": "Keep `<title>` between 10 and 60 characters",
+      "why": "Long titles get truncated in search results and short ones waste the one line every result gets. The window is display folklore, not spec — Google states title length is not a ranking factor.",
+      "rigor": "heuristic",
+      "sources": [
+        "google-title-link",
+        "moz-title-tag"
+      ],
+      "reads": [
+        "document.title"
+      ],
+      "relates": [
+        "title.missing"
+      ],
+      "expected": "10–60 characters",
+      "bands": {
+        "ideal": [
+          10,
+          60
+        ],
+        "acceptable": [
+          5,
+          70
+        ]
+      },
+      "severityByBand": {
+        "acceptable": "warning",
+        "poor": "warning"
+      }
+    },
+    {
+      "id": "title.missing",
+      "scope": "page",
+      "category": "document",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Every page needs a non-empty `<title>`",
+      "why": "The title element is required by the HTML standard and is the primary label search engines, browser tabs, bookmarks, and screen readers use for the page.",
+      "rigor": "spec-required",
+      "sources": [
+        "whatwg-html-title"
+      ],
+      "reads": [
+        "document.title"
+      ],
+      "relates": [
+        "title.length",
+        "og.title.missing"
+      ],
+      "expected": "a non-empty `<title>` element",
+      "fix": {
+        "title": "Add a <title> to <head>",
+        "snippet": "// app/…/page.tsx — App Router owns the <head>; never hand-write the tag.\nexport const metadata = { title: \"Page name — Site name\" };",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "viewport.missing",
+      "scope": "page",
+      "category": "meta",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare a `<meta name=\"viewport\">` so mobile browsers render at the right scale",
+      "why": "Without a viewport declaration mobile browsers render at desktop width and scale down — unreadable text and a mobile-usability demotion.",
+      "rigor": "guideline",
+      "sources": [
+        "mdn-viewport",
+        "whatwg-html-standard-metadata-names"
+      ],
+      "reads": [
+        "meta.viewport"
+      ],
+      "expected": "a `<meta name=\"viewport\">` declaration",
+      "fix": {
+        "title": "Add a viewport meta",
+        "snippet": "// app/layout.tsx — a dedicated export, not part of `metadata`.\nexport const viewport = { width: \"device-width\", initialScale: 1 };",
+        "language": "tsx"
+      }
+    }
+  ]
+}

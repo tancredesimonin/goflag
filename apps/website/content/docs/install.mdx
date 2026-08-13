@@ -67,10 +67,15 @@ something.
 
 ## Chromium
 
-By default, a page whose `<head>` looks empty (no title, no description, no
-canonical, no Open Graph, no JSON-LD) is re-rendered in headless Chromium, so a
-client-rendered application is not reported as missing everything it actually
-declares at runtime.
+By default, a page whose `<head>` is empty of _every_ discriminating signal — no
+title (or a placeholder one like "React App"), no description, no canonical, no
+Open Graph, no `twitter:*`, no JSON-LD and no `hreflang` alternate — is
+re-rendered in headless Chromium, so a client-rendered application is not
+reported as missing everything it actually declares at runtime.
+
+The test is a conjunction, and deliberately conservative: one server-rendered
+`hreflang` link or one `twitter:card` in an otherwise empty shell is enough to
+keep the page on the static path.
 
 That path needs `playwright`, which is an **optional peer dependency**: nothing
 is downloaded unless you ask for it.
@@ -87,9 +92,11 @@ is downloaded unless you ask for it.
   bun={"bun add -d playwright\nbunx playwright install chromium"}
 />
 
-Without it, goflag does not fail: the page is judged on its static HTML and the
-report notes that it would have escalated. Install Chromium when you see that
-note and the findings look wrong.
+Without it, goflag does not fail: the page is judged on its static HTML, and the
+report says so. Any page that wanted the browser and did not get it is counted in
+`diagnostics.warnings`, naming what could not be started and warning that the
+metadata findings on those pages may be phantoms. That warning is the signal to
+install Chromium and re-run before believing a page is missing everything.
 
 ### `--static`, if you are certain
 

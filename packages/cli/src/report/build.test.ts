@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveTranslationHoles, exitCode } from "./build";
+import { blockedEscalationWarning, deriveTranslationHoles, exitCode } from "./build";
 import type { I18nMatrix } from "@/lib/core/i18n";
+import type { Page } from "@/lib/core/types";
 import type { GoflagReport } from "./types";
+
+/** A page carrying only what `blockedEscalationWarning` reads. */
+function pageWithExtractor(extractor: Page["extractor"]): Page {
+  return { extractor } as Page;
+}
 
 /** Build a matrix from a compact `{ route: { locale: hasPage } }` spec. */
 function matrixFrom(spec: Record<string, Record<string, boolean>>): I18nMatrix {
@@ -21,6 +27,43 @@ function matrixFrom(spec: Record<string, Record<string, boolean>>): I18nMatrix {
   }
   return { routes, locales, cells };
 }
+
+describe("blockedEscalationWarning", () => {
+  it("says nothing when every page was judged the way it asked to be", () => {
+    const pages = [
+      pageWithExtractor({ mode: "static", escalated: false }),
+      pageWithExtractor({ mode: "headless", escalated: true, escalationReason: "no og:*" }),
+    ];
+    expect(blockedEscalationWarning(pages)).toBeNull();
+  });
+
+  it("reports the pages judged on a shell because the browser never started", () => {
+    // The defect this exists for: without the warning, an SPA audited on a
+    // machine with no Chromium reports `title.missing` down every page and
+    // nothing in the report distinguishes that from a site that really has no
+    // titles.
+    const pages = [
+      pageWithExtractor({ mode: "static", escalated: false }),
+      pageWithExtractor({
+        mode: "static",
+        escalated: false,
+        escalationReason: "placeholder title, no og:*",
+        escalationBlocked: "Headless mode requires the 'playwright' package.",
+      }),
+      pageWithExtractor({
+        mode: "static",
+        escalated: false,
+        escalationReason: "no canonical",
+        escalationBlocked: "Headless mode requires the 'playwright' package.",
+      }),
+    ];
+
+    const warning = blockedEscalationWarning(pages);
+    expect(warning).toContain("2 page(s)");
+    expect(warning).toContain("playwright");
+    expect(warning).toContain("phantoms");
+  });
+});
 
 describe("deriveTranslationHoles", () => {
   it("flags a route present in one locale but missing in another", () => {
