@@ -491,8 +491,21 @@ publish:next:
 # would not trigger the tag pipeline that publishes.
 tag:
   stage: release
+  # `$CI_PIPELINE_SOURCE == "push"`, for the reason `deploy` carries it a
+  # hundred lines up: a scheduled pipeline sets `$CI_COMMIT_BRANCH`, and so does
+  # one started from the "Run pipeline" button. A bare branch rule would put the
+  # one job that writes to this repository into every one of them — reconciling
+  # a tag against a commit nobody touched. This repository is about to get a
+  # weekly schedule for the security scan, which is what makes that concrete.
+  #
+  # The manual rule keeps the retry the paragraph above promises: idempotent and
+  # safe to retry means there has to be a way to ask for it, and re-running a
+  # pipeline is a `web` pipeline, which the first rule no longer matches.
   rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
   variables:
     # The tag lands on the develop side of the merge, so the history has to be
     # there to find it.
