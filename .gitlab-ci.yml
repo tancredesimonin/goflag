@@ -65,8 +65,6 @@ variables:
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
 
 # `test:unit` runs both packages, so it must fire when either one moves. Kept
 # separate from `.cli_changes` above: that one gates the jobs that boot HTTP
@@ -80,8 +78,24 @@ variables:
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+
+# The merge request is where a verdict is worth deriving. The push that follows
+# a merge used to re-derive it: nine jobs, 88 runs each over 1–13 August, 1431
+# minutes spent re-checking content that had already been checked, on a branch
+# nobody can push to directly.
+#
+# Nothing downstream was waiting for it. `deploy-develop` carries
+# `dependencies: []` and builds its own image, so not one of those jobs stood
+# between a merge and a deploy — they ran beside it.
+#
+# `build` is the exception and keeps its place on the branch; its own rules say
+# why. The two rules removed from the anchors above were the other half of this:
+# they fired on `main` and `develop` with no `changes:` filter at all, so the
+# packaging and integration suites ran in full on every merge regardless of what
+# had moved.
+.mr_only: &mr_only
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 # The cache lives here rather than in `default:` on purpose. Every job in this
 # file pulls in this anchor, so they all still get it; the jobs that come from
@@ -111,7 +125,7 @@ variables:
 
 install:
   stage: install
-  <<: *pnpm
+  <<: [*pnpm, *mr_only]
   script:
     - pnpm --version
     - node --version
@@ -122,25 +136,40 @@ install:
 
 lint:
   stage: verify
-  <<: *pnpm
+  <<: [*pnpm, *mr_only]
   script:
     - pnpm lint
 
 typecheck:
   stage: verify
-  <<: *pnpm
+  <<: [*pnpm, *mr_only]
   script:
     - pnpm typecheck
 
 format-check:
   stage: verify
-  <<: *pnpm
+  <<: [*pnpm, *mr_only]
   script:
     - pnpm format:check
 
 build:
   stage: verify
   <<: *pnpm
+  # The one job that stays on `develop` and `main`.
+  #
+  # A merge request pipeline builds the branch head, not the merge result —
+  # `merge_pipelines_enabled` is off on this project — so the merged tree is
+  # never compiled until it is already on the branch. Two branches that each
+  # typecheck can still produce an import that resolves in neither, and this is
+  # the only job positioned to see it.
+  #
+  # `$CI_PIPELINE_SOURCE == "push"` for the same reason `deploy` carries it: a
+  # scheduled pipeline sets `$CI_COMMIT_BRANCH`, and a bare branch rule would
+  # rebuild on every schedule, on a commit nobody touched.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
   variables:
     # `apps/website` refuses to build without this whenever `CI` or
     # `APP_ENV=production` is set, which is the guard working as intended: the URL
