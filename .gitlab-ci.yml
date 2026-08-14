@@ -32,8 +32,23 @@ include:
 default:
   image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
 
+# No `install` stage. There used to be a job by that name whose whole purpose was
+# to publish `node_modules` as an artifact so the jobs after it would not have to
+# install — the standard shape, and it never worked here, because the `.pnpm`
+# anchor below is applied to every one of those jobs and ends in
+# `pnpm install --frozen-lockfile`. Each one downloaded the artifact, unpacked
+# it, and then installed straight over it.
+#
+# The measurement was the giveaway: the job ran `pnpm --version` and `node
+# --version` and took 1.77 minutes, which is the same 1.77 minutes `lint` took
+# to lint. It was publishing setup, not skipping it.
+#
+# What actually carries the dependencies between pipelines is the cache keyed on
+# `pnpm-lock.yaml`, which is unchanged and still applies to every job through the
+# same anchor. Nothing else in this file declares `artifacts:` any more, so no
+# job downloads anything at startup — `tag`, which needs git and nothing else,
+# was pulling a monorepo's `node_modules` down for no reason at all.
 stages:
-  - install
   - verify
   - test
   - security
@@ -122,17 +137,6 @@ variables:
     - corepack enable
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
-
-install:
-  stage: install
-  <<: [*pnpm, *mr_only]
-  script:
-    - pnpm --version
-    - node --version
-  artifacts:
-    paths:
-      - node_modules
-    expire_in: 1 hour
 
 # One job, three commands, because the commands were never the cost.
 #
