@@ -134,22 +134,32 @@ install:
       - node_modules
     expire_in: 1 hour
 
-lint:
+# One job, three commands, because the commands were never the cost.
+#
+# `lint`, `typecheck` and `format-check` each paid a full `pnpm install` to run
+# something that finishes in about as long as it takes to say. Measured over
+# 1–13 August, against the `install` job — which runs `pnpm --version` and
+# nothing else, so its duration *is* the setup:
+#
+#   install        1.77 min      setup and nothing else
+#   lint           1.77 min      of which 0.00 is lint
+#   format-check   1.75 min      of which 0.00 is the format check
+#   typecheck      1.81 min      of which 0.04 is typechecking
+#
+# Three setups to do four seconds of work. Named `check` rather than `verify`
+# because that is what the same merged job is called in the six site
+# repositories in this group.
+#
+# The cost is that a failure stops the job: a formatting slip now hides a type
+# error until it is fixed, where three jobs reported all three verdicts at once.
+# `pnpm lint` and `pnpm format:check` are both fixed by the pre-commit hook
+# before CI ever sees them, so the case is rarer than the ordering suggests.
+check:
   stage: verify
   <<: [*pnpm, *mr_only]
   script:
     - pnpm lint
-
-typecheck:
-  stage: verify
-  <<: [*pnpm, *mr_only]
-  script:
     - pnpm typecheck
-
-format-check:
-  stage: verify
-  <<: [*pnpm, *mr_only]
-  script:
     - pnpm format:check
 
 build:
