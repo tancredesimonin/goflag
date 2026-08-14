@@ -30,6 +30,18 @@ include:
     rules: *not_a_release_push
 
 default:
+  # `auto_cancel_pending_pipelines` is on for this project and was doing almost
+  # nothing: GitLab only cancels a *running* job if the job says it may be
+  # cancelled, and no job here said so. A second push while the first pipeline
+  # was still going left it running to the end — 66 minutes a fortnight,
+  # measured over 1-13 August against the jobs this file still declares.
+  #
+  # In `default:` so it reaches the security jobs from the cross-project
+  # includes too; they only read the tree.
+  #
+  # Everything that writes opts back out below: the deploy template, both
+  # publish jobs, and `tag`.
+  interruptible: true
   image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
 
 # No `install` stage. There used to be a job by that name whose whole purpose was
@@ -328,6 +340,10 @@ test:package:next:
 # the other sites. Nothing new is provisioned: the Beszel agent already reports
 # every container on that host, and Gatus watches the three hostnames.
 .kamal_deploy_template:
+  # Never interrupted. Once a job touching the running site starts, GitLab stops
+  # auto-cancelling the pipeline at all — cancel during the checks, never once a
+  # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
+  interruptible: false
   image: docker:29.7.1@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
   services:
     - docker:29.7.1-dind@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
@@ -415,6 +431,9 @@ kamal-proxy-reboot:
 # would fire both on either tag, and each would then fail its own version check
 # — a red pipeline on a release that actually succeeded.
 publish:npm:
+  # Publishing to npm is not reversible. A version yanked is still a version
+  # that existed.
+  interruptible: false
   stage: release
   <<: *pnpm
   rules:
@@ -456,6 +475,8 @@ publish:npm:
 # token does not help because those only restrict to packages already
 # published. The first `@goflag/next` version therefore goes out by hand.
 publish:next:
+  # Same: not reversible.
+  interruptible: false
   stage: release
   <<: *pnpm
   rules:
@@ -504,6 +525,10 @@ publish:next:
 # Maintainers may create them. The job token cannot, and a push made with it
 # would not trigger the tag pipeline that publishes.
 tag:
+  # The only job that writes back to this repository. It is idempotent, but a
+  # push of a ref interrupted between `git tag` and `git push` is a tag that
+  # exists locally and nowhere else.
+  interruptible: false
   stage: release
   # `$CI_PIPELINE_SOURCE == "push"`, for the reason `deploy` carries it a
   # hundred lines up: a scheduled pipeline sets `$CI_COMMIT_BRANCH`, and so does
