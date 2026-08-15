@@ -17,7 +17,7 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
 - **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless the site declares its translation clusters — either with `xhtml:link` in the sitemap, or with reciprocal `hreflang` between two crawled pages' `<head>`. Then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`. The sitemap source survives `--coverage structural`, where the two locales of a slug-translating family are rarely both sampled; the `<head>` source needs both pages in hand and is what fixes the common site that declares properly there and nothing in its sitemap.
-- **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
+- **robots.txt policy** — the file is parsed to RFC 9309, not scanned: every group, every rule, every line it could not read, each with its number. goflag flags a site that forbids crawling while its pages ask to be indexed — site-wide, and now per path, which is the quiet version nothing was watching. It also reports the file that errors (a 5xx there is read as a site-wide ban), one over the 500 KiB a parser must honour, a typo that silently deletes the rule you meant to write, a redirect handing your crawl policy to another origin, and a `Sitemap:` that is not a full URL.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
 - **Open Graph, past its presence** — a declared `og:image` is judged as well as counted: relative URLs no crawler can resolve, an undeclared size (so the first share of a URL renders without the image), a shape far from the 1.91:1 the card is cropped to, a missing `og:image:alt`, and — the one no tag check can reach — whether the URL actually serves an image at all. On a translated page, `og:locale` and `og:locale:alternate` are checked against the hreflang cluster — two vocabularies for one fact, which nothing in a build keeps in step.
 - **Icons** — whether anything declares one at all (nothing in a spec requires it, which is why nothing complains), whether iOS has an `apple-touch-icon` to use instead of screenshotting the page, whether the Web App Manifest and the `<head>` contradict each other about the same file, whether every declared icon answers with an image, whether a `sizes` attribute describes the file it points at (a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself), and whether the origin actually serves `/favicon.ico` — a 200 of HTML from a catch-all route does not count. Two icon lists that merely differ are the normal case and are not reported.
@@ -142,10 +142,10 @@ npx @goflag/cli rules > rules.json
 crawl, no network. Every entry carries its scope, severity and summary; the
 twenty-three page rules and four prose rules also carry a rigor, the documents they
 cite and — where a remedy is a line of code — a fix snippet. Cross-page rules
-may carry them too, and one does; the three that predate the field still emit
-`rigor: null` with an empty `sources`, because choosing their citations is work
-nobody has done and inventing an authority is worse than admitting the gap.
-Write your consumer against that. The same document
+may carry them too, and the robots family does; the three hreflang and sitemap
+rules that predate the field still emit `rigor: null` with an empty `sources`,
+because choosing their citations is work nobody has done and inventing an
+authority is worse than admitting the gap. Write your consumer against that. The same document
 ships inside the package as `rules.json`, if you would rather read it than run
 anything.
 

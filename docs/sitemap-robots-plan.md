@@ -1,6 +1,6 @@
 # goflag — Sitemap & robots.txt Validation Spec
 
-> **Status:** planning · **Written:** 2026-08-06
+> **Status:** G.1 and §4.1–4.2 shipped 2026-08-15 · **Written:** 2026-08-06
 > **Related:** `docs/rules-catalog-plan.md` — this document is the **artefact
 > layer** built on that design. It lands **after** the rule-catalog build-out
 > (it needs the source catalog, the rule descriptor, and the extraction model)
@@ -272,12 +272,12 @@ Scheduled as **Phase G** of the rule-catalog plan. Dependencies: **A**
 descriptor). Independent of D (profiles), E (prose), F (wiring) — though F
 must thread `siteIssues` the same way it threads page findings.
 
-| Step    | Deliverable                                                                                                                |
-| ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **G.1** | `RobotsExtraction`: full RFC 9309 parse with line provenance; replaces `RobotsProbe`; the §3.3 matcher with its test suite |
-| **G.2** | robots rules (§4.1–4.2), including re-expressing `robots.blocks-site` and shipping `robots.blocks-page`                    |
-| **G.3** | `SitemapExtraction`: document tree kept, `SiteDiscovery` consumes it; structure + entry rules (§4.3–4.4)                   |
-| **G.4** | Cross-artefact rules (§4.5), bounded probing through the link engine; delete the dead diagnostics fields                   |
+| Step    | Deliverable                                                                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **G.1** | ✅ **shipped** — full RFC 9309 parse with line provenance, folded into `RobotsProbe` rather than beside it; the §3.3 matcher with one test per row of its semantics table      |
+| **G.2** | ✅ **shipped** — §4.1 in full, §4.2 less `sitemap.unreachable` (it needs the sitemap fetch of G.3). `robots.blocks-site` re-expressed on the matcher, `robots.blocks-page` new |
+| **G.3** | `SitemapExtraction`: document tree kept, `SiteDiscovery` consumes it; structure + entry rules (§4.3–4.4)                                                                       |
+| **G.4** | Cross-artefact rules (§4.5), bounded probing through the link engine; delete the dead diagnostics fields                                                                       |
 
 Each step ships independently (tests + full gate → MR to `develop`), G.1 → G.4
 in order — the matcher is the only real prerequisite chain.
