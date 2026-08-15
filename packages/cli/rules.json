@@ -1,6 +1,6 @@
 {
   "counts": {
-    "page": 11,
+    "page": 17,
     "site": 3,
     "prose": 4
   },
@@ -18,6 +18,13 @@
       "title": "Consolidate duplicate URLs (canonicalization)",
       "rigor": "vendor-spec",
       "url": "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls"
+    },
+    "google-hreflang": {
+      "id": "google-hreflang",
+      "publisher": "Google",
+      "title": "Localized versions of your pages (hreflang)",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/specialty/international/localized-versions"
     },
     "google-robots-meta": {
       "id": "google-robots-meta",
@@ -116,6 +123,13 @@
       "title": "URL Standard",
       "rigor": "normative",
       "url": "https://url.spec.whatwg.org/"
+    },
+    "x-cards": {
+      "id": "x-cards",
+      "publisher": "X (Twitter)",
+      "title": "X Cards — about cards markup",
+      "rigor": "vendor-spec",
+      "url": "https://developer.x.com/en/docs/twitter-for-websites/cards/overview/abouts-cards"
     }
   },
   "rules": [
@@ -313,6 +327,85 @@
       "expected": "an `og:description` alongside the other `og:*` tags"
     },
     {
+      "id": "og.image.absolute",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`og:image` must be an absolute URL",
+      "why": "Unlike a browser, the crawler that builds the preview has no document to resolve a relative path against — it reads the tag, not the page. A relative `og:image` is therefore not a smaller mistake than a missing one: the unfurl is identical, and the tag makes it look handled.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing",
+        "canonical.absolute"
+      ],
+      "expected": "every `og:image` URL absolute, scheme included",
+      "fix": {
+        "title": "Give Next a metadataBase, or write the origin in",
+        "snippet": "// app/layout.tsx — every relative metadata URL resolves against this.\nexport const metadata = {\n  metadataBase: new URL(process.env.SITE_ORIGIN!),\n  openGraph: { images: [\"/og.png\"] }, // emitted absolute\n};",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.alt",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Describe the shared image with `og:image:alt`",
+      "why": "The protocol defines `og:image:alt` as a description of what is in the image, and a generated card usually carries the page's title as pixels. Omitting it leaves that text sighted-only, in the one place a link is seen before anybody has opened the page. Optional in the vocabulary, which is why this is a guideline and not a spec violation.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing"
+      ],
+      "expected": "an `og:image:alt` beside every `og:image`",
+      "fix": {
+        "title": "Carry the alt per image, not as a constant",
+        "snippet": "// app/…/opengraph-image.tsx — `export const alt` is one fixed string, so a\n// translated or data-derived description has to go through the metadata fn.\nexport async function generateImageMetadata({ params }) {\n  const t = await getTranslations({ locale: params.locale });\n  return [{ id: \"og\", size, contentType, alt: t(\"og.alt\") }];\n}",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.dimensions",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare `og:image:width` and `og:image:height`",
+      "why": "A crawler that does not know the size cannot lay the card out until it has fetched the image, so the first share of a URL renders without it — the one share that matters most. The dimensions are the fix, and they cost two tags.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing",
+        "og.image.ratio"
+      ],
+      "expected": "both `og:image:width` and `og:image:height` on every image",
+      "fix": {
+        "title": "Declare the size alongside the URL",
+        "snippet": "// app/…/page.tsx\nexport const metadata = {\n  openGraph: { images: [{ url: \"/og.png\", width: 1200, height: 630 }] },\n};\n// The file convention emits both from `export const size` for free.",
+        "language": "tsx"
+      }
+    },
+    {
       "id": "og.image.missing",
       "scope": "page",
       "category": "opengraph",
@@ -339,6 +432,41 @@
       }
     },
     {
+      "id": "og.image.ratio",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "info",
+      "kind": "scored",
+      "summary": "Keep the shared image near the 1.91:1 the card is laid out for",
+      "why": "Meta's recommended 1200×630 is a shape before it is a size. An image far from it is not rejected — it is cropped to fit, and the crop is chosen by the consumer rather than by you.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "meta-og-sharing",
+        "x-cards"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.dimensions"
+      ],
+      "expected": "a width ÷ height between 1.7 and 2.1 (1.91:1 is 1.9)",
+      "bands": {
+        "ideal": [
+          1.7,
+          2.1
+        ],
+        "acceptable": [
+          1,
+          3
+        ]
+      },
+      "severityByBand": {
+        "acceptable": "info",
+        "poor": "warning"
+      }
+    },
+    {
       "id": "og.image.representative",
       "scope": "prose",
       "category": "opengraph",
@@ -358,6 +486,62 @@
         "http.finalUrl"
       ],
       "prose": "Does the og:image represent what this page is about, rather than being a site-wide default, and does its subject survive being cropped to the 1.91:1 aspect ratio consumers render?"
+    },
+    {
+      "id": "og.locale.alternates",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`og:locale:alternate` and the hreflang cluster must name the same locales",
+      "why": "Two vocabularies describe the same fact — this page exists in these languages — and nothing in a build keeps them in step, so they drift silently. Whichever one is short is the one telling a consumer that a translation it could have linked to does not exist.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "google-hreflang"
+      ],
+      "reads": [
+        "openGraph.locale",
+        "openGraph.localeAlternates",
+        "links.hreflang"
+      ],
+      "relates": [
+        "og.locale.missing",
+        "hreflang.missing"
+      ],
+      "expected": "one `og:locale:alternate` per hreflang locale other than this page's own",
+      "fix": {
+        "title": "Derive both lists from the same cluster",
+        "snippet": "// The hreflang map and the OG locales are one fact stated twice.\nopenGraph: {\n  locale: ogLocale(locale),\n  alternateLocale: cluster.filter((l) => l !== locale).map(ogLocale),\n},\nalternates: { languages: cluster },",
+        "language": "ts"
+      }
+    },
+    {
+      "id": "og.locale.missing",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A translated page has to say which locale it is in",
+      "why": "`og:locale` defaults to `en_US` in the protocol itself — so a page that omits it does not decline to answer, it answers wrongly. On a site whose whole point is that the same page exists in several languages, every translation claims to be American English.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.locale",
+        "links.hreflang"
+      ],
+      "relates": [
+        "og.locale.alternates",
+        "hreflang.missing"
+      ],
+      "expected": "an `og:locale` on any page that declares hreflang alternates",
+      "fix": {
+        "title": "Emit the locale in the page's own metadata",
+        "snippet": "// app/[locale]/…/page.tsx\nexport const metadata = {\n  openGraph: { locale: \"fr_FR\", alternateLocale: [\"en_US\", \"es_ES\"] },\n};",
+        "language": "tsx"
+      }
     },
     {
       "id": "og.title.missing",

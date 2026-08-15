@@ -75,6 +75,34 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Page has no `og:image`. Link unfurls will fall back to text-only or a random body image.",
   },
+  "og.image.absolute": {
+    why: "A relative path works in every browser you test in, because a browser has the page to resolve it against. The crawler building the preview has only the tag. So the share looks exactly as broken as having no image at all — with the difference that the tag is there, and review moves on.",
+    message:
+      "Open Graph image URL is not absolute: `og:image` = `/og.png`. Crawlers cannot resolve it.",
+  },
+  "og.image.alt": {
+    why: "Generated cards carry the page title as pixels. With no `og:image:alt`, that title is unavailable to anyone using a screen reader — at the moment a link is shared, which is before anyone has had the chance to open the page and find the text again.",
+    message: "Page declares an `og:image` with no `og:image:alt`.",
+  },
+  "og.image.dimensions": {
+    why: "The first time a URL is shared, the crawler has not seen the image yet. Told the size, it can lay the card out immediately; left to guess, it renders the share without the image and fetches it afterwards. The first share is usually the one that travels.",
+    message: "The `og:image` declaration omits `og:image:width` or `og:image:height`.",
+  },
+  "og.image.ratio": {
+    why: "Nothing rejects an image of the wrong shape — it gets cropped, and the consumer picks the crop. A square logo becomes a centre strip of itself, and whatever mattered in it was at the edges.",
+    message:
+      "`og:image` is 600×600 — a ratio of 1:1, against the 1.91:1 the preview card is laid out for. Consumers will crop it.",
+  },
+  "og.locale.missing": {
+    why: "The protocol fills the gap for you: with no `og:locale`, the page is `en_US`. A translated site that omits the tag has not stayed silent about its language — it has told every consumer that all six translations are American English.",
+    message:
+      "Page declares hreflang alternates (en, es, fr) but no `og:locale`; the protocol default `en_US` applies instead.",
+  },
+  "og.locale.alternates": {
+    why: "The same fact — this page exists in these languages — is written twice, in two vocabularies, by two pieces of code. Nothing in a build compares them, so they drift apart quietly, and the shorter list is the one hiding a translation somebody paid to have made.",
+    message:
+      "Open Graph and hreflang disagree about this page's translations: no `og:locale:alternate` for es, fr.",
+  },
   "robots.conflict": {
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
     message:
