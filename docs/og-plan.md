@@ -601,7 +601,8 @@ prise dans l'autre sens.
 
 **OG-3 à la main, pas depuis un paquet.** On n'extrait qu'après deux
 consommateurs (I4), et le second doit être écrit sans l'API pour qu'on voie ce
-que l'API aurait dû faire. Bénéfice immédiat — 38 findings de moins — pour zéro
+que l'API aurait dû faire. Bénéfice immédiat — **48 findings de moins**, les 24
+`og.image.missing` et les 24 `og.locale.alternates` du §10.4 — pour zéro
 engagement d'API.
 
 ### 10.2 Ce qu'OG-2 a trouvé en se faisant

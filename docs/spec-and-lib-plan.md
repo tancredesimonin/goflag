@@ -409,9 +409,11 @@ Le n°4 est le pire : il **envoyait corriger du contenu déjà correct**.
 - `tancredo` — WIP assumé ; les 27 × 404 viennent de routes liées mais non
   construites (`/{facet}/releases`, `/epk`). Décision produit, pas correction.
 
-**Reste ouvert** — l'`og:image` de stereo-house (38 findings) : les pages hors
-capsules n'ont aucune image, et leur en donner une demande soit un asset, soit
-une route `/og` dynamique. C'est une décision, pas un correctif.
+**~~Reste ouvert~~ — réglé le 2026-08-15.** L'`og:image` de stereo-house
+comptait **24 findings**, pas 38 : les pages hors capsules n'avaient aucune
+image, et leur en donner une demandait soit un asset, soit une route. C'était
+une décision, pas un correctif — elle a été prise en OG-3 de `docs/og-plan.md`,
+et c'est `opengraph-image.tsx` sur six routes qui l'a tranchée.
 
 **Leçon** — le plan annonçait « 10 à 30 lignes par site ». C'était juste pour la
 metadata (un seul générateur par site) et faux pour le reste : les 404 dominent,
