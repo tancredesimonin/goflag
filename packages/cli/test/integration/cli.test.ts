@@ -164,14 +164,25 @@ describe("goflag CLI (spawned process)", () => {
   }, 30_000);
 
   it("stays silent (no progress) on stderr with --quiet + --json", async () => {
-    const r = await runCli([`${server.url}/good`, "--static", "--depth", "0", "--quiet", "--json"]);
+    // `--no-sitemap` because the subject here is quiet mode, not discovery:
+    // a single-page audit that also reported the site has no sitemap would be
+    // testing two things and asserting green on neither.
+    const r = await runCli([
+      `${server.url}/good`,
+      "--static",
+      "--depth",
+      "0",
+      "--no-sitemap",
+      "--quiet",
+      "--json",
+    ]);
     expect(r.status).toBe(0);
     expect(r.stderr).toBe("");
     expect(JSON.parse(r.stdout).summary.verdict).toBe("green");
   }, 30_000);
 
   it("renders a human report to stdout by default", async () => {
-    const r = await runCli([`${server.url}/good`, "--static", "--depth", "0"]);
+    const r = await runCli([`${server.url}/good`, "--static", "--depth", "0", "--no-sitemap"]);
     // /good alone is clean → green flag → exit 0.
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("GREEN FLAG");
@@ -180,7 +191,15 @@ describe("goflag CLI (spawned process)", () => {
 
   it("writes the JSON report to a file with --report", async () => {
     const out = join(tmp, "report.json");
-    const r = await runCli([`${server.url}/good`, "--report", out, "--static", "--depth", "0"]);
+    const r = await runCli([
+      `${server.url}/good`,
+      "--report",
+      out,
+      "--static",
+      "--depth",
+      "0",
+      "--no-sitemap",
+    ]);
     expect(r.status).toBe(0);
     expect(r.stderr).toContain("report written to");
 
