@@ -23,6 +23,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { probeSitemapEntries } from "../lib/core/sitemap/entries";
 import {
   buildClusterIndex,
   buildHeadClusterIndex,
@@ -802,6 +803,57 @@ export async function runAudit(
     ...issue,
   }));
 
+  // --- Link audit over the healthy crawled page set ----------------------
+  //
+  // `effectiveMaxPages`, not `maxPages`. The crawl was told the selection is
+  // the answer to "how many"; this pass was still being told 200, so a
+  // structural run crawled and linted 748 pages and scanned links on the first
+  // 200 of them. Nothing said so usefully either — the report carried
+  // `truncated: true` and "Site has 753 pages; only the first 200 were
+  // scanned" while listing 748, which reads as a display bug rather than as
+  // the coverage claim it was. `0 broken links` then meant 200 pages, on a
+  // report that said 748.
+  const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
+  const linkReport = await runLinkAudit(linkDiscovery, {
+    allowInsecureTls: options.allowInsecureTls,
+    checkExternal,
+    timeoutMs: options.timeoutMs,
+    maxPages: effectiveMaxPages,
+    signal: options.signal,
+    onProgress: (p) =>
+      options.onProgress?.({
+        phase: p.phase === "scan" ? "scan" : "links",
+        done: p.done,
+        total: p.total,
+      }),
+  });
+  warnings.push(...linkReport.diagnostics.warnings);
+
+  // --- What the sitemap promises -----------------------------------------
+  //
+  // Runs here, after the link audit, so it can skip every URL the crawl or
+  // the link engine already answered. On a site whose sitemap and link graph
+  // describe the same pages that is nearly all of them; where they diverge,
+  // the leftovers are exactly what `sitemap.entry.unreachable` is about.
+  //
+  // This is also why the cross-page rules moved below the link audit: they
+  // used to run before it and could not see any of this.
+  const sitemapEntries = discovery
+    ? await probeSitemapEntries(
+        discovery.urls.map((entry) => entry.loc),
+        {
+          crawled: new Map(
+            crawlResult.pages.map((page) => [page.fetch.finalUrl, page.fetch.status]),
+          ),
+          checked: new Map(Object.values(linkReport.checks).map((check) => [check.url, check])),
+          maxProbes: effectiveMaxPages,
+          signal: options.signal,
+          timeoutMs: options.timeoutMs,
+          allowInsecureTls: options.allowInsecureTls,
+        },
+      )
+    : undefined;
+
   // --- Cross-page rules ---------------------------------------------------
   const siteContext: SiteContext = {
     origin,
@@ -811,6 +863,7 @@ export async function runAudit(
     discovery,
     robots,
     favicon,
+    sitemapEntries,
     // Same index the matrix was built from, so a rule that groups by route
     // and the grid that reports holes cannot disagree about which URLs are
     // one page.
@@ -837,32 +890,6 @@ export async function runAudit(
       sources: draft.sources,
     };
   });
-
-  // --- Link audit over the healthy crawled page set ----------------------
-  //
-  // `effectiveMaxPages`, not `maxPages`. The crawl was told the selection is
-  // the answer to "how many"; this pass was still being told 200, so a
-  // structural run crawled and linted 748 pages and scanned links on the first
-  // 200 of them. Nothing said so usefully either — the report carried
-  // `truncated: true` and "Site has 753 pages; only the first 200 were
-  // scanned" while listing 748, which reads as a display bug rather than as
-  // the coverage claim it was. `0 broken links` then meant 200 pages, on a
-  // report that said 748.
-  const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
-  const linkReport = await runLinkAudit(linkDiscovery, {
-    allowInsecureTls: options.allowInsecureTls,
-    checkExternal,
-    timeoutMs: options.timeoutMs,
-    maxPages: effectiveMaxPages,
-    signal: options.signal,
-    onProgress: (p) =>
-      options.onProgress?.({
-        phase: p.phase === "scan" ? "scan" : "links",
-        done: p.done,
-        total: p.total,
-      }),
-  });
-  warnings.push(...linkReport.diagnostics.warnings);
 
   const brokenLinks: BrokenLink[] = [];
   for (const { pageUrl, broken } of linkReport.brokenByPage) {

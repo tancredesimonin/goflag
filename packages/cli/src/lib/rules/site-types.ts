@@ -25,7 +25,14 @@
 import type { I18nMatrix } from "../core/i18n";
 import type { LocaleAxis } from "../core/locales";
 import type { SiteDiscovery } from "../core/sitemap/types";
-import type { FaviconProbe, Issue, Page, RobotsProbe, Severity } from "../core/types";
+import type {
+  FaviconProbe,
+  Issue,
+  Page,
+  RobotsProbe,
+  Severity,
+  SitemapEntryProbe,
+} from "../core/types";
 import type { Rigor } from "./types";
 
 /**
@@ -53,6 +60,15 @@ export interface SiteContext {
    * so a per-page rule would report one fact as many findings.
    */
   favicon?: FaviconProbe;
+  /**
+   * What is served at each sitemap entry, keyed by its `<loc>`, and how many
+   * entries the caps left unanswered.
+   *
+   * Absent when no sitemap was found or the pass did not run. `unprobed` is
+   * carried rather than dropped: "3 entries are unreachable" out of a sitemap
+   * where 400 were never checked is a true sentence that reads as a false one.
+   */
+  sitemapEntries?: { byUrl: Map<string, SitemapEntryProbe>; unprobed: number };
   /**
    * The discovered sitemap, when one was found. `undefined` when discovery
    * was skipped (`--no-sitemap`) or the site has none — rules must degrade

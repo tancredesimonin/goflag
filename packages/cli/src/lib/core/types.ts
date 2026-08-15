@@ -298,6 +298,23 @@ export interface AssetProbe {
 }
 
 /**
+ * What is served at one URL a sitemap lists.
+ *
+ * `via` says where the answer came from — the crawl, the link audit, or a
+ * fetch made for this — because "goflag checked it" and "goflag already knew"
+ * are different claims, and only one of them costs the site a request.
+ */
+export interface SitemapEntryProbe {
+  url: string;
+  /** `0` on a network failure. */
+  status: number;
+  via: "crawl" | "link-audit" | "probe";
+  /** Where it landed; equals `url` when nothing redirected. */
+  finalUrl: string;
+  redirected: boolean;
+}
+
+/**
  * What the origin answers at `/favicon.ico`.
  *
  * Origin-level by nature: one file governs the whole site, exactly like

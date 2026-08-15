@@ -19,7 +19,7 @@
 
 import { splitRoute } from "../core/i18n";
 import { robotsAllows } from "../core/robots/match";
-import type { Page } from "../core/types";
+import type { Page, SitemapEntryProbe } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
 
 /** A site is only subject to hreflang policy when it serves 2+ locales. */
@@ -1006,6 +1006,75 @@ const sitemapOrphans: SiteRule = {
   },
 };
 
+/**
+ * The last two of §4.5, and the only rules in the catalogue whose subject had
+ * to be fetched on purpose.
+ *
+ * Everything else about a sitemap is a comparison between things goflag
+ * already had. These two ask what is actually served at a URL, which is why
+ * they waited for `probeSitemapEntries` — and why that pass answers from the
+ * crawl and the link audit first, and only fetches what is left.
+ */
+
+/** What the probe pass found, or nothing when it did not run. */
+function entryProbes(site: SiteContext): SitemapEntryProbe[] {
+  return [...(site.sitemapEntries?.byUrl.values() ?? [])];
+}
+
+/**
+ * The sentence a finding owes when the caps stopped the pass short.
+ *
+ * "3 entries are unreachable" out of a sitemap where 400 were never checked is
+ * a true sentence that reads as a false one — it implies the other 397 are
+ * fine. Saying how many went unchecked is what makes the number honest.
+ */
+function coverageNote(site: SiteContext): string {
+  const unprobed = site.sitemapEntries?.unprobed ?? 0;
+  if (unprobed === 0) return "";
+  return ` ${unprobed} further entr${unprobed === 1 ? "y was" : "ies were"} not checked — this count is a floor, not a total.`;
+}
+
+const sitemapEntryUnreachable: SiteRule = {
+  id: "sitemap.entry.unreachable",
+  severity: "error",
+  summary: "Every URL a sitemap lists must answer",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => entryProbes(site).some((probe) => isDead(probe.status)),
+  check: ({ site, issue }) => {
+    const dead = entryProbes(site).filter((probe) => isDead(probe.status));
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${dead.length} sitemap entr${dead.length === 1 ? "y does" : "ies do"} not answer: ${sample(dead.map((probe) => `${probe.url} (${probe.status === 0 ? "no response" : `HTTP ${probe.status}`})`))}. A sitemap is a list of pages to index, so every dead entry spends crawl budget on a promise the site does not keep.${coverageNote(site)}`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryRedirects: SiteRule = {
+  id: "sitemap.entry.redirects",
+  severity: "warning",
+  summary: "A sitemap should list final URLs, not URLs that redirect",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => entryProbes(site).some((probe) => probe.redirected && !isDead(probe.status)),
+  check: ({ site, issue }) => {
+    const moved = entryProbes(site).filter((probe) => probe.redirected && !isDead(probe.status));
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${moved.length} sitemap entr${moved.length === 1 ? "y redirects" : "ies redirect"}: ${sample(moved.map((probe) => `${probe.url} → ${probe.finalUrl}`))}. Google asks for the final URL, and every hop is crawl budget spent plus one more chance for a consumer to disagree about which address is the page.${coverageNote(site)}`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+/** 4xx, 5xx, or no response at all. A 3xx is a redirect, not a death. */
+function isDead(status: number): boolean {
+  return status === 0 || status >= 400;
+}
+
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -1040,6 +1109,8 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   sitemapEntryNoindex,
   sitemapEntryNonCanonical,
   sitemapEntryProtocolMismatch,
+  sitemapEntryRedirects,
+  sitemapEntryUnreachable,
   sitemapFieldInvalid,
   sitemapIndexChildError,
   sitemapLastmodInvalid,

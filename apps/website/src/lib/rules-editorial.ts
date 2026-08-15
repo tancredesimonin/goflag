@@ -152,6 +152,16 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
   },
+  "sitemap.entry.unreachable": {
+    why: "A sitemap is a list of pages you want indexed, so every dead entry spends crawl budget on a promise the site does not keep. The count is a floor when the caps stopped the pass short, and the message says so rather than implying the rest are fine.",
+    message:
+      "4 sitemap entries do not answer: `https://example.com/old` (HTTP 404), `https://example.com/gone` (HTTP 410). A sitemap is a list of pages to index, so every dead entry spends crawl budget on a promise the site does not keep.",
+  },
+  "sitemap.entry.redirects": {
+    why: "Google asks for final URLs. Every hop is crawl budget spent, plus one more chance for a consumer to disagree with you about which address is the page — which is the same argument the canonical rules make, arriving from the other direction.",
+    message:
+      "3 sitemap entries redirect: `https://example.com/a → https://example.com/a/`. Google asks for the final URL, and every hop is crawl budget spent plus one more chance for a consumer to disagree about which address is the page.",
+  },
   "sitemap.entry.blocked-by-robots": {
     why: "The sitemap says index this and robots.txt says never fetch it. Both are the same site speaking, and robots.txt is the one that decides — so the entry is not merely ignored, it is an instruction the site contradicts a line later.",
     message:
