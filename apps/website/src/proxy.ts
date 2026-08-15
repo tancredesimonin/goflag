@@ -46,9 +46,17 @@ export default function proxy(request: NextRequest) {
  * under `/en/docs` means it never enters the route × locale matrix, so goflag
  * reports no translation holes for it — the absence is structural, not a gap.
  *
- * `llms.txt` and `/raw` are excluded for the same reason: they are machine
- * surfaces with no locale of their own.
+ * `llms.txt`, `/raw` and `/og` are excluded for the same reason: they are
+ * machine surfaces with no locale of their own.
+ *
+ * `/og` was missing from that list, and nothing said so. It serves the
+ * documentation's preview cards — the route handler that exists because Next
+ * refuses to place a metadata image under a catch-all — so every request for
+ * one was redirected to `/en/og/...`, which no route renders. `og:image` on the
+ * documentation pages has therefore pointed at a 404 since the route was
+ * written: a tag present, well-formed, absolute, and dead. `og.image.reachable`
+ * is the rule that would have said so, and it is the next one to write.
  */
 export const config = {
-  matcher: ["/((?!api|_next|docs|raw|llms.txt|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|docs|og|raw|llms.txt|.*\\..*).*)"],
 };
