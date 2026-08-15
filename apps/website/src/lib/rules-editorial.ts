@@ -152,6 +152,26 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
   },
+  "sitemap.entry.blocked-by-robots": {
+    why: "The sitemap says index this and robots.txt says never fetch it. Both are the same site speaking, and robots.txt is the one that decides — so the entry is not merely ignored, it is an instruction the site contradicts a line later.",
+    message:
+      '3 sitemap entries are disallowed by `robots.txt`: `https://example.com/admin/a`, `https://example.com/admin/b`. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.',
+  },
+  "sitemap.entry.noindex": {
+    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one.',
+    message:
+      '2 sitemap entries declare `noindex`: `https://example.com/draft`. "Please index this" and "do not index this" are the same site\'s two answers to one question.',
+  },
+  "sitemap.entry.non-canonical": {
+    why: 'The sitemap is the list of what you want indexed, so it should name the URL you actually prefer. Listing a variant that points elsewhere spends crawl budget arriving at a page that immediately says "not me".',
+    message:
+      "1 sitemap entry names a page whose canonical points elsewhere: `https://example.com/a?ref=x → https://example.com/a`. The sitemap is a list of what to index, so it should name the URL the site itself prefers.",
+  },
+  "sitemap.orphans": {
+    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits.",
+    message:
+      "7 crawled pages ask to be indexed and are absent from the sitemap: `https://example.com/blog/a`, `https://example.com/blog/b`. A consumer that reads the sitemap rather than following links will never see them.",
+  },
   "sitemap.missing": {
     why: "Without one, discovery depends entirely on what links to what — the part of a site nobody audits. A warning rather than an error: a small, fully linked site genuinely may not need a sitemap, and saying otherwise would be inventing a rule.",
     message:

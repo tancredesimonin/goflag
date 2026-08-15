@@ -105,14 +105,12 @@ export interface SitemapDiagnostics {
   // `mixedHost` are gone: `sitemap.lastmod.invalid`,
   // `sitemap.entry.protocol-mismatch` and `sitemap.entry.cross-host` say the
   // same things with a URL attached, which is what made them worth having.
-  // The three below go the same way as the cross-artefact rules land
-  // (`docs/sitemap-robots-plan.md` §4.5).
+  // `orphanCount` and `robotsConflicts` are gone the same way, absorbed by
+  // `sitemap.orphans` and `sitemap.entry.blocked-by-robots`. `reachable` is
+  // the last one standing, and it waits for the entry probe that
+  // `sitemap.entry.unreachable` needs (§4.5).
   /** Entry reachability tally (probed via the link engine's checkLink). */
   reachable?: { checked: number; ok: number; broken: number; redirected: number };
-  /** Pages found by crawl/link-scan but absent from the sitemap. */
-  orphanCount?: number;
-  /** Sitemap entries disallowed by robots.txt. */
-  robotsConflicts?: number;
 }
 
 /**

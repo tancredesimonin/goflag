@@ -1,6 +1,6 @@
 # goflag — Sitemap & robots.txt Validation Spec
 
-> **Status:** G.1, G.2 and most of G.3's rules shipped 2026-08-15 · **Written:** 2026-08-06
+> **Status:** G.1, G.2, most of G.3's rules and most of G.4 shipped 2026-08-15 · **Written:** 2026-08-06
 > **Related:** `docs/rules-catalog-plan.md` — this document is the **artefact
 > layer** built on that design. It lands **after** the rule-catalog build-out
 > (it needs the source catalog, the rule descriptor, and the extraction model)
