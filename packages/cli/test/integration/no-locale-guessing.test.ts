@@ -44,7 +44,12 @@ describe("no declared locale axis", () => {
   it("emits no hreflang findings and no translation holes", () => {
     // Both are claims about locale coverage. Having just declined to say what
     // the locales are, making those claims anyway would contradict it.
-    expect(report.siteIssues).toEqual([]);
+    //
+    // Narrowed to the hreflang family, which is what this file is about. The
+    // assertion used to cover every cross-page rule, so it broke the day one
+    // arrived that has nothing to do with locales — this fixture serves no
+    // sitemap, and `sitemap.missing` correctly says so.
+    expect(report.siteIssues.filter((issue) => issue.ruleId.startsWith("hreflang."))).toEqual([]);
     expect(report.missingTranslations.holes).toEqual([]);
     expect(report.summary.missingTranslations).toBe(0);
   });

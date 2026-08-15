@@ -532,6 +532,303 @@ const robotsBlocksPage: SiteRule = {
   },
 };
 
+/**
+ * The sitemap rules (`docs/sitemap-robots-plan.md` §4.3–4.4).
+ *
+ * Every one of them replaces a field of `SitemapDiagnostics` that was declared
+ * and never written — `mixedHost`, `mixedProtocol`, `lastmodIssues`. The plan
+ * says why they belonged in rules rather than in a diagnostics bag: a number
+ * on a report tells you something is wrong somewhere, and a finding tells you
+ * which entry, in which document, and what the specification says about it.
+ *
+ * Three rules from those sections are deliberately absent, because the model
+ * cannot answer them honestly yet. `sitemap.limits.exceeded` counts entries
+ * **per document** and today's `urlCount` is a total across all of them;
+ * `sitemap.index.nested` needs to know a child was itself an index;
+ * `sitemap.entry.out-of-scope` needs to know which document declared each
+ * entry. All three arrive with the document tree, and shipping them now would
+ * mean rules that quietly only work on a site with one flat sitemap.
+ */
+
+/** `<changefreq>` values the protocol defines. Anything else is not one. */
+const CHANGEFREQ = new Set(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]);
+
+/** How many offending entries a finding names before it starts counting. */
+const SAMPLE = 5;
+
+/** `n` entries, listing the first few — forty repeats of one defect is noise. */
+function sample(locs: string[]): string {
+  const shown = locs.slice(0, SAMPLE);
+  const rest = locs.length - shown.length;
+  return `${shown.map((l) => `\`${l}\``).join(", ")}${rest > 0 ? `, and ${rest} more` : ""}`;
+}
+
+const sitemapMissing: SiteRule = {
+  id: "sitemap.missing",
+  severity: "warning",
+  summary: "A site should publish a sitemap",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  // A warning rather than an error, and the plan settles it: a small, fully
+  // linked site genuinely may not need one. Google's own guidance says
+  // "usually worth having", which is exactly a guideline.
+  appliesTo: (site) => site.discovery !== undefined && !site.discovery.diagnostics.found,
+  check: ({ site, issue }) =>
+    issue({
+      pageUrl: `${site.origin}/sitemap.xml`,
+      message:
+        "No sitemap was found — not declared in `robots.txt`, and not at a well-known path. " +
+        "Discovery then depends entirely on what links to what, which is the part of a site nobody audits.",
+      origin: { kind: "computed" },
+    }),
+};
+
+const sitemapUnparsable: SiteRule = {
+  id: "sitemap.unparsable",
+  severity: "error",
+  summary: "A located sitemap must be a well-formed `<urlset>` or `<sitemapindex>`",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) =>
+    site.discovery?.diagnostics.found === true && !site.discovery.diagnostics.wellFormed,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message:
+        "A sitemap was served but does not parse as XML. The usual cause is an HTML error page " +
+        "answered with a 200 — which reads as a healthy sitemap to anything that only checks the status.",
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEmpty: SiteRule = {
+  id: "sitemap.empty",
+  severity: "warning",
+  summary: "A sitemap that parses should list something",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol"],
+  // Only when the crawl found pages: an empty sitemap on a site with no pages
+  // is consistent, and saying otherwise would be noise.
+  appliesTo: (site) =>
+    site.discovery?.diagnostics.wellFormed === true &&
+    site.discovery.urls.length === 0 &&
+    site.pages.length > 0,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `The sitemap parses and lists no URLs, while the crawl found ${site.pages.length}. goflag falls back to crawling — a consumer that trusts the sitemap has nothing to read.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapIndexChildError: SiteRule = {
+  id: "sitemap.index.child-error",
+  severity: "error",
+  summary: "Every child of a sitemap index must be reachable and parseable",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => (site.discovery?.diagnostics.childSitemapErrors ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    const total = diagnostics.childSitemapCount;
+
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${diagnostics.childSitemapErrors} of ${total} child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryInvalidUrl: SiteRule = {
+  id: "sitemap.entry.invalid-url",
+  severity: "error",
+  summary: "Every `<loc>` must be an absolute, parseable URL",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => (site.discovery?.urls ?? []).some((entry) => !isAbsolute(entry.loc)),
+  check: ({ site, issue }) => {
+    const bad = site.discovery!.urls.filter((entry) => !isAbsolute(entry.loc));
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} \`<loc>\` value${bad.length === 1 ? " is" : "s are"} not an absolute URL: ${sample(bad.map((e) => e.loc))}. A sitemap is fetched on its own, so a consumer has nothing to resolve them against.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryCrossHost: SiteRule = {
+  id: "sitemap.entry.cross-host",
+  severity: "error",
+  summary: "A sitemap should only list URLs on its own host",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  // `www` and the apex are different hosts to a consumer, which is the case
+  // this actually catches: a sitemap generated against one and served on the
+  // other. The cross-submission escape hatch needs the other host's robots.txt
+  // and arrives with the cross-artefact rules.
+  appliesTo: (site) => crossHostEntries(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = crossHostEntries(site);
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} entr${bad.length === 1 ? "y names a host" : "ies name hosts"} other than this sitemap's: ${sample(bad)}. A consumer may drop them — the sitemap only speaks for the host that serves it.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryProtocolMismatch: SiteRule = {
+  id: "sitemap.entry.protocol-mismatch",
+  severity: "warning",
+  summary: "A sitemap should not mix `http` and `https` entries",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => protocolsIn(site).size > 1,
+  check: ({ site, issue }) => {
+    const protocols = [...protocolsIn(site)].sort();
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `The sitemap lists both ${protocols.join(" and ")} URLs. One of the two sets names pages the site does not serve at those addresses, and a consumer has no way to tell which.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapLastmodInvalid: SiteRule = {
+  id: "sitemap.lastmod.invalid",
+  severity: "warning",
+  summary: "`<lastmod>` must be a W3C Datetime, and must not be in the future",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => badLastmods(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = badLastmods(site);
+    const malformed = bad.filter((e) => e.reason === "malformed");
+    const future = bad.filter((e) => e.reason === "future");
+
+    const parts: string[] = [];
+    if (malformed.length > 0) {
+      parts.push(
+        `${malformed.length} not a W3C Datetime (${sample(malformed.map((e) => e.value))})`,
+      );
+    }
+    if (future.length > 0) {
+      parts.push(`${future.length} dated in the future (${sample(future.map((e) => e.value))})`);
+    }
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `\`<lastmod>\` values a consumer cannot use: ${parts.join("; ")}. Google ignores the field entirely when it stops trusting it, so one bad batch costs the whole site the signal.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapFieldInvalid: SiteRule = {
+  id: "sitemap.field.invalid",
+  severity: "warning",
+  summary: "`<changefreq>` and `<priority>` must hold the values the protocol defines",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => badFields(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = badFields(site);
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} entr${bad.length === 1 ? "y carries a field" : "ies carry fields"} outside the protocol's values: ${sample(bad)}. Google ignores both fields either way — so this is worth fixing or deleting, never worth trusting.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+function sitemapHost(site: SiteContext): string | undefined {
+  const url = site.discovery?.diagnostics.sitemapUrl;
+  try {
+    return url ? new URL(url).host : new URL(site.origin).host;
+  } catch {
+    return undefined;
+  }
+}
+
+function crossHostEntries(site: SiteContext): string[] {
+  const host = sitemapHost(site);
+  if (!host) return [];
+
+  return (site.discovery?.urls ?? [])
+    .filter((entry) => {
+      if (!isAbsolute(entry.loc)) return false;
+      try {
+        return new URL(entry.loc).host !== host;
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.loc);
+}
+
+function protocolsIn(site: SiteContext): Set<string> {
+  const protocols = new Set<string>();
+  for (const entry of site.discovery?.urls ?? []) {
+    try {
+      protocols.add(new URL(entry.loc).protocol.replace(":", ""));
+    } catch {
+      continue;
+    }
+  }
+  return protocols;
+}
+
+/**
+ * W3C Datetime, as the sitemap protocol requires: a date, optionally with a
+ * time and a timezone. Deliberately stricter than `Date.parse`, which accepts
+ * `March 4 2026` and every other thing a human might type.
+ */
+const W3C_DATETIME = /^\d{4}(-\d{2}(-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?)?)?$/;
+
+function badLastmods(site: SiteContext): Array<{ value: string; reason: "malformed" | "future" }> {
+  const out: Array<{ value: string; reason: "malformed" | "future" }> = [];
+  // Compared against the run's own clock rather than a fixed date, and only
+  // flagged past a day of slack: a build that stamps "now" in a timezone ahead
+  // of the auditor is not a defect.
+  const tomorrow = Date.now() + 24 * 60 * 60 * 1000;
+
+  for (const entry of site.discovery?.urls ?? []) {
+    const value = entry.lastmod?.trim();
+    if (!value) continue;
+
+    if (!W3C_DATETIME.test(value)) {
+      out.push({ value, reason: "malformed" });
+      continue;
+    }
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed) && parsed > tomorrow) out.push({ value, reason: "future" });
+  }
+  return out;
+}
+
+function badFields(site: SiteContext): string[] {
+  const out: string[] = [];
+  for (const entry of site.discovery?.urls ?? []) {
+    const changefreq = entry.changefreq?.trim().toLowerCase();
+    if (changefreq && !CHANGEFREQ.has(changefreq)) {
+      out.push(`${entry.loc} — changefreq \`${entry.changefreq}\``);
+      continue;
+    }
+    const priority = entry.priority?.trim();
+    if (priority === undefined) continue;
+    const value = Number(priority);
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      out.push(`${entry.loc} — priority \`${entry.priority}\``);
+    }
+  }
+  return out;
+}
+
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -559,6 +856,15 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   robotstxtSitemapRelative,
   robotstxtUnknownDirective,
   robotstxtUnreachable,
+  sitemapEmpty,
+  sitemapEntryCrossHost,
+  sitemapEntryInvalidUrl,
+  sitemapEntryProtocolMismatch,
+  sitemapFieldInvalid,
+  sitemapIndexChildError,
+  sitemapLastmodInvalid,
+  sitemapMissing,
+  sitemapUnparsable,
 ];
 
 export function getSiteRule(id: string): SiteRule | undefined {

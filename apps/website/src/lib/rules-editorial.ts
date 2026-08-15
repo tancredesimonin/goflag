@@ -152,6 +152,51 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
   },
+  "sitemap.missing": {
+    why: "Without one, discovery depends entirely on what links to what — the part of a site nobody audits. A warning rather than an error: a small, fully linked site genuinely may not need a sitemap, and saying otherwise would be inventing a rule.",
+    message:
+      "No sitemap was found — not declared in `robots.txt`, and not at a well-known path. Discovery then depends entirely on what links to what, which is the part of a site nobody audits.",
+  },
+  "sitemap.unparsable": {
+    why: "The usual cause is an HTML error page answered with a 200, which reads as a perfectly healthy sitemap to anything that only checks the status code. The file is present, the request succeeds, and the inventory is empty.",
+    message:
+      "A sitemap was served but does not parse as XML. The usual cause is an HTML error page answered with a 200 — which reads as a healthy sitemap to anything that only checks the status.",
+  },
+  "sitemap.empty": {
+    why: "goflag falls back to crawling, so the audit survives. A search engine does not fall back: it reads the file it was pointed at, finds nothing, and moves on.",
+    message:
+      "The sitemap parses and lists no URLs, while the crawl found 42. goflag falls back to crawling — a consumer that trusts the sitemap has nothing to read.",
+  },
+  "sitemap.index.child-error": {
+    why: "An index declares an inventory, and part of it is unreachable. Whatever those documents listed is invisible — and because they are the thing that would have said what, nothing reports how much was lost.",
+    message:
+      "2 of 9 child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.",
+  },
+  "sitemap.entry.invalid-url": {
+    why: "A sitemap is fetched on its own, with no page behind it, so a relative `<loc>` resolves to nothing. The entry looks like a declaration and names no address.",
+    message:
+      "2 `<loc>` values are not an absolute URL: `/about`, `/pricing`. A sitemap is fetched on its own, so a consumer has nothing to resolve them against.",
+  },
+  "sitemap.entry.cross-host": {
+    why: "`www` and the apex are different hosts to a consumer, and this is what catches the sitemap generated against one and served on the other. A consumer may drop every entry that does not belong to the host it fetched the file from.",
+    message:
+      "12 entries name hosts other than this sitemap's: `https://www.example.com/a`, `https://www.example.com/b`. A consumer may drop them — the sitemap only speaks for the host that serves it.",
+  },
+  "sitemap.entry.protocol-mismatch": {
+    why: "One of the two sets names pages the site does not serve at those addresses, and nothing in the file says which. Usually the residue of a migration that updated the pages and not the generator.",
+    message:
+      "The sitemap lists both http and https URLs. One of the two sets names pages the site does not serve at those addresses, and a consumer has no way to tell which.",
+  },
+  "sitemap.lastmod.invalid": {
+    why: "Google stops trusting the field entirely once it finds values it cannot use — so one bad batch costs the whole site a signal it was paying to produce. Future dates count: a date that has not happened cannot describe a change that has.",
+    message:
+      "`<lastmod>` values a consumer cannot use: 3 not a W3C Datetime (`March 4 2026`). Google ignores the field entirely when it stops trusting it, so one bad batch costs the whole site the signal.",
+  },
+  "sitemap.field.invalid": {
+    why: "Both fields are ignored by Google either way, so a wrong value costs nothing directly. It is reported because a value outside the protocol is a generator that was never checked — and the same generator writes the `<loc>` values that do matter.",
+    message:
+      "1 entry carries a field outside the protocol's values: https://example.com/a — priority `1.5`. Google ignores both fields either way — so this is worth fixing or deleting, never worth trusting.",
+  },
   "robots.blocks-page": {
     why: "The quiet version of the site-wide block. A `Disallow` added years ago for a reason that made sense then, still shadowing a section that has since been given pages asking to be found. Nothing in a browser shows it: the page loads perfectly for you and is never fetched by a crawler.",
     message:

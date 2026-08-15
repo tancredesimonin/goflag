@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 11,
+    "site": 20,
     "prose": 4
   },
   "sources": {
@@ -46,6 +46,13 @@
       "title": "Robots meta tag and X-Robots-Tag",
       "rigor": "vendor-spec",
       "url": "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag"
+    },
+    "google-sitemaps": {
+      "id": "google-sitemaps",
+      "publisher": "Google",
+      "title": "Build and submit a sitemap",
+      "rigor": "guideline",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview"
     },
     "google-snippet": {
       "id": "google-snippet",
@@ -874,6 +881,108 @@
       "rigor": "spec-required",
       "sources": [
         "ietf-rfc9309"
+      ]
+    },
+    {
+      "id": "sitemap.empty",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A sitemap that parses should list something",
+      "rigor": "guideline",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.entry.cross-host",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A sitemap should only list URLs on its own host",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.entry.invalid-url",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Every `<loc>` must be an absolute, parseable URL",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.entry.protocol-mismatch",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A sitemap should not mix `http` and `https` entries",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.field.invalid",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`<changefreq>` and `<priority>` must hold the values the protocol defines",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.index.child-error",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Every child of a sitemap index must be reachable and parseable",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.lastmod.invalid",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`<lastmod>` must be a W3C Datetime, and must not be in the future",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.missing",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A site should publish a sitemap",
+      "rigor": "guideline",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.unparsable",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A located sitemap must be a well-formed `<urlset>` or `<sitemapindex>`",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
       ]
     },
     {
