@@ -829,6 +829,183 @@ function badFields(site: SiteContext): string[] {
   return out;
 }
 
+/**
+ * Where the two artefacts meet the crawl (`docs/sitemap-robots-plan.md` §4.5).
+ *
+ * The plan calls these "the expensive ones, and they are all judgments nothing
+ * makes today". Four of the six are expensive in reasoning rather than in
+ * requests — they compare a sitemap entry against a page goflag already
+ * fetched, or against a robots.txt it already parsed — so they ship here.
+ * `sitemap.entry.unreachable` and `.entry.redirects` need to probe URLs the
+ * crawl never visited, and wait for that.
+ *
+ * Each one is a contradiction between two things the site says about itself,
+ * which is the class of defect this whole tool exists for: nothing is broken
+ * when you look at either half alone.
+ */
+
+/** A URL reduced to what makes it the same page: no fragment, no trailing slash. */
+function sameUrlKey(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    const path = parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${path || "/"}${parsed.search}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Crawled pages, keyed the way a sitemap entry would name them. */
+function pagesByUrl(site: SiteContext): Map<string, Page> {
+  const byUrl = new Map<string, Page>();
+  for (const page of site.pages) {
+    const key = sameUrlKey(page.fetch.finalUrl);
+    if (key) byUrl.set(key, page);
+  }
+  return byUrl;
+}
+
+/** Whether a page asks not to be indexed, by meta tag or by header. */
+function saysNoindex(page: Page): boolean {
+  if (metaRobotsTokens(page).has("noindex")) return true;
+  const header = page.fetch.headers["x-robots-tag"] ?? "";
+  return header
+    .split(",")
+    .map((token) => token.trim().toLowerCase())
+    .includes("noindex");
+}
+
+const sitemapEntryBlockedByRobots: SiteRule = {
+  id: "sitemap.entry.blocked-by-robots",
+  severity: "error",
+  summary: "A sitemap must not list URLs that robots.txt forbids fetching",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "sitemaps-protocol"],
+  // Skipped when the whole origin is disallowed: `robots.blocks-site` is that
+  // finding, and repeating it once per sitemap entry would bury it.
+  appliesTo: (site) =>
+    site.robots?.found === true &&
+    robotsAllows(site.robots.groups, "/").allowed &&
+    (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const blocked: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      let path: string;
+      try {
+        const url = new URL(entry.loc);
+        path = `${url.pathname}${url.search}`;
+      } catch {
+        continue;
+      }
+      if (!robotsAllows(probe.groups, path).allowed) blocked.push(entry.loc);
+    }
+
+    if (blocked.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${blocked.length} sitemap entr${blocked.length === 1 ? "y is" : "ies are"} disallowed by \`robots.txt\`: ${sample(blocked)}. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryNoindex: SiteRule = {
+  id: "sitemap.entry.noindex",
+  severity: "warning",
+  summary: "A sitemap must not list URLs that ask not to be indexed",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-robots-meta"],
+  // Only the crawled pages can be judged: a sitemap entry goflag never fetched
+  // has no `noindex` to have seen, and assuming one either way would invent a
+  // finding or hide one.
+  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const byUrl = pagesByUrl(site);
+    const conflicting: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      const key = sameUrlKey(entry.loc);
+      const page = key ? byUrl.get(key) : undefined;
+      if (page && saysNoindex(page)) conflicting.push(entry.loc);
+    }
+
+    if (conflicting.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${conflicting.length} sitemap entr${conflicting.length === 1 ? "y declares" : "ies declare"} \`noindex\`: ${sample(conflicting)}. "Please index this" and "do not index this" are the same site's two answers to one question.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryNonCanonical: SiteRule = {
+  id: "sitemap.entry.non-canonical",
+  severity: "warning",
+  summary: "A sitemap should list canonical URLs",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-canonicalization"],
+  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const byUrl = pagesByUrl(site);
+    const wrong: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      const key = sameUrlKey(entry.loc);
+      const page = key ? byUrl.get(key) : undefined;
+      const canonical = page?.links.canonical;
+      if (!page || !canonical) continue;
+
+      const canonicalKey = sameUrlKey(canonical);
+      // Only when the page names a *different* page. A canonical that differs
+      // by a trailing slash is the same page said twice, which `sameUrlKey`
+      // already folds together.
+      if (canonicalKey && canonicalKey !== key) {
+        wrong.push(`${entry.loc} → ${canonical}`);
+      }
+    }
+
+    if (wrong.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${wrong.length} sitemap entr${wrong.length === 1 ? "y names a page whose canonical" : "ies name pages whose canonicals"} point elsewhere: ${sample(wrong)}. The sitemap is a list of what to index, so it should name the URL the site itself prefers.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapOrphans: SiteRule = {
+  id: "sitemap.orphans",
+  severity: "warning",
+  summary: "Indexable pages the crawl found should be listed in the sitemap",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  // One finding with a count and a sample, not one per page — the same shape
+  // translation holes take, and for the same reason: forty repeats of one
+  // omission is noise, and the omission is a property of the sitemap.
+  appliesTo: (site) => site.discovery?.diagnostics.found === true && site.discovery.urls.length > 0,
+  check: ({ site, issue }) => {
+    const listed = new Set(
+      site.discovery!.urls.map((entry) => sameUrlKey(entry.loc)).filter(Boolean),
+    );
+
+    const orphans = site.pages
+      .filter((page) => !saysNoindex(page))
+      .map((page) => ({ page, key: sameUrlKey(page.fetch.finalUrl) }))
+      .filter(({ key }) => key !== undefined && !listed.has(key))
+      .map(({ page }) => page.fetch.finalUrl);
+
+    if (orphans.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}. A consumer that reads the sitemap rather than following links will never see ${orphans.length === 1 ? "it" : "them"}.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -857,13 +1034,17 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   robotstxtUnknownDirective,
   robotstxtUnreachable,
   sitemapEmpty,
+  sitemapEntryBlockedByRobots,
   sitemapEntryCrossHost,
   sitemapEntryInvalidUrl,
+  sitemapEntryNoindex,
+  sitemapEntryNonCanonical,
   sitemapEntryProtocolMismatch,
   sitemapFieldInvalid,
   sitemapIndexChildError,
   sitemapLastmodInvalid,
   sitemapMissing,
+  sitemapOrphans,
   sitemapUnparsable,
 ];
 

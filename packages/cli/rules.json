@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 20,
+    "site": 24,
     "prose": 4
   },
   "sources": {
@@ -895,6 +895,18 @@
       ]
     },
     {
+      "id": "sitemap.entry.blocked-by-robots",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A sitemap must not list URLs that robots.txt forbids fetching",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9309",
+        "sitemaps-protocol"
+      ]
+    },
+    {
       "id": "sitemap.entry.cross-host",
       "scope": "site",
       "severity": "error",
@@ -914,6 +926,30 @@
       "rigor": "spec-required",
       "sources": [
         "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.entry.noindex",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A sitemap must not list URLs that ask not to be indexed",
+      "rigor": "vendor-spec",
+      "sources": [
+        "sitemaps-protocol",
+        "google-robots-meta"
+      ]
+    },
+    {
+      "id": "sitemap.entry.non-canonical",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A sitemap should list canonical URLs",
+      "rigor": "vendor-spec",
+      "sources": [
+        "sitemaps-protocol",
+        "google-canonicalization"
       ]
     },
     {
@@ -968,6 +1004,18 @@
       "severity": "warning",
       "kind": "boolean",
       "summary": "A site should publish a sitemap",
+      "rigor": "guideline",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.orphans",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Indexable pages the crawl found should be listed in the sitemap",
       "rigor": "guideline",
       "sources": [
         "sitemaps-protocol",
