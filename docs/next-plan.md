@@ -47,8 +47,9 @@ overlayable par profil, et sait poser les questions qu'il refuse de trancher
 
 Le remède doit exister, sinon la règle devient de la dette permanente — c'est le
 mode d'échec consigné au §4 du plan principal (« un check qu'on n'a pas de
-raison de croire est ignoré »), et l'`og:image` de stereo-house en est
-l'illustration : 38 findings parkés pendant des semaines faute de remède.
+raison de croire est ignoré »), et l'`og:image` de stereo-house en était
+l'illustration : **24 findings** parkés pendant des semaines faute de remède,
+levés le 2026-08-15 par OG-3 de `docs/og-plan.md`.
 
 **La preuve est déjà dans le dépôt.** `apps/website` implémente à la main
 l'intégralité de ce que cette lib doit fournir :
@@ -266,6 +267,12 @@ Le test d'ergonomie a rempli son office : **stereo-house passe de 224 à 123
 lignes dans `src/`, solde −101**, et goflag rapporte **exactement les mêmes 39
 findings avant et après** — 42 pages, 0 lien cassé, 3 trous, 38 problèmes SEO,
 0 problème de site, même axe de locales. Aucun ajout, aucun retrait.
+
+> Ces « 38 problèmes SEO » sont un **total de rapport**, pas le rendement d'une
+> règle : 25 `og.image.missing` et 13 `description.length` à cette date. Le
+> chiffre a été repris ailleurs comme s'il était celui d'`og.image.missing`
+> seule, et a dimensionné un remède sur un défaut qu'il ne corrigeait pas. Un
+> total ne se cite qu'avec le mot « total ».
 
 Mais le vrai produit de la phase, ce sont les quatre choses que seul un site
 non-consanguin pouvait révéler :
