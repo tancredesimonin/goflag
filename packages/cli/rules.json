@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 26,
+    "site": 27,
     "prose": 4
   },
   "sources": {
@@ -320,20 +320,34 @@
       }
     },
     {
+      "id": "hreflang.cluster-incomplete",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Every locale the sitemap publishes must appear in the route's `hreflang` cluster",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-hreflang"
+      ]
+    },
+    {
       "id": "hreflang.missing",
       "scope": "site",
       "severity": "error",
       "kind": "boolean",
       "summary": "Pages on a multilingual site must advertise their locale alternates",
-      "rigor": null,
-      "sources": []
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-hreflang",
+        "whatwg-html-link-types"
+      ]
     },
     {
       "id": "hreflang.sitemap-mismatch",
       "scope": "site",
       "severity": "warning",
       "kind": "boolean",
-      "summary": "`<head>` alternates and sitemap locale coverage must agree",
+      "summary": "`<head>` alternates advertise a locale the sitemap does not list",
       "rigor": null,
       "sources": []
     },

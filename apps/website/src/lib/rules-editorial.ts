@@ -143,14 +143,19 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "Conflicting robots directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
   },
   "hreflang.missing": {
-    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority.",
+    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority. Google is explicit that a cluster whose pages do not all point at each other is not weakened but ignored outright, which is why this is an error rather than a warning even though no web standard requires the tags at all.",
     message:
       "Page declares no `hreflang` alternates, but the site serves 4 locales (en, es, fr, pt-br, per the sitemap). Locale variants of this route cannot be associated with each other.",
   },
-  "hreflang.sitemap-mismatch": {
-    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. Under-declaring hides real translations; over-declaring points hreflang at URLs the site itself does not list, which is read as a broken cluster.",
+  "hreflang.cluster-incomplete": {
+    why: "Listing a URL in your sitemap is you saying that version exists and should be indexed. Leaving it out of the hreflang cluster then puts it outside the group it belongs to, so it competes with its own translations instead of consolidating with them — which is the one thing hreflang exists to prevent. Google requires every version to list every other, and the sitemap is your own evidence that the missing one is real.",
     message:
-      "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
+      "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. The site publishes those versions and leaves them outside the cluster, so they compete with this page instead of consolidating with it.",
+  },
+  "hreflang.sitemap-mismatch": {
+    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. This is the direction no specification covers: nothing requires an hreflang-declared page to appear in a sitemap, and a page deliberately kept out of it is doing nothing wrong. It is reported because the disagreement means one of your two generators is wrong — goflag cannot say which, which is exactly why this rule claims no rigor.",
+    message:
+      "Route `/pricing`: the `<head>` advertises de but the sitemap has no entry for it. Both are derived from the same intent, so the disagreement means one of the two generators is wrong — goflag cannot say which, and no specification requires a page to be in both.",
   },
   "sitemap.entry.unreachable": {
     why: "A sitemap is a list of pages you want indexed, so every dead entry spends crawl budget on a promise the site does not keep. The count is a floor when the caps stopped the pass short, and the message says so rather than implying the rest are fine.",
