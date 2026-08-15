@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.9](https://github.com/tancredesimonin/goflag/compare/v0.2.8...v0.2.9) (2026-08-15)
+
+
+### Features
+
+* **cli:** ask the origin for the favicon nobody declares ([f7098e5](https://github.com/tancredesimonin/goflag/commit/f7098e53eba0ba7aef7fa2b222318a7fec7ef04e))
+* **cli:** judge the file, not only the tag that points at it ([be09ac9](https://github.com/tancredesimonin/goflag/commit/be09ac9a915747e1b1de72d385e6b161837c3ab9))
+* **cli:** judge the icons the extraction was already collecting ([338a473](https://github.com/tancredesimonin/goflag/commit/338a473f3cae475166d04c9423fdde37aca88b1a))
+* **cli:** judge the og:image, not just its absence ([5ab8faa](https://github.com/tancredesimonin/goflag/commit/5ab8faa6077f4ec8bf176a18ab6eeecf143382db))
+
+
+### Bug Fixes
+
+* **cli:** politeness is owed to other people's servers, not to the origin ([b660bdb](https://github.com/tancredesimonin/goflag/commit/b660bdbbd5f8c5b05d6278e3bc9803c5d13660e0))
+
 ## [0.2.8](https://github.com/tancredesimonin/goflag/compare/v0.2.7...v0.2.8) (2026-08-13)
 
 
