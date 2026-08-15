@@ -162,6 +162,33 @@ export interface ExtractionIcon {
   parsedSizes: Array<{ width: number; height: number } | "any">;
 }
 
+/** One entry of a Web App Manifest's `icons` member. */
+export interface ExtractionManifestIcon {
+  src: string;
+  sizes?: string;
+  type?: string;
+  purpose?: string;
+  /** Parsed `sizes` entries; empty for absent or unparseable values. */
+  parsedSizes: Array<{ width: number; height: number } | "any">;
+}
+
+/**
+ * The `<link rel="manifest">`, and what the manifest said when goflag fetched
+ * it.
+ *
+ * `parsed` is deliberately three-valued. `undefined` means no probe ran — the
+ * manifest was never looked at — while `false` means it was fetched and could
+ * not be read. A rule must be able to tell those apart from a manifest that
+ * parsed and declares no icons, because only the last of the three is evidence
+ * about the site.
+ */
+export interface ExtractionManifest {
+  href: string;
+  parsed?: boolean;
+  /** Present only when `parsed` is true. */
+  icons?: ExtractionManifestIcon[];
+}
+
 /** One feed advertisement (`rel="alternate"` with a feed content type). */
 export interface ExtractionFeed {
   type: string;
@@ -177,7 +204,7 @@ export interface ExtractionFeed {
 export interface ExtractionLinks {
   hreflang: ExtractionHreflang[];
   icons: ExtractionIcon[];
-  manifest?: { href: string };
+  manifest?: ExtractionManifest;
   feeds: ExtractionFeed[];
 }
 

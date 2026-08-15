@@ -103,6 +103,21 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Open Graph and hreflang disagree about this page's translations: no `og:locale:alternate` for es, fr.",
   },
+  "icons.missing": {
+    why: "Nothing in a specification requires an icon, which is why nothing complains and every consumer improvises. The browser falls back to `/favicon.ico` at the root; a feed reader or a link unfurler often falls back to nothing at all, and the bookmark is a grey square among fifty.",
+    message:
+      'Page declares no icon: no `<link rel="icon">`, and no icons from a manifest. Consumers fall back to `/favicon.ico` if the site happens to serve one.',
+  },
+  "icons.apple-touch.missing": {
+    why: 'iOS does not read `rel="icon"` when someone adds a site to their home screen. With no `apple-touch-icon` it takes a screenshot instead, so what they saved is a thumbnail of whatever was on screen at the moment they saved it.',
+    message:
+      "Page declares icons (icon) but no `apple-touch-icon`; iOS will screenshot the page instead.",
+  },
+  "icons.manifest-mismatch": {
+    why: "Two files declare the icons and nothing compares them. Only flagged where it is genuinely a contradiction — the same file described with two different sizes, or icons that exist only in the manifest, which is not where a browser tab looks. Two lists that simply differ are the normal case, and goflag does not treat them as a defect.",
+    message:
+      "The manifest and the `<head>` describe the same icon differently: `/icon.png` is `32x32` in the `<head>` and `192x192` in the manifest.",
+  },
   "robots.conflict": {
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
     message:

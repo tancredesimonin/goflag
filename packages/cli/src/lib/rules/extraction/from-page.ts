@@ -4,19 +4,28 @@
  * The engine's `Page` already carries provenance (`Sourced<T>` is
  * structurally identical to `Fact<T>`), so most of this is a projection:
  * pick the documented fields, leave behind the engine internals (raw HTML
- * blobs, hydration deltas, probes). The only real work is promoting the
+ * blobs, hydration deltas). The only real work is promoting the
  * root-element attributes (`lang`, `dir`, `<base href>`), which `Page` keeps
  * raw-only, into `Fact`s with an origin.
+ *
+ * One probe crosses over: the Web App Manifest. It is fetched per page,
+ * because the page is what declares it, and its icons are a declaration about
+ * this page's `<head>` rather than about the site. Its payload arrives as
+ * `unknown` from the network, so it is read defensively here — that is the
+ * price of letting a rule stay a pure function of the extraction.
  *
  * The output shares object references with the input — both are immutable
  * by convention — and is fully JSON-serializable (`Page.html` never leaks).
  */
 
+import { parseSizes } from "../../core/extract/static";
 import type { Page } from "../../core/types";
 import type {
   Extraction,
   ExtractionDocument,
   ExtractionLinks,
+  ExtractionManifest,
+  ExtractionManifestIcon,
   ExtractionOpenGraph,
   Fact,
 } from "./types";
@@ -55,11 +64,60 @@ function openGraphFromPage(page: Page): ExtractionOpenGraph {
   };
 }
 
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+/**
+ * The `icons` member of a fetched manifest, read out of `unknown`.
+ *
+ * An entry without a usable `src` is dropped rather than repaired: the
+ * manifest spec makes `src` the only required member of an icon, so an entry
+ * missing it names nothing a rule could judge or a browser could fetch.
+ */
+function manifestIcons(data: unknown): ExtractionManifestIcon[] {
+  if (typeof data !== "object" || data === null) return [];
+  const raw = (data as { icons?: unknown }).icons;
+  if (!Array.isArray(raw)) return [];
+
+  const icons: ExtractionManifestIcon[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const { src, sizes, type, purpose } = entry as Record<string, unknown>;
+    const source = optionalString(src);
+    if (!source) continue;
+
+    icons.push({
+      src: source,
+      sizes: optionalString(sizes),
+      type: optionalString(type),
+      purpose: optionalString(purpose),
+      parsedSizes: parseSizes(optionalString(sizes)),
+    });
+  }
+  return icons;
+}
+
+function manifestFromPage(page: Page): ExtractionManifest | undefined {
+  const link = page.links.manifest;
+  if (!link) return undefined;
+
+  const probe = page.probes.manifest;
+  // No probe ran, so nothing is known beyond the declaration itself. Saying
+  // `parsed: false` here would claim goflag looked and failed.
+  if (!probe) return { href: link.href };
+  if (!probe.found || probe.parseError !== undefined) {
+    return { href: link.href, parsed: false };
+  }
+
+  return { href: link.href, parsed: true, icons: manifestIcons(probe.data) };
+}
+
 function linksFromPage(page: Page): ExtractionLinks {
   return {
     hreflang: page.links.alternates,
     icons: page.links.icons,
-    manifest: page.links.manifest ? { href: page.links.manifest.href } : undefined,
+    manifest: manifestFromPage(page),
     feeds: page.links.feeds.map(({ type, href, title }) => ({ type, href, title })),
   };
 }

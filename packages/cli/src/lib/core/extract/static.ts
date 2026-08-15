@@ -381,7 +381,14 @@ function isFeedType(type: string): boolean {
   );
 }
 
-function parseSizes(sizes: string | undefined): IconLink["parsedSizes"] {
+/**
+ * Parse the `sizes` syntax — a space-separated list of `WxH`, or `any`.
+ *
+ * Exported because a Web App Manifest's `icons[].sizes` member is defined by
+ * reference to this same attribute, and the extraction adapter reads both. One
+ * syntax, one parser.
+ */
+export function parseSizes(sizes: string | undefined): IconLink["parsedSizes"] {
   if (!sizes) return [];
   return sizes
     .split(/\s+/)
