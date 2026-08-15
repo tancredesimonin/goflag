@@ -18,6 +18,7 @@
  */
 
 import { splitRoute } from "../core/i18n";
+import { robotsAllows } from "../core/robots/match";
 import type { Page } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
 
@@ -231,12 +232,20 @@ function metaRobotsTokens(page: Page): Set<string> {
  * that disallows everything and says nothing else is doing exactly what it
  * means to, so that is a warning. A site that blocks the crawl *and* asks to
  * be indexed cannot have meant both — that is an error.
+ *
+ * The gate now asks the RFC 9309 matcher whether `/` is allowed, rather than
+ * looking for a literal `Disallow: /` line. Same answer on the file that
+ * prompted the rule, and a correct one on the files that spell it otherwise —
+ * `Disallow: *`, or a `Disallow: /` that an `Allow:` further down takes back.
  */
 const robotsBlocksSite: SiteRule = {
   id: "robots.blocks-site",
   severity: "error",
   summary: "`robots.txt` must not forbid crawling a site that asks to be indexed",
-  appliesTo: (site) => site.robots?.found === true && site.robots.blocksAll,
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) =>
+    site.robots?.found === true && !robotsAllows(site.robots.groups, "/").allowed,
   check: ({ site, issue }) => {
     const robotsUrl = site.robots?.url ?? `${site.origin}/robots.txt`;
 
@@ -337,12 +346,219 @@ const iconsIcoMissing: SiteRule = {
   },
 };
 
+/**
+ * The file-level robots.txt rules (`docs/sitemap-robots-plan.md` §4.1–4.2).
+ *
+ * They exist because the parse now keeps what it reads. Every one of them is a
+ * few lines over a field `RobotsProbe` did not have a week ago, which is the
+ * whole argument for having replaced two booleans with a model.
+ *
+ * The `robotstxt.*` prefix is deliberate and the plan settles it: the file and
+ * the `<meta name="robots">` tag are different subjects, and `robots.conflict`
+ * already belongs to the tag.
+ */
+
+/** RFC 9309 §2.4 — parsers need only honour the first 500 KiB. */
+const ROBOTS_BYTE_LIMIT = 500 * 1024;
+
+const robotstxtUnreachable: SiteRule = {
+  id: "robotstxt.unreachable",
+  severity: "error",
+  summary: "A robots.txt that errors is read as forbidding the whole site",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  // A 404 is not a failure: §2.3.1.3 says an absent file allows everything,
+  // and most sites that have none mean exactly that. Only a server that
+  // answered badly, or did not answer, triggers the disallow-everything rule.
+  appliesTo: (site) => site.robots !== undefined && isRobotsFailure(site.robots.status),
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const detail =
+      probe.status === 0 ? "the request failed" : `the origin answered ${probe.status}`;
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` could not be read: ${detail}. RFC 9309 §2.3.1.4 tells a crawler to assume a complete disallow for as long as this lasts — an outage on this one file takes the whole site out of the index.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtOversized: SiteRule = {
+  id: "robotstxt.oversized",
+  severity: "error",
+  summary: "Rules past 500 KiB of robots.txt are not guaranteed to be read",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.byteLength ?? 0) > ROBOTS_BYTE_LIMIT,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const kib = Math.round(probe.byteLength / 1024);
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` is ${kib} KiB. A parser is only required to honour the first 500 KiB (RFC 9309 §2.4), so every rule past that point silently does not exist.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtInvalidLine: SiteRule = {
+  id: "robotstxt.invalid-line",
+  severity: "warning",
+  summary: "Every line of robots.txt should parse as something",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.invalidLines.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    // One finding per file, not per line: a file with a hundred junk lines has
+    // one defect, and the summary lesson says forty repeats of it are noise.
+    const shown = probe.invalidLines.slice(0, 5);
+    const rest = probe.invalidLines.length - shown.length;
+
+    return issue({
+      pageUrl: probe.url,
+      message:
+        `\`robots.txt\` has ${probe.invalidLines.length} line${probe.invalidLines.length === 1 ? "" : "s"} that parse as nothing: ` +
+        shown.map((l) => `line ${l.line} (${l.reason})`).join(", ") +
+        `${rest > 0 ? `, and ${rest} more` : ""}. A crawler drops them silently, so the rule you meant to write is simply absent.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtUnknownDirective: SiteRule = {
+  id: "robotstxt.unknown-directive",
+  severity: "info",
+  summary: "Non-standard robots.txt directives are read by some crawlers and ignored by others",
+  rigor: "guideline",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) => (site.robots?.unknownDirectives.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const names = [...new Set(probe.unknownDirectives.map((d) => d.name))];
+
+    // Deliberately not a defect. These parse, they are spelled correctly, and
+    // some crawlers honour them — the finding exists so nobody counts on the
+    // ones that do not.
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` uses ${names.map((n) => `\`${n}\``).join(", ")}, which RFC 9309 does not define. Some crawlers honour ${names.length === 1 ? "it" : "them"} and Google ignores ${names.length === 1 ? "it" : "them"} — so this is worth knowing, not necessarily worth changing.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtCrossOrigin: SiteRule = {
+  id: "robotstxt.cross-origin",
+  severity: "warning",
+  summary: "`/robots.txt` should not redirect to another origin",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => site.robots?.redirects.crossOrigin === true,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` redirects to \`${probe.redirects.finalUrl}\`, on another origin. RFC 9309 §2.3.1.2 permits following it, so this works — but the policy for this site now lives somewhere this site does not control, and it is usually a proxy accident rather than a decision.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtSitemapRelative: SiteRule = {
+  id: "robotstxt.sitemap.relative",
+  severity: "error",
+  summary: "A `Sitemap:` declaration must be an absolute URL",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.sitemaps ?? []).some((s) => !isAbsolute(s.value)),
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const relative = probe.sitemaps.filter((s) => !isAbsolute(s.value));
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`Sitemap:\` must be a full URL: ${relative.map((s) => `line ${s.line} declares \`${s.value}\``).join(", ")}. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+/**
+ * A crawled page that asks to be indexed sits behind a `Disallow`.
+ *
+ * The generalisation of `robots.blocks-site` past `Disallow: /`, and the rule
+ * the RFC 9309 matcher was written for. The site-wide case is the loud one;
+ * this is the quiet one — a single path rule, added for a reason that made
+ * sense once, still shadowing a section of the site that has since been given
+ * pages that ask to be found.
+ *
+ * `robots.blocks-site` takes precedence: when the whole origin is disallowed,
+ * every page is blocked and saying so once is the finding.
+ */
+const robotsBlocksPage: SiteRule = {
+  id: "robots.blocks-page",
+  severity: "error",
+  summary: "A page asking to be indexed must not be disallowed by robots.txt",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) => site.robots?.found === true && robotsAllows(site.robots.groups, "/").allowed,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+
+    return site.pages.flatMap((page) => {
+      if (!metaRobotsTokens(page).has("index")) return [];
+
+      let path: string;
+      try {
+        const url = new URL(page.fetch.finalUrl);
+        path = `${url.pathname}${url.search}`;
+      } catch {
+        return [];
+      }
+
+      const decision = robotsAllows(probe.groups, path);
+      if (decision.allowed || !decision.rule) return [];
+
+      return issue({
+        pageUrl: page.fetch.finalUrl,
+        message: `Page declares \`<meta name="robots" content="index">\` but \`robots.txt\` line ${decision.rule.line} disallows \`${decision.rule.pattern}\` for \`${decision.group}\`. robots.txt wins: the page is never fetched, so the tag asking for it is never read.`,
+        origin: { kind: "computed" },
+      });
+    });
+  },
+};
+
+/** A status that means the file could not be read, as opposed to absent. */
+function isRobotsFailure(status: number): boolean {
+  return status === 0 || status >= 500;
+}
+
+function isAbsolute(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangSitemapMismatch,
   iconsIcoMissing,
+  robotsBlocksPage,
   robotsBlocksSite,
+  robotstxtCrossOrigin,
+  robotstxtInvalidLine,
+  robotstxtOversized,
+  robotstxtSitemapRelative,
+  robotstxtUnknownDirective,
+  robotstxtUnreachable,
 ];
 
 export function getSiteRule(id: string): SiteRule | undefined {

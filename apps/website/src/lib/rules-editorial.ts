@@ -152,6 +152,41 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
   },
+  "robots.blocks-page": {
+    why: "The quiet version of the site-wide block. A `Disallow` added years ago for a reason that made sense then, still shadowing a section that has since been given pages asking to be found. Nothing in a browser shows it: the page loads perfectly for you and is never fetched by a crawler.",
+    message:
+      'Page declares `<meta name="robots" content="index">` but `robots.txt` line 4 disallows `/blog` for `*`. robots.txt wins: the page is never fetched, so the tag asking for it is never read.',
+  },
+  "robotstxt.unreachable": {
+    why: "The failure mode nobody plans for: a 500 on one small text file is read as a site-wide ban. RFC 9309 is explicit — while robots.txt errors, a crawler must assume complete disallow. An outage here costs more than an outage on any page.",
+    message:
+      "`robots.txt` could not be read: the origin answered 503. RFC 9309 §2.3.1.4 tells a crawler to assume a complete disallow for as long as this lasts — an outage on this one file takes the whole site out of the index.",
+  },
+  "robotstxt.oversized": {
+    why: "Parsers are only required to read the first 500 KiB. Past that, rules are not wrong, they are absent — and a file that long is usually generated, so nobody scrolls to the end to notice.",
+    message:
+      "`robots.txt` is 812 KiB. A parser is only required to honour the first 500 KiB (RFC 9309 §2.4), so every rule past that point silently does not exist.",
+  },
+  "robotstxt.invalid-line": {
+    why: "A typo in robots.txt does not fail loudly, it fails as silence: the crawler drops the line and the rule you meant to write simply never existed. `Disalow:` looks right at a glance and protects nothing.",
+    message:
+      "`robots.txt` has 1 line that parses as nothing: line 2 (unknown directive `disalow`). A crawler drops them silently, so the rule you meant to write is simply absent.",
+  },
+  "robotstxt.unknown-directive": {
+    why: "Not a defect — `Crawl-delay` and `Host` are spelled correctly and some crawlers honour them. Worth knowing because Google does not, so a site relying on one for rate limiting is relying on nothing where it matters most.",
+    message:
+      "`robots.txt` uses `crawl-delay`, which RFC 9309 does not define. Some crawlers honour it and Google ignores it — so this is worth knowing, not necessarily worth changing.",
+  },
+  "robotstxt.cross-origin": {
+    why: "Legal, and almost always accidental. Following the redirect is permitted, but the policy governing this site now lives on a host this site does not control — and the day that host answers differently, nobody here will know why the traffic changed.",
+    message:
+      "`robots.txt` redirects to `https://cdn.example.net/robots.txt`, on another origin. RFC 9309 §2.3.1.2 permits following it, so this works — but the policy for this site now lives somewhere this site does not control, and it is usually a proxy accident rather than a decision.",
+  },
+  "robotstxt.sitemap.relative": {
+    why: "robots.txt is fetched on its own, so a consumer has no page to resolve a relative path against. The declaration reads as an instruction and resolves to nothing.",
+    message:
+      "`Sitemap:` must be a full URL: line 3 declares `/sitemap.xml`. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.",
+  },
   "robots.blocks-site": {
     why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     message:

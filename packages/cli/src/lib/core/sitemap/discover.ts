@@ -100,14 +100,18 @@ export async function discoverSitemap(
   const robots = await probeRobots(origin, { signal: options.signal });
   diagnostics.robotsFound = robots.found;
 
+  // The parse keeps each declaration's line number; discovery only needs the
+  // value, and the line matters to the rules that judge the file.
+  const declaredUrls = robots.sitemaps.map((entry) => entry.value);
+
   const candidates: SitemapCandidate[] = [];
-  for (const declared of robots.sitemaps) {
+  for (const declared of declaredUrls) {
     candidates.push({ url: declared, source: "robots", declaredInRobots: true });
   }
   candidates.push({
     url: new URL("/sitemap.xml", origin).toString(),
     source: "well-known",
-    declaredInRobots: robots.sitemaps.includes(new URL("/sitemap.xml", origin).toString()),
+    declaredInRobots: declaredUrls.includes(new URL("/sitemap.xml", origin).toString()),
   });
   candidates.push({
     url: new URL("/sitemap_index.xml", origin).toString(),

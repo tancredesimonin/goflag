@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 4,
+    "site": 11,
     "prose": 4
   },
   "sources": {
@@ -33,6 +33,13 @@
       "rigor": "vendor-spec",
       "url": "https://developers.google.com/search/docs/specialty/international/localized-versions"
     },
+    "google-robots-intro": {
+      "id": "google-robots-intro",
+      "publisher": "Google",
+      "title": "Introduction to robots.txt",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/robots/intro"
+    },
     "google-robots-meta": {
       "id": "google-robots-meta",
       "publisher": "Google",
@@ -60,6 +67,13 @@
       "title": "RFC 6596 — The Canonical Link Relation",
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc6596"
+    },
+    "ietf-rfc9309": {
+      "id": "ietf-rfc9309",
+      "publisher": "IETF",
+      "title": "RFC 9309 — Robots Exclusion Protocol",
+      "rigor": "normative",
+      "url": "https://www.rfc-editor.org/rfc/rfc9309"
     },
     "mdn-link-rel": {
       "id": "mdn-link-rel",
@@ -102,6 +116,13 @@
       "title": "The Open Graph protocol",
       "rigor": "vendor-spec",
       "url": "https://ogp.me/"
+    },
+    "sitemaps-protocol": {
+      "id": "sitemaps-protocol",
+      "publisher": "sitemaps.org",
+      "title": "Sitemaps XML protocol",
+      "rigor": "normative",
+      "url": "https://www.sitemaps.org/protocol.html"
     },
     "w3c-appmanifest": {
       "id": "w3c-appmanifest",
@@ -745,13 +766,28 @@
       "expected": "an explicit `og:title`"
     },
     {
+      "id": "robots.blocks-page",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A page asking to be indexed must not be disallowed by robots.txt",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9309",
+        "google-robots-intro"
+      ]
+    },
+    {
       "id": "robots.blocks-site",
       "scope": "site",
       "severity": "error",
       "kind": "boolean",
       "summary": "`robots.txt` must not forbid crawling a site that asks to be indexed",
-      "rigor": null,
-      "sources": []
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9309",
+        "google-robots-intro"
+      ]
     },
     {
       "id": "robots.conflict",
@@ -771,6 +807,74 @@
         "http.headers"
       ],
       "expected": "consistent indexing directives across meta tags and headers"
+    },
+    {
+      "id": "robotstxt.cross-origin",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`/robots.txt` should not redirect to another origin",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9309"
+      ]
+    },
+    {
+      "id": "robotstxt.invalid-line",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Every line of robots.txt should parse as something",
+      "rigor": "spec-required",
+      "sources": [
+        "ietf-rfc9309"
+      ]
+    },
+    {
+      "id": "robotstxt.oversized",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Rules past 500 KiB of robots.txt are not guaranteed to be read",
+      "rigor": "spec-required",
+      "sources": [
+        "ietf-rfc9309"
+      ]
+    },
+    {
+      "id": "robotstxt.sitemap.relative",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A `Sitemap:` declaration must be an absolute URL",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol",
+        "ietf-rfc9309"
+      ]
+    },
+    {
+      "id": "robotstxt.unknown-directive",
+      "scope": "site",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Non-standard robots.txt directives are read by some crawlers and ignored by others",
+      "rigor": "guideline",
+      "sources": [
+        "ietf-rfc9309",
+        "google-robots-intro"
+      ]
+    },
+    {
+      "id": "robotstxt.unreachable",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A robots.txt that errors is read as forbidding the whole site",
+      "rigor": "spec-required",
+      "sources": [
+        "ietf-rfc9309"
+      ]
     },
     {
       "id": "title.descriptive",
