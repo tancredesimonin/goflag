@@ -105,6 +105,42 @@ describe("findingsToIssues", () => {
     expect(ogTitle?.fix).toBeUndefined();
   });
 
+  it("carries the rigor and its sources all the way to the issue", () => {
+    // The whole point of phase F. A report is read where the registry is not —
+    // a JSON file in CI, an agent's context — and an agent that cannot tell a
+    // `spec-required` from a `heuristic` will fix folklore first. These four
+    // fields were known on the finding and stopped here until now.
+    const result = evaluateRules(extraction(`<html><head></head></html>`), RULES);
+    const issues = findingsToIssues(result, RULES);
+
+    const titleMissing = issues.find((i) => i.ruleId === "title.missing");
+    expect(titleMissing?.rigor).toBe("spec-required");
+    expect(titleMissing?.sources).toContain("whatwg-html-title");
+    expect(titleMissing?.expected).toBe("a non-empty `<title>` element");
+    expect(titleMissing?.observed).toBeNull();
+
+    // Every violation, not just the one looked at above.
+    for (const issue of issues) {
+      if (issue.ruleId === "engine.rule-crashed") continue;
+      expect(issue.rigor, issue.ruleId).toBeDefined();
+      expect(issue.sources?.length, issue.ruleId).toBeGreaterThan(0);
+      expect(issue.expected, issue.ruleId).toBeTruthy();
+    }
+  });
+
+  it("leaves a crash without a rigor rather than inventing one", () => {
+    // `engine.rule-crashed` is goflag talking about itself. There is no
+    // document behind it, and claiming one would be the exact dishonesty the
+    // rigor axis exists to prevent.
+    const issues = findingsToIssues(
+      { findings: [], crashes: [{ ruleId: "broken.rule", message: "kaput" }] },
+      RULES,
+    );
+
+    expect(issues[0]?.rigor).toBeUndefined();
+    expect(issues[0]?.sources).toBeUndefined();
+  });
+
   it("converts crashes into the synthetic engine.rule-crashed issue", () => {
     const issues = findingsToIssues(
       { findings: [], crashes: [{ ruleId: "broken.rule", message: "kaput" }] },

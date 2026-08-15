@@ -327,6 +327,36 @@ description on a page that has none, because `description.missing` already
 says that. They never count toward the summary, the verdict, or the exit
 code: nobody has judged them yet.
 
+### Every finding says how authoritative it is
+
+A finding carries the rule's `rigor`, the documents behind it, what the page
+actually said and what a passing page looks like — in the JSON, not only in the
+opt-in conformance view:
+
+```json
+{
+  "ruleId": "title.length",
+  "severity": "warning",
+  "rigor": "heuristic",
+  "sources": ["google-title-link", "moz-title-tag"],
+  "expected": "10–60 characters",
+  "observed": 65
+}
+```
+
+That distinction is the whole point of the rigor axis, and it is meant to be
+acted on: a `spec-required` finding and a `heuristic` one are not the same
+work, and a report read in CI — or by an agent that does not have the rule
+registry — could not tell them apart otherwise. `--summary` shows it per rule,
+where it costs one tag instead of one per finding:
+
+```
+  warn  title.length [heuristic] ×3
+```
+
+Severity says what your build should do; rigor says who says so. A profile
+changes the first and never the second.
+
 ### Gate on regressions, not on perfection
 
 A plain run fails on any finding, which is unusable on a site that is not clean

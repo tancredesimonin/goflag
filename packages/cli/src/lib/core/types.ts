@@ -477,10 +477,36 @@ export interface Page {
 
 export type Severity = "error" | "warning" | "info";
 
+/**
+ * How authoritative the requirement behind a finding is.
+ *
+ * Lives here rather than in the rule layer for the same reason `Issue` does:
+ * it crosses the engine → report → CLI `--json` boundary. An agent reading a
+ * report has to be able to tell a `spec-required` from a `heuristic` before it
+ * decides what to change, and a type that stopped at the rule registry could
+ * not tell it — `../rules/types` re-exports this one.
+ */
+export type Rigor =
+  "spec-required" | "spec-recommended" | "vendor-spec" | "guideline" | "heuristic";
+
 export interface Issue {
   ruleId: string;
   severity: Severity;
   message: string;
+  /**
+   * How authoritative the requirement is, and the documents that back it.
+   *
+   * Carried on the finding rather than looked up by the consumer, because a
+   * report is read where the registry is not: a JSON file in CI, a PR comment,
+   * an agent's context. Absent on a cross-page rule that has not declared one
+   * (see `SiteRule`) and on the synthetic `engine.rule-crashed`.
+   */
+  rigor?: Rigor;
+  sources?: string[];
+  /** What the page actually said, as the rule saw it. JSON-serializable. */
+  observed?: unknown;
+  /** One sentence stating what a passing page looks like. */
+  expected?: string;
   /** Optional pointer back into the `Page` for UI highlighting. */
   origin?: TagOrigin;
   /** Optional fix snippet for "Copy fix" buttons and PR comments. */

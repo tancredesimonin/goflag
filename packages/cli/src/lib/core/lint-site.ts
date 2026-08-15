@@ -44,6 +44,11 @@ export function lintSite(
           fix: input.fix,
           suggestion: input.suggestion,
           pageUrl: input.pageUrl,
+          // Stamped from the descriptor, never from the check: a rule does not
+          // get to claim a rigor per finding. Absent on the three rules that
+          // predate the field, which is how the gap stays visible instead of
+          // being filled with a plausible citation.
+          ...(rule.rigor ? { rigor: rule.rigor, sources: rule.sources ?? [] } : {}),
         }),
       });
     } catch (err) {

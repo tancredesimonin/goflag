@@ -18,7 +18,7 @@
 
 import type { ReciprocityCode } from "../lib/core/i18n";
 import type { LinkVerdict } from "../lib/core/links/types";
-import type { Severity } from "../lib/core/types";
+import type { Rigor, Severity } from "../lib/core/types";
 import type { ConformanceRule } from "./conformance";
 import type {
   GoflagReport,
@@ -51,6 +51,12 @@ export interface RollupLink {
 export interface RollupSeo {
   ruleId: string;
   severity: Severity;
+  /**
+   * How authoritative the rule is. Constant within a group — a rollup is one
+   * rule — which is what makes the summary the right place to show it: one tag
+   * per line instead of one per finding.
+   */
+  rigor?: Rigor;
   why?: string;
   fix?: string;
   /** A representative message (from the first occurrence). */
@@ -185,6 +191,7 @@ function rollupByRule(issues: ReadonlyArray<SeoIssue | SiteIssue>): RollupSeo[] 
       groups.set(issue.ruleId, {
         ruleId: issue.ruleId,
         severity: issue.severity,
+        rigor: issue.rigor,
         why: issue.why,
         fix: issue.fix,
         sample: issue.message,
