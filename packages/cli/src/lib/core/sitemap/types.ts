@@ -98,19 +98,11 @@ export interface SitemapDiagnostics {
   /** Human-readable warnings (malformed XML, gzip failure, caps hit, ...). */
   warnings: string[];
 
-  // --- Strengthened analysis ---
-  //
-  // Declared for an `analyzeSitemapHealth` that was never written, so none of
-  // these has ever held a value. `lastmodIssues`, `mixedProtocol` and
-  // `mixedHost` are gone: `sitemap.lastmod.invalid`,
-  // `sitemap.entry.protocol-mismatch` and `sitemap.entry.cross-host` say the
-  // same things with a URL attached, which is what made them worth having.
-  // `orphanCount` and `robotsConflicts` are gone the same way, absorbed by
-  // `sitemap.orphans` and `sitemap.entry.blocked-by-robots`. `reachable` is
-  // the last one standing, and it waits for the entry probe that
-  // `sitemap.entry.unreachable` needs (§4.5).
-  /** Entry reachability tally (probed via the link engine's checkLink). */
-  reachable?: { checked: number; ok: number; broken: number; redirected: number };
+  // Six analysis fields used to be declared here, for an
+  // `analyzeSitemapHealth` that was never written — so not one of them ever
+  // held a value. Every one is now a rule that says the same thing with a URL
+  // attached, which is what made them worth having in the first place, and
+  // `docs/sitemap-robots-plan.md` §6 asked for exactly this.
 }
 
 /**

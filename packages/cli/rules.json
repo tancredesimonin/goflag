@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 24,
+    "site": 26,
     "prose": 4
   },
   "sources": {
@@ -961,6 +961,30 @@
       "rigor": "spec-required",
       "sources": [
         "sitemaps-protocol"
+      ]
+    },
+    {
+      "id": "sitemap.entry.redirects",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A sitemap should list final URLs, not URLs that redirect",
+      "rigor": "guideline",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.entry.unreachable",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "Every URL a sitemap lists must answer",
+      "rigor": "vendor-spec",
+      "sources": [
+        "sitemaps-protocol",
+        "google-sitemaps"
       ]
     },
     {
