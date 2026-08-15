@@ -1,6 +1,6 @@
 {
   "counts": {
-    "page": 20,
+    "page": 23,
     "site": 4,
     "prose": 4
   },
@@ -394,6 +394,51 @@
       }
     },
     {
+      "id": "icons.sizes-mismatch",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "A `sizes` attribute must describe the file it points at",
+      "why": "`sizes` is how a client picks one icon out of several without fetching them all, so a wrong value costs exactly what the attribute was there to save: the client downloads the file it was told to prefer and gets the wrong resolution. A half-true declaration is the common shape — a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises one third of itself.",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "assets"
+      ],
+      "relates": [
+        "icons.unreachable"
+      ],
+      "expected": "`sizes` listing what the file actually contains"
+    },
+    {
+      "id": "icons.unreachable",
+      "scope": "page",
+      "category": "icons",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A declared icon has to answer with an image",
+      "why": "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would have fallen back to. The declaration is what took the fallback away.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "assets"
+      ],
+      "relates": [
+        "icons.missing",
+        "icons.ico.missing"
+      ],
+      "expected": "a 2xx image at every declared icon URL"
+    },
+    {
       "id": "lang.matches-content",
       "scope": "prose",
       "category": "i18n",
@@ -577,6 +622,29 @@
         "acceptable": "info",
         "poor": "warning"
       }
+    },
+    {
+      "id": "og.image.reachable",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "The URL in `og:image` has to answer with an image",
+      "why": "Every other check on a preview image judges the tag. This one judges the file, and it is the only one that can catch the failure with no symptom: a URL that is present, well-formed, absolute — and dead. The card renders empty and nothing in the page says why. Found on this project's own documentation, where eleven pages pointed at a route a redirect had been swallowing since the day it was written.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images",
+        "assets"
+      ],
+      "relates": [
+        "og.image.missing",
+        "og.image.absolute"
+      ],
+      "expected": "a 2xx image at every `og:image` URL"
     },
     {
       "id": "og.image.representative",

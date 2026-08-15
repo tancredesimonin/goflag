@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serveFavicon } from "./favicon-route";
+import { serveFavicon } from "./asset-routes";
 
 /**
  * Programmable fixture server for the link-checker and strengthened

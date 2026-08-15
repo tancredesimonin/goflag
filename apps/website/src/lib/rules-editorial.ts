@@ -118,6 +118,20 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "The manifest and the `<head>` describe the same icon differently: `/icon.png` is `32x32` in the `<head>` and `192x192` in the manifest.",
   },
+  "og.image.reachable": {
+    why: "Every other check on a preview image judges the tag; this one judges the file. It is the only one that catches the failure with no symptom — a URL present, well-formed, absolute, and dead. Found on this project's own documentation, where the cards pointed at a route a redirect had been swallowing since the day it was written.",
+    message:
+      "`og:image` does not serve an image: HTTP 200 with `text/html`, which is not an image. The preview card will render without it.",
+  },
+  "icons.unreachable": {
+    why: "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would otherwise have fallen back to. Declaring it is what took the fallback away.",
+    message: "Declared icon does not serve an image: `icon` → `/icon-32.png` (HTTP 404).",
+  },
+  "icons.sizes-mismatch": {
+    why: "`sizes` exists so a client can pick one icon out of several without fetching them all. A wrong value costs exactly what the attribute was there to save. The usual shape is not a lie but a half-truth: a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself.",
+    message:
+      "`sizes` does not describe the file: `/favicon.ico` declares `48x48` and contains 16x16, 32x32, 48x48.",
+  },
   "icons.ico.missing": {
     why: "No specification asks for it, and half the internet requests it anyway. Modern browsers follow the `<link>` a page declares and never touch the root — but feed readers, link unfurlers and older crawlers ask blind, take the 404, and show nothing. Cheap to serve, invisible when absent.",
     message:

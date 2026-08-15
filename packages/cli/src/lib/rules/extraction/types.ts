@@ -221,6 +221,31 @@ export interface ExtractionJsonLd {
   raw: string;
 }
 
+/** One intrinsic size a file declares about itself. */
+export interface ExtractionAssetSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * What was served at one asset URL the page declared.
+ *
+ * The rules stay pure functions of this model: the network happened in a
+ * dedicated pass (`docs/og-plan.md` D8) and its answers arrive here as data,
+ * exactly like the manifest's.
+ */
+export interface ExtractionAsset {
+  status: number;
+  /** 2xx *and* an image content type. */
+  ok: boolean;
+  contentType?: string;
+  /**
+   * Sizes decoded from the file's header — several for an ICO. Absent for a
+   * format goflag does not decode, which means *unknown*, never *none*.
+   */
+  sizes?: ExtractionAssetSize[];
+}
+
 /**
  * The per-page observation. Everything a page rule (or an agent judging a
  * prose rule) may read; nothing else.
@@ -237,4 +262,11 @@ export interface Extraction {
   twitter: ExtractionTwitter;
   links: ExtractionLinks;
   jsonLd: ExtractionJsonLd[];
+  /**
+   * What was served at each asset URL this page declared, keyed by resolved
+   * URL. **Absent when no probe pass ran** — a rule must read that as "not
+   * looked at" rather than "nothing there", the same three-valued care the
+   * manifest gets.
+   */
+  assets?: Record<string, ExtractionAsset>;
 }

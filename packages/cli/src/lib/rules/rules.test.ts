@@ -78,7 +78,7 @@ describe("rule registry", () => {
       expect(seen.has(rule.id)).toBe(false);
       seen.add(rule.id);
     }
-    expect(RULES.length).toBe(20);
+    expect(RULES.length).toBe(23);
   });
 
   it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
@@ -123,7 +123,10 @@ describe("rule registry", () => {
   });
 
   it("declares which extraction paths it reads, and they exist", () => {
-    const extraction = extractionFromPage(pageFromHtml(CLEAN));
+    // Populated with every optional section, because an optional one is still
+    // a real section: a rule may legitimately read `assets` on a run where the
+    // probe pass did not fill it.
+    const extraction = extractionFromPage(pageFromHtml(CLEAN, { manifest: {}, assets: {} }));
     const topLevel = new Set(Object.keys(extraction));
     for (const rule of RULES) {
       expect(rule.reads.length, rule.id).toBeGreaterThan(0);

@@ -9,7 +9,7 @@
  * way in.
  */
 
-import type { Page } from "../core/types";
+import type { AssetProbe, Page } from "../core/types";
 import { PAGE_SCHEMA_VERSION } from "../core/types";
 import { extractStatic } from "../core/extract/static";
 
@@ -29,6 +29,12 @@ export interface PageFromHtmlOptions {
    * out to declare nothing, and the rules are written to tell the two apart.
    */
   manifest?: unknown;
+  /**
+   * What the asset probe pass found, keyed by URL. Omitting it leaves `assets`
+   * absent, which is what a run without the pass looks like — and what the
+   * reachability rules must read as "not looked at".
+   */
+  assets?: Record<string, AssetProbe>;
 }
 
 /**
@@ -73,6 +79,7 @@ export function pageFromHtml(html: string, options: PageFromHtmlOptions = {}): P
               data: options.manifest,
             },
           },
+    ...(options.assets ? { assets: options.assets } : {}),
     schemaVersion: PAGE_SCHEMA_VERSION,
   } satisfies Page;
 }
