@@ -230,6 +230,32 @@ export interface RobotsProbe {
   blocksAll: boolean;
 }
 
+/** One intrinsic size a file declares about itself. */
+export interface AssetSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * What is actually served at an asset URL a page declared — an `og:image`, an
+ * icon. Produced once per distinct URL by the probe pass in `report/build.ts`
+ * (`docs/og-plan.md` D8), never by a rule.
+ */
+export interface AssetProbe {
+  url: string;
+  /** HTTP status. `0` on a network failure. */
+  status: number;
+  /** 2xx *and* an image content type. A 200 of HTML is not an image. */
+  ok: boolean;
+  contentType?: string;
+  /**
+   * Sizes decoded from the file's header. Several for an ICO container, one
+   * for a PNG, absent for every format this does not decode — which a rule
+   * must read as "unknown", never as "none".
+   */
+  sizes?: AssetSize[];
+}
+
 /**
  * What the origin answers at `/favicon.ico`.
  *
@@ -433,6 +459,16 @@ export interface Page {
     sitemap?: SitemapProbe;
     manifest?: ManifestProbe;
   };
+  /**
+   * What was served at the asset URLs this page declared — `og:image`, icons —
+   * keyed by the URL as it was resolved. Filled by the probe pass in
+   * `report/build.ts`, deduplicated across the whole run.
+   *
+   * Absent when no pass ran, which is a different claim from an empty map: the
+   * rules that read it answer `na` on absence and would be inventing a finding
+   * if they did anything else.
+   */
+  assets?: Record<string, AssetProbe>;
 }
 
 // ---------------------------------------------------------------------------

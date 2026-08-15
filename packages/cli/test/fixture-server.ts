@@ -4,7 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { serveFavicon } from "./favicon-route";
+import { serveFavicon } from "./asset-routes";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 

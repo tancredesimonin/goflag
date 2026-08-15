@@ -16,7 +16,7 @@
  */
 
 import { bandFor } from "./evaluate";
-import type { ExtractionIcon } from "./extraction/types";
+import type { ExtractionAsset, ExtractionIcon } from "./extraction/types";
 import type { BooleanRule, Extraction, Rule, ScoredRule, TagOrigin } from "./types";
 
 const TITLE_IDEAL: [number, number] = [10, 60];
@@ -85,6 +85,13 @@ function hreflangCluster(ex: Extraction): string[] {
     seen.add(parts.region ? `${parts.language}-${parts.region}` : parts.language);
   }
   return [...seen];
+}
+
+/** One asset's outcome, said the way a finding has to say it. */
+function describeAsset(status: number, contentType: string | undefined): string {
+  if (status === 0) return "the request failed";
+  if (status >= 400 || status < 200) return `HTTP ${status}`;
+  return `HTTP ${status} with \`${contentType ?? "no content type"}\`, which is not an image`;
 }
 
 /** `rel` tokens that declare an icon, lowercased. */
@@ -929,6 +936,165 @@ const iconsManifestMismatch: BooleanRule = {
   },
 };
 
+const ogImageReachable: BooleanRule = {
+  id: "og.image.reachable",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "error",
+  title: "The URL in `og:image` has to answer with an image",
+  why:
+    "Every other check on a preview image judges the tag. This one judges the " +
+    "file, and it is the only one that can catch the failure with no symptom: " +
+    "a URL that is present, well-formed, absolute — and dead. The card renders " +
+    "empty and nothing in the page says why. Found on this project's own " +
+    "documentation, where eleven pages pointed at a route a redirect had been " +
+    "swallowing since the day it was written.",
+  rigor: "vendor-spec",
+  sources: ["ogp", "meta-og-sharing"],
+  reads: ["openGraph.images", "assets"],
+  expected: "a 2xx image at every `og:image` URL",
+  relates: ["og.image.missing", "og.image.absolute"],
+  evaluate: (ex) => {
+    // No probe pass ran. Reporting an absence goflag never checked for would
+    // be inventing a finding.
+    if (!ex.assets) return { status: "na", observed: null };
+
+    const probed = ex.openGraph.images
+      .map((image) => ex.assets?.[image.url.value.trim()])
+      .filter((probe): probe is NonNullable<typeof probe> => probe !== undefined);
+    if (probed.length === 0) return { status: "na", observed: null };
+
+    const observed = probed.map((probe) => ({
+      status: probe.status,
+      contentType: probe.contentType ?? null,
+    }));
+    const dead = probed.filter((probe) => !probe.ok);
+    if (dead.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `\`og:image\` does not serve an image: ${dead
+        .map((probe) => describeAsset(probe.status, probe.contentType))
+        .join("; ")}. The preview card will render without it.`,
+      origin: { kind: "meta", property: "og:image" },
+    };
+  },
+};
+
+const iconsUnreachable: BooleanRule = {
+  id: "icons.unreachable",
+  kind: "boolean",
+  category: "icons",
+  severity: "warning",
+  title: "A declared icon has to answer with an image",
+  why:
+    "An icon that 404s is worse than one never declared: the client asks, " +
+    "gets nothing, and has already skipped the `/favicon.ico` it would have " +
+    "fallen back to. The declaration is what took the fallback away.",
+  rigor: "vendor-spec",
+  sources: ["whatwg-html-link-types", "mdn-link-rel"],
+  reads: ["links.icons", "assets"],
+  expected: "a 2xx image at every declared icon URL",
+  relates: ["icons.missing", "icons.ico.missing"],
+  evaluate: (ex) => {
+    if (!ex.assets) return { status: "na", observed: null };
+
+    const probed = declaredIcons(ex)
+      .map((icon) => ({ icon, probe: ex.assets?.[icon.href] }))
+      .filter((pair): pair is { icon: ExtractionIcon; probe: ExtractionAsset } =>
+        Boolean(pair.probe),
+      );
+    if (probed.length === 0) return { status: "na", observed: null };
+
+    const observed = probed.map(({ icon, probe }) => ({
+      rel: icon.rel,
+      href: icon.href,
+      status: probe.status,
+    }));
+    const dead = probed.filter(({ probe }) => !probe.ok);
+    if (dead.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `Declared icon does not serve an image: ${dead
+        .map(
+          ({ icon, probe }) =>
+            `\`${icon.rel}\` → \`${icon.href}\` (${describeAsset(probe.status, probe.contentType)})`,
+        )
+        .join("; ")}.`,
+      origin: { kind: "link", rel: "icon" },
+    };
+  },
+};
+
+const iconsSizesMismatch: BooleanRule = {
+  id: "icons.sizes-mismatch",
+  kind: "boolean",
+  category: "icons",
+  severity: "info",
+  title: "A `sizes` attribute must describe the file it points at",
+  why:
+    "`sizes` is how a client picks one icon out of several without fetching " +
+    "them all, so a wrong value costs exactly what the attribute was there to " +
+    "save: the client downloads the file it was told to prefer and gets the " +
+    "wrong resolution. A half-true declaration is the common shape — a `.ico` " +
+    "carrying 16, 32 and 48 declared as `48x48` advertises one third of itself.",
+  rigor: "guideline",
+  sources: ["whatwg-html-link-types", "mdn-link-rel"],
+  reads: ["links.icons", "assets"],
+  expected: "`sizes` listing what the file actually contains",
+  relates: ["icons.unreachable"],
+  evaluate: (ex) => {
+    if (!ex.assets) return { status: "na", observed: null };
+
+    const comparable = declaredIcons(ex)
+      .map((icon) => ({ icon, probe: ex.assets?.[icon.href] }))
+      .filter(
+        (pair): pair is { icon: ExtractionIcon; probe: ExtractionAsset } =>
+          // Only where both sides said something. `any` declares no dimension
+          // to check, and a format goflag does not decode leaves `sizes`
+          // absent — which means unknown, and unknown is not a mismatch.
+          Boolean(pair.probe?.ok && pair.probe.sizes?.length) &&
+          pair.icon.parsedSizes.some((size) => size !== "any"),
+      );
+    if (comparable.length === 0) return { status: "na", observed: null };
+
+    const observed = comparable.map(({ icon, probe }) => ({
+      href: icon.href,
+      declared: icon.sizes ?? null,
+      actual: (probe.sizes ?? []).map((size) => `${size.width}x${size.height}`),
+    }));
+
+    const wrong = observed.filter((entry) => {
+      const declared = new Set(
+        comparable
+          .find((pair) => pair.icon.href === entry.href)!
+          .icon.parsedSizes.filter((size) => size !== "any")
+          .map((size) => `${size.width}x${size.height}`),
+      );
+      const actual = new Set(entry.actual);
+      // Set equality: a declaration that omits sizes the file carries is as
+      // wrong as one that claims sizes it does not.
+      return declared.size !== actual.size || [...declared].some((size) => !actual.has(size));
+    });
+
+    if (wrong.length === 0) return { status: "pass", observed };
+    return {
+      status: "fail",
+      observed,
+      message: `\`sizes\` does not describe the file: ${wrong
+        .map(
+          (entry) =>
+            `\`${entry.href}\` declares \`${entry.declared}\` and contains ${entry.actual.join(", ")}`,
+        )
+        .join("; ")}.`,
+      origin: { kind: "link", rel: "icon" },
+    };
+  },
+};
+
 const robotsConflict: BooleanRule = {
   id: "robots.conflict",
   kind: "boolean",
@@ -1001,12 +1167,15 @@ export const RULES: ReadonlyArray<Rule> = [
   iconsAppleTouchMissing,
   iconsManifestMismatch,
   iconsMissing,
+  iconsSizesMismatch,
+  iconsUnreachable,
   ogDescriptionMissing,
   ogImageAbsolute,
   ogImageAlt,
   ogImageDimensions,
   ogImageMissing,
   ogImageRatio,
+  ogImageReachable,
   ogLocaleAlternates,
   ogLocaleMissing,
   ogTitleMissing,

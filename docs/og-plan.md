@@ -460,8 +460,8 @@ types, la doc Apple, le W3C Web App Manifest. Rien à sourcer de neuf.
 | `icons.apple-touch.missing` | vendor-spec | pas d'`apple-touch-icon` (doc Apple, déjà sourcée)          | ✅ OG-1c |
 | `icons.manifest-mismatch`   | guideline   | le manifeste et le `<head>` se contredisent (voir plus bas) | ✅ OG-1c |
 | `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      | ✅ OG-1d |
-| `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   | ⬜ OG-1b |
-| `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles | ⬜ OG-1b |
+| `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   | ✅ OG-1b |
+| `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles | ✅ OG-1b |
 
 **Ce que le manifeste apporte, et ce qu'il coûte.** Le manifeste est sondé par
 page depuis toujours (`probeManifest`, appelé par `inspect.ts`) et **son contenu
@@ -621,6 +621,29 @@ Un `og:image` présent, bien formé, absolu — et mort. Aucune règle du catalo
 pouvait le dire, parce que **c'est précisément `og.image.reachable`**, parkée en
 OG-1b. Le plan prévoyait cette règle comme la moins urgente des six ; le premier
 site audité prouve le contraire.
+
+### 10.3 Ce qu'OG-1b a trouvé, et pourquoi le plan la sous-estimait
+
+Le §10 la classait dernière des six : « hors chemin critique, elles ne partagent
+rien avec le reste de l'OG ». C'était vrai du code et faux du produit.
+
+Au premier run sur `apps/website`, les deux règles de joignabilité ont trouvé
+**deux routes de metadata mortes depuis le jour où elles ont été écrites** :
+`/og/docs/…`, qui sert les cartes de la documentation, et `/apple-icon`, la
+convention Next pour l'icône iOS. Ni l'une ni l'autre ne porte de point dans son
+chemin, donc le matcher du proxy les attrapait et les redirigeait vers `/en/…`,
+que rien ne rend.
+
+Ce qui compte n'est pas la cause — un matcher trop large — mais que **aucune des
+vingt autres règles ne pouvait le dire**. Toutes jugent la déclaration, et les
+déclarations étaient parfaites : présentes, bien formées, absolues, avec leurs
+dimensions et leur `alt`. Le seul défaut était à l'autre bout de l'URL. Une
+famille de règles qui juge des tags a un angle mort de la taille exacte du
+réseau, et le seul moyen de le voir était d'y aller.
+
+**Corollaire pour `@goflag/og`** : le paquet produira des URL d'image, et c'est
+`og.image.reachable` qui dira si le site les sert. La lib et l'auditeur se
+tiennent par ce bout-là aussi.
 
 **Critère de sortie d'OG-4** — le même que pour `@goflag/next` : migrer
 `apps/website` **et** stereo-house doit supprimer du code net, et le snapshot

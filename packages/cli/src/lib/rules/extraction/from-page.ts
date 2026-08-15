@@ -156,6 +156,7 @@ export function extractionFromPage(page: Page): Extraction {
       keywords: page.meta.keywords,
     },
     openGraph: openGraphFromPage(page),
+    ...(page.assets ? { assets: page.assets } : {}),
     twitter: {
       card: page.twitter.card,
       site: page.twitter.site,
