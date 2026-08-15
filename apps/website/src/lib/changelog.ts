@@ -180,6 +180,12 @@ export function parseChangelog(markdown: string, pkg: PackageId): ChangelogRelea
   return releases;
 }
 
+/**
+ * Where each package keeps its changelog, two directories up from the app.
+ *
+ * Leaving `apps/website` is what the reads below have to be excused for: see
+ * `getChangelog`.
+ */
 const SOURCES: Record<PackageId, string> = {
   cli: join(process.cwd(), "..", "..", "packages", "cli", "CHANGELOG.md"),
   next: join(process.cwd(), "..", "..", "packages", "next", "CHANGELOG.md"),
@@ -195,13 +201,33 @@ const SOURCES: Record<PackageId, string> = {
  *
  * Sorted on the date the generator recorded. Same date means the same merge to
  * main, so the tie is broken by package order and the CLI leads.
+ *
+ * ## Why the two reads are excused from tracing
+ *
+ * Turbopack's static analysis cannot see where these paths lead — they are
+ * built with `join(process.cwd(), "..", "..")`, which walks out of the app —
+ * so it assumes the worst and traces the **whole project** into the server
+ * output. Its own warning says what that costs: "all source files (including
+ * the public folder) deployed as part of the server code", and it names the
+ * escape hatch used here.
+ *
+ * Excusing them is honest rather than convenient. The paths are two constants
+ * fixed at build time, not user input; the files are read once during static
+ * generation and never at request time; and the tracing being skipped would
+ * only ever have pulled in files this page does not open. Since `public/` now
+ * holds a committed `favicon.ico`, the warning had started naming something
+ * real.
+ *
+ * The day this stops being true — a third package, a path that varies — the
+ * answer is to copy the changelogs under `apps/website` in a prebuild step so
+ * the read is statically scoped, not to widen the exemption.
  */
 export function getChangelog(): ChangelogRelease[] {
   return PACKAGES.flatMap((pkg) => {
     const path = SOURCES[pkg];
-    if (!existsSync(path)) return [];
+    if (!existsSync(/*turbopackIgnore: true*/ path)) return [];
 
-    return parseChangelog(readFileSync(path, "utf8"), pkg);
+    return parseChangelog(readFileSync(/*turbopackIgnore: true*/ path, "utf8"), pkg);
   }).sort((a, b) => {
     if (a.date !== b.date) return (b.date ?? "").localeCompare(a.date ?? "");
     return PACKAGES.indexOf(a.package) - PACKAGES.indexOf(b.package);
