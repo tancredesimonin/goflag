@@ -177,6 +177,11 @@ check:
     - pnpm lint
     - pnpm typecheck
     - pnpm format:check
+    # The one build output this repository commits. Verified rather than
+    # regenerated: a pre-commit hook that rewrites it cannot fail a build, and
+    # rewriting it on every commit is what made three other sites commit
+    # encoder noise for months.
+    - pnpm --filter @goflag/website favicon:check
 
 build:
   stage: verify

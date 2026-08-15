@@ -118,6 +118,11 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "The manifest and the `<head>` describe the same icon differently: `/icon.png` is `32x32` in the `<head>` and `192x192` in the manifest.",
   },
+  "icons.ico.missing": {
+    why: "No specification asks for it, and half the internet requests it anyway. Modern browsers follow the `<link>` a page declares and never touch the root — but feed readers, link unfurlers and older crawlers ask blind, take the 404, and show nothing. Cheap to serve, invisible when absent.",
+    message:
+      "No `/favicon.ico` at the root: the origin answered 404. Clients that ask for it blind — feed readers, link unfurlers, older crawlers — get nothing.",
+  },
   "robots.conflict": {
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
     message:

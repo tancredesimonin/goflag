@@ -58,11 +58,22 @@ describe("buildRuleCatalog", () => {
   });
 
   it("shows the cross-page gap rather than hiding it", () => {
-    // `SiteRule` has no rigor field yet. Emitting null is how that stays
-    // visible to whoever renders the catalogue.
-    for (const rule of catalog.rules.filter((r) => r.scope === "site")) {
-      expect(rule.rigor).toBeNull();
-      expect(rule.sources).toEqual([]);
+    // `SiteRule` can now carry a rigor, and one rule does. The three that
+    // predate the field still need their sources chosen rather than guessed,
+    // and emitting null for them is how that stays visible to whoever renders
+    // the catalogue — the alternative being a plausible citation nobody
+    // checked.
+    const site = catalog.rules.filter((r) => r.scope === "site");
+    expect(site.length).toBeGreaterThan(0);
+
+    for (const rule of site) {
+      if (rule.rigor === null) {
+        expect(rule.sources, `${rule.id} cites sources but declares no rigor`).toEqual([]);
+      } else {
+        expect(rule.sources.length, `${rule.id} claims a rigor and cites nothing`).toBeGreaterThan(
+          0,
+        );
+      }
     }
   });
 

@@ -150,8 +150,11 @@ export function buildRuleCatalog(version?: string): RuleCatalog {
       severity: rule.severity,
       kind: "boolean",
       summary: rule.summary,
-      rigor: null,
-      sources: [],
+      // `null` where a cross-page rule has not declared one yet — the three
+      // that predate the field still need their sources chosen rather than
+      // guessed, and emitting the gap is how it stays visible.
+      rigor: rule.rigor ?? null,
+      sources: rule.sources ?? [],
     });
   }
 

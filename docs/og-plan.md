@@ -459,7 +459,7 @@ types, la doc Apple, le W3C Web App Manifest. Rien à sourcer de neuf.
 | `icons.missing`             | guideline   | aucune icône déclarée, ni `<link rel="icon">` ni manifeste  | ✅ OG-1c |
 | `icons.apple-touch.missing` | vendor-spec | pas d'`apple-touch-icon` (doc Apple, déjà sourcée)          | ✅ OG-1c |
 | `icons.manifest-mismatch`   | guideline   | le manifeste et le `<head>` se contredisent (voir plus bas) | ✅ OG-1c |
-| `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      | ⬜ OG-1d |
+| `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      | ✅ OG-1d |
 | `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   | ⬜ OG-1b |
 | `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles | ⬜ OG-1b |
 

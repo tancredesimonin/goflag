@@ -25,7 +25,8 @@
 import type { I18nMatrix } from "../core/i18n";
 import type { LocaleAxis } from "../core/locales";
 import type { SiteDiscovery } from "../core/sitemap/types";
-import type { Issue, Page, RobotsProbe, Severity } from "../core/types";
+import type { FaviconProbe, Issue, Page, RobotsProbe, Severity } from "../core/types";
+import type { Rigor } from "./types";
 
 /**
  * Everything a cross-page rule is allowed to see. Deliberately a plain,
@@ -46,6 +47,12 @@ export interface SiteContext {
    * one file governs every page, so no per-page rule can judge it.
    */
   robots?: RobotsProbe;
+  /**
+   * What the origin answered at `/favicon.ico`, when it was asked. Site-level
+   * for the same reason `robots` is: one file at one path governs every page,
+   * so a per-page rule would report one fact as many findings.
+   */
+  favicon?: FaviconProbe;
   /**
    * The discovered sitemap, when one was found. `undefined` when discovery
    * was skipped (`--no-sitemap`) or the site has none — rules must degrade
@@ -95,6 +102,20 @@ export interface SiteRule {
   severity: Severity;
   /** One-line summary of what the rule enforces. */
   summary: string;
+  /**
+   * How authoritative the requirement is, and the catalogue entries that back
+   * it — the same two fields `Rule` carries, and for the same reason: an agent
+   * must never fix a `guideline` as if it were `spec-required`.
+   *
+   * Optional, and deliberately not backfilled. The three rules that predate
+   * this each need their sources chosen rather than guessed, which is phase G's
+   * work; the catalogue keeps emitting `rigor: null` for them, which is how the
+   * gap stays visible instead of being papered over with a plausible citation.
+   * A rule that declares one must cite at least one real source, and
+   * `site-rules.test.ts` enforces that.
+   */
+  rigor?: Rigor;
+  sources?: string[];
   /**
    * Optional gate. Returning false skips the rule entirely — used to keep
    * hreflang rules silent on monolingual sites, where they would be noise

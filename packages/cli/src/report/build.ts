@@ -30,6 +30,7 @@ import {
   combineClusterIndexes,
 } from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
+import { probeFavicon } from "../lib/core/probes/favicon";
 import { probeManifest } from "../lib/core/probes/manifest";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
@@ -444,6 +445,14 @@ export async function runAudit(
     timeoutMs: options.timeoutMs,
   }).catch(() => undefined);
 
+  // `/favicon.ico` is the same shape of fact as robots.txt: one file, one
+  // path, one answer for the whole origin. Asked once here rather than per
+  // page, for the same reason.
+  const favicon = await probeFavicon(origin, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  }).catch(() => undefined);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
@@ -698,6 +707,7 @@ export async function runAudit(
     localeAxis,
     discovery,
     robots,
+    favicon,
     // Same index the matrix was built from, so a rule that groups by route
     // and the grid that reports holes cannot disagree about which URLs are
     // one page.

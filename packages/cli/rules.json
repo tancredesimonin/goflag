@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 20,
-    "site": 3,
+    "site": 4,
     "prose": 4
   },
   "sources": {
@@ -330,6 +330,18 @@
         "icons.missing"
       ],
       "expected": "a `<link rel=\"apple-touch-icon\">`"
+    },
+    {
+      "id": "icons.ico.missing",
+      "scope": "site",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Serve a `/favicon.ico` at the root for the clients that ask blind",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ]
     },
     {
       "id": "icons.manifest-mismatch",

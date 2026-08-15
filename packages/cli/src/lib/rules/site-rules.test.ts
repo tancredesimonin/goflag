@@ -20,7 +20,8 @@ import { describe, expect, it } from "vitest";
 import { buildClusterIndex } from "../core/clusters";
 import { lintSite } from "../core/lint-site";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
-import { getSiteRule } from "./site-rules";
+import { getSiteRule, SITE_RULES } from "./site-rules";
+import { getSource } from "./sources";
 import type { SiteContext } from "./site-types";
 import { pageFromHtml } from "./test-utils";
 
@@ -216,5 +217,30 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
 
     expect(undeclared).toHaveLength(2);
     expect(declared).toEqual(undeclared);
+  });
+});
+
+describe("the cross-page registry", () => {
+  it("cites real sources wherever it claims a rigor", () => {
+    // The provenance contract `rules.test.ts` enforces for page rules, applied
+    // to the cross-page ones that have opted in. A rule may still carry no
+    // rigor — the three that predate the field do, and the catalogue emits the
+    // gap as `rigor: null` — but claiming one and citing nothing would be the
+    // dishonesty the rigor axis exists to prevent.
+    for (const rule of SITE_RULES) {
+      if (rule.rigor === undefined) {
+        expect(rule.sources ?? [], `${rule.id} cites sources but declares no rigor`).toHaveLength(
+          0,
+        );
+        continue;
+      }
+      expect(
+        rule.sources?.length,
+        `${rule.id} claims ${rule.rigor} and cites nothing`,
+      ).toBeGreaterThan(0);
+      for (const id of rule.sources ?? []) {
+        expect(getSource(id), `${rule.id} cites unknown source ${id}`).toBeDefined();
+      }
+    }
   });
 });
