@@ -124,6 +124,31 @@ describe("every page the registry can render", () => {
     }
   });
 
+  it("names the same cluster in both vocabularies — og.locale.alternates", () => {
+    // `alternates.languages` and `og:locale:alternate` state one fact — this
+    // page exists in these languages — and nothing in a build compares them.
+    // The rule the CLI reports compares them on the rendered page; this
+    // compares them at the source, where the fix is.
+    for (const { route, meta } of pages) {
+      const og = meta.openGraph as { locale?: string; alternateLocale?: string[] };
+      const declared = new Set(og.alternateLocale ?? []);
+
+      if (route.policy === "monolingual") {
+        // One language, so nothing to alternate with. Naming any would
+        // advertise a translation that was never built.
+        expect(declared.size).toBe(0);
+        continue;
+      }
+
+      const expected = route.locales
+        .filter((locale) => site.openGraphLocale(locale) !== og.locale)
+        .map((locale) => site.openGraphLocale(locale));
+
+      expect([...declared].sort()).toEqual([...new Set(expected)].sort());
+      expect(declared.has(String(og.locale))).toBe(false);
+    }
+  });
+
   it("names every alternate with a valid BCP 47 tag — locale.invalid", () => {
     // Case-insensitively: BCP 47 says tags are, and this library emits the
     // site's own spelling rather than re-casing it.

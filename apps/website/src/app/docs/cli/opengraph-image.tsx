@@ -1,12 +1,15 @@
-import { OG_CONTENT_TYPE, OG_SIZE, ogImage } from "@/lib/seo/og";
+import { ogImage, ogImageMetadata } from "@/lib/seo/og";
 
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
+const CARD = {
+  title: "CLI reference",
+  subtitle: "Every flag, its default, and what it changes.",
+  label: "docs",
+};
+
+export function generateImageMetadata() {
+  return ogImageMetadata(CARD.title);
+}
 
 export default function Image() {
-  return ogImage({
-    title: "CLI reference",
-    subtitle: "Every flag, its default, and what it changes.",
-    label: "docs",
-  });
+  return ogImage(CARD);
 }

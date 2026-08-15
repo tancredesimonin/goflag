@@ -247,14 +247,32 @@ redécouvrir sur cinq sites, et donc exactement ce qui justifie la lib.
 
 | Manque                                                                                                     | Règle concernée                              |
 | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Aucun `alt` : les fichiers exportent `size` et `contentType`, jamais `alt` ni `generateImageMetadata`      | `og.image.alt` (à écrire, §7)                |
+| ~~Aucun `alt`~~ — **réglé en OG-2** : `generateImageMetadata` porte un alt traduit sur les six cartes      | `og.image.alt`, livrée en OG-1a              |
 | Le titre n'est **pas** dégressé — `fontSize: 66` en dur, seul le sous-titre est coupé à 160                | aucune ; c'est le trou du §4.2               |
 | Aucune fonte chargée : rendu à la fonte ambiante, donc `fontWeight: 600` n'a pas de fonte grasse à trouver | aucune ; documenté et assumé dans le fichier |
 | Couleurs en hex dupliquées depuis le thème Tailwind, avec un commentaire pour l'expliquer                  | aucune ; c'est ce que les tokens résolvent   |
 
-Le premier est le plus parlant : **le site de goflag échouerait à une règle OG
-que goflag n'a pas encore écrite.** C'est le bon ordre — D5, la règle avant
+Le premier était le plus parlant : **le site de goflag échouait à une règle OG
+que goflag n'avait pas encore écrite.** C'est le bon ordre — D5, la règle avant
 l'outil — et c'est ce qui rend l'étape OG-1 non négociable avant l'extraction.
+La règle l'a dit 46 fois avant que le remède existe, ce qui est exactement ce que
+le §1 demandait.
+
+**Ce que l'écriture du remède a appris**, et qui rejoint le contournement du
+catch-all dans ce que `@goflag/og` devra emballer : `getTranslations` ne peut pas
+être appelé depuis `generateImageMetadata`. Next l'exécute comme
+`generateStaticParams` — au build, sans requête — et la configuration next-intl y
+touche `headers()`, donc le build échoue net plutôt que de dégrader :
+
+```
+Route /[locale]/changelog/opengraph-image/[__metadata_id__] used
+`headers()` inside `generateStaticParams`.
+```
+
+Le remède est un traducteur construit directement sur les messages JSON
+(`src/i18n/static.ts`), et il sert au **titre comme à l'alt** : une image et sa
+description lues par deux chemins différents sont précisément la dérive que
+`og:image:alt` existe pour fermer.
 
 ---
 
@@ -503,19 +521,19 @@ texte sur une zone chargée sans voile.
 
 ## 10. Phasage
 
-| Étape     | Contenu                                                                                                                                                                                                                                                       | Dépend de |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                               | —         |
-| **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                | catalogue |
-| **OG-1b** | `og.image.reachable`, `icons.unreachable`, `icons.sizes-mismatch` — les trois règles qui demandent le réseau (§10.1). Hors chemin critique : elles ne partagent rien avec le reste de l'OG                                                                    | catalogue |
-| **OG-1c** | La famille `icons.*` du §7.1, sans réseau. `icons.ico.missing` fait échouer le site de goflag ; le remède est le script `.ico` d'OG-2                                                                                                                         | catalogue |
-| **OG-2**  | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction. **Plus un `.ico` produit par un script local** — consommateur n°1 du §6.4        | OG-1      |
-| **OG-3**  | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle | OG-2      |
-| **OG-4**  | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                           | OG-3      |
-| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                               | OG-4, N-2 |
-| hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                              | —         |
-| hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                      | OG-4      |
-| hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                        | —         |
+| Étape     | Contenu                                                                                                                                                                                                                                                                                                                                                              | Dépend de |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                                                                                                                                      | —         |
+| **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                                                                                                                       | catalogue |
+| **OG-1b** | `og.image.reachable`, `icons.unreachable`, `icons.sizes-mismatch` — les trois règles qui demandent le réseau (§10.1). Hors chemin critique : elles ne partagent rien avec le reste de l'OG                                                                                                                                                                           | catalogue |
+| **OG-1c** | La famille `icons.*` du §7.1, sans réseau. `icons.ico.missing` fait échouer le site de goflag ; le remède est le script `.ico` d'OG-2                                                                                                                                                                                                                                | catalogue |
+| **OG-2**  | Mise au propre dans `apps/website`, sans paquet. ✅ **alt traduit via `generateImageMetadata`** sur les six cartes et **`alternateLocale` dans `@goflag/next`** : les 66 findings d'OG-1a tombent. Reste : tokens extraits du thème, `fitTitle`, le catch-all isolé derrière une fonction, **plus un `.ico` produit par un script local** (consommateur n°1 du §6.4) | OG-1a     |
+| **OG-3**  | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle                                                                                                        | OG-2      |
+| **OG-4**  | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                                                                                                                                  | OG-3      |
+| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                                                                                                                                      | OG-4, N-2 |
+| hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                                                                                                                                     | —         |
+| hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                                                                                                                             | OG-4      |
+| hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                                                                                                                               | —         |
 
 **OG-1 avant tout le reste.** D5 : la règle avant l'outil. Aujourd'hui le site
 de goflag ne déclare aucun `og:image:alt` et rien ne le lui reproche — écrire la

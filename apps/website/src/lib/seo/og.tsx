@@ -1,9 +1,38 @@
 import { ImageResponse } from "next/og";
 
+import { defaultLocale } from "@/i18n/config";
+import { staticTranslator } from "@/i18n/static";
 import { SITE } from "@/lib/constants";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
+
+/**
+ * What every `generateImageMetadata` on this site returns.
+ *
+ * The `alt` export Next offers alongside `size` and `contentType` is one
+ * constant string per file, which is exactly what a description of a generated
+ * card cannot be: the card carries the page's title as pixels, so the sentence
+ * describing it is translated and derived from data. `generateImageMetadata`
+ * carries it per image instead — the difference between an `og:image` a screen
+ * reader can announce and one it cannot, and the reason `og.image.alt` fired 46
+ * times on this site before this existed.
+ *
+ * The sentence lives in `messages/*.json` even for the documentation, which is
+ * served in English only: one wording per language, not one per route. Passing
+ * the locale is therefore how a localized card differs from a monolingual one,
+ * and the default is the only thing `/docs` needs to know about i18n.
+ *
+ * One entry, always: these are single-card pages. `docs/og-plan.md` §6.2 is
+ * where this shape goes once a second site has written it by hand.
+ */
+export function ogImageMetadata(title: string, locale: string = defaultLocale) {
+  const t = staticTranslator(locale);
+
+  return [
+    { id: "og", size: OG_SIZE, contentType: OG_CONTENT_TYPE, alt: t("meta.ogAlt", { title }) },
+  ];
+}
 
 /**
  * The card every page shares.

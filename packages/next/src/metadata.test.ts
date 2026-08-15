@@ -54,6 +54,23 @@ describe("metadata — localized pages", () => {
     });
   });
 
+  it("names the rest of the cluster as og:locale:alternate, and not itself", () => {
+    expect((meta.openGraph as { alternateLocale?: string[] }).alternateLocale).toEqual([
+      "en_US",
+      "pt_BR",
+    ]);
+  });
+
+  it("names only the locales the route serves", () => {
+    // `/cookies` is translated into two of the three, so Open Graph must say
+    // two — the same restraint x-default shows just above.
+    const partial = routes.metadata({ path: "/cookies", locale: "fr-FR", ...content });
+
+    expect((partial.openGraph as { alternateLocale?: string[] }).alternateLocale).toEqual([
+      "pt_BR",
+    ]);
+  });
+
   it("leaves og:image alone — the file convention already emitted one", () => {
     expect(meta.openGraph).not.toHaveProperty("images");
     expect(meta.twitter).not.toHaveProperty("images");
@@ -93,6 +110,12 @@ describe("metadata — monolingual pages", () => {
 
   it("takes its language from the route, with no locale to be handed", () => {
     expect(meta.openGraph).toMatchObject({ locale: "en_US", type: "article" });
+  });
+
+  it("alternates with nothing, rather than with an empty list", () => {
+    // One language: naming others would advertise translations that do not
+    // exist, and an empty `alternateLocale` would still be a claim.
+    expect(meta.openGraph).not.toHaveProperty("alternateLocale");
   });
 
   it("declares a self-referential cluster rather than silence", () => {
