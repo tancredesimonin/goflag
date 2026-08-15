@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.10](https://github.com/tancredesimonin/goflag/compare/v0.2.9...v0.2.10) (2026-08-15)
+
+
+### Features
+
+* **cli:** find the contradictions no single artefact shows ([e765bf3](https://github.com/tancredesimonin/goflag/commit/e765bf372f8ace9228df28dc1ae851177ebafc65))
+* **cli:** judge the sitemap, and delete the fields that pretended to ([db66503](https://github.com/tancredesimonin/goflag/commit/db6650325af8961b6972ff3855e2517fbddcb8c9))
+* **cli:** let a finding say how authoritative it is ([c46fb64](https://github.com/tancredesimonin/goflag/commit/c46fb649754c3ec2c76cff591121969819f67a11))
+* **cli:** probe what the sitemap promises, without asking twice ([34c1713](https://github.com/tancredesimonin/goflag/commit/34c1713d1424358520a4b9dc53e7081201f512ae))
+* **cli:** read robots.txt instead of scanning it ([22f2c62](https://github.com/tancredesimonin/goflag/commit/22f2c6218e0a82bef7195dbd48fd168d3321fae2))
+
 ## [0.2.9](https://github.com/tancredesimonin/goflag/compare/v0.2.8...v0.2.9) (2026-08-15)
 
 
