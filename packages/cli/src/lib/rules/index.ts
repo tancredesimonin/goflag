@@ -16,12 +16,16 @@
  */
 
 import { bandFor } from "./evaluate";
-import type { BooleanRule, Rule, ScoredRule, TagOrigin } from "./types";
+import type { BooleanRule, Extraction, Rule, ScoredRule, TagOrigin } from "./types";
 
 const TITLE_IDEAL: [number, number] = [10, 60];
 const TITLE_ACCEPTABLE: [number, number] = [5, 70];
 const DESC_IDEAL: [number, number] = [50, 160];
 const DESC_ACCEPTABLE: [number, number] = [25, 200];
+
+/** The aspect ratio a link preview is laid out for, and how far off is tolerable. */
+const RATIO_IDEAL: [number, number] = [1.7, 2.1];
+const RATIO_ACCEPTABLE: [number, number] = [1, 3];
 
 function tokens(value: string | undefined): string[] {
   if (!value) return [];
@@ -29,6 +33,69 @@ function tokens(value: string | undefined): string[] {
     .split(",")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
+}
+
+/** Whether a string is a URL a crawler can fetch without a base to resolve it. */
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** A language tag reduced to the two subtags `og:locale` is able to express. */
+function localeParts(tag: string): { language: string; region?: string } | undefined {
+  const subtags = tag.trim().toLowerCase().split(/[-_]/).filter(Boolean);
+  const language = subtags[0];
+  if (!language || !/^[a-z]{2,3}$/.test(language)) return undefined;
+  const region = subtags.slice(1).find((s) => /^([a-z]{2}|\d{3})$/.test(s));
+  return region ? { language, region } : { language };
+}
+
+/**
+ * Whether two tags name the same locale for Open Graph's purposes.
+ *
+ * `og:locale` is `language_TERRITORY` and hreflang is BCP 47, so `pt_BR` and
+ * `pt-BR` are one declaration written twice. A tag with no territory matches
+ * every territory of its language: a page whose hreflang says `fr` cannot be
+ * faulted for an `og:locale:alternate` of `fr_FR`, because only one of the two
+ * formats is able to state the difference.
+ */
+function sameLocale(a: string, b: string): boolean {
+  const left = localeParts(a);
+  const right = localeParts(b);
+  if (!left || !right || left.language !== right.language) return false;
+  return !left.region || !right.region || left.region === right.region;
+}
+
+/**
+ * The locales this page's hreflang annotations put it in a cluster with,
+ * normalized and de-duplicated. `x-default` is excluded: it names a fallback,
+ * not a locale, and counting it would make a monolingual page look translated.
+ */
+function hreflangCluster(ex: Extraction): string[] {
+  const seen = new Set<string>();
+  for (const annotation of ex.links.hreflang) {
+    if (annotation.isXDefault) continue;
+    const parts = localeParts(annotation.hreflang);
+    if (!parts) continue;
+    seen.add(parts.region ? `${parts.language}-${parts.region}` : parts.language);
+  }
+  return [...seen];
+}
+
+/**
+ * Whether the page opted into Open Graph at all. The locale rules stay quiet
+ * on a page with no `og:*` tags: `og.title.missing` and `og.image.missing`
+ * already say the thing worth saying, and a third finding asking for
+ * `og:locale` on a page that has no Open Graph is noise stacked on a verdict.
+ */
+function hasOpenGraph(ex: Extraction): boolean {
+  return Boolean(
+    ex.openGraph.title?.value || ex.openGraph.images.length > 0 || ex.openGraph.url?.value,
+  );
 }
 
 const titleMissing: BooleanRule = {
@@ -318,10 +385,7 @@ const ogDescriptionMissing: BooleanRule = {
     const observed = ex.openGraph.description?.value?.trim();
     if (observed) return { status: "pass", observed };
     // Only meaningful when the page bothered with any other OG tag.
-    const hasOtherOg = Boolean(
-      ex.openGraph.title?.value || ex.openGraph.images.length > 0 || ex.openGraph.url?.value,
-    );
-    if (!hasOtherOg) return { status: "na", observed: null };
+    if (!hasOpenGraph(ex)) return { status: "na", observed: null };
     return {
       status: "fail",
       observed: null,
@@ -368,6 +432,307 @@ const ogImageMissing: BooleanRule = {
       message:
         "Page has no `og:image`. Link unfurls will fall back to text-only or a random body image.",
       origin: { kind: "meta", property: "og:image" },
+    };
+  },
+};
+
+const ogImageAbsolute: BooleanRule = {
+  id: "og.image.absolute",
+  kind: "boolean",
+  category: "opengraph",
+  // The same severity as `og.image.missing`, deliberately: the unfurl is
+  // identical either way, and the registry should not rank the broken
+  // declaration above the absent one when their effect is the same.
+  severity: "warning",
+  title: "`og:image` must be an absolute URL",
+  why:
+    "Unlike a browser, the crawler that builds the preview has no document to " +
+    "resolve a relative path against — it reads the tag, not the page. A " +
+    "relative `og:image` is therefore not a smaller mistake than a missing " +
+    "one: the unfurl is identical, and the tag makes it look handled.",
+  rigor: "vendor-spec",
+  sources: ["ogp", "meta-og-sharing"],
+  reads: ["openGraph.images"],
+  expected: "every `og:image` URL absolute, scheme included",
+  relates: ["og.image.missing", "canonical.absolute"],
+  fix: {
+    title: "Give Next a metadataBase, or write the origin in",
+    snippet: [
+      "// app/layout.tsx — every relative metadata URL resolves against this.",
+      "export const metadata = {",
+      "  metadataBase: new URL(process.env.SITE_ORIGIN!),",
+      '  openGraph: { images: ["/og.png"] }, // emitted absolute',
+      "};",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    if (ex.openGraph.images.length === 0) return { status: "na", observed: null };
+
+    const declarations: Array<{ property: string; value: string }> = [];
+    for (const image of ex.openGraph.images) {
+      declarations.push({ property: "og:image", value: image.url.value.trim() });
+      if (image.secureUrl) {
+        declarations.push({
+          property: "og:image:secure_url",
+          value: image.secureUrl.value.trim(),
+        });
+      }
+    }
+
+    const observed = declarations.map((d) => d.value);
+    const relative = declarations.filter((d) => !isAbsoluteHttpUrl(d.value));
+    if (relative.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `Open Graph image URL is not absolute: ${relative
+        .map((d) => `\`${d.property}\` = \`${d.value}\``)
+        .join(", ")}. Crawlers cannot resolve it.`,
+      origin: { kind: "meta", property: relative[0]!.property },
+    };
+  },
+};
+
+const ogImageAlt: BooleanRule = {
+  id: "og.image.alt",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "Describe the shared image with `og:image:alt`",
+  why:
+    "The protocol defines `og:image:alt` as a description of what is in the " +
+    "image, and a generated card usually carries the page's title as pixels. " +
+    "Omitting it leaves that text sighted-only, in the one place a link is " +
+    "seen before anybody has opened the page. Optional in the vocabulary, " +
+    "which is why this is a guideline and not a spec violation.",
+  rigor: "guideline",
+  sources: ["ogp"],
+  reads: ["openGraph.images"],
+  expected: "an `og:image:alt` beside every `og:image`",
+  relates: ["og.image.missing"],
+  fix: {
+    title: "Carry the alt per image, not as a constant",
+    snippet: [
+      "// app/…/opengraph-image.tsx — `export const alt` is one fixed string, so a",
+      "// translated or data-derived description has to go through the metadata fn.",
+      "export async function generateImageMetadata({ params }) {",
+      "  const t = await getTranslations({ locale: params.locale });",
+      '  return [{ id: "og", size, contentType, alt: t("og.alt") }];',
+      "}",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    if (ex.openGraph.images.length === 0) return { status: "na", observed: null };
+
+    const observed = ex.openGraph.images.map((image) => ({
+      url: image.url.value,
+      alt: image.alt?.value ?? null,
+    }));
+    const undescribed = observed.filter((image) => !image.alt?.trim());
+    if (undescribed.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message:
+        undescribed.length === observed.length
+          ? "Page declares an `og:image` with no `og:image:alt`."
+          : `${undescribed.length} of ${observed.length} \`og:image\` declarations have no \`og:image:alt\`.`,
+      origin: { kind: "meta", property: "og:image:alt" },
+    };
+  },
+};
+
+const ogImageDimensions: BooleanRule = {
+  id: "og.image.dimensions",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "Declare `og:image:width` and `og:image:height`",
+  why:
+    "A crawler that does not know the size cannot lay the card out until it " +
+    "has fetched the image, so the first share of a URL renders without it — " +
+    "the one share that matters most. The dimensions are the fix, and they " +
+    "cost two tags.",
+  rigor: "vendor-spec",
+  sources: ["ogp", "meta-og-sharing"],
+  reads: ["openGraph.images"],
+  expected: "both `og:image:width` and `og:image:height` on every image",
+  relates: ["og.image.missing", "og.image.ratio"],
+  fix: {
+    title: "Declare the size alongside the URL",
+    snippet: [
+      "// app/…/page.tsx",
+      "export const metadata = {",
+      '  openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },',
+      "};",
+      "// The file convention emits both from `export const size` for free.",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    if (ex.openGraph.images.length === 0) return { status: "na", observed: null };
+
+    const observed = ex.openGraph.images.map((image) => ({
+      url: image.url.value,
+      width: image.width?.value ?? null,
+      height: image.height?.value ?? null,
+    }));
+    const incomplete = observed.filter((image) => image.width === null || image.height === null);
+    if (incomplete.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `${incomplete.length === observed.length ? "The" : `${incomplete.length} of ${observed.length}`} \`og:image\` declaration${
+        incomplete.length === 1 ? "" : "s"
+      } omit${incomplete.length === 1 ? "s" : ""} \`og:image:width\` or \`og:image:height\`.`,
+      origin: { kind: "meta", property: "og:image:width" },
+    };
+  },
+};
+
+const ogImageRatio: ScoredRule = {
+  id: "og.image.ratio",
+  kind: "scored",
+  category: "opengraph",
+  title: "Keep the shared image near the 1.91:1 the card is laid out for",
+  why:
+    "Meta's recommended 1200×630 is a shape before it is a size. An image far " +
+    "from it is not rejected — it is cropped to fit, and the crop is chosen " +
+    "by the consumer rather than by you.",
+  rigor: "vendor-spec",
+  sources: ["meta-og-sharing", "x-cards"],
+  reads: ["openGraph.images"],
+  bands: { ideal: RATIO_IDEAL, acceptable: RATIO_ACCEPTABLE },
+  severityByBand: { acceptable: "info", poor: "warning" },
+  expected: `a width ÷ height between ${RATIO_IDEAL[0]} and ${RATIO_IDEAL[1]} (1.91:1 is 1.9)`,
+  relates: ["og.image.dimensions"],
+  evaluate: (ex) => {
+    // The first image that states its size: consumers take the first one they
+    // can use, and a rule that measured the others would band a picture no
+    // unfurl is going to show.
+    const measured = ex.openGraph.images.find((image) => image.width?.value && image.height?.value);
+    // No image, or none that declared its size — `og.image.dimensions` owns
+    // that gap, and guessing a ratio from an unfetched image would be a
+    // measurement goflag did not make.
+    if (!measured) return { status: "na", observed: 0 };
+
+    const ratio = Math.round((measured.width!.value / measured.height!.value) * 100) / 100;
+    const { status, band } = bandFor(ratio, { ideal: RATIO_IDEAL, acceptable: RATIO_ACCEPTABLE });
+    if (status === "pass") return { status, band, observed: ratio };
+
+    return {
+      status,
+      band,
+      observed: ratio,
+      message: `\`og:image\` is ${measured.width!.value}×${measured.height!.value} — a ratio of ${ratio}:1, against the 1.91:1 the preview card is laid out for. Consumers will crop it.`,
+      origin: { kind: "meta", property: "og:image:width" },
+    };
+  },
+};
+
+const ogLocaleMissing: BooleanRule = {
+  id: "og.locale.missing",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "A translated page has to say which locale it is in",
+  why:
+    "`og:locale` defaults to `en_US` in the protocol itself — so a page that " +
+    "omits it does not decline to answer, it answers wrongly. On a site whose " +
+    "whole point is that the same page exists in several languages, every " +
+    "translation claims to be American English.",
+  rigor: "vendor-spec",
+  sources: ["ogp"],
+  reads: ["openGraph.locale", "links.hreflang"],
+  expected: "an `og:locale` on any page that declares hreflang alternates",
+  relates: ["og.locale.alternates", "hreflang.missing"],
+  fix: {
+    title: "Emit the locale in the page's own metadata",
+    snippet: [
+      "// app/[locale]/…/page.tsx",
+      "export const metadata = {",
+      '  openGraph: { locale: "fr_FR", alternateLocale: ["en_US", "es_ES"] },',
+      "};",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    const cluster = hreflangCluster(ex);
+    const observed = ex.openGraph.locale?.value?.trim() ?? null;
+    if (cluster.length < 2 || !hasOpenGraph(ex)) return { status: "na", observed };
+    if (observed) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed: null,
+      message: `Page declares hreflang alternates (${cluster.join(", ")}) but no \`og:locale\`; the protocol default \`en_US\` applies instead.`,
+      origin: { kind: "meta", property: "og:locale" },
+    };
+  },
+};
+
+const ogLocaleAlternates: BooleanRule = {
+  id: "og.locale.alternates",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "`og:locale:alternate` and the hreflang cluster must name the same locales",
+  why:
+    "Two vocabularies describe the same fact — this page exists in these " +
+    "languages — and nothing in a build keeps them in step, so they drift " +
+    "silently. Whichever one is short is the one telling a consumer that a " +
+    "translation it could have linked to does not exist.",
+  rigor: "vendor-spec",
+  sources: ["ogp", "google-hreflang"],
+  reads: ["openGraph.locale", "openGraph.localeAlternates", "links.hreflang"],
+  expected: "one `og:locale:alternate` per hreflang locale other than this page's own",
+  relates: ["og.locale.missing", "hreflang.missing"],
+  fix: {
+    title: "Derive both lists from the same cluster",
+    snippet: [
+      "// The hreflang map and the OG locales are one fact stated twice.",
+      "openGraph: {",
+      "  locale: ogLocale(locale),",
+      "  alternateLocale: cluster.filter((l) => l !== locale).map(ogLocale),",
+      "},",
+      "alternates: { languages: cluster },",
+    ].join("\n"),
+    language: "ts",
+  },
+  evaluate: (ex) => {
+    const cluster = hreflangCluster(ex);
+    const own = ex.openGraph.locale?.value?.trim();
+    const declared = ex.openGraph.localeAlternates.map((a) => a.value.trim()).filter(Boolean);
+    const observed = { locale: own ?? null, alternates: declared, hreflang: cluster };
+
+    // With no `og:locale` there is no "own locale" to subtract from the
+    // cluster, and `og.locale.missing` is already reporting the same page.
+    if (cluster.length < 2 || !own) return { status: "na", observed };
+
+    const missing = cluster.filter(
+      (tag) => !sameLocale(tag, own) && !declared.some((d) => sameLocale(d, tag)),
+    );
+    const unbacked = declared.filter((d) => !cluster.some((tag) => sameLocale(tag, d)));
+    if (missing.length === 0 && unbacked.length === 0) return { status: "pass", observed };
+
+    const disagreements: string[] = [];
+    if (missing.length > 0) {
+      disagreements.push(`no \`og:locale:alternate\` for ${missing.join(", ")}`);
+    }
+    if (unbacked.length > 0) {
+      disagreements.push(`\`og:locale:alternate\` ${unbacked.join(", ")} has no hreflang`);
+    }
+
+    return {
+      status: "fail",
+      observed,
+      message: `Open Graph and hreflang disagree about this page's translations: ${disagreements.join("; ")}.`,
+      origin: { kind: "meta", property: "og:locale:alternate" },
     };
   },
 };
@@ -442,7 +807,13 @@ export const RULES: ReadonlyArray<Rule> = [
   descriptionLength,
   descriptionMissing,
   ogDescriptionMissing,
+  ogImageAbsolute,
+  ogImageAlt,
+  ogImageDimensions,
   ogImageMissing,
+  ogImageRatio,
+  ogLocaleAlternates,
+  ogLocaleMissing,
   ogTitleMissing,
   robotsConflict,
   titleLength,

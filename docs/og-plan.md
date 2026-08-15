@@ -2,7 +2,8 @@
 
 > **Rédigé** 2026-08-02 · **Réécrit** 2026-08-06 (frontière du paquet, et un
 > consommateur réel est apparu entre-temps) · **Amendé** 2026-08-08 (le `.ico`,
-> §6.4 et §7.1 — la lacune que la convention Next ne couvre pas)
+> §6.4 et §7.1 — la lacune que la convention Next ne couvre pas) · **Amendé**
+> 2026-08-15 (OG-1a livrée : §7 rectifié, OG-1 scindé, D8 au §10.1)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -13,15 +14,16 @@
 
 ## 0. Ce que ce plan tranche
 
-| #      | Décision                                                                                             |
-| ------ | ---------------------------------------------------------------------------------------------------- |
-| **D1** | `@goflag/og` est un **paquet à part**, à cœur **sans moteur de rendu** — agnostique par construction |
-| **D2** | L'image se rend **au build**, pas en route dynamique ni en asset dessiné à la main                   |
-| **D3** | Un **gabarit par défaut piloté par tokens**, pas une galerie de gabarits                             |
-| **D4** | Les **illustrations de contenu** (blog, LinkedIn, vidéo) ne rentrent pas dans goflag                 |
-| **D5** | L'OG entre d'abord par les **règles**, pas par la lib — l'auditeur avant l'outil                     |
-| **D6** | Le `.ico` est **empaqueté** par le cœur, jamais rendu par lui — le site fournit les buffers          |
-| **D7** | C'est le seul artefact **committé** de la lib : il est livré avec sa garde d'idempotence             |
+| #      | Décision                                                                                                             |
+| ------ | -------------------------------------------------------------------------------------------------------------------- |
+| **D1** | `@goflag/og` est un **paquet à part**, à cœur **sans moteur de rendu** — agnostique par construction                 |
+| **D2** | L'image se rend **au build**, pas en route dynamique ni en asset dessiné à la main                                   |
+| **D3** | Un **gabarit par défaut piloté par tokens**, pas une galerie de gabarits                                             |
+| **D4** | Les **illustrations de contenu** (blog, LinkedIn, vidéo) ne rentrent pas dans goflag                                 |
+| **D5** | L'OG entre d'abord par les **règles**, pas par la lib — l'auditeur avant l'outil                                     |
+| **D6** | Le `.ico` est **empaqueté** par le cœur, jamais rendu par lui — le site fournit les buffers                          |
+| **D7** | C'est le seul artefact **committé** de la lib : il est livré avec sa garde d'idempotence                             |
+| **D8** | Une règle ne touche jamais au réseau : une **passe de sondage dédiée** le fait, et reverse dans l'extraction (§10.1) |
 
 ---
 
@@ -400,14 +402,21 @@ qui rend le fichier vérifiable en CI plutôt que régénéré en pre-commit.
 
 Toutes sourcées ogp.me (`vendor-spec`, déjà au §4.2 du catalogue) :
 
-| Règle                      | Rigueur     | Ce qu'elle juge                                       |
-| -------------------------- | ----------- | ----------------------------------------------------- |
-| `og.image.absolute`        | vendor-spec | ogp.me exige une URL absolue                          |
-| `og.image.dimensions`      | vendor-spec | `og:image:width` / `height` déclarés, ratio ~1.91:1   |
-| `og.image.alt`             | guideline   | `og:image:alt` présent                                |
-| `og.image.reachable`       | vendor-spec | 200 + content-type image (le sondage de liens existe) |
-| **`og.locale.missing`**    | vendor-spec | `og:locale` absent sur un site multilingue            |
-| **`og.locale.alternates`** | vendor-spec | `og:locale:alternate` cohérent avec les hreflang      |
+| Règle                      | Rigueur     | Ce qu'elle juge                                              | État     |
+| -------------------------- | ----------- | ------------------------------------------------------------ | -------- |
+| `og.image.absolute`        | vendor-spec | ogp.me exige une URL absolue                                 | ✅ OG-1a |
+| `og.image.dimensions`      | vendor-spec | `og:image:width` / `height` déclarés                         | ✅ OG-1a |
+| `og.image.ratio`           | vendor-spec | la forme réelle, contre le 1.91:1 de la carte                | ✅ OG-1a |
+| `og.image.alt`             | guideline   | `og:image:alt` présent                                       | ✅ OG-1a |
+| **`og.locale.missing`**    | vendor-spec | `og:locale` absent sur un site multilingue                   | ✅ OG-1a |
+| **`og.locale.alternates`** | vendor-spec | `og:locale:alternate` cohérent avec les hreflang             | ✅ OG-1a |
+| `og.image.reachable`       | vendor-spec | 200 + content-type image — demande le réseau, voir **OG-1b** | ⬜ OG-1b |
+
+**La ligne `dimensions` de la version précédente en portait deux.** « Déclarés »
+et « ratio ~1.91:1 » sont deux défauts distincts, avec deux remèdes et deux
+sévérités : une règle booléenne n'a qu'une sévérité, et un ratio est une mesure,
+donc une règle `scored`. Les séparer coûte une entrée de catalogue et rend les
+deux verdicts lisibles.
 
 Les deux dernières sont **l'angle défendable** : `og:locale` /
 `og:locale:alternate` sont dans le protocole, personne ne les vérifie, et goflag
@@ -494,22 +503,53 @@ texte sur une zone chargée sans voile.
 
 ## 10. Phasage
 
-| Étape    | Contenu                                                                                                                                                                                                                                                       | Dépend de |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **OG-0** | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                               | —         |
-| **OG-1** | Les 6 règles du §7 **et la famille `icons.*` du §7.1** dans le catalogue sourcé. `og.image.alt` et `icons.ico.missing` font alors échouer le site de goflag : les corriger sur place                                                                          | catalogue |
-| **OG-2** | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction. **Plus un `.ico` produit par un script local** — consommateur n°1 du §6.4        | OG-1      |
-| **OG-3** | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle | OG-2      |
-| **OG-4** | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                           | OG-3      |
-| **OG-5** | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                               | OG-4, N-2 |
-| hors     | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                              | —         |
-| hors     | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                      | OG-4      |
-| hors     | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                        | —         |
+| Étape     | Contenu                                                                                                                                                                                                                                                       | Dépend de |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                               | —         |
+| **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                | catalogue |
+| **OG-1b** | `og.image.reachable`, `icons.unreachable`, `icons.sizes-mismatch` — les trois règles qui demandent le réseau (§10.1). Hors chemin critique : elles ne partagent rien avec le reste de l'OG                                                                    | catalogue |
+| **OG-1c** | La famille `icons.*` du §7.1, sans réseau. `icons.ico.missing` fait échouer le site de goflag ; le remède est le script `.ico` d'OG-2                                                                                                                         | catalogue |
+| **OG-2**  | Mise au propre dans `apps/website`, sans paquet : tokens extraits du thème, `fitTitle`, `alt` traduit via `generateImageMetadata`, le catch-all isolé derrière une fonction. **Plus un `.ico` produit par un script local** — consommateur n°1 du §6.4        | OG-1      |
+| **OG-3**  | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle | OG-2      |
+| **OG-4**  | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                           | OG-3      |
+| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                               | OG-4, N-2 |
+| hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                              | —         |
+| hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                      | OG-4      |
+| hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                        | —         |
 
 **OG-1 avant tout le reste.** D5 : la règle avant l'outil. Aujourd'hui le site
 de goflag ne déclare aucun `og:image:alt` et rien ne le lui reproche — écrire la
 règle d'abord, c'est le seul ordre qui garantit que le remède vise un défaut
 réel plutôt qu'un défaut supposé.
+
+**Ce qu'OG-1a a mis en défaut n'est pas seulement le site.** `og.locale.alternates`
+échoue sur les 20 pages localisées parce que `metadata.ts` de `@goflag/next`
+écrit `openGraph.locale` et **jamais `alternateLocale`** : la lib produit
+elle-même le défaut, sur tous les sites qui l'adoptent. Le §1 dit que goflag
+signale et que la lib produit ; c'est la première fois que la boucle se referme
+dans ce sens-là, et c'est une ligne de code, pas un chantier.
+
+### 10.1 D8 — comment les règles réseau atteignent le réseau
+
+Le §7 affirmait que « le sondage de liens existe ». Il existe comme module, mais
+`includeAssets` n'a **aucun appelant** hors tests, et `og:image` est un `<meta>`,
+jamais un lien : les trois règles réseau n'héritent de rien. Trois formes ont été
+pesées — recâbler le link-audit, une passe de sondage dédiée, ou attendre les
+modèles d'observation site de la phase G.
+
+**Retenu : une passe dédiée dans `runAudit`.** Elle collecte les URL d'`og:image`
+et d'icônes de toutes les extractions, les déduplique globalement comme le fait
+le link-audit, sonde une fois, et **reverse le résultat dans l'extraction en
+champ additif** — ce qui ne coûte pas de bump d'`EXTRACTION_VERSION` (§ le
+contrat : ajouter un champ optionnel n'en est pas un). Les évaluateurs restent
+purs et synchrones ; aucune règle n'acquiert le droit de toucher au réseau. C'est
+la seule des trois qui préserve la propriété sur laquelle repose la testabilité
+du catalogue entier.
+
+`icons.sizes-mismatch` demande un pas de plus : décoder les octets (IHDR pour un
+PNG, `ICONDIR` pour un `.ico`) au lieu de constater un 200. Une trentaine de
+lignes sans dépendance — la même manipulation de `Buffer` que `buildIco` au §6.4,
+prise dans l'autre sens.
 
 **OG-3 à la main, pas depuis un paquet.** On n'extrait qu'après deux
 consommateurs (I4), et le second doit être écrit sans l'API pour qu'on voie ce
