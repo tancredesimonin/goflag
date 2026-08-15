@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { serveFavicon } from "./favicon-route";
 
 /**
  * Programmable fixture server for the link-checker and strengthened
@@ -49,6 +50,7 @@ export async function startAuditFixtureServer(
   const port = opts.port ?? 0;
   const externalOrigin = opts.externalOrigin ?? "https://example.com";
   const app = new Hono();
+  serveFavicon(app);
 
   // Mutable state for endpoints that change behaviour across requests.
   const state = { rateLimitOnceHits: 0 };

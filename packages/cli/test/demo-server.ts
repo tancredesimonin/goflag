@@ -4,6 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { serveFavicon } from "./favicon-route";
 
 /**
  * The demo-site server used by the end-to-end audit + CLI tests.
@@ -59,6 +60,7 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
   let origin = "";
 
   const app = new Hono();
+  serveFavicon(app);
 
   // --- Programmable link-outcome routes ----------------------------------
   app.get("/", (c) => c.redirect("/en", 302));

@@ -20,6 +20,15 @@ export interface PageFromHtmlOptions {
   headers?: Record<string, string>;
   /** Status code on the synthetic fetch (defaults to 200). */
   status?: number;
+  /**
+   * Parsed payload for the manifest probe, as if the page's
+   * `<link rel="manifest">` had been fetched and read.
+   *
+   * Omitting it leaves `probes` empty, which is what a run with no probing
+   * looks like — a different claim from a manifest that was fetched and turned
+   * out to declare nothing, and the rules are written to tell the two apart.
+   */
+  manifest?: unknown;
 }
 
 /**
@@ -53,7 +62,17 @@ export function pageFromHtml(html: string, options: PageFromHtmlOptions = {}): P
     },
     extractor: { mode: "static", escalated: false },
     html: { static: html },
-    probes: {},
+    probes:
+      options.manifest === undefined
+        ? {}
+        : {
+            manifest: {
+              url: new URL("/site.webmanifest", url).toString(),
+              status: 200,
+              found: true,
+              data: options.manifest,
+            },
+          },
     schemaVersion: PAGE_SCHEMA_VERSION,
   } satisfies Page;
 }

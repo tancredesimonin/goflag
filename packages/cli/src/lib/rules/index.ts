@@ -16,6 +16,7 @@
  */
 
 import { bandFor } from "./evaluate";
+import type { ExtractionIcon } from "./extraction/types";
 import type { BooleanRule, Extraction, Rule, ScoredRule, TagOrigin } from "./types";
 
 const TITLE_IDEAL: [number, number] = [10, 60];
@@ -84,6 +85,47 @@ function hreflangCluster(ex: Extraction): string[] {
     seen.add(parts.region ? `${parts.language}-${parts.region}` : parts.language);
   }
   return [...seen];
+}
+
+/** `rel` tokens that declare an icon, lowercased. */
+const ICON_RELS = new Set([
+  "icon",
+  "shortcut icon",
+  "apple-touch-icon",
+  "apple-touch-icon-precomposed",
+  "mask-icon",
+]);
+
+/** `rel` tokens Apple reads for the home-screen icon. */
+const APPLE_ICON_RELS = new Set(["apple-touch-icon", "apple-touch-icon-precomposed"]);
+
+/** The icons this page's `<head>` declares, whatever flavour of `rel` it used. */
+function declaredIcons(ex: Extraction): ExtractionIcon[] {
+  return ex.links.icons.filter((icon) => ICON_RELS.has(icon.rel.trim().toLowerCase()));
+}
+
+function normalise(value: string): string {
+  return value.trim().toLowerCase().split(/\s+/).sort().join(" ");
+}
+
+/**
+ * Whether two icon references name the same file.
+ *
+ * A `<link href>` is resolved against the page; a manifest `src` is resolved
+ * against the manifest and arrives verbatim. Comparing the paths — after
+ * dropping any query — is what lets `/icon.png` and
+ * `https://example.com/icon.png` be recognised as one declaration made twice,
+ * which is the only case this comparison exists for.
+ */
+function sameAsset(href: string, src: string): boolean {
+  const pathOf = (value: string): string => {
+    try {
+      return new URL(value, "https://goflag.invalid").pathname;
+    } catch {
+      return value.split("?")[0] ?? value;
+    }
+  };
+  return pathOf(href) === pathOf(src);
 }
 
 /**
@@ -737,6 +779,156 @@ const ogLocaleAlternates: BooleanRule = {
   },
 };
 
+const iconsMissing: BooleanRule = {
+  id: "icons.missing",
+  kind: "boolean",
+  category: "icons",
+  severity: "warning",
+  title: "Declare an icon — the tab, the bookmark and the share sheet all read one",
+  why:
+    "No specification requires an icon, which is exactly why nothing complains " +
+    "and every consumer improvises. A browser falls back to `/favicon.ico` at " +
+    "the root, a feed reader or a link unfurler often falls back to nothing, " +
+    "and a bookmark to a site with no icon is a grey square among fifty.",
+  rigor: "guideline",
+  sources: ["whatwg-html-link-types", "mdn-link-rel"],
+  reads: ["links.icons", "links.manifest"],
+  expected: 'at least one `<link rel="icon">`, or icons declared by a manifest',
+  relates: ["icons.apple-touch.missing", "icons.manifest-mismatch"],
+  fix: {
+    title: "Let the file convention declare it",
+    snippet: [
+      '// app/icon.svg (or icon.png) — Next emits the <link rel="icon"> itself.',
+      '// app/apple-icon.png likewise emits rel="apple-touch-icon".',
+      "// A /favicon.ico at the root is a separate matter: see icons.ico.missing.",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    const head = declaredIcons(ex);
+    const fromManifest = ex.links.manifest?.icons ?? [];
+    const observed = {
+      head: head.map((icon) => ({ rel: icon.rel, href: icon.href })),
+      manifest: fromManifest.map((icon) => icon.src),
+    };
+    if (head.length > 0 || fromManifest.length > 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message:
+        'Page declares no icon: no `<link rel="icon">`, and no icons from a manifest. ' +
+        "Consumers fall back to `/favicon.ico` if the site happens to serve one.",
+      origin: { kind: "link", rel: "icon" },
+    };
+  },
+};
+
+const iconsAppleTouchMissing: BooleanRule = {
+  id: "icons.apple-touch.missing",
+  kind: "boolean",
+  category: "icons",
+  severity: "info",
+  title: "Declare an `apple-touch-icon` for the iOS home screen",
+  why:
+    'iOS does not read `rel="icon"` for a home-screen shortcut. With no ' +
+    "`apple-touch-icon` it screenshots the page instead, so what someone saved " +
+    "is a thumbnail of whatever was on screen when they saved it.",
+  rigor: "vendor-spec",
+  sources: ["apple-web-apps", "whatwg-html-link-types"],
+  reads: ["links.icons", "links.manifest"],
+  expected: 'a `<link rel="apple-touch-icon">`',
+  relates: ["icons.missing"],
+  evaluate: (ex) => {
+    const head = declaredIcons(ex);
+    // A page that declares no icon at all is `icons.missing`'s to report;
+    // asking it for the Apple flavour on top would be a second finding about
+    // the same absence.
+    if (head.length === 0) return { status: "na", observed: null };
+
+    const apple = head.filter((icon) => APPLE_ICON_RELS.has(icon.rel.trim().toLowerCase()));
+    const observed = head.map((icon) => icon.rel);
+    if (apple.length > 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `Page declares icons (${observed.join(", ")}) but no \`apple-touch-icon\`; iOS will screenshot the page instead.`,
+      origin: { kind: "link", rel: "apple-touch-icon" },
+    };
+  },
+};
+
+const iconsManifestMismatch: BooleanRule = {
+  id: "icons.manifest-mismatch",
+  kind: "boolean",
+  category: "icons",
+  severity: "info",
+  title: "The manifest and the `<head>` must not disagree about the same icon",
+  why:
+    "Two files declare the icons, maintained by different hands, and nothing " +
+    "compares them. The failure worth naming is not that the two lists differ " +
+    "— they legitimately do, since an apple-touch-icon is not a manifest icon " +
+    "— but that they describe the *same file* differently, or that the icons " +
+    "exist only in the manifest, where a browser tab never looks.",
+  rigor: "guideline",
+  sources: ["w3c-appmanifest", "whatwg-html-link-types"],
+  reads: ["links.icons", "links.manifest"],
+  expected: "the same size and type wherever an icon is declared twice",
+  relates: ["icons.missing"],
+  evaluate: (ex) => {
+    const manifest = ex.links.manifest;
+    // No manifest, none fetched, none parsed, or one that declares no icons:
+    // nothing to compare. `parsed === undefined` is "never looked at", which
+    // is not evidence about the site.
+    if (!manifest?.parsed || !manifest.icons || manifest.icons.length === 0) {
+      return { status: "na", observed: null };
+    }
+
+    const head = declaredIcons(ex);
+    const observed = {
+      head: head.map((icon) => ({ href: icon.href, sizes: icon.sizes ?? null })),
+      manifest: manifest.icons.map((icon) => ({ src: icon.src, sizes: icon.sizes ?? null })),
+    };
+
+    if (head.length === 0) {
+      return {
+        status: "fail",
+        observed,
+        message: `Manifest declares ${manifest.icons.length} icon(s) but the \`<head>\` declares none; a browser tab reads the \`<head>\`, not the manifest.`,
+        origin: { kind: "link", rel: "manifest" },
+      };
+    }
+
+    // Same file, two declarations. Compare on the trailing path so a manifest
+    // writing `/icon.png` and a `<link>` resolved to an absolute URL are still
+    // recognised as one file.
+    const disagreements: string[] = [];
+    for (const icon of manifest.icons) {
+      const twin = head.find((candidate) => sameAsset(candidate.href, icon.src));
+      if (!twin) continue;
+      if (icon.sizes && twin.sizes && normalise(icon.sizes) !== normalise(twin.sizes)) {
+        disagreements.push(
+          `\`${icon.src}\` is \`${twin.sizes}\` in the \`<head>\` and \`${icon.sizes}\` in the manifest`,
+        );
+      }
+      if (icon.type && twin.type && icon.type.toLowerCase() !== twin.type.toLowerCase()) {
+        disagreements.push(
+          `\`${icon.src}\` is \`${twin.type}\` in the \`<head>\` and \`${icon.type}\` in the manifest`,
+        );
+      }
+    }
+
+    if (disagreements.length === 0) return { status: "pass", observed };
+    return {
+      status: "fail",
+      observed,
+      message: `The manifest and the \`<head>\` describe the same icon differently: ${disagreements.join("; ")}.`,
+      origin: { kind: "link", rel: "manifest" },
+    };
+  },
+};
+
 const robotsConflict: BooleanRule = {
   id: "robots.conflict",
   kind: "boolean",
@@ -806,6 +998,9 @@ export const RULES: ReadonlyArray<Rule> = [
   canonicalMissing,
   descriptionLength,
   descriptionMissing,
+  iconsAppleTouchMissing,
+  iconsManifestMismatch,
+  iconsMissing,
   ogDescriptionMissing,
   ogImageAbsolute,
   ogImageAlt,

@@ -1,10 +1,17 @@
 {
   "counts": {
-    "page": 17,
-    "site": 3,
+    "page": 20,
+    "site": 4,
     "prose": 4
   },
   "sources": {
+    "apple-web-apps": {
+      "id": "apple-web-apps",
+      "publisher": "Apple",
+      "title": "Configuring web applications (Safari Web Content Guide)",
+      "rigor": "vendor-spec",
+      "url": "https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html"
+    },
     "bing-webmaster-guidelines": {
       "id": "bing-webmaster-guidelines",
       "publisher": "Microsoft",
@@ -54,6 +61,13 @@
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc6596"
     },
+    "mdn-link-rel": {
+      "id": "mdn-link-rel",
+      "publisher": "MDN / Mozilla",
+      "title": "MDN — rel attribute values",
+      "rigor": "guideline",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
+    },
     "mdn-viewport": {
       "id": "mdn-viewport",
       "publisher": "MDN / Mozilla",
@@ -89,6 +103,13 @@
       "rigor": "vendor-spec",
       "url": "https://ogp.me/"
     },
+    "w3c-appmanifest": {
+      "id": "w3c-appmanifest",
+      "publisher": "W3C",
+      "title": "Web Application Manifest",
+      "rigor": "normative",
+      "url": "https://www.w3.org/TR/appmanifest/"
+    },
     "w3c-i18n-language-tags": {
       "id": "w3c-i18n-language-tags",
       "publisher": "W3C",
@@ -102,6 +123,13 @@
       "title": "HTML Living Standard — the lang and xml:lang attributes",
       "rigor": "normative",
       "url": "https://html.spec.whatwg.org/multipage/dom.html"
+    },
+    "whatwg-html-link-types": {
+      "id": "whatwg-html-link-types",
+      "publisher": "WHATWG",
+      "title": "HTML Living Standard — link types",
+      "rigor": "normative",
+      "url": "https://html.spec.whatwg.org/multipage/links.html"
     },
     "whatwg-html-standard-metadata-names": {
       "id": "whatwg-html-standard-metadata-names",
@@ -280,6 +308,90 @@
       "summary": "`<head>` alternates and sitemap locale coverage must agree",
       "rigor": null,
       "sources": []
+    },
+    {
+      "id": "icons.apple-touch.missing",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Declare an `apple-touch-icon` for the iOS home screen",
+      "why": "iOS does not read `rel=\"icon\"` for a home-screen shortcut. With no `apple-touch-icon` it screenshots the page instead, so what someone saved is a thumbnail of whatever was on screen when they saved it.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "apple-web-apps",
+        "whatwg-html-link-types"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.missing"
+      ],
+      "expected": "a `<link rel=\"apple-touch-icon\">`"
+    },
+    {
+      "id": "icons.ico.missing",
+      "scope": "site",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Serve a `/favicon.ico` at the root for the clients that ask blind",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ]
+    },
+    {
+      "id": "icons.manifest-mismatch",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "The manifest and the `<head>` must not disagree about the same icon",
+      "why": "Two files declare the icons, maintained by different hands, and nothing compares them. The failure worth naming is not that the two lists differ — they legitimately do, since an apple-touch-icon is not a manifest icon — but that they describe the *same file* differently, or that the icons exist only in the manifest, where a browser tab never looks.",
+      "rigor": "guideline",
+      "sources": [
+        "w3c-appmanifest",
+        "whatwg-html-link-types"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.missing"
+      ],
+      "expected": "the same size and type wherever an icon is declared twice"
+    },
+    {
+      "id": "icons.missing",
+      "scope": "page",
+      "category": "icons",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare an icon — the tab, the bookmark and the share sheet all read one",
+      "why": "No specification requires an icon, which is exactly why nothing complains and every consumer improvises. A browser falls back to `/favicon.ico` at the root, a feed reader or a link unfurler often falls back to nothing, and a bookmark to a site with no icon is a grey square among fifty.",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.apple-touch.missing",
+        "icons.manifest-mismatch"
+      ],
+      "expected": "at least one `<link rel=\"icon\">`, or icons declared by a manifest",
+      "fix": {
+        "title": "Let the file convention declare it",
+        "snippet": "// app/icon.svg (or icon.png) — Next emits the <link rel=\"icon\"> itself.\n// app/apple-icon.png likewise emits rel=\"apple-touch-icon\".\n// A /favicon.ico at the root is a separate matter: see icons.ico.missing.",
+        "language": "tsx"
+      }
     },
     {
       "id": "lang.matches-content",

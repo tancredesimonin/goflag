@@ -38,6 +38,8 @@ const CLEAN = `<!doctype html>
     <meta name="description" content="A description comfortably inside the fifty to one hundred and sixty character window that Google likes." />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="canonical" href="https://example.com/page" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
     <meta property="og:title" content="A perfectly good page title" />
     <meta property="og:description" content="An explicit open-graph description." />
     <meta property="og:image" content="https://example.com/og.png" />
@@ -69,11 +71,14 @@ describe("rule registry", () => {
   it("has unique, dotted rule ids", () => {
     const seen = new Set<string>();
     for (const rule of RULES) {
-      expect(rule.id).toMatch(/^[a-z]+(\.[a-z0-9]+)+$/);
+      // `category.short-name`, as `RuleBase` documents it — the hyphen is part
+      // of the convention, and the cross-page registry has always used it
+      // (`hreflang.sitemap-mismatch`).
+      expect(rule.id).toMatch(/^[a-z]+(\.[a-z0-9]+(-[a-z0-9]+)*)+$/);
       expect(seen.has(rule.id)).toBe(false);
       seen.add(rule.id);
     }
-    expect(RULES.length).toBe(17);
+    expect(RULES.length).toBe(20);
   });
 
   it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
@@ -438,6 +443,102 @@ describe("og.locale.missing / og.locale.alternates", () => {
 
   it("alternates defers to og.locale.missing rather than piling on", () => {
     expect(ids(cluster(""))).not.toContain("og.locale.alternates");
+  });
+});
+
+describe("icons.missing / icons.apple-touch.missing", () => {
+  it("icons.missing fires on a page that declares none", () => {
+    expect(ids(`<html><head><title>xxxxxxxxxx</title></head></html>`)).toContain("icons.missing");
+  });
+
+  it("icons.missing ignores a rel it was not asked about", () => {
+    // `rel="stylesheet"` is a link, not an icon. The extraction keeps every
+    // link; the rule is what decides which ones are icons.
+    const html = `<html><head><link rel="preload" href="/x.png" as="image" /></head></html>`;
+    expect(ids(html)).toContain("icons.missing");
+  });
+
+  it("icons.missing stays silent on `shortcut icon`, the legacy spelling", () => {
+    const html = `<html><head><link rel="shortcut icon" href="/favicon.png" /></head></html>`;
+    expect(ids(html)).not.toContain("icons.missing");
+  });
+
+  it("apple-touch fires when the page declares icons but no Apple flavour", () => {
+    const html = `<html><head><link rel="icon" href="/icon.svg" /></head></html>`;
+    expect(ids(html)).toContain("icons.apple-touch.missing");
+  });
+
+  it("apple-touch defers to icons.missing rather than piling on", () => {
+    const found = ids(`<html><head><title>xxxxxxxxxx</title></head></html>`);
+    expect(found).toContain("icons.missing");
+    expect(found).not.toContain("icons.apple-touch.missing");
+  });
+
+  it("both stay silent once an icon and an apple-touch-icon are declared", () => {
+    const html = `<html><head>
+      <link rel="icon" href="/icon.svg" />
+      <link rel="apple-touch-icon" href="/apple-icon.png" />
+    </head></html>`;
+    const found = ids(html);
+    expect(found).not.toContain("icons.missing");
+    expect(found).not.toContain("icons.apple-touch.missing");
+  });
+});
+
+describe("icons.manifest-mismatch", () => {
+  /** A page whose manifest probe answered with these `icons`. */
+  const withManifest = (icons: unknown, head = "") =>
+    pageFromHtml(
+      `<html><head><link rel="manifest" href="/site.webmanifest" />${head}</head></html>`,
+      { manifest: { icons } },
+    );
+
+  it("stays silent when the manifest was never fetched — that is not evidence", () => {
+    const html = `<html><head>
+      <link rel="manifest" href="/site.webmanifest" />
+      <link rel="icon" href="/icon.png" sizes="32x32" />
+      <link rel="apple-touch-icon" href="/apple-icon.png" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("fires when only the manifest declares icons — a tab never reads it", () => {
+    const page = withManifest([{ src: "/icon-192.png", sizes: "192x192" }]);
+    expect(lint(page).map((i) => i.ruleId)).toContain("icons.manifest-mismatch");
+  });
+
+  it("fires when the two describe the same file with different sizes", () => {
+    const page = withManifest(
+      [{ src: "/icon.png", sizes: "192x192" }],
+      '<link rel="icon" href="/icon.png" sizes="32x32" /><link rel="apple-touch-icon" href="/a.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).toContain("icons.manifest-mismatch");
+  });
+
+  it("does not mind two lists that legitimately differ", () => {
+    // An apple-touch-icon is not a manifest icon, and a 192px PWA icon has no
+    // business in the `<head>`. Divergence is the normal case.
+    const page = withManifest(
+      [{ src: "/icon-192.png", sizes: "192x192" }],
+      '<link rel="icon" href="/icon.svg" /><link rel="apple-touch-icon" href="/apple-icon.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("recognises one file declared as a path and as an absolute URL", () => {
+    const page = withManifest(
+      [{ src: "/icon.png", sizes: "32x32" }],
+      '<link rel="icon" href="https://example.com/icon.png" sizes="32x32" /><link rel="apple-touch-icon" href="/a.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("survives a manifest whose icons are not what the spec says", () => {
+    const page = withManifest([{ sizes: "32x32" }, "nonsense", null, 7]);
+    expect(() => lint(page)).not.toThrow();
+    // Every entry was unusable, so the manifest declares no icon goflag can
+    // compare — and an empty list is not a disagreement.
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
   });
 });
 

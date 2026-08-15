@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start --port 3004",
     "clean": "rm -rf .next .content-collections",
+    "favicon": "node scripts/generate-favicon.mjs",
+    "favicon:check": "node scripts/generate-favicon.mjs --check",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "pnpm --filter @goflag/next build && content-collections build && tsc --noEmit",
     "test": "content-collections build && vitest run",

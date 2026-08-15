@@ -230,6 +230,21 @@ export interface RobotsProbe {
   blocksAll: boolean;
 }
 
+/**
+ * What the origin answers at `/favicon.ico`.
+ *
+ * Origin-level by nature: one file governs the whole site, exactly like
+ * robots.txt, so it is probed once per run rather than per page.
+ */
+export interface FaviconProbe {
+  url: string;
+  status: number;
+  /** 2xx *and* an image content type. A 200 of HTML is a soft 404. */
+  found: boolean;
+  /** From `content-type`, lowercased, parameters stripped. */
+  contentType?: string;
+}
+
 export interface SitemapProbe {
   url: string;
   status: number;

@@ -454,14 +454,32 @@ une donnée qu'on ne juge pas.
 Les sources sont déjà au catalogue (§4.2 / §4.3) — WHATWG link types, MDN `<link>`
 types, la doc Apple, le W3C Web App Manifest. Rien à sourcer de neuf.
 
-| Règle                       | Rigueur     | Ce qu'elle juge                                             |
-| --------------------------- | ----------- | ----------------------------------------------------------- |
-| `icons.missing`             | guideline   | aucune icône déclarée, ni `<link rel="icon">` ni manifeste  |
-| `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      |
-| `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   |
-| `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles |
-| `icons.apple-touch.missing` | vendor-spec | pas d'`apple-touch-icon` (doc Apple, déjà sourcée)          |
-| `icons.manifest-mismatch`   | guideline   | les icônes du manifeste et celles du `<head>` divergent     |
+| Règle                       | Rigueur     | Ce qu'elle juge                                             | État     |
+| --------------------------- | ----------- | ----------------------------------------------------------- | -------- |
+| `icons.missing`             | guideline   | aucune icône déclarée, ni `<link rel="icon">` ni manifeste  | ✅ OG-1c |
+| `icons.apple-touch.missing` | vendor-spec | pas d'`apple-touch-icon` (doc Apple, déjà sourcée)          | ✅ OG-1c |
+| `icons.manifest-mismatch`   | guideline   | le manifeste et le `<head>` se contredisent (voir plus bas) | ✅ OG-1c |
+| `icons.ico.missing`         | guideline   | aucun `/favicon.ico` servi à la racine                      | ✅ OG-1d |
+| `icons.unreachable`         | vendor-spec | une icône déclarée ne répond pas 200 + content-type image   | ⬜ OG-1b |
+| `icons.sizes-mismatch`      | guideline   | le `sizes` déclaré ne correspond pas aux dimensions réelles | ⬜ OG-1b |
+
+**Ce que le manifeste apporte, et ce qu'il coûte.** Le manifeste est sondé par
+page depuis toujours (`probeManifest`, appelé par `inspect.ts`) et **son contenu
+n'atteignait rien** : sixième occurrence du signal collecté et jamais jugé. Il
+entre donc dans l'extraction, en champ additif sous `links.manifest` — donc sans
+bump d'`EXTRACTION_VERSION` — avec un `parsed` à **trois états** : absent quand
+aucune sonde n'a tourné, `false` quand elle a échoué, `true` avec les icônes
+sinon. « Pas regardé » et « regardé, rien trouvé » sont deux affirmations
+différentes, et une seule des deux dit quelque chose sur le site.
+
+**`icons.manifest-mismatch` ne juge pas la divergence des deux listes.** Elles
+divergent normalement : un `apple-touch-icon` n'est pas une icône de manifeste,
+et une icône PWA de 192 px n'a rien à faire dans le `<head>`. Une règle qui
+comparerait les ensembles à plat se déclencherait sur tous les sites corrects —
+`apps/website` compris. Elle ne juge donc que deux vraies contradictions : le
+**même fichier** décrit avec deux `sizes` ou deux `type`, et un manifeste qui
+déclare des icônes quand le `<head>` n'en déclare aucune — là où l'onglet du
+navigateur va chercher, et où il ne trouverait rien.
 
 Deux remarques d'honnêteté sur la rigueur.
 
@@ -526,7 +544,8 @@ texte sur une zone chargée sans voile.
 | **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                                                                                                                                      | —         |
 | **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                                                                                                                       | catalogue |
 | **OG-1b** | `og.image.reachable`, `icons.unreachable`, `icons.sizes-mismatch` — les trois règles qui demandent le réseau (§10.1). Hors chemin critique : elles ne partagent rien avec le reste de l'OG                                                                                                                                                                           | catalogue |
-| **OG-1c** | La famille `icons.*` du §7.1, sans réseau. `icons.ico.missing` fait échouer le site de goflag ; le remède est le script `.ico` d'OG-2                                                                                                                                                                                                                                | catalogue |
+| **OG-1c** | ✅ **livrée** — `icons.missing`, `icons.apple-touch.missing`, `icons.manifest-mismatch`, plus le contenu du manifeste dans l'extraction. `apps/website` les passe déjà toutes les trois : `icon.svg`, `apple-icon.tsx` et un manifeste qui ne se contredit pas                                                                                                       | catalogue |
+| **OG-1d** | `icons.ico.missing` — une sonde d'origine calquée sur `probeRobots`. Elle fait échouer le site de goflag, qui ne sert aucun `.ico` ; le remède est le script d'OG-2, donc les deux se livrent ensemble                                                                                                                                                               | catalogue |
 | **OG-2**  | Mise au propre dans `apps/website`, sans paquet. ✅ **alt traduit via `generateImageMetadata`** sur les six cartes et **`alternateLocale` dans `@goflag/next`** : les 66 findings d'OG-1a tombent. Reste : tokens extraits du thème, `fitTitle`, le catch-all isolé derrière une fonction, **plus un `.ico` produit par un script local** (consommateur n°1 du §6.4) | OG-1a     |
 | **OG-3**  | **stereo-house écrit sa propre carte à la main** avec le même motif → les 38 findings tombent. Son `generate-favicons.mjs` existant en fait le **consommateur n°2 du `.ico` sans travail supplémentaire** — et sa variante à 7 sorties révèle la forme réelle                                                                                                        | OG-2      |
 | **OG-4**  | Extraction en `@goflag/og` + `@goflag/og/next` (deux consommateurs, I4 satisfait). `buildIco` / `writeIco` entrent dans le **cœur**                                                                                                                                                                                                                                  | OG-3      |

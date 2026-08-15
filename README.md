@@ -20,6 +20,7 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 - **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
 - **Open Graph, past its presence** — a declared `og:image` is judged as well as counted: relative URLs no crawler can resolve, an undeclared size (so the first share of a URL renders without the image), a shape far from the 1.91:1 the card is cropped to, and a missing `og:image:alt`. On a translated page, `og:locale` and `og:locale:alternate` are checked against the hreflang cluster — two vocabularies for one fact, which nothing in a build keeps in step.
+- **Icons** — whether anything declares one at all (nothing in a spec requires it, which is why nothing complains), whether iOS has an `apple-touch-icon` to use instead of screenshotting the page, whether the Web App Manifest and the `<head>` contradict each other about the same file, and whether the origin actually serves `/favicon.ico` — a 200 of HTML from a catch-all route does not count. Two icon lists that merely differ are the normal case and are not reported.
 - **Unreachable pages** — a page the crawl reached that answered non-2xx, or that never answered at all (timeout, reset, DNS failure — recorded as `status: 0`), is reported in `unreachablePages`. goflag asks a second time, from the back of the queue, before calling a page unreachable. Each one is an `error`-severity finding: it turns the verdict red, counts toward `--max-debt`, and fails the build even under `--fail-on error`. A page that silently dropped out of the audited set is what poisons a baseline, so it is reported rather than warned about.
 
 **Which pages get audited.** When goflag finds a sitemap it does not audit every URL in it. It groups URLs that share a path shape — and therefore a template — into families, audits every page that stands alone, and samples three pages per family. A cap answers "how many" and never "which": on a site of thousands of pages built from thirty templates, the first 200 pages a crawl reaches are four templates out of thirty.
@@ -139,11 +140,12 @@ npx @goflag/cli rules > rules.json
 
 `rules` answers a question about goflag rather than about a site: no URL, no
 crawl, no network. Every entry carries its scope, severity and summary; the
-seventeen page rules and four prose rules also carry a rigor, the documents they
-cite and — where a remedy is a line of code — a fix snippet. The three site
-rules carry none of those three: `SiteRule` has no rigor field yet, and the
-catalogue emits `rigor: null` with an empty `sources` rather than inventing an
-authority nobody assigned. Write your consumer against that. The same document
+twenty page rules and four prose rules also carry a rigor, the documents they
+cite and — where a remedy is a line of code — a fix snippet. Cross-page rules
+may carry them too, and one does; the three that predate the field still emit
+`rigor: null` with an empty `sources`, because choosing their citations is work
+nobody has done and inventing an authority is worse than admitting the gap.
+Write your consumer against that. The same document
 ships inside the package as `rules.json`, if you would rather read it than run
 anything.
 
