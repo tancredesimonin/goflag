@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 23,
-    "site": 27,
+    "site": 29,
     "prose": 4
   },
   "sources": {
@@ -967,6 +967,17 @@
       ]
     },
     {
+      "id": "sitemap.entry.out-of-scope",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A sitemap may only list URLs under its own directory",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
       "id": "sitemap.entry.protocol-mismatch",
       "scope": "site",
       "severity": "warning",
@@ -1034,6 +1045,17 @@
       "sources": [
         "sitemaps-protocol",
         "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.limits.exceeded",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "No single sitemap document may exceed 50,000 entries or 50 MB",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
       ]
     },
     {

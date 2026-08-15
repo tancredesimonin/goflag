@@ -49,6 +49,67 @@ export interface SitemapUrlEntry {
    * different facts.
    */
   alternates?: SitemapAlternate[];
+  /**
+   * The sitemap document that declared this entry.
+   *
+   * Absent only when the entry was built by hand (tests) or by the crawl
+   * fallback, where no document declared anything. It exists because
+   * sitemaps.org scopes a document's authority by its own location — *"A
+   * Sitemap file located at http://example.com/catalog/sitemap.xml can include
+   * any URLs starting with http://example.com/catalog/ but can not include URLs
+   * starting with http://example.com/images/"* — and that question cannot be
+   * asked of a flattened list.
+   */
+  documentUrl?: string;
+}
+
+/**
+ * One sitemap document, as fetched and parsed.
+ *
+ * The flat `urls` list below answers "what does this site publish?", which is
+ * what discovery was built for. It cannot answer "which document said so, and
+ * how big was it?" — and three of the protocol's own requirements are stated
+ * per document rather than per site: the 50,000-URL and 50 MB ceilings, and the
+ * location scoping quoted above. Those facts were being reduced to counters and
+ * English sentences in `diagnostics.warnings`, which no rule can read.
+ *
+ * Root first, then children in the order the index declared them.
+ */
+export interface SitemapDocument {
+  /** Absolute URL of the document itself. */
+  url: string;
+  /** HTTP status of its fetch. `0` on network error. */
+  status: number;
+  /**
+   * Uncompressed size of the body, in bytes.
+   *
+   * Uncompressed on purpose: the protocol's 52,428,800-byte ceiling is about
+   * what a consumer has to parse, not what crossed the wire. `0` when the
+   * document could not be read at all.
+   */
+  byteLength: number;
+  /** The body arrived gzipped, by `.gz` extension or `content-encoding`. */
+  gzipped: boolean;
+  /** What it parsed as. `unparsable` covers both malformed XML and neither root tag. */
+  kind: "urlset" | "index" | "unparsable";
+  /**
+   * For an index: the `<loc>` values it references, verbatim and in declared
+   * order — including any this run chose not to follow, so a cap is visible as
+   * a difference rather than as an absence.
+   */
+  childLocs: string[];
+  /**
+   * `<url>` entries this document declared, **before** global dedupe and caps.
+   *
+   * The limit is on what the document contains, so a count taken after the
+   * collector deduplicated across documents would answer a different question
+   * and never trip.
+   */
+  urlCount: number;
+  /** This document's URL appeared on a robots.txt `Sitemap:` line. */
+  declaredInRobots: boolean;
+  /** The index that referenced it. Absent on the root. */
+  parentUrl?: string;
 }
 
 /**
@@ -119,6 +180,14 @@ export interface SiteDiscovery {
   source: SiteDiscoverySource;
   /** Deduplicated, absolute page URLs ready to inspect. */
   urls: SitemapUrlEntry[];
+  /**
+   * Every document that was fetched, root first.
+   *
+   * Empty when nothing was found or when the crawl fallback answered: both are
+   * runs in which no sitemap document was read, and a rule asking about
+   * documents must see no documents rather than an invented one.
+   */
+  documents: SitemapDocument[];
   /** Sitemap health analysis. */
   diagnostics: SitemapDiagnostics;
   /** True when a hard cap (`maxUrls` / `maxSitemaps`) stopped collection. */

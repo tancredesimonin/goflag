@@ -56,6 +56,7 @@ function discoveryFor(origin: string): SiteDiscovery {
     baseUrl: origin,
     source: "crawl",
     urls: [{ loc: `${origin}/` }],
+    documents: [],
     // Spelled out rather than cast: `runLinkAudit` reads none of it, but a
     // cast here would go stale silently the day the interface grows a field
     // this test ought to have thought about.
