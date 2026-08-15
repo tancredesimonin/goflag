@@ -30,6 +30,9 @@ import { pageFromHtml } from "./test-utils";
 const MISMATCH = getSiteRule("hreflang.sitemap-mismatch");
 if (!MISMATCH) throw new Error("hreflang.sitemap-mismatch is not registered");
 
+const INCOMPLETE = getSiteRule("hreflang.cluster-incomplete");
+if (!INCOMPLETE) throw new Error("hreflang.cluster-incomplete is not registered");
+
 const O = "https://x.com";
 
 /** A `<head>` advertising exactly the alternates given. */
@@ -80,8 +83,22 @@ function context(pages: ReturnType<typeof page>[], urls: SitemapUrlEntry[]): Sit
   };
 }
 
+/**
+ * The two halves of the same comparison, run one at a time.
+ *
+ * They were one rule until 2026-08-15. `warnings` is the direction with no
+ * specification behind it — the `<head>` naming a locale the sitemap omits —
+ * and `incomplete` is the one Google backs: a locale the site publishes and
+ * then leaves out of its own cluster. Every case below says which it expects,
+ * because "a finding appeared" stopped being a precise enough assertion the
+ * moment there were two rules that could produce one.
+ */
 function warnings(ctx: SiteContext) {
   return lintSite(ctx, [MISMATCH!]);
+}
+
+function incomplete(ctx: SiteContext) {
+  return lintSite(ctx, [INCOMPLETE!]);
 }
 
 // The pair at the centre of the defect: same page, translated slug, reciprocal
@@ -126,13 +143,14 @@ describe("hreflang.sitemap-mismatch on translated slugs", () => {
     // The guard that matters more than the fix: following the declaration must
     // not amount to trusting it. Here the cluster is declared over three
     // locales, the sitemap lists all three, and the `<head>`s advertise two —
-    // an under-declaration the rule exists to catch.
+    // an under-declaration, so this is `cluster-incomplete`'s finding, not the
+    // other half's.
     const declared: SitemapAlternate[] = [
       ...TRANSLATED_SLUGS,
       { hreflang: "es", href: `${O}/es/precios` },
     ];
     const heads = TRANSLATED_SLUGS;
-    const found = warnings({
+    const found = incomplete({
       ...context(
         [page(`${O}/en/pricing`, heads), page(`${O}/fr/tarifs`, heads)],
         [
@@ -202,14 +220,14 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
     };
     const subject = [page(`${O}/en/about`, heads), page(`${O}/fr/about`, heads)];
 
-    const undeclared = warnings({
+    const undeclared = incomplete({
       ...context(
         subject,
         locs.map((loc) => ({ loc })),
       ),
       localeAxis: axis,
     });
-    const declared = warnings({
+    const declared = incomplete({
       ...context(
         subject,
         locs.map((loc) => ({ loc, alternates: withEs })),
@@ -219,6 +237,59 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
 
     expect(undeclared).toHaveLength(2);
     expect(declared).toEqual(undeclared);
+  });
+});
+
+describe("the two halves, on a route that disagrees in both directions", () => {
+  // The case that proves the split is a split and not a rename. One route, one
+  // page, both gaps at once: the sitemap publishes `es` the `<head>` never
+  // names, and the `<head>` names `de` the sitemap never lists. Before
+  // 2026-08-15 that was one finding carrying two claims of different authority
+  // under one `rigor`; it is now one finding each, and only one of them cites
+  // a specification.
+  const HEADS: SitemapAlternate[] = [
+    { hreflang: "en", href: `${O}/en/about` },
+    { hreflang: "fr", href: `${O}/fr/about` },
+    { hreflang: "de", href: `${O}/de/about` },
+  ];
+  const ctx = (): SiteContext => ({
+    ...context(
+      [page(`${O}/en/about`, HEADS)],
+      [`${O}/en/about`, `${O}/fr/about`, `${O}/es/about`].map((loc) => ({ loc })),
+    ),
+    localeAxis: {
+      locales: ["de", "en", "es", "fr"],
+      source: "sitemap",
+      multilingual: true,
+      candidates: [],
+    },
+  });
+
+  // Matched on the clause that enumerates locales, not on the bare tag: `de`
+  // and `es` both occur inside ordinary words in these messages — "outside",
+  // "competes" — and a substring assertion would pass for the wrong reason.
+  it("blames the missing cluster member on the sourced rule", () => {
+    const found = incomplete(ctx());
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("the sitemap lists es but");
+    expect(found[0]!.message).not.toContain("advertises de");
+  });
+
+  it("blames the unlisted alternate on the unsourced one", () => {
+    const found = warnings(ctx());
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("advertises de but");
+    expect(found[0]!.message).not.toContain("the sitemap lists es");
+  });
+
+  it("keeps exactly one of the two sourceable", () => {
+    expect(INCOMPLETE!.rigor).toBe("vendor-spec");
+    expect(INCOMPLETE!.sources).toEqual(["google-hreflang"]);
+    // Not an oversight, and the rule's own comment carries the evidence: no
+    // document requires an hreflang-declared page to appear in a sitemap.
+    expect(MISMATCH!.rigor).toBeUndefined();
   });
 });
 

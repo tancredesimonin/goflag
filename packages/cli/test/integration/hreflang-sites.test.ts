@@ -101,7 +101,12 @@ describe("silent multilingual site — four locales, zero hreflang", () => {
   });
 
   it("does not double-report the same defect as a sitemap mismatch", () => {
+    // Both halves skip a page with no alternates at all, so splitting the rule
+    // must not turn one silence into one finding. Asserted on each, because
+    // asserting on the pair would pass if one of them started firing and the
+    // other stopped.
     expect(siteIssuesFor(report, "hreflang.sitemap-mismatch")).toHaveLength(0);
+    expect(siteIssuesFor(report, "hreflang.cluster-incomplete")).toHaveLength(0);
   });
 
   it("turns the verdict red — this site must not pass a CI gate", () => {
@@ -143,7 +148,9 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
   });
 
   it("flags each page whose <head> under-declares the sitemap's locales", () => {
-    const onPost = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
+    // `/post` is the direction Google backs, so since 2026-08-15 it is
+    // `hreflang.cluster-incomplete`'s finding rather than the other half's.
+    const onPost = siteIssuesFor(report, "hreflang.cluster-incomplete").filter((i) =>
       i.pageUrl.endsWith("/post"),
     );
     expect(onPost).toHaveLength(4);
@@ -151,7 +158,7 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
   });
 
   it("names the route and the specific locales that are missing", () => {
-    const [first] = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
+    const [first] = siteIssuesFor(report, "hreflang.cluster-incomplete").filter((i) =>
       i.pageUrl.endsWith("/post"),
     );
     expect(first?.message).toContain("`/post`");
@@ -161,9 +168,12 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
 
   it("also catches the opposite drift: a <head> advertising locales the sitemap lacks", () => {
     // `/solo` exists in four locales and says so, but only `/en/solo` is in the
-    // sitemap. Google treats alternates pointing at URLs the site itself does
-    // not list as a broken cluster, so this direction matters as much as the
-    // under-declaring one.
+    // sitemap. This is the half no specification covers — checked at the source
+    // on 2026-08-15, where Google calls its three declaration methods
+    // "equivalent" and requires no hreflang-declared page to be in a sitemap at
+    // all. It keeps the `hreflang.sitemap-mismatch` id and its empty `rigor`,
+    // and it is still worth reporting: two generators deriving one intent and
+    // disagreeing is a defect somewhere, just not one goflag can attribute.
     const onSolo = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
       i.pageUrl.endsWith("/solo"),
     );
