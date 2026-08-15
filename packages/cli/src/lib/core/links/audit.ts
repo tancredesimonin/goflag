@@ -150,6 +150,18 @@ export async function runLinkAudit(
     {
       concurrency: options.checkConcurrency ?? DEFAULTS.checkConcurrency,
       perHost: options.maxPerHost ?? DEFAULTS.maxPerHost,
+      // The origin is exempt, and the scan phase above is the precedent: it
+      // fetches these same pages at `scanConcurrency` with `perHost: Infinity`.
+      // Capping the check phase at 3 against that host made the two phases
+      // disagree about the same server, and on a deployed site it is where the
+      // audit spends itself: measured on openfinanceguide, 3821 same-origin
+      // links at ~700 ms a round trip, three at a time — 14.8 minutes of an
+      // 18.5-minute job. Against a local `--start` run the cap never binds,
+      // which is why the plan's own 7-minute figure held and CI's did not.
+      //
+      // `checkConcurrency` still bounds it: at most 8 in flight, where the scan
+      // phase already runs 4.
+      unlimitedHost: hostOf(discovery.origin),
       signal: options.signal,
     },
     async (url) => {
@@ -221,6 +233,13 @@ function hostOf(url: string): string {
 interface PoolOptions {
   concurrency: number;
   perHost: number;
+  /**
+   * One host exempt from `perHost` — the origin under audit. Politeness is
+   * owed to other people's servers; the origin is the site the caller pointed
+   * this tool at, and the scan phase already fetches it with no per-host cap
+   * at all.
+   */
+  unlimitedHost?: string;
   signal?: AbortSignal;
 }
 
@@ -265,7 +284,8 @@ function mapWithHostCaps<T>(
         let pickIndex = -1;
         for (let k = 0; k < pending.length; k++) {
           const entry = pending[k]!;
-          if ((hostActive.get(entry.host) ?? 0) < perHost) {
+          const cap = entry.host === opts.unlimitedHost ? Infinity : perHost;
+          if ((hostActive.get(entry.host) ?? 0) < cap) {
             pickIndex = k;
             break;
           }

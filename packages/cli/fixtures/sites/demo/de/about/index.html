@@ -9,13 +9,22 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="canonical" href="https://demo.example/de/about" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
     <!-- Deliberate reciprocity gap: no hreflang="fr" back-link to /fr/about. -->
     <link rel="alternate" hreflang="en" href="/en/about" />
     <link rel="alternate" hreflang="de" href="/de/about" />
     <link rel="alternate" hreflang="x-default" href="/en/about" />
     <meta property="og:title" content="Goflag Demo — Über uns" />
     <meta property="og:description" content="Über die Goflag-Demoseite." />
-    <meta property="og:image" content="https://demo.example/og.png" />
+    <meta property="og:image" content="BASE/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Vorschaukarte: Goflag Demo — Über uns" />
+    <!-- Same gap, stated in the other vocabulary: no fr here either, so
+         Open Graph and hreflang agree about what this page does not link to. -->
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:locale:alternate" content="en_US" />
   </head>
   <body>
     <main>

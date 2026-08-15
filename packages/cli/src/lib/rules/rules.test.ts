@@ -19,6 +19,7 @@ import { lint } from "../core/lint";
 import { extractionFromPage } from "./extraction/from-page";
 import { RULES } from "./index";
 import { PROSE_RULES } from "./prose";
+import { SITE_RULES } from "./site-rules";
 import { getSource } from "./sources";
 import type { SourceRigor } from "./sources/types";
 import { pageFromHtml } from "./test-utils";
@@ -37,22 +38,47 @@ const CLEAN = `<!doctype html>
     <meta name="description" content="A description comfortably inside the fifty to one hundred and sixty character window that Google likes." />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="canonical" href="https://example.com/page" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
     <meta property="og:title" content="A perfectly good page title" />
     <meta property="og:description" content="An explicit open-graph description." />
     <meta property="og:image" content="https://example.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A perfectly good page title, on a dark card." />
   </head>
   <body><h1>Hello</h1></body>
 </html>`;
+
+/**
+ * The same page as one locale of a translated cluster. The locale rules gate
+ * on hreflang, so a monolingual document can never exercise them — and a page
+ * that declares the cluster without `og:locale` is exactly the shape both of
+ * them are written to catch.
+ */
+const CLEAN_TRANSLATED = CLEAN.replace(
+  "</head>",
+  `  <link rel="alternate" hreflang="en" href="https://example.com/en/page" />
+    <link rel="alternate" hreflang="fr" href="https://example.com/fr/page" />
+    <link rel="alternate" hreflang="es" href="https://example.com/es/page" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="es_ES" />
+  </head>`,
+);
 
 describe("rule registry", () => {
   it("has unique, dotted rule ids", () => {
     const seen = new Set<string>();
     for (const rule of RULES) {
-      expect(rule.id).toMatch(/^[a-z]+(\.[a-z0-9]+)+$/);
+      // `category.short-name`, as `RuleBase` documents it — the hyphen is part
+      // of the convention, and the cross-page registry has always used it
+      // (`hreflang.sitemap-mismatch`).
+      expect(rule.id).toMatch(/^[a-z]+(\.[a-z0-9]+(-[a-z0-9]+)*)+$/);
       expect(seen.has(rule.id)).toBe(false);
       seen.add(rule.id);
     }
-    expect(RULES.length).toBe(11);
+    expect(RULES.length).toBe(23);
   });
 
   it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
@@ -97,7 +123,10 @@ describe("rule registry", () => {
   });
 
   it("declares which extraction paths it reads, and they exist", () => {
-    const extraction = extractionFromPage(pageFromHtml(CLEAN));
+    // Populated with every optional section, because an optional one is still
+    // a real section: a rule may legitimately read `assets` on a run where the
+    // probe pass did not fill it.
+    const extraction = extractionFromPage(pageFromHtml(CLEAN, { manifest: {}, assets: {} }));
     const topLevel = new Set(Object.keys(extraction));
     for (const rule of RULES) {
       expect(rule.reads.length, rule.id).toBeGreaterThan(0);
@@ -109,7 +138,11 @@ describe("rule registry", () => {
   });
 
   it("explains itself: title, why, expected and relates all resolve", () => {
-    const known = new Set(RULES.map((r) => r.id));
+    // Across every registry, not just this one: `og.locale.missing` and
+    // `hreflang.missing` describe the same fact from either side of the
+    // page/site boundary, and the relation is true whichever list holds the
+    // other rule. The catalogue exports all three together for that reason.
+    const known = new Set([...RULES, ...SITE_RULES, ...PROSE_RULES].map((r) => r.id));
     for (const rule of RULES) {
       expect(rule.title.trim(), rule.id).toBeTruthy();
       expect(rule.why.trim(), rule.id).toBeTruthy();
@@ -122,6 +155,10 @@ describe("rule registry", () => {
 
   it("produces zero findings on a clean page", () => {
     expect(ids(CLEAN)).toEqual([]);
+  });
+
+  it("produces zero findings on a clean page inside a translated cluster", () => {
+    expect(ids(CLEAN_TRANSLATED)).toEqual([]);
   });
 });
 
@@ -238,6 +275,273 @@ describe("og.title.missing / og.image.missing / og.description.missing", () => {
     expect(found).not.toContain("og.title.missing");
     expect(found).not.toContain("og.image.missing");
     expect(found).not.toContain("og.description.missing");
+  });
+});
+
+describe("og.image.absolute", () => {
+  it("fires on a root-relative og:image", () => {
+    const html = `<html><head><meta property="og:image" content="/og.png" /></head></html>`;
+    expect(ids(html)).toContain("og.image.absolute");
+  });
+
+  it("fires on a protocol-relative og:image, which no crawler resolves", () => {
+    const html = `<html><head><meta property="og:image" content="//example.com/og.png" /></head></html>`;
+    expect(ids(html)).toContain("og.image.absolute");
+  });
+
+  it("fires when og:image is absolute but og:image:secure_url is not", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:secure_url" content="/og.png" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.absolute");
+  });
+
+  it("stays silent on an absolute URL, and where there is no image to judge", () => {
+    const absolute = `<html><head><meta property="og:image" content="https://example.com/og.png" /></head></html>`;
+    expect(ids(absolute)).not.toContain("og.image.absolute");
+    expect(ids(`<html><head><title>xxxxxxxxxx</title></head></html>`)).not.toContain(
+      "og.image.absolute",
+    );
+  });
+});
+
+describe("og.image.alt", () => {
+  it("fires on an og:image with no og:image:alt", () => {
+    const html = `<html><head><meta property="og:image" content="https://example.com/og.png" /></head></html>`;
+    expect(ids(html)).toContain("og.image.alt");
+  });
+
+  it("fires when only some of several images are described", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/a.png" />
+      <meta property="og:image:alt" content="The first card" />
+      <meta property="og:image" content="https://example.com/b.png" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt");
+  });
+
+  it("treats a whitespace-only alt as absent", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="   " />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt");
+  });
+
+  it("stays silent once every image is described", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="A dark terminal card" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("og.image.alt");
+  });
+});
+
+describe("og.image.dimensions / og.image.ratio", () => {
+  it("dimensions fires when the size is not declared", () => {
+    const html = `<html><head><meta property="og:image" content="https://example.com/og.png" /></head></html>`;
+    expect(ids(html)).toContain("og.image.dimensions");
+  });
+
+  it("dimensions fires when only one of the two is declared", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:width" content="1200" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.dimensions");
+  });
+
+  it("ratio stays quiet when nothing declared a size — it measures, it does not guess", () => {
+    const html = `<html><head><meta property="og:image" content="https://example.com/og.png" /></head></html>`;
+    expect(ids(html)).not.toContain("og.image.ratio");
+  });
+
+  it("ratio fires on a square card", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:width" content="600" />
+      <meta property="og:image:height" content="600" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.ratio");
+  });
+
+  it("both stay silent on 1200×630", () => {
+    const html = `<html><head>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+    </head></html>`;
+    const found = ids(html);
+    expect(found).not.toContain("og.image.dimensions");
+    expect(found).not.toContain("og.image.ratio");
+  });
+});
+
+describe("og.locale.missing / og.locale.alternates", () => {
+  /** An og block with a hreflang cluster, so the locale rules apply at all. */
+  const cluster = (og: string) => `<html><head>
+      <title>A perfectly good page title</title>
+      <meta property="og:title" content="A perfectly good page title" />
+      <link rel="alternate" hreflang="en" href="https://example.com/en/page" />
+      <link rel="alternate" hreflang="fr" href="https://example.com/fr/page" />
+      <link rel="alternate" hreflang="x-default" href="https://example.com/en/page" />
+      ${og}
+    </head></html>`;
+
+  it("og.locale fires on a translated page that never says which locale it is", () => {
+    expect(ids(cluster(""))).toContain("og.locale.missing");
+  });
+
+  it("og.locale stays silent on a monolingual page", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="A perfectly good page title" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("og.locale.missing");
+  });
+
+  it("og.locale stays silent where x-default is the only other annotation", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="A perfectly good page title" />
+      <link rel="alternate" hreflang="en" href="https://example.com/page" />
+      <link rel="alternate" hreflang="x-default" href="https://example.com/page" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("og.locale.missing");
+  });
+
+  it("og.locale stays silent on a page with no Open Graph at all", () => {
+    // og.title.missing already carries that page; a second finding asking for
+    // og:locale on top of it is noise.
+    const html = `<html><head>
+      <title>A perfectly good page title</title>
+      <link rel="alternate" hreflang="en" href="https://example.com/en/page" />
+      <link rel="alternate" hreflang="fr" href="https://example.com/fr/page" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("og.locale.missing");
+  });
+
+  it("alternates fires when the hreflang cluster names a locale Open Graph does not", () => {
+    expect(ids(cluster(`<meta property="og:locale" content="en_US" />`))).toContain(
+      "og.locale.alternates",
+    );
+  });
+
+  it("alternates fires on an og:locale:alternate no hreflang backs", () => {
+    const html = cluster(`
+      <meta property="og:locale" content="en_US" />
+      <meta property="og:locale:alternate" content="fr_FR" />
+      <meta property="og:locale:alternate" content="de_DE" />`);
+    expect(ids(html)).toContain("og.locale.alternates");
+  });
+
+  it("alternates matches across the two tag formats, and across a bare language", () => {
+    // hreflang `fr` and og `fr_FR` are one declaration written twice: only one
+    // of the two formats can express the territory, so the difference is not
+    // evidence of a disagreement.
+    const html = cluster(`
+      <meta property="og:locale" content="en_US" />
+      <meta property="og:locale:alternate" content="fr_FR" />`);
+    expect(ids(html)).not.toContain("og.locale.alternates");
+  });
+
+  it("alternates defers to og.locale.missing rather than piling on", () => {
+    expect(ids(cluster(""))).not.toContain("og.locale.alternates");
+  });
+});
+
+describe("icons.missing / icons.apple-touch.missing", () => {
+  it("icons.missing fires on a page that declares none", () => {
+    expect(ids(`<html><head><title>xxxxxxxxxx</title></head></html>`)).toContain("icons.missing");
+  });
+
+  it("icons.missing ignores a rel it was not asked about", () => {
+    // `rel="stylesheet"` is a link, not an icon. The extraction keeps every
+    // link; the rule is what decides which ones are icons.
+    const html = `<html><head><link rel="preload" href="/x.png" as="image" /></head></html>`;
+    expect(ids(html)).toContain("icons.missing");
+  });
+
+  it("icons.missing stays silent on `shortcut icon`, the legacy spelling", () => {
+    const html = `<html><head><link rel="shortcut icon" href="/favicon.png" /></head></html>`;
+    expect(ids(html)).not.toContain("icons.missing");
+  });
+
+  it("apple-touch fires when the page declares icons but no Apple flavour", () => {
+    const html = `<html><head><link rel="icon" href="/icon.svg" /></head></html>`;
+    expect(ids(html)).toContain("icons.apple-touch.missing");
+  });
+
+  it("apple-touch defers to icons.missing rather than piling on", () => {
+    const found = ids(`<html><head><title>xxxxxxxxxx</title></head></html>`);
+    expect(found).toContain("icons.missing");
+    expect(found).not.toContain("icons.apple-touch.missing");
+  });
+
+  it("both stay silent once an icon and an apple-touch-icon are declared", () => {
+    const html = `<html><head>
+      <link rel="icon" href="/icon.svg" />
+      <link rel="apple-touch-icon" href="/apple-icon.png" />
+    </head></html>`;
+    const found = ids(html);
+    expect(found).not.toContain("icons.missing");
+    expect(found).not.toContain("icons.apple-touch.missing");
+  });
+});
+
+describe("icons.manifest-mismatch", () => {
+  /** A page whose manifest probe answered with these `icons`. */
+  const withManifest = (icons: unknown, head = "") =>
+    pageFromHtml(
+      `<html><head><link rel="manifest" href="/site.webmanifest" />${head}</head></html>`,
+      { manifest: { icons } },
+    );
+
+  it("stays silent when the manifest was never fetched — that is not evidence", () => {
+    const html = `<html><head>
+      <link rel="manifest" href="/site.webmanifest" />
+      <link rel="icon" href="/icon.png" sizes="32x32" />
+      <link rel="apple-touch-icon" href="/apple-icon.png" />
+    </head></html>`;
+    expect(ids(html)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("fires when only the manifest declares icons — a tab never reads it", () => {
+    const page = withManifest([{ src: "/icon-192.png", sizes: "192x192" }]);
+    expect(lint(page).map((i) => i.ruleId)).toContain("icons.manifest-mismatch");
+  });
+
+  it("fires when the two describe the same file with different sizes", () => {
+    const page = withManifest(
+      [{ src: "/icon.png", sizes: "192x192" }],
+      '<link rel="icon" href="/icon.png" sizes="32x32" /><link rel="apple-touch-icon" href="/a.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).toContain("icons.manifest-mismatch");
+  });
+
+  it("does not mind two lists that legitimately differ", () => {
+    // An apple-touch-icon is not a manifest icon, and a 192px PWA icon has no
+    // business in the `<head>`. Divergence is the normal case.
+    const page = withManifest(
+      [{ src: "/icon-192.png", sizes: "192x192" }],
+      '<link rel="icon" href="/icon.svg" /><link rel="apple-touch-icon" href="/apple-icon.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("recognises one file declared as a path and as an absolute URL", () => {
+    const page = withManifest(
+      [{ src: "/icon.png", sizes: "32x32" }],
+      '<link rel="icon" href="https://example.com/icon.png" sizes="32x32" /><link rel="apple-touch-icon" href="/a.png" />',
+    );
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
+  });
+
+  it("survives a manifest whose icons are not what the spec says", () => {
+    const page = withManifest([{ sizes: "32x32" }, "nonsense", null, 7]);
+    expect(() => lint(page)).not.toThrow();
+    // Every entry was unusable, so the manifest declares no icon goflag can
+    // compare — and an empty list is not a disagreement.
+    expect(lint(page).map((i) => i.ruleId)).not.toContain("icons.manifest-mismatch");
   });
 });
 

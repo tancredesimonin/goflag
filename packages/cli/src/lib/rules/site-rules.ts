@@ -279,10 +279,69 @@ const robotsBlocksSite: SiteRule = {
   },
 };
 
+/**
+ * The fallback nobody declares and half the internet still requests.
+ *
+ * No specification requires `/favicon.ico`, which is why this is a guideline
+ * and not a vendor-spec rule: modern browsers follow the `<link>` a page
+ * declares and never touch the root. The clients that do are the naive ones —
+ * feed readers, link unfurlers, crawlers written against 2005 — and they ask
+ * the root blind, take what they get, and show nothing when it 404s.
+ *
+ * Site-level because the subject is one file at one path. Reported per page it
+ * would be the same sentence five hundred times.
+ */
+const iconsIcoMissing: SiteRule = {
+  id: "icons.ico.missing",
+  severity: "info",
+  summary: "Serve a `/favicon.ico` at the root for the clients that ask blind",
+  rigor: "guideline",
+  sources: ["whatwg-html-link-types", "mdn-link-rel"],
+  // Only judged when the probe actually ran. No probe means goflag did not
+  // look, and a rule that reported an absence it never checked for would be
+  // inventing a finding.
+  appliesTo: (site) => site.favicon !== undefined,
+  check: ({ site, issue }) => {
+    const probe = site.favicon;
+    if (!probe || probe.found) return [];
+
+    // Three distinguishable failures, and the remedy differs for each, so the
+    // message says which one happened rather than "no favicon".
+    const detail =
+      probe.status === 0
+        ? "the request failed outright"
+        : probe.status >= 400
+          ? `the origin answered ${probe.status}`
+          : `the origin answered ${probe.status} with \`${probe.contentType ?? "no content type"}\`, which is not an image — a catch-all route serving the app shell looks exactly like this`;
+
+    return issue({
+      pageUrl: probe.url,
+      message: `No \`/favicon.ico\` at the root: ${detail}. Clients that ask for it blind — feed readers, link unfurlers, older crawlers — get nothing.`,
+      origin: { kind: "computed" },
+      fix: {
+        title: "Generate it from the icon you already have",
+        snippet: [
+          "// No framework convention emits an .ico: Next's icon.tsx goes through",
+          "// ImageResponse, which is PNG. The container is a header plus one",
+          "// entry per size plus the PNGs concatenated — thirty lines and no",
+          "// dependency, over an image library you almost certainly already have.",
+          "//",
+          "// Fingerprint the *inputs* (the source image, the sizes), not the",
+          "// bytes you produce: encoders are not stable across versions, so a",
+          "// script keyed on its own output dirties the file on every commit.",
+          "// Then a --check mode can verify it in CI without writing anything.",
+        ].join("\n"),
+        language: "ts",
+      },
+    });
+  },
+};
+
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangSitemapMismatch,
+  iconsIcoMissing,
   robotsBlocksSite,
 ];
 

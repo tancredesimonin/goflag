@@ -33,9 +33,9 @@ export default tseslint.config(
     // Repository tooling: plain Node ESM, no TypeScript. The TS configs above
     // disable `no-undef` (the compiler already covers it), so these files are
     // the only ones that need Node's globals spelled out.
-    files: ["scripts/**/*.mjs", "apps/*/*.mjs"],
+    files: ["scripts/**/*.mjs", "apps/*/*.mjs", "apps/*/scripts/**/*.mjs"],
     languageOptions: {
-      globals: { process: "readonly", console: "readonly" },
+      globals: { process: "readonly", console: "readonly", Buffer: "readonly" },
     },
   },
   {

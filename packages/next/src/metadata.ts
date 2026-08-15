@@ -63,6 +63,20 @@ export function buildMetadata<L extends string>(
     ? [{ url: `${site.baseUrl}${content.image}`, width: 1200, height: 630, alt: content.title }]
     : undefined;
 
+  // The same cluster `alternates.languages` declares, said in the other
+  // vocabulary. Two lists for one fact drift apart when they are written twice,
+  // so both are derived from `route.locales` here — which is what goflag
+  // reports as `og.locale.alternates` when they disagree, and what this library
+  // failed until the rule existed to say so.
+  //
+  // A monolingual route names none: it exists in one language, and listing the
+  // others would advertise translations that were never built. Absent rather
+  // than empty, for the same reason the sitemap omits what it cannot promise.
+  const alternateLocale =
+    route.policy === "monolingual"
+      ? []
+      : route.locales.filter((l) => l !== pageLocale).map((l) => site.openGraphLocale(l));
+
   // Only an article carries times. A `website` that declares a published date
   // describes itself with a vocabulary Open Graph does not give it.
   const articleTimes =
@@ -85,6 +99,7 @@ export function buildMetadata<L extends string>(
       url: location.url,
       siteName: site.name,
       locale: site.openGraphLocale(pageLocale),
+      ...(alternateLocale.length > 0 ? { alternateLocale } : {}),
       type: ogType,
       ...articleTimes,
       ...(images ? { images } : {}),

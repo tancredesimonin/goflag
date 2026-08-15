@@ -6,6 +6,10 @@
     <!-- Contradictory indexing directives: robots says index, googlebot says noindex. -->
     <meta name="robots" content="index, follow" />
     <meta name="googlebot" content="noindex" />
+    <!-- The manifest declares icons; the <head> declares none. A browser tab
+         reads the <head>, so it finds nothing — and the audit has to fetch the
+         manifest to know that, which is the point of this link being here. -->
+    <link rel="manifest" href="/manifest.json" />
   </head>
   <body>
     <main>

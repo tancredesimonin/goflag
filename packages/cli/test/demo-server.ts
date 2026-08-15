@@ -4,6 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { serveFavicon } from "./asset-routes";
 
 /**
  * The demo-site server used by the end-to-end audit + CLI tests.
@@ -59,6 +60,7 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
   let origin = "";
 
   const app = new Hono();
+  serveFavicon(app);
 
   // --- Programmable link-outcome routes ----------------------------------
   app.get("/", (c) => c.redirect("/en", 302));
@@ -91,7 +93,12 @@ export async function startDemoServer(port = 0): Promise<DemoServer> {
     }
     const ext = extname(target).toLowerCase();
     const mime = MIME[ext] ?? "application/octet-stream";
-    if (ext === ".xml" || ext === ".txt") {
+    // `.html` joins the substitution because a fixture page has to be able to
+    // name this server's own origin: an `og:image` must be absolute to satisfy
+    // `og.image.absolute`, and it must be fetchable to satisfy
+    // `og.image.reachable`. A hard-coded `https://demo.example/…` is one or the
+    // other, never both — and would send the test suite out to real DNS.
+    if (ext === ".xml" || ext === ".txt" || ext === ".html") {
       const text = (await readFile(target, "utf8")).split("BASE").join(origin);
       return new Response(text, { headers: { "content-type": mime } });
     }

@@ -30,6 +30,9 @@ import {
   combineClusterIndexes,
 } from "../lib/core/clusters";
 import { selectByStructure } from "../lib/core/coverage";
+import { probeAsset } from "../lib/core/probes/assets";
+import { probeFavicon } from "../lib/core/probes/favicon";
+import { probeManifest } from "../lib/core/probes/manifest";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
 import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
@@ -41,7 +44,7 @@ import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
-import type { Page } from "../lib/core/types";
+import type { AssetProbe, ManifestProbe, Page } from "../lib/core/types";
 import { buildConformance, type ConformanceRow } from "./conformance";
 import { fingerprint, routeKey, targetKey } from "./fingerprint";
 import type {
@@ -302,6 +305,125 @@ export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): numb
  *
  * Variants stay in the crawl either way, so the link audit still probes them.
  */
+/**
+ * Fetch each distinct `<link rel="manifest">` once and hand the result to the
+ * pages that declared it.
+ *
+ * The pages are freshly built by the crawl and nothing has read them yet, so
+ * attaching the probe here is the cheapest place to put site knowledge in
+ * front of a rule that must stay a pure function of one page. A failed fetch
+ * is deliberately left absent rather than recorded as an empty manifest: the
+ * rules distinguish "never looked at" from "looked at and found nothing", and
+ * only the second is evidence.
+ */
+async function attachManifests(
+  pages: Page[],
+  options: { signal?: AbortSignal; timeoutMs?: number },
+): Promise<void> {
+  const wanted = new Set(
+    pages.map((page) => page.links.manifest?.href).filter((href): href is string => Boolean(href)),
+  );
+  if (wanted.size === 0) return;
+
+  const probed = new Map<string, ManifestProbe>();
+  await Promise.all(
+    [...wanted].map(async (href) => {
+      const probe = await probeManifest(href, options).catch(() => undefined);
+      if (probe) probed.set(href, probe);
+    }),
+  );
+
+  for (const page of pages) {
+    const href = page.links.manifest?.href;
+    const probe = href ? probed.get(href) : undefined;
+    if (probe) page.probes = { ...page.probes, manifest: probe };
+  }
+}
+
+/**
+ * Probe every distinct asset URL the pages declared, and hand the answers back.
+ *
+ * D8 of `docs/og-plan.md`. Three rules — `og.image.reachable`,
+ * `icons.unreachable`, `icons.sizes-mismatch` — need to know what is served at
+ * a URL, and none of them can find out: a `Rule` is a pure synchronous function
+ * of one `Extraction`, and keeping it that way is what makes the catalogue
+ * testable with no network at all. So the network happens here.
+ *
+ * Deduplicated across the whole run, because the same icon is declared by every
+ * page on the site and the same card by every page of a family. On this
+ * repository's own site that is two URLs for seventy-four pages.
+ *
+ * Relative `og:image` values are skipped rather than resolved: a crawler cannot
+ * resolve them either, which is the entire content of `og.image.absolute`, and
+ * fetching one here would let this pass answer a question the tag does not.
+ *
+ * `--no-external` is honoured, exactly as the link auditor honours it. A card
+ * on a CDN is legitimately off-origin, and a run told not to touch other
+ * people's servers must not touch them for an image either.
+ */
+async function probeAssets(
+  pages: Page[],
+  options: {
+    origin: string;
+    checkExternal: boolean;
+    signal?: AbortSignal;
+    timeoutMs?: number;
+    concurrency?: number;
+  },
+): Promise<void> {
+  const sameOrigin = (url: string): boolean => {
+    try {
+      return new URL(url).origin === new URL(options.origin).origin;
+    } catch {
+      return false;
+    }
+  };
+  const wantedUrl = (url: string): boolean =>
+    /^https?:\/\//i.test(url) && (options.checkExternal || sameOrigin(url));
+  const wanted = new Set<string>();
+  for (const page of pages) {
+    for (const image of page.openGraph.images) {
+      const url = image.url.value.trim();
+      if (wantedUrl(url)) wanted.add(url);
+    }
+    for (const icon of page.links.icons) {
+      if (wantedUrl(icon.href)) wanted.add(icon.href);
+    }
+  }
+  if (wanted.size === 0) return;
+
+  const queue = [...wanted];
+  const probed = new Map<string, AssetProbe>();
+  const workers = Math.min(options.concurrency ?? 6, queue.length);
+
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      for (let url = queue.pop(); url !== undefined; url = queue.pop()) {
+        const probe = await probeAsset(url, {
+          signal: options.signal,
+          timeoutMs: options.timeoutMs,
+        }).catch(() => undefined);
+        if (probe) probed.set(url, probe);
+      }
+    }),
+  );
+
+  for (const page of pages) {
+    const mine: Record<string, AssetProbe> = {};
+    for (const image of page.openGraph.images) {
+      const probe = probed.get(image.url.value.trim());
+      if (probe) mine[probe.url] = probe;
+    }
+    for (const icon of page.links.icons) {
+      const probe = probed.get(icon.href);
+      if (probe) mine[probe.url] = probe;
+    }
+    // An empty map still says "the pass ran and found nothing to fetch", which
+    // is what the rules need to tell apart from "no pass ran".
+    page.assets = mine;
+  }
+}
+
 function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number } {
   const crawled = new Set(pages.map((p) => routeKey(p.fetch.finalUrl)));
 
@@ -408,6 +530,14 @@ export async function runAudit(
     timeoutMs: options.timeoutMs,
   }).catch(() => undefined);
 
+  // `/favicon.ico` is the same shape of fact as robots.txt: one file, one
+  // path, one answer for the whole origin. Asked once here rather than per
+  // page, for the same reason.
+  const favicon = await probeFavicon(origin, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  }).catch(() => undefined);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
@@ -494,6 +624,31 @@ export async function runAudit(
       status: 0,
     })),
   ];
+
+  // --- Web App Manifest --------------------------------------------------
+  //
+  // The crawl runs with `probes: false`: robots.txt and the sitemap belong to
+  // the origin and are fetched once above, so probing them per page would be
+  // N copies of one answer. The manifest is the exception — it is declared by
+  // the page, nothing above fetches it, and `icons.manifest-mismatch` is a
+  // judgment on what it says. Without this the rule could only ever answer
+  // `na`, which is the "written, tested, called by nobody" failure this
+  // repository has now recorded six times.
+  //
+  // De-duplicated by URL, because in practice every page names the same
+  // manifest and a finding is not worth fetching one file five hundred times.
+  await attachManifests(htmlPages, { signal: options.signal, timeoutMs: options.timeoutMs });
+
+  // --- Declared assets ----------------------------------------------------
+  //
+  // The one place a rule's subject is fetched rather than parsed. See
+  // `probeAssets` for why it lives here and not inside a rule.
+  await probeAssets(htmlPages, {
+    origin,
+    checkExternal: options.checkExternal ?? true,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  });
 
   // --- SEO lint (healthy pages only) -------------------------------------
   //
@@ -648,6 +803,7 @@ export async function runAudit(
     localeAxis,
     discovery,
     robots,
+    favicon,
     // Same index the matrix was built from, so a rule that groups by route
     // and the grid that reports holes cannot disagree about which URLs are
     // one page.

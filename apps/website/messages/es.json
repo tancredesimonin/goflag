@@ -12,6 +12,7 @@
     "language": "Idioma"
   },
   "meta": {
+    "ogAlt": "El título «{title}» en una tarjeta de vista previa oscura de goflag.",
     "home": {
       "title": "goflag: una CLI que señala en CI los defectos invisibles de un sitio",
       "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."

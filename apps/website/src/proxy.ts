@@ -46,9 +46,26 @@ export default function proxy(request: NextRequest) {
  * under `/en/docs` means it never enters the route × locale matrix, so goflag
  * reports no translation holes for it — the absence is structural, not a gap.
  *
- * `llms.txt` and `/raw` are excluded for the same reason: they are machine
- * surfaces with no locale of their own.
+ * `llms.txt`, `/raw` and `/og` are excluded for the same reason: they are
+ * machine surfaces with no locale of their own.
+ *
+ * **Two were missing from that list, and nothing said so.**
+ *
+ * `/og` serves the documentation's preview cards — the route handler that
+ * exists because Next refuses to place a metadata image under a catch-all — and
+ * `/apple-icon` is Next's own convention for the iOS home-screen icon. Neither
+ * carries a dot, so the pattern above caught both, and every request for one
+ * was redirected to `/en/…`, which no route renders. The documentation's
+ * `og:image` and the whole site's `apple-touch-icon` have therefore pointed at
+ * a 404 since the day each was written: tags present, well-formed, absolute,
+ * and dead.
+ *
+ * `og.image.reachable` and `icons.unreachable` are what found them, on the
+ * first run after they were written. Nothing else could have: every rule that
+ * existed before judged the tag, and the tags were perfect.
+ *
+ * A metadata route with no extension is the shape to watch for here.
  */
 export const config = {
-  matcher: ["/((?!api|_next|docs|raw|llms.txt|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|apple-icon|docs|og|raw|llms.txt|.*\\..*).*)"],
 };

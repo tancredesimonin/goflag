@@ -75,6 +75,68 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Page has no `og:image`. Link unfurls will fall back to text-only or a random body image.",
   },
+  "og.image.absolute": {
+    why: "A relative path works in every browser you test in, because a browser has the page to resolve it against. The crawler building the preview has only the tag. So the share looks exactly as broken as having no image at all — with the difference that the tag is there, and review moves on.",
+    message:
+      "Open Graph image URL is not absolute: `og:image` = `/og.png`. Crawlers cannot resolve it.",
+  },
+  "og.image.alt": {
+    why: "Generated cards carry the page title as pixels. With no `og:image:alt`, that title is unavailable to anyone using a screen reader — at the moment a link is shared, which is before anyone has had the chance to open the page and find the text again.",
+    message: "Page declares an `og:image` with no `og:image:alt`.",
+  },
+  "og.image.dimensions": {
+    why: "The first time a URL is shared, the crawler has not seen the image yet. Told the size, it can lay the card out immediately; left to guess, it renders the share without the image and fetches it afterwards. The first share is usually the one that travels.",
+    message: "The `og:image` declaration omits `og:image:width` or `og:image:height`.",
+  },
+  "og.image.ratio": {
+    why: "Nothing rejects an image of the wrong shape — it gets cropped, and the consumer picks the crop. A square logo becomes a centre strip of itself, and whatever mattered in it was at the edges.",
+    message:
+      "`og:image` is 600×600 — a ratio of 1:1, against the 1.91:1 the preview card is laid out for. Consumers will crop it.",
+  },
+  "og.locale.missing": {
+    why: "The protocol fills the gap for you: with no `og:locale`, the page is `en_US`. A translated site that omits the tag has not stayed silent about its language — it has told every consumer that all six translations are American English.",
+    message:
+      "Page declares hreflang alternates (en, es, fr) but no `og:locale`; the protocol default `en_US` applies instead.",
+  },
+  "og.locale.alternates": {
+    why: "The same fact — this page exists in these languages — is written twice, in two vocabularies, by two pieces of code. Nothing in a build compares them, so they drift apart quietly, and the shorter list is the one hiding a translation somebody paid to have made.",
+    message:
+      "Open Graph and hreflang disagree about this page's translations: no `og:locale:alternate` for es, fr.",
+  },
+  "icons.missing": {
+    why: "Nothing in a specification requires an icon, which is why nothing complains and every consumer improvises. The browser falls back to `/favicon.ico` at the root; a feed reader or a link unfurler often falls back to nothing at all, and the bookmark is a grey square among fifty.",
+    message:
+      'Page declares no icon: no `<link rel="icon">`, and no icons from a manifest. Consumers fall back to `/favicon.ico` if the site happens to serve one.',
+  },
+  "icons.apple-touch.missing": {
+    why: 'iOS does not read `rel="icon"` when someone adds a site to their home screen. With no `apple-touch-icon` it takes a screenshot instead, so what they saved is a thumbnail of whatever was on screen at the moment they saved it.',
+    message:
+      "Page declares icons (icon) but no `apple-touch-icon`; iOS will screenshot the page instead.",
+  },
+  "icons.manifest-mismatch": {
+    why: "Two files declare the icons and nothing compares them. Only flagged where it is genuinely a contradiction — the same file described with two different sizes, or icons that exist only in the manifest, which is not where a browser tab looks. Two lists that simply differ are the normal case, and goflag does not treat them as a defect.",
+    message:
+      "The manifest and the `<head>` describe the same icon differently: `/icon.png` is `32x32` in the `<head>` and `192x192` in the manifest.",
+  },
+  "og.image.reachable": {
+    why: "Every other check on a preview image judges the tag; this one judges the file. It is the only one that catches the failure with no symptom — a URL present, well-formed, absolute, and dead. Found on this project's own documentation, where the cards pointed at a route a redirect had been swallowing since the day it was written.",
+    message:
+      "`og:image` does not serve an image: HTTP 200 with `text/html`, which is not an image. The preview card will render without it.",
+  },
+  "icons.unreachable": {
+    why: "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would otherwise have fallen back to. Declaring it is what took the fallback away.",
+    message: "Declared icon does not serve an image: `icon` → `/icon-32.png` (HTTP 404).",
+  },
+  "icons.sizes-mismatch": {
+    why: "`sizes` exists so a client can pick one icon out of several without fetching them all. A wrong value costs exactly what the attribute was there to save. The usual shape is not a lie but a half-truth: a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself.",
+    message:
+      "`sizes` does not describe the file: `/favicon.ico` declares `48x48` and contains 16x16, 32x32, 48x48.",
+  },
+  "icons.ico.missing": {
+    why: "No specification asks for it, and half the internet requests it anyway. Modern browsers follow the `<link>` a page declares and never touch the root — but feed readers, link unfurlers and older crawlers ask blind, take the 404, and show nothing. Cheap to serve, invisible when absent.",
+    message:
+      "No `/favicon.ico` at the root: the origin answered 404. Clients that ask for it blind — feed readers, link unfurlers, older crawlers — get nothing.",
+  },
   "robots.conflict": {
     why: "Three places can declare indexing policy, and a header injected by a proxy outranks the tag a developer reads in the source. This is what a staging header left on a production route looks like from the outside.",
     message:

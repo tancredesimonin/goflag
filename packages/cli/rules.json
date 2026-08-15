@@ -1,10 +1,17 @@
 {
   "counts": {
-    "page": 11,
-    "site": 3,
+    "page": 23,
+    "site": 4,
     "prose": 4
   },
   "sources": {
+    "apple-web-apps": {
+      "id": "apple-web-apps",
+      "publisher": "Apple",
+      "title": "Configuring web applications (Safari Web Content Guide)",
+      "rigor": "vendor-spec",
+      "url": "https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html"
+    },
     "bing-webmaster-guidelines": {
       "id": "bing-webmaster-guidelines",
       "publisher": "Microsoft",
@@ -18,6 +25,13 @@
       "title": "Consolidate duplicate URLs (canonicalization)",
       "rigor": "vendor-spec",
       "url": "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls"
+    },
+    "google-hreflang": {
+      "id": "google-hreflang",
+      "publisher": "Google",
+      "title": "Localized versions of your pages (hreflang)",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/specialty/international/localized-versions"
     },
     "google-robots-meta": {
       "id": "google-robots-meta",
@@ -46,6 +60,13 @@
       "title": "RFC 6596 — The Canonical Link Relation",
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc6596"
+    },
+    "mdn-link-rel": {
+      "id": "mdn-link-rel",
+      "publisher": "MDN / Mozilla",
+      "title": "MDN — rel attribute values",
+      "rigor": "guideline",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
     },
     "mdn-viewport": {
       "id": "mdn-viewport",
@@ -82,6 +103,13 @@
       "rigor": "vendor-spec",
       "url": "https://ogp.me/"
     },
+    "w3c-appmanifest": {
+      "id": "w3c-appmanifest",
+      "publisher": "W3C",
+      "title": "Web Application Manifest",
+      "rigor": "normative",
+      "url": "https://www.w3.org/TR/appmanifest/"
+    },
     "w3c-i18n-language-tags": {
       "id": "w3c-i18n-language-tags",
       "publisher": "W3C",
@@ -95,6 +123,13 @@
       "title": "HTML Living Standard — the lang and xml:lang attributes",
       "rigor": "normative",
       "url": "https://html.spec.whatwg.org/multipage/dom.html"
+    },
+    "whatwg-html-link-types": {
+      "id": "whatwg-html-link-types",
+      "publisher": "WHATWG",
+      "title": "HTML Living Standard — link types",
+      "rigor": "normative",
+      "url": "https://html.spec.whatwg.org/multipage/links.html"
     },
     "whatwg-html-standard-metadata-names": {
       "id": "whatwg-html-standard-metadata-names",
@@ -116,6 +151,13 @@
       "title": "URL Standard",
       "rigor": "normative",
       "url": "https://url.spec.whatwg.org/"
+    },
+    "x-cards": {
+      "id": "x-cards",
+      "publisher": "X (Twitter)",
+      "title": "X Cards — about cards markup",
+      "rigor": "vendor-spec",
+      "url": "https://developer.x.com/en/docs/twitter-for-websites/cards/overview/abouts-cards"
     }
   },
   "rules": [
@@ -268,6 +310,135 @@
       "sources": []
     },
     {
+      "id": "icons.apple-touch.missing",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Declare an `apple-touch-icon` for the iOS home screen",
+      "why": "iOS does not read `rel=\"icon\"` for a home-screen shortcut. With no `apple-touch-icon` it screenshots the page instead, so what someone saved is a thumbnail of whatever was on screen when they saved it.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "apple-web-apps",
+        "whatwg-html-link-types"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.missing"
+      ],
+      "expected": "a `<link rel=\"apple-touch-icon\">`"
+    },
+    {
+      "id": "icons.ico.missing",
+      "scope": "site",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "Serve a `/favicon.ico` at the root for the clients that ask blind",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ]
+    },
+    {
+      "id": "icons.manifest-mismatch",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "The manifest and the `<head>` must not disagree about the same icon",
+      "why": "Two files declare the icons, maintained by different hands, and nothing compares them. The failure worth naming is not that the two lists differ — they legitimately do, since an apple-touch-icon is not a manifest icon — but that they describe the *same file* differently, or that the icons exist only in the manifest, where a browser tab never looks.",
+      "rigor": "guideline",
+      "sources": [
+        "w3c-appmanifest",
+        "whatwg-html-link-types"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.missing"
+      ],
+      "expected": "the same size and type wherever an icon is declared twice"
+    },
+    {
+      "id": "icons.missing",
+      "scope": "page",
+      "category": "icons",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare an icon — the tab, the bookmark and the share sheet all read one",
+      "why": "No specification requires an icon, which is exactly why nothing complains and every consumer improvises. A browser falls back to `/favicon.ico` at the root, a feed reader or a link unfurler often falls back to nothing, and a bookmark to a site with no icon is a grey square among fifty.",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "links.manifest"
+      ],
+      "relates": [
+        "icons.apple-touch.missing",
+        "icons.manifest-mismatch"
+      ],
+      "expected": "at least one `<link rel=\"icon\">`, or icons declared by a manifest",
+      "fix": {
+        "title": "Let the file convention declare it",
+        "snippet": "// app/icon.svg (or icon.png) — Next emits the <link rel=\"icon\"> itself.\n// app/apple-icon.png likewise emits rel=\"apple-touch-icon\".\n// A /favicon.ico at the root is a separate matter: see icons.ico.missing.",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "icons.sizes-mismatch",
+      "scope": "page",
+      "category": "icons",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "A `sizes` attribute must describe the file it points at",
+      "why": "`sizes` is how a client picks one icon out of several without fetching them all, so a wrong value costs exactly what the attribute was there to save: the client downloads the file it was told to prefer and gets the wrong resolution. A half-true declaration is the common shape — a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises one third of itself.",
+      "rigor": "guideline",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "assets"
+      ],
+      "relates": [
+        "icons.unreachable"
+      ],
+      "expected": "`sizes` listing what the file actually contains"
+    },
+    {
+      "id": "icons.unreachable",
+      "scope": "page",
+      "category": "icons",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A declared icon has to answer with an image",
+      "why": "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would have fallen back to. The declaration is what took the fallback away.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "whatwg-html-link-types",
+        "mdn-link-rel"
+      ],
+      "reads": [
+        "links.icons",
+        "assets"
+      ],
+      "relates": [
+        "icons.missing",
+        "icons.ico.missing"
+      ],
+      "expected": "a 2xx image at every declared icon URL"
+    },
+    {
       "id": "lang.matches-content",
       "scope": "prose",
       "category": "i18n",
@@ -313,6 +484,85 @@
       "expected": "an `og:description` alongside the other `og:*` tags"
     },
     {
+      "id": "og.image.absolute",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`og:image` must be an absolute URL",
+      "why": "Unlike a browser, the crawler that builds the preview has no document to resolve a relative path against — it reads the tag, not the page. A relative `og:image` is therefore not a smaller mistake than a missing one: the unfurl is identical, and the tag makes it look handled.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing",
+        "canonical.absolute"
+      ],
+      "expected": "every `og:image` URL absolute, scheme included",
+      "fix": {
+        "title": "Give Next a metadataBase, or write the origin in",
+        "snippet": "// app/layout.tsx — every relative metadata URL resolves against this.\nexport const metadata = {\n  metadataBase: new URL(process.env.SITE_ORIGIN!),\n  openGraph: { images: [\"/og.png\"] }, // emitted absolute\n};",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.alt",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Describe the shared image with `og:image:alt`",
+      "why": "The protocol defines `og:image:alt` as a description of what is in the image, and a generated card usually carries the page's title as pixels. Omitting it leaves that text sighted-only, in the one place a link is seen before anybody has opened the page. Optional in the vocabulary, which is why this is a guideline and not a spec violation.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing"
+      ],
+      "expected": "an `og:image:alt` beside every `og:image`",
+      "fix": {
+        "title": "Carry the alt per image, not as a constant",
+        "snippet": "// app/…/opengraph-image.tsx — `export const alt` is one fixed string, so a\n// translated or data-derived description has to go through the metadata fn.\nexport async function generateImageMetadata({ params }) {\n  const t = await getTranslations({ locale: params.locale });\n  return [{ id: \"og\", size, contentType, alt: t(\"og.alt\") }];\n}",
+        "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.dimensions",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Declare `og:image:width` and `og:image:height`",
+      "why": "A crawler that does not know the size cannot lay the card out until it has fetched the image, so the first share of a URL renders without it — the one share that matters most. The dimensions are the fix, and they cost two tags.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.missing",
+        "og.image.ratio"
+      ],
+      "expected": "both `og:image:width` and `og:image:height` on every image",
+      "fix": {
+        "title": "Declare the size alongside the URL",
+        "snippet": "// app/…/page.tsx\nexport const metadata = {\n  openGraph: { images: [{ url: \"/og.png\", width: 1200, height: 630 }] },\n};\n// The file convention emits both from `export const size` for free.",
+        "language": "tsx"
+      }
+    },
+    {
       "id": "og.image.missing",
       "scope": "page",
       "category": "opengraph",
@@ -339,6 +589,64 @@
       }
     },
     {
+      "id": "og.image.ratio",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "info",
+      "kind": "scored",
+      "summary": "Keep the shared image near the 1.91:1 the card is laid out for",
+      "why": "Meta's recommended 1200×630 is a shape before it is a size. An image far from it is not rejected — it is cropped to fit, and the crop is chosen by the consumer rather than by you.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "meta-og-sharing",
+        "x-cards"
+      ],
+      "reads": [
+        "openGraph.images"
+      ],
+      "relates": [
+        "og.image.dimensions"
+      ],
+      "expected": "a width ÷ height between 1.7 and 2.1 (1.91:1 is 1.9)",
+      "bands": {
+        "ideal": [
+          1.7,
+          2.1
+        ],
+        "acceptable": [
+          1,
+          3
+        ]
+      },
+      "severityByBand": {
+        "acceptable": "info",
+        "poor": "warning"
+      }
+    },
+    {
+      "id": "og.image.reachable",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "The URL in `og:image` has to answer with an image",
+      "why": "Every other check on a preview image judges the tag. This one judges the file, and it is the only one that can catch the failure with no symptom: a URL that is present, well-formed, absolute — and dead. The card renders empty and nothing in the page says why. Found on this project's own documentation, where eleven pages pointed at a route a redirect had been swallowing since the day it was written.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images",
+        "assets"
+      ],
+      "relates": [
+        "og.image.missing",
+        "og.image.absolute"
+      ],
+      "expected": "a 2xx image at every `og:image` URL"
+    },
+    {
       "id": "og.image.representative",
       "scope": "prose",
       "category": "opengraph",
@@ -358,6 +666,62 @@
         "http.finalUrl"
       ],
       "prose": "Does the og:image represent what this page is about, rather than being a site-wide default, and does its subject survive being cropped to the 1.91:1 aspect ratio consumers render?"
+    },
+    {
+      "id": "og.locale.alternates",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`og:locale:alternate` and the hreflang cluster must name the same locales",
+      "why": "Two vocabularies describe the same fact — this page exists in these languages — and nothing in a build keeps them in step, so they drift silently. Whichever one is short is the one telling a consumer that a translation it could have linked to does not exist.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp",
+        "google-hreflang"
+      ],
+      "reads": [
+        "openGraph.locale",
+        "openGraph.localeAlternates",
+        "links.hreflang"
+      ],
+      "relates": [
+        "og.locale.missing",
+        "hreflang.missing"
+      ],
+      "expected": "one `og:locale:alternate` per hreflang locale other than this page's own",
+      "fix": {
+        "title": "Derive both lists from the same cluster",
+        "snippet": "// The hreflang map and the OG locales are one fact stated twice.\nopenGraph: {\n  locale: ogLocale(locale),\n  alternateLocale: cluster.filter((l) => l !== locale).map(ogLocale),\n},\nalternates: { languages: cluster },",
+        "language": "ts"
+      }
+    },
+    {
+      "id": "og.locale.missing",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "A translated page has to say which locale it is in",
+      "why": "`og:locale` defaults to `en_US` in the protocol itself — so a page that omits it does not decline to answer, it answers wrongly. On a site whose whole point is that the same page exists in several languages, every translation claims to be American English.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.locale",
+        "links.hreflang"
+      ],
+      "relates": [
+        "og.locale.alternates",
+        "hreflang.missing"
+      ],
+      "expected": "an `og:locale` on any page that declares hreflang alternates",
+      "fix": {
+        "title": "Emit the locale in the page's own metadata",
+        "snippet": "// app/[locale]/…/page.tsx\nexport const metadata = {\n  openGraph: { locale: \"fr_FR\", alternateLocale: [\"en_US\", \"es_ES\"] },\n};",
+        "language": "tsx"
+      }
     },
     {
       "id": "og.title.missing",

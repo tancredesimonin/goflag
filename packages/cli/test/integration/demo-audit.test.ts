@@ -16,7 +16,9 @@ import { startDemoServer, type DemoServer } from "../demo-server";
  *                    /x/forbidden (403, blocked), /x/soft (soft-404 warning)
  *   - translations:  /blog missing `de`; /pricing missing `de` + `fr`;
  *                    a de->fr hreflang reciprocity gap on /fr/about
- *   - SEO metadata:  /bad-seo (7 findings incl. robots conflict),
+ *   - SEO metadata:  /bad-seo (8 findings incl. robots conflict, and a manifest
+ *                    whose icons the <head> never declares — which the audit
+ *                    only knows because it fetches the manifest),
  *                    /relative-canonical (relative canonical), /good (clean)
  *
  * `/x/**` and `/en/ghost` are excluded from the *crawl* so they don't get
@@ -183,6 +185,7 @@ describe("demo site — full audit report", () => {
         [
           "canonical.missing",
           "description.missing",
+          "icons.manifest-mismatch",
           "og.image.missing",
           "og.title.missing",
           "robots.conflict",
@@ -210,8 +213,8 @@ describe("demo site — full audit report", () => {
     });
 
     it("total count matches the sum of the two flawed pages", () => {
-      expect(report.summary.seoIssues).toBe(8);
-      expect(report.seoIssues).toHaveLength(8);
+      expect(report.summary.seoIssues).toBe(9);
+      expect(report.seoIssues).toHaveLength(9);
     });
   });
 

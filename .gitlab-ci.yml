@@ -30,10 +30,37 @@ include:
     rules: *not_a_release_push
 
 default:
+  # `auto_cancel_pending_pipelines` is on for this project and was doing almost
+  # nothing: GitLab only cancels a *running* job if the job says it may be
+  # cancelled, and no job here said so. A second push while the first pipeline
+  # was still going left it running to the end — 66 minutes a fortnight,
+  # measured over 1-13 August against the jobs this file still declares.
+  #
+  # In `default:` so it reaches the security jobs from the cross-project
+  # includes too; they only read the tree.
+  #
+  # Everything that writes opts back out below: the deploy template, both
+  # publish jobs, and `tag`.
+  interruptible: true
   image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
 
+# No `install` stage. There used to be a job by that name whose whole purpose was
+# to publish `node_modules` as an artifact so the jobs after it would not have to
+# install — the standard shape, and it never worked here, because the `.pnpm`
+# anchor below is applied to every one of those jobs and ends in
+# `pnpm install --frozen-lockfile`. Each one downloaded the artifact, unpacked
+# it, and then installed straight over it.
+#
+# The measurement was the giveaway: the job ran `pnpm --version` and `node
+# --version` and took 1.77 minutes, which is the same 1.77 minutes `lint` took
+# to lint. It was publishing setup, not skipping it.
+#
+# What actually carries the dependencies between pipelines is the cache keyed on
+# `pnpm-lock.yaml`, which is unchanged and still applies to every job through the
+# same anchor. Nothing else in this file declares `artifacts:` any more, so no
+# job downloads anything at startup — `tag`, which needs git and nothing else,
+# was pulling a monorepo's `node_modules` down for no reason at all.
 stages:
-  - install
   - verify
   - test
   - security
@@ -65,8 +92,6 @@ variables:
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
 
 # `test:unit` runs both packages, so it must fire when either one moves. Kept
 # separate from `.cli_changes` above: that one gates the jobs that boot HTTP
@@ -80,8 +105,24 @@ variables:
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+
+# The merge request is where a verdict is worth deriving. The push that follows
+# a merge used to re-derive it: nine jobs, 88 runs each over 1–13 August, 1431
+# minutes spent re-checking content that had already been checked, on a branch
+# nobody can push to directly.
+#
+# Nothing downstream was waiting for it. `deploy-develop` carries
+# `dependencies: []` and builds its own image, so not one of those jobs stood
+# between a merge and a deploy — they ran beside it.
+#
+# `build` is the exception and keeps its place on the branch; its own rules say
+# why. The two rules removed from the anchors above were the other half of this:
+# they fired on `main` and `develop` with no `changes:` filter at all, so the
+# packaging and integration suites ran in full on every merge regardless of what
+# had moved.
+.mr_only: &mr_only
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 # The cache lives here rather than in `default:` on purpose. Every job in this
 # file pulls in this anchor, so they all still get it; the jobs that come from
@@ -109,38 +150,67 @@ variables:
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
-install:
-  stage: install
-  <<: *pnpm
-  script:
-    - pnpm --version
-    - node --version
-  artifacts:
-    paths:
-      - node_modules
-    expire_in: 1 hour
-
-lint:
+# One job, three commands, because the commands were never the cost.
+#
+# `lint`, `typecheck` and `format-check` each paid a full `pnpm install` to run
+# something that finishes in about as long as it takes to say. Measured over
+# 1–13 August, against the `install` job — which runs `pnpm --version` and
+# nothing else, so its duration *is* the setup:
+#
+#   install        1.77 min      setup and nothing else
+#   lint           1.77 min      of which 0.00 is lint
+#   format-check   1.75 min      of which 0.00 is the format check
+#   typecheck      1.81 min      of which 0.04 is typechecking
+#
+# Three setups to do four seconds of work. Named `check` rather than `verify`
+# because that is what the same merged job is called in the six site
+# repositories in this group.
+#
+# The cost is that a failure stops the job: a formatting slip now hides a type
+# error until it is fixed, where three jobs reported all three verdicts at once.
+# `pnpm lint` and `pnpm format:check` are both fixed by the pre-commit hook
+# before CI ever sees them, so the case is rarer than the ordering suggests.
+check:
   stage: verify
-  <<: *pnpm
+  <<: [*pnpm, *mr_only]
   script:
     - pnpm lint
-
-typecheck:
-  stage: verify
-  <<: *pnpm
-  script:
     - pnpm typecheck
-
-format-check:
-  stage: verify
-  <<: *pnpm
-  script:
     - pnpm format:check
+    # The one build output this repository commits. Verified rather than
+    # regenerated: a pre-commit hook that rewrites it cannot fail a build, and
+    # rewriting it on every commit is what made three other sites commit
+    # encoder noise for months.
+    - pnpm --filter @goflag/website favicon:check
 
 build:
   stage: verify
   <<: *pnpm
+  # The one job that stays on `develop` and `main`.
+  #
+  # A merge request pipeline builds the branch head, not the merge result —
+  # `merge_pipelines_enabled` is off on this project — so the merged tree is
+  # never compiled until it is already on the branch. Two branches that each
+  # typecheck can still produce an import that resolves in neither, and this is
+  # the only job positioned to see it.
+  #
+  # `$CI_PIPELINE_SOURCE == "push"` for the same reason `deploy` carries it: a
+  # scheduled pipeline sets `$CI_COMMIT_BRANCH`, and a bare branch rule would
+  # rebuild on every schedule, on a commit nobody touched.
+  # Not on the push to `main`. That push is the landing of a merge from
+  # `develop`, and `develop` compiled the same tree when it landed there —
+  # `main` is protected with push allowed to nobody, so nothing else reaches it.
+  # The merge request into `main` also runs this job on the branch head, which
+  # is that same tree a third time.
+  #
+  # This holds only while `main` receives merges from `develop` and nothing
+  # else. A hotfix branch merged straight into `main` would arrive without ever
+  # having been compiled here; `deploy` would still build its own image and
+  # fail on a broken tree, but later and less clearly. Confirmed with the
+  # maintainer that hotfixes onto `main` do not happen.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"
   variables:
     # `apps/website` refuses to build without this whenever `CI` or
     # `APP_ENV=production` is set, which is the guard working as intended: the URL
@@ -285,6 +355,10 @@ test:package:next:
 # the other sites. Nothing new is provisioned: the Beszel agent already reports
 # every container on that host, and Gatus watches the three hostnames.
 .kamal_deploy_template:
+  # Never interrupted. Once a job touching the running site starts, GitLab stops
+  # auto-cancelling the pipeline at all — cancel during the checks, never once a
+  # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
+  interruptible: false
   image: docker:29.7.1@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
   services:
     - docker:29.7.1-dind@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
@@ -336,8 +410,31 @@ deploy-develop:
   stage: deploy
   script:
     - kamal deploy -d develop
+  # `changes:` because 21 of the 58 pushes to `develop` between 1 and 13 August
+  # could not have altered the image, and rebuilt and redeployed a byte-identical
+  # site anyway. The Dockerfile installs and builds with
+  # `--filter "@goflag/website..."`, so `packages/cli` source never reaches the
+  # output and a change to it cannot show on the site.
+  #
+  # `packages/cli/CHANGELOG.md` is the exception and has to be listed by name:
+  # `apps/website/src/lib/changelog.ts:184` reads it by relative path out of the
+  # standalone tree at build time, which is also why the Dockerfile copies the
+  # workspace root rather than the app alone. `packages/next/CHANGELOG.md` is
+  # read the same way and is already covered by the glob above it.
+  #
+  # The manual rule below is untouched: anything this list gets wrong is one
+  # click away from being deployed by hand.
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - apps/**/*
+        - packages/next/**/*
+        - packages/cli/CHANGELOG.md
+        - Dockerfile
+        - config/deploy*.yml
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
     - if: $CI_COMMIT_BRANCH == "develop"
       when: manual
       allow_failure: true
@@ -372,6 +469,9 @@ kamal-proxy-reboot:
 # would fire both on either tag, and each would then fail its own version check
 # — a red pipeline on a release that actually succeeded.
 publish:npm:
+  # Publishing to npm is not reversible. A version yanked is still a version
+  # that existed.
+  interruptible: false
   stage: release
   <<: *pnpm
   rules:
@@ -413,6 +513,8 @@ publish:npm:
 # token does not help because those only restrict to packages already
 # published. The first `@goflag/next` version therefore goes out by hand.
 publish:next:
+  # Same: not reversible.
+  interruptible: false
   stage: release
   <<: *pnpm
   rules:
@@ -461,9 +563,26 @@ publish:next:
 # Maintainers may create them. The job token cannot, and a push made with it
 # would not trigger the tag pipeline that publishes.
 tag:
+  # The only job that writes back to this repository. It is idempotent, but a
+  # push of a ref interrupted between `git tag` and `git push` is a tag that
+  # exists locally and nowhere else.
+  interruptible: false
   stage: release
+  # `$CI_PIPELINE_SOURCE == "push"`, for the reason `deploy` carries it a
+  # hundred lines up: a scheduled pipeline sets `$CI_COMMIT_BRANCH`, and so does
+  # one started from the "Run pipeline" button. A bare branch rule would put the
+  # one job that writes to this repository into every one of them — reconciling
+  # a tag against a commit nobody touched. This repository is about to get a
+  # weekly schedule for the security scan, which is what makes that concrete.
+  #
+  # The manual rule keeps the retry the paragraph above promises: idempotent and
+  # safe to retry means there has to be a way to ask for it, and re-running a
+  # pipeline is a `web` pipeline, which the first rule no longer matches.
   rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
   variables:
     # The tag lands on the develop side of the merge, so the history has to be
     # there to find it.
