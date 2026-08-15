@@ -87,11 +87,38 @@ function sorted(set: Set<string>): string[] {
  * variants of a route, so they compete with each other instead of consolidating
  * — and the tool that was supposed to notice was itself relying on the missing
  * tags to know the locales existed.
+ *
+ * ## Why `vendor-spec`, and why two sources
+ *
+ * The obligation and the mechanism come from different documents, and the rule
+ * cites both because an agent reading only one would draw the wrong conclusion.
+ *
+ * WHATWG defines the **mechanism** normatively: `rel="alternate"` with an
+ * `hreflang` attribute designates a translation. What it does not do is require
+ * anyone to emit one. No web standard says a multilingual site must declare its
+ * alternates; that requirement belongs to Google alone, which is why the rule
+ * claims `vendor-spec` and not `spec-required`, and why it stays silent on a
+ * single-locale site where the obligation has no subject.
+ *
+ * Google's document is unambiguous about it, re-read 2026-08-15: *"Each language
+ * version must list itself as well as all other language versions"*, and *"If two
+ * pages don't both point to each other, the tags will be ignored."*
+ *
+ * ## Why `error` under a merely vendor-spec requirement
+ *
+ * Rigor and severity are different axes, and this rule is where the difference
+ * shows. Rigor says how authoritative the requirement is — here, one vendor's.
+ * Severity says how bad the consequence is, and the consequence is total: the
+ * quoted sentence means a broken cluster is not degraded but **discarded**, so a
+ * site that half-declares its alternates gets exactly what a site declaring none
+ * gets. There is no partial credit to warn about.
  */
 const hreflangMissing: SiteRule = {
   id: "hreflang.missing",
   severity: "error",
   summary: "Pages on a multilingual site must advertise their locale alternates",
+  rigor: "vendor-spec",
+  sources: ["google-hreflang", "whatwg-html-link-types"],
   appliesTo: isMultilingual,
   check: ({ site, issue }) => {
     const locales = site.localeAxis.locales.join(", ");
@@ -138,10 +165,37 @@ const hreflangMissing: SiteRule = {
  * Both are declarations of the same intent, produced by different code paths,
  * so they drift. Under-declaring in the `<head>` hides real translations from
  * search engines; over-declaring points `hreflang` at URLs the site itself does
- * not list, which Google treats as a broken cluster.
+ * not list.
  *
  * Pages with no alternates at all are skipped: that is `hreflang.missing`'s
  * finding, and reporting both would double-count the same defect.
+ *
+ * ## Still `rigor: null`, and now for a reason rather than for lack of looking
+ *
+ * Sourcing this rule was attempted on 2026-08-15 and it did not survive contact
+ * with the source. The two directions it reports do not have the same backing,
+ * and one of them has none at all:
+ *
+ * - **The sitemap lists a locale the `<head>` does not advertise.** Real, and
+ *   `google-hreflang` covers it: the cluster is not reciprocal, so Google
+ *   discards it. This half is `vendor-spec`, and it is the half that fires in
+ *   practice.
+ * - **The `<head>` advertises a locale the sitemap omits.** No cited document
+ *   supports this. Google presents the three declaration methods — HTML, HTTP
+ *   headers, sitemap — as *"equivalent from Google's perspective"* and actively
+ *   discourages combining them: *"you can use all three methods at the same
+ *   time, [but] there's no benefit in Search"*. Nothing requires an
+ *   hreflang-declared page to appear in the sitemap at all. A page deliberately
+ *   kept out of the sitemap and correctly cross-linked is doing nothing wrong,
+ *   and this rule warns about it.
+ *
+ * A single `rigor` cannot describe both, and claiming the stronger one would put
+ * a `vendor-spec` label on findings no vendor asks for — the exact dishonesty
+ * `../sources/types.ts` says the axis exists to prevent. So the field stays
+ * empty, which is the honest reading, and the fix is to split the rule the way
+ * `og.image.dimensions` and `og.image.ratio` were split: one verdict per claim,
+ * one rigor per verdict. That is a new public rule id and it churns the baseline
+ * of every site carrying this finding, so it is a decision, not a cleanup.
  */
 const hreflangSitemapMismatch: SiteRule = {
   id: "hreflang.sitemap-mismatch",

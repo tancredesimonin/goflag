@@ -325,8 +325,11 @@
       "severity": "error",
       "kind": "boolean",
       "summary": "Pages on a multilingual site must advertise their locale alternates",
-      "rigor": null,
-      "sources": []
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-hreflang",
+        "whatwg-html-link-types"
+      ]
     },
     {
       "id": "hreflang.sitemap-mismatch",

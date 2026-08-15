@@ -22,7 +22,9 @@ import { lintSite } from "../core/lint-site";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
 import { getSiteRule, SITE_RULES } from "./site-rules";
 import { getSource } from "./sources";
+import type { SourceRigor } from "./sources/types";
 import type { SiteContext } from "./site-types";
+import type { Rigor } from "./types";
 import { pageFromHtml } from "./test-utils";
 
 const MISMATCH = getSiteRule("hreflang.sitemap-mismatch");
@@ -224,9 +226,9 @@ describe("the cross-page registry", () => {
   it("cites real sources wherever it claims a rigor", () => {
     // The provenance contract `rules.test.ts` enforces for page rules, applied
     // to the cross-page ones that have opted in. A rule may still carry no
-    // rigor — the three that predate the field do, and the catalogue emits the
-    // gap as `rigor: null` — but claiming one and citing nothing would be the
-    // dishonesty the rigor axis exists to prevent.
+    // rigor — `hreflang.sitemap-mismatch` does, on purpose, and the catalogue
+    // emits the gap as `rigor: null` — but claiming one and citing nothing would
+    // be the dishonesty the rigor axis exists to prevent.
     for (const rule of SITE_RULES) {
       if (rule.rigor === undefined) {
         expect(rule.sources ?? [], `${rule.id} cites sources but declares no rigor`).toHaveLength(
@@ -241,6 +243,43 @@ describe("the cross-page registry", () => {
       for (const id of rule.sources ?? []) {
         expect(getSource(id), `${rule.id} cites unknown source ${id}`).toBeDefined();
       }
+    }
+  });
+
+  it("never claims more authority than its sources actually carry", () => {
+    // The other half of the contract, and the half that was missing here: until
+    // now a cross-page rule could claim `spec-required` while citing a blog
+    // post, and only page rules were held to the mapping. Citing *a* source is
+    // cheap; citing one that supports the claimed rigor is the part worth
+    // enforcing, because rigor is what an agent reads to decide how hard to
+    // push a fix.
+    //
+    // `spec-required` and `spec-recommended` differ in what the spec says (MUST
+    // vs SHOULD), not in who published it, so both need a `normative` source;
+    // the rest map onto the source scale directly. Same table as
+    // `rules.test.ts` — deliberately duplicated rather than exported, so that
+    // changing one registry's contract cannot silently change the other's.
+    const NEEDS: Record<Rigor, SourceRigor> = {
+      "spec-required": "normative",
+      "spec-recommended": "normative",
+      "vendor-spec": "vendor-spec",
+      guideline: "guideline",
+      heuristic: "heuristic",
+    };
+    const AUTHORITY: Record<SourceRigor, number> = {
+      normative: 4,
+      "vendor-spec": 3,
+      guideline: 2,
+      heuristic: 1,
+    };
+
+    for (const rule of SITE_RULES) {
+      if (rule.rigor === undefined) continue;
+      const best = Math.max(...(rule.sources ?? []).map((id) => AUTHORITY[getSource(id)!.rigor]));
+      expect(
+        best,
+        `${rule.id} claims ${rule.rigor} but its strongest source is weaker than ${NEEDS[rule.rigor]}`,
+      ).toBeGreaterThanOrEqual(AUTHORITY[NEEDS[rule.rigor]]);
     }
   });
 });

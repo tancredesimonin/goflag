@@ -143,7 +143,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "Conflicting robots directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
   },
   "hreflang.missing": {
-    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority.",
+    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority. Google is explicit that a cluster whose pages do not all point at each other is not weakened but ignored outright, which is why this is an error rather than a warning even though no web standard requires the tags at all.",
     message:
       "Page declares no `hreflang` alternates, but the site serves 4 locales (en, es, fr, pt-br, per the sitemap). Locale variants of this route cannot be associated with each other.",
   },
