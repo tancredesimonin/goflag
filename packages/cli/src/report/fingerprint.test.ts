@@ -48,3 +48,31 @@ describe("fingerprint", () => {
     expect(fingerprint("x", "ab", "c")).not.toBe(fingerprint("x", "a", "bc"));
   });
 });
+
+describe("fingerprint stability", () => {
+  /**
+   * Pinned, and the pin is the point.
+   *
+   * A committed baseline matches findings by id and nothing else
+   * (`./diff.ts`), so the day a fingerprint changes is the day every baseline
+   * in every repository reports its whole contents as new. The inputs are
+   * deliberately few — the rule, the route, the occurrence — so that enriching
+   * a finding cannot move it. Phase F added four fields to `SeoIssue`; these
+   * values are what they were before.
+   *
+   * If this test fails, the question is not "what is the new hash" but "why is
+   * a finding's identity being changed", and the answer had better be in a
+   * major version.
+   */
+  it("does not move when a finding carries more than it used to", () => {
+    expect(fingerprint("seo", "title.missing", "/en/about", "0")).toBe("seo-c4d8e02d89");
+    expect(fingerprint("site", "hreflang.missing", "/en/about", "0")).toBe("site-fed358bb71");
+  });
+
+  it("separates occurrences of one rule on one page", () => {
+    const first = fingerprint("seo", "og.image.alt", "/en", "0");
+    const second = fingerprint("seo", "og.image.alt", "/en", "1");
+
+    expect(first).not.toBe(second);
+  });
+});

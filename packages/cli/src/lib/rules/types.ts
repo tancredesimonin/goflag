@@ -28,12 +28,17 @@
  * findings into issues at that boundary.
  */
 
-import type { Issue, Severity, TagOrigin } from "../core/types";
+import type { Issue, Rigor, Severity, TagOrigin } from "../core/types";
 import type { Extraction } from "./extraction/types";
 
-/** How authoritative the requirement behind a rule is. */
-export type Rigor =
-  "spec-required" | "spec-recommended" | "vendor-spec" | "guideline" | "heuristic";
+/**
+ * How authoritative the requirement behind a rule is.
+ *
+ * Defined in `../core/types` and re-exported here: it travels with a finding
+ * all the way to the JSON report, so it belongs beside `Severity` rather than
+ * behind the rule registry.
+ */
+export type { Rigor };
 
 /** A band a scored measurement can land in. */
 export type Band = "ideal" | "acceptable" | "poor";

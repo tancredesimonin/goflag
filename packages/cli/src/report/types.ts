@@ -6,7 +6,7 @@
  * verbatim, and CI can diff / gate on it.
  */
 
-import type { Severity } from "../lib/core/types";
+import type { Rigor, Severity } from "../lib/core/types";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { ReciprocityIssue } from "../lib/core/i18n";
 import type { AdvisoryFinding } from "../lib/rules/types";
@@ -83,6 +83,13 @@ export interface SiteIssue {
   why?: string;
   /** A copy-pasteable fix snippet, when the rule offers one. */
   fix?: string;
+  /**
+   * Same two fields as `SeoIssue`, and absent for a different reason: a
+   * `SiteRule` may simply not declare a rigor yet. Three of the four do not,
+   * and the catalogue reports that gap rather than inventing an authority.
+   */
+  rigor?: Rigor;
+  sources?: string[];
 }
 
 /** How the audit established which locales the site serves. */
@@ -117,6 +124,20 @@ export interface SeoIssue {
   why?: string;
   /** A copy-pasteable fix snippet, when the rule offers one. */
   fix?: string;
+  /**
+   * How authoritative the requirement is, and the documents that back it.
+   *
+   * Carried on the finding because a report is read where the rule registry is
+   * not — a JSON file in CI, a PR comment, an agent's context. Without it a
+   * consumer cannot tell a `spec-required` from a `heuristic`, which is the one
+   * distinction the rigor axis exists to make.
+   */
+  rigor?: Rigor;
+  sources?: string[];
+  /** What the page actually said, as the rule saw it. */
+  observed?: unknown;
+  /** One sentence stating what a passing page looks like. */
+  expected?: string;
 }
 
 /**

@@ -693,6 +693,13 @@ export async function runAudit(
         message: issue.message,
         why: rule?.title,
         fix: issue.fix?.snippet,
+        // The fingerprint above is unchanged on purpose: it keys on the rule,
+        // the route and the occurrence, so carrying more of the finding cannot
+        // move a baseline entry (`./diff.ts` matches on `id` alone).
+        rigor: issue.rigor,
+        sources: issue.sources,
+        observed: issue.observed,
+        expected: issue.expected,
       });
     }
   }
@@ -826,6 +833,8 @@ export async function runAudit(
       message: draft.message,
       why: rule?.summary,
       fix: draft.fix?.snippet,
+      rigor: draft.rigor,
+      sources: draft.sources,
     };
   });
 

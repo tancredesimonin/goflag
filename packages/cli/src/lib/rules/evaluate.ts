@@ -115,6 +115,13 @@ export function findingsToIssues(result: EvaluationResult, rules: ReadonlyArray<
       message: finding.message ?? `Expected ${finding.expected}.`,
       origin: finding.origin,
       fix: byId.get(finding.ruleId)?.fix,
+      // The finding has known all four since it was evaluated; this is where
+      // they used to stop. A report that drops the rigor asks every consumer
+      // to re-derive it from a registry it does not have.
+      rigor: finding.rigor,
+      sources: finding.sources,
+      observed: finding.observed,
+      expected: finding.expected,
     });
   }
 
