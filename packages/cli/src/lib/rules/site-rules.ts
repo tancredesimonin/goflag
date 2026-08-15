@@ -18,7 +18,8 @@
  */
 
 import { splitRoute } from "../core/i18n";
-import type { Page } from "../core/types";
+import { robotsAllows } from "../core/robots/match";
+import type { Page, SitemapEntryProbe } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
 
 /** A site is only subject to hreflang policy when it serves 2+ locales. */
@@ -231,12 +232,20 @@ function metaRobotsTokens(page: Page): Set<string> {
  * that disallows everything and says nothing else is doing exactly what it
  * means to, so that is a warning. A site that blocks the crawl *and* asks to
  * be indexed cannot have meant both — that is an error.
+ *
+ * The gate now asks the RFC 9309 matcher whether `/` is allowed, rather than
+ * looking for a literal `Disallow: /` line. Same answer on the file that
+ * prompted the rule, and a correct one on the files that spell it otherwise —
+ * `Disallow: *`, or a `Disallow: /` that an `Allow:` further down takes back.
  */
 const robotsBlocksSite: SiteRule = {
   id: "robots.blocks-site",
   severity: "error",
   summary: "`robots.txt` must not forbid crawling a site that asks to be indexed",
-  appliesTo: (site) => site.robots?.found === true && site.robots.blocksAll,
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) =>
+    site.robots?.found === true && !robotsAllows(site.robots.groups, "/").allowed,
   check: ({ site, issue }) => {
     const robotsUrl = site.robots?.url ?? `${site.origin}/robots.txt`;
 
@@ -337,12 +346,777 @@ const iconsIcoMissing: SiteRule = {
   },
 };
 
+/**
+ * The file-level robots.txt rules (`docs/sitemap-robots-plan.md` §4.1–4.2).
+ *
+ * They exist because the parse now keeps what it reads. Every one of them is a
+ * few lines over a field `RobotsProbe` did not have a week ago, which is the
+ * whole argument for having replaced two booleans with a model.
+ *
+ * The `robotstxt.*` prefix is deliberate and the plan settles it: the file and
+ * the `<meta name="robots">` tag are different subjects, and `robots.conflict`
+ * already belongs to the tag.
+ */
+
+/** RFC 9309 §2.4 — parsers need only honour the first 500 KiB. */
+const ROBOTS_BYTE_LIMIT = 500 * 1024;
+
+const robotstxtUnreachable: SiteRule = {
+  id: "robotstxt.unreachable",
+  severity: "error",
+  summary: "A robots.txt that errors is read as forbidding the whole site",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  // A 404 is not a failure: §2.3.1.3 says an absent file allows everything,
+  // and most sites that have none mean exactly that. Only a server that
+  // answered badly, or did not answer, triggers the disallow-everything rule.
+  appliesTo: (site) => site.robots !== undefined && isRobotsFailure(site.robots.status),
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const detail =
+      probe.status === 0 ? "the request failed" : `the origin answered ${probe.status}`;
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` could not be read: ${detail}. RFC 9309 §2.3.1.4 tells a crawler to assume a complete disallow for as long as this lasts — an outage on this one file takes the whole site out of the index.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtOversized: SiteRule = {
+  id: "robotstxt.oversized",
+  severity: "error",
+  summary: "Rules past 500 KiB of robots.txt are not guaranteed to be read",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.byteLength ?? 0) > ROBOTS_BYTE_LIMIT,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const kib = Math.round(probe.byteLength / 1024);
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` is ${kib} KiB. A parser is only required to honour the first 500 KiB (RFC 9309 §2.4), so every rule past that point silently does not exist.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtInvalidLine: SiteRule = {
+  id: "robotstxt.invalid-line",
+  severity: "warning",
+  summary: "Every line of robots.txt should parse as something",
+  rigor: "spec-required",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.invalidLines.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    // One finding per file, not per line: a file with a hundred junk lines has
+    // one defect, and the summary lesson says forty repeats of it are noise.
+    const shown = probe.invalidLines.slice(0, 5);
+    const rest = probe.invalidLines.length - shown.length;
+
+    return issue({
+      pageUrl: probe.url,
+      message:
+        `\`robots.txt\` has ${probe.invalidLines.length} line${probe.invalidLines.length === 1 ? "" : "s"} that parse as nothing: ` +
+        shown.map((l) => `line ${l.line} (${l.reason})`).join(", ") +
+        `${rest > 0 ? `, and ${rest} more` : ""}. A crawler drops them silently, so the rule you meant to write is simply absent.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtUnknownDirective: SiteRule = {
+  id: "robotstxt.unknown-directive",
+  severity: "info",
+  summary: "Non-standard robots.txt directives are read by some crawlers and ignored by others",
+  rigor: "guideline",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) => (site.robots?.unknownDirectives.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const names = [...new Set(probe.unknownDirectives.map((d) => d.name))];
+
+    // Deliberately not a defect. These parse, they are spelled correctly, and
+    // some crawlers honour them — the finding exists so nobody counts on the
+    // ones that do not.
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` uses ${names.map((n) => `\`${n}\``).join(", ")}, which RFC 9309 does not define. Some crawlers honour ${names.length === 1 ? "it" : "them"} and Google ignores ${names.length === 1 ? "it" : "them"} — so this is worth knowing, not necessarily worth changing.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtCrossOrigin: SiteRule = {
+  id: "robotstxt.cross-origin",
+  severity: "warning",
+  summary: "`/robots.txt` should not redirect to another origin",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309"],
+  appliesTo: (site) => site.robots?.redirects.crossOrigin === true,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`robots.txt\` redirects to \`${probe.redirects.finalUrl}\`, on another origin. RFC 9309 §2.3.1.2 permits following it, so this works — but the policy for this site now lives somewhere this site does not control, and it is usually a proxy accident rather than a decision.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const robotstxtSitemapRelative: SiteRule = {
+  id: "robotstxt.sitemap.relative",
+  severity: "error",
+  summary: "A `Sitemap:` declaration must be an absolute URL",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "ietf-rfc9309"],
+  appliesTo: (site) => (site.robots?.sitemaps ?? []).some((s) => !isAbsolute(s.value)),
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const relative = probe.sitemaps.filter((s) => !isAbsolute(s.value));
+
+    return issue({
+      pageUrl: probe.url,
+      message: `\`Sitemap:\` must be a full URL: ${relative.map((s) => `line ${s.line} declares \`${s.value}\``).join(", ")}. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+/**
+ * A crawled page that asks to be indexed sits behind a `Disallow`.
+ *
+ * The generalisation of `robots.blocks-site` past `Disallow: /`, and the rule
+ * the RFC 9309 matcher was written for. The site-wide case is the loud one;
+ * this is the quiet one — a single path rule, added for a reason that made
+ * sense once, still shadowing a section of the site that has since been given
+ * pages that ask to be found.
+ *
+ * `robots.blocks-site` takes precedence: when the whole origin is disallowed,
+ * every page is blocked and saying so once is the finding.
+ */
+const robotsBlocksPage: SiteRule = {
+  id: "robots.blocks-page",
+  severity: "error",
+  summary: "A page asking to be indexed must not be disallowed by robots.txt",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "google-robots-intro"],
+  appliesTo: (site) => site.robots?.found === true && robotsAllows(site.robots.groups, "/").allowed,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+
+    return site.pages.flatMap((page) => {
+      if (!metaRobotsTokens(page).has("index")) return [];
+
+      let path: string;
+      try {
+        const url = new URL(page.fetch.finalUrl);
+        path = `${url.pathname}${url.search}`;
+      } catch {
+        return [];
+      }
+
+      const decision = robotsAllows(probe.groups, path);
+      if (decision.allowed || !decision.rule) return [];
+
+      return issue({
+        pageUrl: page.fetch.finalUrl,
+        message: `Page declares \`<meta name="robots" content="index">\` but \`robots.txt\` line ${decision.rule.line} disallows \`${decision.rule.pattern}\` for \`${decision.group}\`. robots.txt wins: the page is never fetched, so the tag asking for it is never read.`,
+        origin: { kind: "computed" },
+      });
+    });
+  },
+};
+
+/**
+ * The sitemap rules (`docs/sitemap-robots-plan.md` §4.3–4.4).
+ *
+ * Every one of them replaces a field of `SitemapDiagnostics` that was declared
+ * and never written — `mixedHost`, `mixedProtocol`, `lastmodIssues`. The plan
+ * says why they belonged in rules rather than in a diagnostics bag: a number
+ * on a report tells you something is wrong somewhere, and a finding tells you
+ * which entry, in which document, and what the specification says about it.
+ *
+ * Three rules from those sections are deliberately absent, because the model
+ * cannot answer them honestly yet. `sitemap.limits.exceeded` counts entries
+ * **per document** and today's `urlCount` is a total across all of them;
+ * `sitemap.index.nested` needs to know a child was itself an index;
+ * `sitemap.entry.out-of-scope` needs to know which document declared each
+ * entry. All three arrive with the document tree, and shipping them now would
+ * mean rules that quietly only work on a site with one flat sitemap.
+ */
+
+/** `<changefreq>` values the protocol defines. Anything else is not one. */
+const CHANGEFREQ = new Set(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]);
+
+/** How many offending entries a finding names before it starts counting. */
+const SAMPLE = 5;
+
+/** `n` entries, listing the first few — forty repeats of one defect is noise. */
+function sample(locs: string[]): string {
+  const shown = locs.slice(0, SAMPLE);
+  const rest = locs.length - shown.length;
+  return `${shown.map((l) => `\`${l}\``).join(", ")}${rest > 0 ? `, and ${rest} more` : ""}`;
+}
+
+const sitemapMissing: SiteRule = {
+  id: "sitemap.missing",
+  severity: "warning",
+  summary: "A site should publish a sitemap",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  // A warning rather than an error, and the plan settles it: a small, fully
+  // linked site genuinely may not need one. Google's own guidance says
+  // "usually worth having", which is exactly a guideline.
+  appliesTo: (site) => site.discovery !== undefined && !site.discovery.diagnostics.found,
+  check: ({ site, issue }) =>
+    issue({
+      pageUrl: `${site.origin}/sitemap.xml`,
+      message:
+        "No sitemap was found — not declared in `robots.txt`, and not at a well-known path. " +
+        "Discovery then depends entirely on what links to what, which is the part of a site nobody audits.",
+      origin: { kind: "computed" },
+    }),
+};
+
+const sitemapUnparsable: SiteRule = {
+  id: "sitemap.unparsable",
+  severity: "error",
+  summary: "A located sitemap must be a well-formed `<urlset>` or `<sitemapindex>`",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) =>
+    site.discovery?.diagnostics.found === true && !site.discovery.diagnostics.wellFormed,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message:
+        "A sitemap was served but does not parse as XML. The usual cause is an HTML error page " +
+        "answered with a 200 — which reads as a healthy sitemap to anything that only checks the status.",
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEmpty: SiteRule = {
+  id: "sitemap.empty",
+  severity: "warning",
+  summary: "A sitemap that parses should list something",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol"],
+  // Only when the crawl found pages: an empty sitemap on a site with no pages
+  // is consistent, and saying otherwise would be noise.
+  appliesTo: (site) =>
+    site.discovery?.diagnostics.wellFormed === true &&
+    site.discovery.urls.length === 0 &&
+    site.pages.length > 0,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `The sitemap parses and lists no URLs, while the crawl found ${site.pages.length}. goflag falls back to crawling — a consumer that trusts the sitemap has nothing to read.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapIndexChildError: SiteRule = {
+  id: "sitemap.index.child-error",
+  severity: "error",
+  summary: "Every child of a sitemap index must be reachable and parseable",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => (site.discovery?.diagnostics.childSitemapErrors ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const diagnostics = site.discovery!.diagnostics;
+    const total = diagnostics.childSitemapCount;
+
+    return issue({
+      pageUrl: diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${diagnostics.childSitemapErrors} of ${total} child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryInvalidUrl: SiteRule = {
+  id: "sitemap.entry.invalid-url",
+  severity: "error",
+  summary: "Every `<loc>` must be an absolute, parseable URL",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => (site.discovery?.urls ?? []).some((entry) => !isAbsolute(entry.loc)),
+  check: ({ site, issue }) => {
+    const bad = site.discovery!.urls.filter((entry) => !isAbsolute(entry.loc));
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} \`<loc>\` value${bad.length === 1 ? " is" : "s are"} not an absolute URL: ${sample(bad.map((e) => e.loc))}. A sitemap is fetched on its own, so a consumer has nothing to resolve them against.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryCrossHost: SiteRule = {
+  id: "sitemap.entry.cross-host",
+  severity: "error",
+  summary: "A sitemap should only list URLs on its own host",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  // `www` and the apex are different hosts to a consumer, which is the case
+  // this actually catches: a sitemap generated against one and served on the
+  // other. The cross-submission escape hatch needs the other host's robots.txt
+  // and arrives with the cross-artefact rules.
+  appliesTo: (site) => crossHostEntries(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = crossHostEntries(site);
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} entr${bad.length === 1 ? "y names a host" : "ies name hosts"} other than this sitemap's: ${sample(bad)}. A consumer may drop them — the sitemap only speaks for the host that serves it.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryProtocolMismatch: SiteRule = {
+  id: "sitemap.entry.protocol-mismatch",
+  severity: "warning",
+  summary: "A sitemap should not mix `http` and `https` entries",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => protocolsIn(site).size > 1,
+  check: ({ site, issue }) => {
+    const protocols = [...protocolsIn(site)].sort();
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `The sitemap lists both ${protocols.join(" and ")} URLs. One of the two sets names pages the site does not serve at those addresses, and a consumer has no way to tell which.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapLastmodInvalid: SiteRule = {
+  id: "sitemap.lastmod.invalid",
+  severity: "warning",
+  summary: "`<lastmod>` must be a W3C Datetime, and must not be in the future",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => badLastmods(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = badLastmods(site);
+    const malformed = bad.filter((e) => e.reason === "malformed");
+    const future = bad.filter((e) => e.reason === "future");
+
+    const parts: string[] = [];
+    if (malformed.length > 0) {
+      parts.push(
+        `${malformed.length} not a W3C Datetime (${sample(malformed.map((e) => e.value))})`,
+      );
+    }
+    if (future.length > 0) {
+      parts.push(`${future.length} dated in the future (${sample(future.map((e) => e.value))})`);
+    }
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `\`<lastmod>\` values a consumer cannot use: ${parts.join("; ")}. Google ignores the field entirely when it stops trusting it, so one bad batch costs the whole site the signal.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapFieldInvalid: SiteRule = {
+  id: "sitemap.field.invalid",
+  severity: "warning",
+  summary: "`<changefreq>` and `<priority>` must hold the values the protocol defines",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => badFields(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = badFields(site);
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${bad.length} entr${bad.length === 1 ? "y carries a field" : "ies carry fields"} outside the protocol's values: ${sample(bad)}. Google ignores both fields either way — so this is worth fixing or deleting, never worth trusting.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+function sitemapHost(site: SiteContext): string | undefined {
+  const url = site.discovery?.diagnostics.sitemapUrl;
+  try {
+    return url ? new URL(url).host : new URL(site.origin).host;
+  } catch {
+    return undefined;
+  }
+}
+
+function crossHostEntries(site: SiteContext): string[] {
+  const host = sitemapHost(site);
+  if (!host) return [];
+
+  return (site.discovery?.urls ?? [])
+    .filter((entry) => {
+      if (!isAbsolute(entry.loc)) return false;
+      try {
+        return new URL(entry.loc).host !== host;
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.loc);
+}
+
+function protocolsIn(site: SiteContext): Set<string> {
+  const protocols = new Set<string>();
+  for (const entry of site.discovery?.urls ?? []) {
+    try {
+      protocols.add(new URL(entry.loc).protocol.replace(":", ""));
+    } catch {
+      continue;
+    }
+  }
+  return protocols;
+}
+
+/**
+ * W3C Datetime, as the sitemap protocol requires: a date, optionally with a
+ * time and a timezone. Deliberately stricter than `Date.parse`, which accepts
+ * `March 4 2026` and every other thing a human might type.
+ */
+const W3C_DATETIME = /^\d{4}(-\d{2}(-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?)?)?$/;
+
+function badLastmods(site: SiteContext): Array<{ value: string; reason: "malformed" | "future" }> {
+  const out: Array<{ value: string; reason: "malformed" | "future" }> = [];
+  // Compared against the run's own clock rather than a fixed date, and only
+  // flagged past a day of slack: a build that stamps "now" in a timezone ahead
+  // of the auditor is not a defect.
+  const tomorrow = Date.now() + 24 * 60 * 60 * 1000;
+
+  for (const entry of site.discovery?.urls ?? []) {
+    const value = entry.lastmod?.trim();
+    if (!value) continue;
+
+    if (!W3C_DATETIME.test(value)) {
+      out.push({ value, reason: "malformed" });
+      continue;
+    }
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed) && parsed > tomorrow) out.push({ value, reason: "future" });
+  }
+  return out;
+}
+
+function badFields(site: SiteContext): string[] {
+  const out: string[] = [];
+  for (const entry of site.discovery?.urls ?? []) {
+    const changefreq = entry.changefreq?.trim().toLowerCase();
+    if (changefreq && !CHANGEFREQ.has(changefreq)) {
+      out.push(`${entry.loc} — changefreq \`${entry.changefreq}\``);
+      continue;
+    }
+    const priority = entry.priority?.trim();
+    if (priority === undefined) continue;
+    const value = Number(priority);
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      out.push(`${entry.loc} — priority \`${entry.priority}\``);
+    }
+  }
+  return out;
+}
+
+/**
+ * Where the two artefacts meet the crawl (`docs/sitemap-robots-plan.md` §4.5).
+ *
+ * The plan calls these "the expensive ones, and they are all judgments nothing
+ * makes today". Four of the six are expensive in reasoning rather than in
+ * requests — they compare a sitemap entry against a page goflag already
+ * fetched, or against a robots.txt it already parsed — so they ship here.
+ * `sitemap.entry.unreachable` and `.entry.redirects` need to probe URLs the
+ * crawl never visited, and wait for that.
+ *
+ * Each one is a contradiction between two things the site says about itself,
+ * which is the class of defect this whole tool exists for: nothing is broken
+ * when you look at either half alone.
+ */
+
+/** A URL reduced to what makes it the same page: no fragment, no trailing slash. */
+function sameUrlKey(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    const path = parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${path || "/"}${parsed.search}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Crawled pages, keyed the way a sitemap entry would name them. */
+function pagesByUrl(site: SiteContext): Map<string, Page> {
+  const byUrl = new Map<string, Page>();
+  for (const page of site.pages) {
+    const key = sameUrlKey(page.fetch.finalUrl);
+    if (key) byUrl.set(key, page);
+  }
+  return byUrl;
+}
+
+/** Whether a page asks not to be indexed, by meta tag or by header. */
+function saysNoindex(page: Page): boolean {
+  if (metaRobotsTokens(page).has("noindex")) return true;
+  const header = page.fetch.headers["x-robots-tag"] ?? "";
+  return header
+    .split(",")
+    .map((token) => token.trim().toLowerCase())
+    .includes("noindex");
+}
+
+const sitemapEntryBlockedByRobots: SiteRule = {
+  id: "sitemap.entry.blocked-by-robots",
+  severity: "error",
+  summary: "A sitemap must not list URLs that robots.txt forbids fetching",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9309", "sitemaps-protocol"],
+  // Skipped when the whole origin is disallowed: `robots.blocks-site` is that
+  // finding, and repeating it once per sitemap entry would bury it.
+  appliesTo: (site) =>
+    site.robots?.found === true &&
+    robotsAllows(site.robots.groups, "/").allowed &&
+    (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const probe = site.robots!;
+    const blocked: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      let path: string;
+      try {
+        const url = new URL(entry.loc);
+        path = `${url.pathname}${url.search}`;
+      } catch {
+        continue;
+      }
+      if (!robotsAllows(probe.groups, path).allowed) blocked.push(entry.loc);
+    }
+
+    if (blocked.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${blocked.length} sitemap entr${blocked.length === 1 ? "y is" : "ies are"} disallowed by \`robots.txt\`: ${sample(blocked)}. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryNoindex: SiteRule = {
+  id: "sitemap.entry.noindex",
+  severity: "warning",
+  summary: "A sitemap must not list URLs that ask not to be indexed",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-robots-meta"],
+  // Only the crawled pages can be judged: a sitemap entry goflag never fetched
+  // has no `noindex` to have seen, and assuming one either way would invent a
+  // finding or hide one.
+  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const byUrl = pagesByUrl(site);
+    const conflicting: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      const key = sameUrlKey(entry.loc);
+      const page = key ? byUrl.get(key) : undefined;
+      if (page && saysNoindex(page)) conflicting.push(entry.loc);
+    }
+
+    if (conflicting.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${conflicting.length} sitemap entr${conflicting.length === 1 ? "y declares" : "ies declare"} \`noindex\`: ${sample(conflicting)}. "Please index this" and "do not index this" are the same site's two answers to one question.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryNonCanonical: SiteRule = {
+  id: "sitemap.entry.non-canonical",
+  severity: "warning",
+  summary: "A sitemap should list canonical URLs",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-canonicalization"],
+  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0,
+  check: ({ site, issue }) => {
+    const byUrl = pagesByUrl(site);
+    const wrong: string[] = [];
+
+    for (const entry of site.discovery!.urls) {
+      const key = sameUrlKey(entry.loc);
+      const page = key ? byUrl.get(key) : undefined;
+      const canonical = page?.links.canonical;
+      if (!page || !canonical) continue;
+
+      const canonicalKey = sameUrlKey(canonical);
+      // Only when the page names a *different* page. A canonical that differs
+      // by a trailing slash is the same page said twice, which `sameUrlKey`
+      // already folds together.
+      if (canonicalKey && canonicalKey !== key) {
+        wrong.push(`${entry.loc} → ${canonical}`);
+      }
+    }
+
+    if (wrong.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${wrong.length} sitemap entr${wrong.length === 1 ? "y names a page whose canonical" : "ies name pages whose canonicals"} point elsewhere: ${sample(wrong)}. The sitemap is a list of what to index, so it should name the URL the site itself prefers.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapOrphans: SiteRule = {
+  id: "sitemap.orphans",
+  severity: "warning",
+  summary: "Indexable pages the crawl found should be listed in the sitemap",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  // One finding with a count and a sample, not one per page — the same shape
+  // translation holes take, and for the same reason: forty repeats of one
+  // omission is noise, and the omission is a property of the sitemap.
+  appliesTo: (site) => site.discovery?.diagnostics.found === true && site.discovery.urls.length > 0,
+  check: ({ site, issue }) => {
+    const listed = new Set(
+      site.discovery!.urls.map((entry) => sameUrlKey(entry.loc)).filter(Boolean),
+    );
+
+    const orphans = site.pages
+      .filter((page) => !saysNoindex(page))
+      .map((page) => ({ page, key: sameUrlKey(page.fetch.finalUrl) }))
+      .filter(({ key }) => key !== undefined && !listed.has(key))
+      .map(({ page }) => page.fetch.finalUrl);
+
+    if (orphans.length === 0) return [];
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}. A consumer that reads the sitemap rather than following links will never see ${orphans.length === 1 ? "it" : "them"}.`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+/**
+ * The last two of §4.5, and the only rules in the catalogue whose subject had
+ * to be fetched on purpose.
+ *
+ * Everything else about a sitemap is a comparison between things goflag
+ * already had. These two ask what is actually served at a URL, which is why
+ * they waited for `probeSitemapEntries` — and why that pass answers from the
+ * crawl and the link audit first, and only fetches what is left.
+ */
+
+/** What the probe pass found, or nothing when it did not run. */
+function entryProbes(site: SiteContext): SitemapEntryProbe[] {
+  return [...(site.sitemapEntries?.byUrl.values() ?? [])];
+}
+
+/**
+ * The sentence a finding owes when the caps stopped the pass short.
+ *
+ * "3 entries are unreachable" out of a sitemap where 400 were never checked is
+ * a true sentence that reads as a false one — it implies the other 397 are
+ * fine. Saying how many went unchecked is what makes the number honest.
+ */
+function coverageNote(site: SiteContext): string {
+  const unprobed = site.sitemapEntries?.unprobed ?? 0;
+  if (unprobed === 0) return "";
+  return ` ${unprobed} further entr${unprobed === 1 ? "y was" : "ies were"} not checked — this count is a floor, not a total.`;
+}
+
+const sitemapEntryUnreachable: SiteRule = {
+  id: "sitemap.entry.unreachable",
+  severity: "error",
+  summary: "Every URL a sitemap lists must answer",
+  rigor: "vendor-spec",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => entryProbes(site).some((probe) => isDead(probe.status)),
+  check: ({ site, issue }) => {
+    const dead = entryProbes(site).filter((probe) => isDead(probe.status));
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${dead.length} sitemap entr${dead.length === 1 ? "y does" : "ies do"} not answer: ${sample(dead.map((probe) => `${probe.url} (${probe.status === 0 ? "no response" : `HTTP ${probe.status}`})`))}. A sitemap is a list of pages to index, so every dead entry spends crawl budget on a promise the site does not keep.${coverageNote(site)}`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+const sitemapEntryRedirects: SiteRule = {
+  id: "sitemap.entry.redirects",
+  severity: "warning",
+  summary: "A sitemap should list final URLs, not URLs that redirect",
+  rigor: "guideline",
+  sources: ["sitemaps-protocol", "google-sitemaps"],
+  appliesTo: (site) => entryProbes(site).some((probe) => probe.redirected && !isDead(probe.status)),
+  check: ({ site, issue }) => {
+    const moved = entryProbes(site).filter((probe) => probe.redirected && !isDead(probe.status));
+
+    return issue({
+      pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
+      message: `${moved.length} sitemap entr${moved.length === 1 ? "y redirects" : "ies redirect"}: ${sample(moved.map((probe) => `${probe.url} → ${probe.finalUrl}`))}. Google asks for the final URL, and every hop is crawl budget spent plus one more chance for a consumer to disagree about which address is the page.${coverageNote(site)}`,
+      origin: { kind: "computed" },
+    });
+  },
+};
+
+/** 4xx, 5xx, or no response at all. A 3xx is a redirect, not a death. */
+function isDead(status: number): boolean {
+  return status === 0 || status >= 400;
+}
+
+/** A status that means the file could not be read, as opposed to absent. */
+function isRobotsFailure(status: number): boolean {
+  return status === 0 || status >= 500;
+}
+
+function isAbsolute(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangSitemapMismatch,
   iconsIcoMissing,
+  robotsBlocksPage,
   robotsBlocksSite,
+  robotstxtCrossOrigin,
+  robotstxtInvalidLine,
+  robotstxtOversized,
+  robotstxtSitemapRelative,
+  robotstxtUnknownDirective,
+  robotstxtUnreachable,
+  sitemapEmpty,
+  sitemapEntryBlockedByRobots,
+  sitemapEntryCrossHost,
+  sitemapEntryInvalidUrl,
+  sitemapEntryNoindex,
+  sitemapEntryNonCanonical,
+  sitemapEntryProtocolMismatch,
+  sitemapEntryRedirects,
+  sitemapEntryUnreachable,
+  sitemapFieldInvalid,
+  sitemapIndexChildError,
+  sitemapLastmodInvalid,
+  sitemapMissing,
+  sitemapOrphans,
+  sitemapUnparsable,
 ];
 
 export function getSiteRule(id: string): SiteRule | undefined {

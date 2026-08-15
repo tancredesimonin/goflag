@@ -158,6 +158,57 @@ describe("summarize — SEO rollup", () => {
     expect(s.seoIssues[0]?.pages).toEqual(["https://example.com/a", "https://example.com/b"]);
   });
 
+  it("keeps the rigor on the rollup, where it costs one tag instead of many", () => {
+    // A rollup is one rule, so its rigor is constant across the group — which
+    // is what makes `--summary` the right place to show it. On the full report
+    // the same tag would repeat on every finding.
+    const s = summarize(
+      baseReport({
+        seoIssues: [
+          {
+            id: "s1",
+            pageUrl: "https://example.com/a",
+            ruleId: "title.length",
+            severity: "warning",
+            message: "too long",
+            rigor: "heuristic",
+          },
+          {
+            id: "s2",
+            pageUrl: "https://example.com/b",
+            ruleId: "title.length",
+            severity: "warning",
+            message: "too long",
+            rigor: "heuristic",
+          },
+        ],
+      }),
+    );
+
+    expect(s.seoIssues[0]).toMatchObject({ ruleId: "title.length", rigor: "heuristic", count: 2 });
+  });
+
+  it("leaves the rigor absent when the rule never declared one", () => {
+    // Three of the four cross-page rules predate the field. An undefined rigor
+    // has to survive the rollup as undefined: filling it in would be the
+    // catalogue's visible gap quietly closing itself.
+    const s = summarize(
+      baseReport({
+        siteIssues: [
+          {
+            id: "x1",
+            pageUrl: "https://example.com/",
+            ruleId: "hreflang.missing",
+            severity: "warning",
+            message: "no alternates",
+          },
+        ],
+      }),
+    );
+
+    expect(s.siteIssues[0]?.rigor).toBeUndefined();
+  });
+
   it("orders rules by severity then id", () => {
     const s = summarize(
       baseReport({

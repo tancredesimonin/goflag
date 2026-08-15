@@ -219,15 +219,56 @@ export interface JsonLdBlock {
 // Side-channel probes
 // ---------------------------------------------------------------------------
 
-export interface RobotsProbe {
+/** One `Allow:` / `Disallow:` line, with where it was written. */
+export interface RobotsRule {
+  kind: "allow" | "disallow";
+  pattern: string;
+  line: number;
+}
+
+/** One group: the agents it names and the rules that follow them. */
+export interface RobotsGroup {
+  /** Product tokens, lowercased — matching is case-insensitive. */
+  userAgents: Array<{ value: string; line: number }>;
+  rules: RobotsRule[];
+}
+
+/** A line that parsed as nothing, kept so a rule can point at it. */
+export interface RobotsInvalidLine {
+  line: number;
+  raw: string;
+  reason: string;
+}
+
+/** What `parseRobots` reads out of a body, independent of how it was fetched. */
+export interface RobotsParse {
+  groups: RobotsGroup[];
+  /** `Sitemap:` records. Independent of groups per RFC 9309 §2.2.4. */
+  sitemaps: Array<{ value: string; line: number }>;
+  invalidLines: RobotsInvalidLine[];
+  /** Recognisable non-standard directives (`Crawl-delay`, `Host`, …). */
+  unknownDirectives: Array<{ name: string; line: number }>;
+}
+
+/**
+ * The site's robots.txt, fetched and fully parsed
+ * (`docs/sitemap-robots-plan.md` §3.1).
+ *
+ * Replaces the two booleans the engine used to keep. Rules read this the way
+ * page rules read an `Extraction`: everything the file said, including the
+ * lines it got wrong, each carrying its number so a finding can point at one.
+ */
+export interface RobotsProbe extends RobotsParse {
   url: string;
+  /** `0` on a network error. */
   status: number;
+  /** Whether the file was fetched and read (a 404 is `false`, and fine). */
   found: boolean;
   raw?: string;
-  /** Parsed `Sitemap:` declarations. */
-  sitemaps: string[];
-  /** True iff at least one `Disallow: /` line exists for `User-agent: *`. */
-  blocksAll: boolean;
+  /** Body length in bytes — RFC 9309 §2.4's 500 KiB limit counts octets. */
+  byteLength: number;
+  /** Redirects followed; RFC 9309 §2.3.1.2 permits following them. */
+  redirects: { count: number; finalUrl: string; crossOrigin: boolean };
 }
 
 /** One intrinsic size a file declares about itself. */
@@ -254,6 +295,23 @@ export interface AssetProbe {
    * must read as "unknown", never as "none".
    */
   sizes?: AssetSize[];
+}
+
+/**
+ * What is served at one URL a sitemap lists.
+ *
+ * `via` says where the answer came from — the crawl, the link audit, or a
+ * fetch made for this — because "goflag checked it" and "goflag already knew"
+ * are different claims, and only one of them costs the site a request.
+ */
+export interface SitemapEntryProbe {
+  url: string;
+  /** `0` on a network failure. */
+  status: number;
+  via: "crawl" | "link-audit" | "probe";
+  /** Where it landed; equals `url` when nothing redirected. */
+  finalUrl: string;
+  redirected: boolean;
 }
 
 /**
@@ -477,10 +535,36 @@ export interface Page {
 
 export type Severity = "error" | "warning" | "info";
 
+/**
+ * How authoritative the requirement behind a finding is.
+ *
+ * Lives here rather than in the rule layer for the same reason `Issue` does:
+ * it crosses the engine → report → CLI `--json` boundary. An agent reading a
+ * report has to be able to tell a `spec-required` from a `heuristic` before it
+ * decides what to change, and a type that stopped at the rule registry could
+ * not tell it — `../rules/types` re-exports this one.
+ */
+export type Rigor =
+  "spec-required" | "spec-recommended" | "vendor-spec" | "guideline" | "heuristic";
+
 export interface Issue {
   ruleId: string;
   severity: Severity;
   message: string;
+  /**
+   * How authoritative the requirement is, and the documents that back it.
+   *
+   * Carried on the finding rather than looked up by the consumer, because a
+   * report is read where the registry is not: a JSON file in CI, a PR comment,
+   * an agent's context. Absent on a cross-page rule that has not declared one
+   * (see `SiteRule`) and on the synthetic `engine.rule-crashed`.
+   */
+  rigor?: Rigor;
+  sources?: string[];
+  /** What the page actually said, as the rule saw it. JSON-serializable. */
+  observed?: unknown;
+  /** One sentence stating what a passing page looks like. */
+  expected?: string;
   /** Optional pointer back into the `Page` for UI highlighting. */
   origin?: TagOrigin;
   /** Optional fix snippet for "Copy fix" buttons and PR comments. */

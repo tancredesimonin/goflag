@@ -298,7 +298,7 @@ An opt-in mode that reports **every rule's status per page** (`pass` / `fail` / 
 | **C. Deterministic rules** | ✅ shipped | Rule descriptor types (boolean/scored). **Replace the current `RULES` engine outright** and re-express today's ~11 checks as sourced rules (real `sources` + `rigor`) — no obligation to preserve old ids or behavior; delete the legacy engine where cleaner |
 | **D. Profiles**            | ✅ shipped | Profile overlay + runner composition + `--profile` flag                                                                                                                                                                                                       |
 | **E. Conformance + prose** | ✅ shipped | Opt-in conformance view; `ProseRule` + advisory findings                                                                                                                                                                                                      |
-| **F. Report/loop wiring**  | next       | Thread `rigor` / `sources` / `observed` / `expected` into report + `--summary`; keep M1-diff compatible                                                                                                                                                       |
+| **F. Report/loop wiring**  | ✅ shipped | Thread `rigor` / `sources` / `observed` / `expected` into report + `--summary`; keep M1-diff compatible                                                                                                                                                       |
 | **G. Artefact rules**      | planned    | Sitemap / sitemap-index and full robots.txt validation on the same descriptor: site-level extraction models, RFC 9309 matcher, sourced rules. Depends on A + B + C; independent of D/E. Full spec: `docs/sitemap-robots-plan.md`                              |
 
 **Phase D as shipped.** Two levers per rule — `enabled` and `severity` —
@@ -313,6 +313,30 @@ an absent optional subject is `na` or a failure lives inside each evaluator,
 and hoisting it into the overlay first needs the descriptor to declare its
 optional subjects. Cross-page `SiteRule`s are not overlaid yet; they join when
 Phase G moves them onto the descriptor.
+
+**Phase F as shipped.** The four fields were produced by `evaluateRules` and
+dropped one step later, in `findingsToIssues` — so a report carried a severity
+and a message and nothing about how authoritative the requirement was. With 23
+sourced page rules that gap is the difference between an agent fixing a
+`spec-required` and an agent fixing folklore, which is the single decision the
+rigor axis exists to serve.
+
+`Rigor` moves to `core/types.ts` beside `Severity`, for the reason already
+written there about `Issue`: it crosses the engine → report → CLI boundary.
+Cross-page findings carry it too, stamped from the descriptor rather than from
+the check — a rule does not get to claim a rigor per finding — and stay absent
+on the three rules that have not declared one, so the catalogue's visible gap
+does not quietly close itself. `engine.rule-crashed` carries none either: it is
+goflag talking about itself, and there is no document behind it.
+
+**`--summary` is where a human reads it**, because a rollup is one rule, so the
+tag costs one line rather than one per finding: `warn title.length [heuristic] ×3`.
+
+**Fingerprints do not move.** They key on the rule, the route and the
+occurrence, and `diff.ts` matches a baseline on `id` alone — so enriching a
+finding cannot renumber one. `fingerprint.test.ts` now pins two of them
+literally, because the day that changes is the day every committed baseline
+reports its whole contents as new.
 
 **Phase E as shipped.** Both halves are opt-in flags (`--conformance`,
 `--advisories`) and both are omitted from the report entirely when not asked

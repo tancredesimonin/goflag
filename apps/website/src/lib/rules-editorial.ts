@@ -152,6 +152,116 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
   },
+  "sitemap.entry.unreachable": {
+    why: "A sitemap is a list of pages you want indexed, so every dead entry spends crawl budget on a promise the site does not keep. The count is a floor when the caps stopped the pass short, and the message says so rather than implying the rest are fine.",
+    message:
+      "4 sitemap entries do not answer: `https://example.com/old` (HTTP 404), `https://example.com/gone` (HTTP 410). A sitemap is a list of pages to index, so every dead entry spends crawl budget on a promise the site does not keep.",
+  },
+  "sitemap.entry.redirects": {
+    why: "Google asks for final URLs. Every hop is crawl budget spent, plus one more chance for a consumer to disagree with you about which address is the page — which is the same argument the canonical rules make, arriving from the other direction.",
+    message:
+      "3 sitemap entries redirect: `https://example.com/a → https://example.com/a/`. Google asks for the final URL, and every hop is crawl budget spent plus one more chance for a consumer to disagree about which address is the page.",
+  },
+  "sitemap.entry.blocked-by-robots": {
+    why: "The sitemap says index this and robots.txt says never fetch it. Both are the same site speaking, and robots.txt is the one that decides — so the entry is not merely ignored, it is an instruction the site contradicts a line later.",
+    message:
+      '3 sitemap entries are disallowed by `robots.txt`: `https://example.com/admin/a`, `https://example.com/admin/b`. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.',
+  },
+  "sitemap.entry.noindex": {
+    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one.',
+    message:
+      '2 sitemap entries declare `noindex`: `https://example.com/draft`. "Please index this" and "do not index this" are the same site\'s two answers to one question.',
+  },
+  "sitemap.entry.non-canonical": {
+    why: 'The sitemap is the list of what you want indexed, so it should name the URL you actually prefer. Listing a variant that points elsewhere spends crawl budget arriving at a page that immediately says "not me".',
+    message:
+      "1 sitemap entry names a page whose canonical points elsewhere: `https://example.com/a?ref=x → https://example.com/a`. The sitemap is a list of what to index, so it should name the URL the site itself prefers.",
+  },
+  "sitemap.orphans": {
+    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits.",
+    message:
+      "7 crawled pages ask to be indexed and are absent from the sitemap: `https://example.com/blog/a`, `https://example.com/blog/b`. A consumer that reads the sitemap rather than following links will never see them.",
+  },
+  "sitemap.missing": {
+    why: "Without one, discovery depends entirely on what links to what — the part of a site nobody audits. A warning rather than an error: a small, fully linked site genuinely may not need a sitemap, and saying otherwise would be inventing a rule.",
+    message:
+      "No sitemap was found — not declared in `robots.txt`, and not at a well-known path. Discovery then depends entirely on what links to what, which is the part of a site nobody audits.",
+  },
+  "sitemap.unparsable": {
+    why: "The usual cause is an HTML error page answered with a 200, which reads as a perfectly healthy sitemap to anything that only checks the status code. The file is present, the request succeeds, and the inventory is empty.",
+    message:
+      "A sitemap was served but does not parse as XML. The usual cause is an HTML error page answered with a 200 — which reads as a healthy sitemap to anything that only checks the status.",
+  },
+  "sitemap.empty": {
+    why: "goflag falls back to crawling, so the audit survives. A search engine does not fall back: it reads the file it was pointed at, finds nothing, and moves on.",
+    message:
+      "The sitemap parses and lists no URLs, while the crawl found 42. goflag falls back to crawling — a consumer that trusts the sitemap has nothing to read.",
+  },
+  "sitemap.index.child-error": {
+    why: "An index declares an inventory, and part of it is unreachable. Whatever those documents listed is invisible — and because they are the thing that would have said what, nothing reports how much was lost.",
+    message:
+      "2 of 9 child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.",
+  },
+  "sitemap.entry.invalid-url": {
+    why: "A sitemap is fetched on its own, with no page behind it, so a relative `<loc>` resolves to nothing. The entry looks like a declaration and names no address.",
+    message:
+      "2 `<loc>` values are not an absolute URL: `/about`, `/pricing`. A sitemap is fetched on its own, so a consumer has nothing to resolve them against.",
+  },
+  "sitemap.entry.cross-host": {
+    why: "`www` and the apex are different hosts to a consumer, and this is what catches the sitemap generated against one and served on the other. A consumer may drop every entry that does not belong to the host it fetched the file from.",
+    message:
+      "12 entries name hosts other than this sitemap's: `https://www.example.com/a`, `https://www.example.com/b`. A consumer may drop them — the sitemap only speaks for the host that serves it.",
+  },
+  "sitemap.entry.protocol-mismatch": {
+    why: "One of the two sets names pages the site does not serve at those addresses, and nothing in the file says which. Usually the residue of a migration that updated the pages and not the generator.",
+    message:
+      "The sitemap lists both http and https URLs. One of the two sets names pages the site does not serve at those addresses, and a consumer has no way to tell which.",
+  },
+  "sitemap.lastmod.invalid": {
+    why: "Google stops trusting the field entirely once it finds values it cannot use — so one bad batch costs the whole site a signal it was paying to produce. Future dates count: a date that has not happened cannot describe a change that has.",
+    message:
+      "`<lastmod>` values a consumer cannot use: 3 not a W3C Datetime (`March 4 2026`). Google ignores the field entirely when it stops trusting it, so one bad batch costs the whole site the signal.",
+  },
+  "sitemap.field.invalid": {
+    why: "Both fields are ignored by Google either way, so a wrong value costs nothing directly. It is reported because a value outside the protocol is a generator that was never checked — and the same generator writes the `<loc>` values that do matter.",
+    message:
+      "1 entry carries a field outside the protocol's values: https://example.com/a — priority `1.5`. Google ignores both fields either way — so this is worth fixing or deleting, never worth trusting.",
+  },
+  "robots.blocks-page": {
+    why: "The quiet version of the site-wide block. A `Disallow` added years ago for a reason that made sense then, still shadowing a section that has since been given pages asking to be found. Nothing in a browser shows it: the page loads perfectly for you and is never fetched by a crawler.",
+    message:
+      'Page declares `<meta name="robots" content="index">` but `robots.txt` line 4 disallows `/blog` for `*`. robots.txt wins: the page is never fetched, so the tag asking for it is never read.',
+  },
+  "robotstxt.unreachable": {
+    why: "The failure mode nobody plans for: a 500 on one small text file is read as a site-wide ban. RFC 9309 is explicit — while robots.txt errors, a crawler must assume complete disallow. An outage here costs more than an outage on any page.",
+    message:
+      "`robots.txt` could not be read: the origin answered 503. RFC 9309 §2.3.1.4 tells a crawler to assume a complete disallow for as long as this lasts — an outage on this one file takes the whole site out of the index.",
+  },
+  "robotstxt.oversized": {
+    why: "Parsers are only required to read the first 500 KiB. Past that, rules are not wrong, they are absent — and a file that long is usually generated, so nobody scrolls to the end to notice.",
+    message:
+      "`robots.txt` is 812 KiB. A parser is only required to honour the first 500 KiB (RFC 9309 §2.4), so every rule past that point silently does not exist.",
+  },
+  "robotstxt.invalid-line": {
+    why: "A typo in robots.txt does not fail loudly, it fails as silence: the crawler drops the line and the rule you meant to write simply never existed. `Disalow:` looks right at a glance and protects nothing.",
+    message:
+      "`robots.txt` has 1 line that parses as nothing: line 2 (unknown directive `disalow`). A crawler drops them silently, so the rule you meant to write is simply absent.",
+  },
+  "robotstxt.unknown-directive": {
+    why: "Not a defect — `Crawl-delay` and `Host` are spelled correctly and some crawlers honour them. Worth knowing because Google does not, so a site relying on one for rate limiting is relying on nothing where it matters most.",
+    message:
+      "`robots.txt` uses `crawl-delay`, which RFC 9309 does not define. Some crawlers honour it and Google ignores it — so this is worth knowing, not necessarily worth changing.",
+  },
+  "robotstxt.cross-origin": {
+    why: "Legal, and almost always accidental. Following the redirect is permitted, but the policy governing this site now lives on a host this site does not control — and the day that host answers differently, nobody here will know why the traffic changed.",
+    message:
+      "`robots.txt` redirects to `https://cdn.example.net/robots.txt`, on another origin. RFC 9309 §2.3.1.2 permits following it, so this works — but the policy for this site now lives somewhere this site does not control, and it is usually a proxy accident rather than a decision.",
+  },
+  "robotstxt.sitemap.relative": {
+    why: "robots.txt is fetched on its own, so a consumer has no page to resolve a relative path against. The declaration reads as an instruction and resolves to nothing.",
+    message:
+      "`Sitemap:` must be a full URL: line 3 declares `/sitemap.xml`. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.",
+  },
   "robots.blocks-site": {
     why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     message:

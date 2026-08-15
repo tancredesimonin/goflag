@@ -203,7 +203,11 @@ function rollupRows(
         : issue.severity === "warning"
           ? c(ANSI.yellow, "warn ")
           : c(ANSI.dim, "info ");
-    lines.push(`  ${sev} ${c(ANSI.cyan, issue.ruleId)} ${c(ANSI.dim, `×${issue.count}`)}`);
+    // The rigor rides here rather than on every finding in the full report:
+    // a rollup is one rule, so it is one tag on one line. Without it a reader
+    // deciding what to fix first cannot tell a specification from folklore.
+    const rigor = issue.rigor ? c(ANSI.dim, ` [${issue.rigor}]`) : "";
+    lines.push(`  ${sev} ${c(ANSI.cyan, issue.ruleId)}${rigor} ${c(ANSI.dim, `×${issue.count}`)}`);
     if (issue.why) lines.push(`    ${c(ANSI.dim, stripBackticks(issue.why))}`);
     if (issue.fix) {
       // Multi-line snippets (the Next.js fixes) must stay readable, so indent

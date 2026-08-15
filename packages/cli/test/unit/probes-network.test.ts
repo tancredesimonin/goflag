@@ -42,8 +42,9 @@ describe("probeRobots", () => {
     const probe = await probeRobots(baseUrl);
     expect(probe.found).toBe(true);
     expect(probe.status).toBe(200);
-    expect(probe.sitemaps).toEqual(["https://x.com/sitemap.xml"]);
-    expect(probe.blocksAll).toBe(true);
+    expect(probe.sitemaps).toEqual([{ value: "https://x.com/sitemap.xml", line: 3 }]);
+    expect(probe.groups[0]?.rules).toEqual([{ kind: "disallow", pattern: "/", line: 2 }]);
+    expect(probe.byteLength).toBeGreaterThan(0);
   });
 
   it("returns found:false on 404", async () => {
@@ -52,7 +53,7 @@ describe("probeRobots", () => {
     expect(probe.found).toBe(false);
     expect(probe.status).toBe(404);
     expect(probe.sitemaps).toEqual([]);
-    expect(probe.blocksAll).toBe(false);
+    expect(probe.groups).toEqual([]);
   });
 
   it("returns found:false on a network error (closed port)", async () => {

@@ -17,10 +17,12 @@ on the site. A human cannot check those on 400 pages. That is the whole job.
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
 - **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless the site declares its translation clusters — either with `xhtml:link` in the sitemap, or with reciprocal `hreflang` between two crawled pages' `<head>`. Then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`. The sitemap source survives `--coverage structural`, where the two locales of a slug-translating family are rarely both sampled; the `<head>` source needs both pages in hand and is what fixes the common site that declares properly there and nothing in its sitemap.
-- **robots.txt policy** — flags a site that forbids crawling while its pages ask to be indexed. The two declarations cannot both hold, and robots.txt wins, so the meta tag is never even read.
+- **robots.txt policy** — the file is parsed to RFC 9309, not scanned: every group, every rule, every line it could not read, each with its number. goflag flags a site that forbids crawling while its pages ask to be indexed — site-wide, and now per path, which is the quiet version nothing was watching. It also reports the file that errors (a 5xx there is read as a site-wide ban), one over the 500 KiB a parser must honour, a typo that silently deletes the rule you meant to write, a redirect handing your crawl policy to another origin, and a `Sitemap:` that is not a full URL.
 - **SEO metadata** — lints each page's `<head>` for the handful of mistakes that actually hurt in search and social and are invisible in a browser: missing/oversized `<title>` and description, missing/relative canonical, missing `og:title`/`og:description`/`og:image`, missing viewport, and contradictory `robots`/`googlebot`/`X-Robots-Tag` directives.
 - **Open Graph, past its presence** — a declared `og:image` is judged as well as counted: relative URLs no crawler can resolve, an undeclared size (so the first share of a URL renders without the image), a shape far from the 1.91:1 the card is cropped to, a missing `og:image:alt`, and — the one no tag check can reach — whether the URL actually serves an image at all. On a translated page, `og:locale` and `og:locale:alternate` are checked against the hreflang cluster — two vocabularies for one fact, which nothing in a build keeps in step.
 - **Icons** — whether anything declares one at all (nothing in a spec requires it, which is why nothing complains), whether iOS has an `apple-touch-icon` to use instead of screenshotting the page, whether the Web App Manifest and the `<head>` contradict each other about the same file, whether every declared icon answers with an image, whether a `sizes` attribute describes the file it points at (a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself), and whether the origin actually serves `/favicon.ico` — a 200 of HTML from a catch-all route does not count. Two icon lists that merely differ are the normal case and are not reported.
+- **Sitemap** — whether there is one, whether it parses (an HTML error page served with a 200 reads as healthy to anything that only checks the status), whether it lists anything, and whether an index can reach its children. Each entry is judged too: a `<loc>` that is not absolute, entries on another host or another protocol, a `<lastmod>` that is not a W3C Datetime or is dated in the future, a `changefreq` or `priority` outside the values the protocol defines.
+- **Where the two files meet the crawl** — the contradictions no single artefact shows. A sitemap entry that `robots.txt` forbids fetching, one whose page declares `noindex`, one whose canonical points elsewhere, one that 404s or redirects, and the indexable pages the crawl found that the sitemap never lists. Entry probing answers from the crawl and the link audit before it fetches anything, so a well-built site costs almost no extra requests — and when the caps stop it short, the finding says how many went unchecked rather than implying the rest are fine. Nothing is broken when you look at either half alone, which is why nobody finds these by reading.
 - **Unreachable pages** — a page the crawl reached that answered non-2xx, or that never answered at all (timeout, reset, DNS failure — recorded as `status: 0`), is reported in `unreachablePages`. goflag asks a second time, from the back of the queue, before calling a page unreachable. Each one is an `error`-severity finding: it turns the verdict red, counts toward `--max-debt`, and fails the build even under `--fail-on error`. A page that silently dropped out of the audited set is what poisons a baseline, so it is reported rather than warned about.
 
 **Which pages get audited.** When goflag finds a sitemap it does not audit every URL in it. It groups URLs that share a path shape — and therefore a template — into families, audits every page that stands alone, and samples three pages per family. A cap answers "how many" and never "which": on a site of thousands of pages built from thirty templates, the first 200 pages a crawl reaches are four templates out of thirty.
@@ -142,10 +144,10 @@ npx @goflag/cli rules > rules.json
 crawl, no network. Every entry carries its scope, severity and summary; the
 twenty-three page rules and four prose rules also carry a rigor, the documents they
 cite and — where a remedy is a line of code — a fix snippet. Cross-page rules
-may carry them too, and one does; the three that predate the field still emit
-`rigor: null` with an empty `sources`, because choosing their citations is work
-nobody has done and inventing an authority is worse than admitting the gap.
-Write your consumer against that. The same document
+may carry them too, and the robots family does; the three hreflang and sitemap
+rules that predate the field still emit `rigor: null` with an empty `sources`,
+because choosing their citations is work nobody has done and inventing an
+authority is worse than admitting the gap. Write your consumer against that. The same document
 ships inside the package as `rules.json`, if you would rather read it than run
 anything.
 
@@ -327,6 +329,36 @@ description on a page that has none, because `description.missing` already
 says that. They never count toward the summary, the verdict, or the exit
 code: nobody has judged them yet.
 
+### Every finding says how authoritative it is
+
+A finding carries the rule's `rigor`, the documents behind it, what the page
+actually said and what a passing page looks like — in the JSON, not only in the
+opt-in conformance view:
+
+```json
+{
+  "ruleId": "title.length",
+  "severity": "warning",
+  "rigor": "heuristic",
+  "sources": ["google-title-link", "moz-title-tag"],
+  "expected": "10–60 characters",
+  "observed": 65
+}
+```
+
+That distinction is the whole point of the rigor axis, and it is meant to be
+acted on: a `spec-required` finding and a `heuristic` one are not the same
+work, and a report read in CI — or by an agent that does not have the rule
+registry — could not tell them apart otherwise. `--summary` shows it per rule,
+where it costs one tag instead of one per finding:
+
+```
+  warn  title.length [heuristic] ×3
+```
+
+Severity says what your build should do; rigor says who says so. A profile
+changes the first and never the second.
+
 ### Gate on regressions, not on perfection
 
 A plain run fails on any finding, which is unusable on a site that is not clean
@@ -481,7 +513,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.9"
+  GOFLAG_VERSION: "0.2.10"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -533,7 +565,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.9 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.10 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

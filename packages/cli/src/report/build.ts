@@ -23,6 +23,7 @@ import {
 } from "../lib/core/i18n";
 import { deriveLocaleAxis, suggestedLocales } from "../lib/core/locales";
 import { discoverSitemap } from "../lib/core/sitemap/discover";
+import { probeSitemapEntries } from "../lib/core/sitemap/entries";
 import {
   buildClusterIndex,
   buildHeadClusterIndex,
@@ -693,6 +694,13 @@ export async function runAudit(
         message: issue.message,
         why: rule?.title,
         fix: issue.fix?.snippet,
+        // The fingerprint above is unchanged on purpose: it keys on the rule,
+        // the route and the occurrence, so carrying more of the finding cannot
+        // move a baseline entry (`./diff.ts` matches on `id` alone).
+        rigor: issue.rigor,
+        sources: issue.sources,
+        observed: issue.observed,
+        expected: issue.expected,
       });
     }
   }
@@ -795,40 +803,6 @@ export async function runAudit(
     ...issue,
   }));
 
-  // --- Cross-page rules ---------------------------------------------------
-  const siteContext: SiteContext = {
-    origin,
-    pages: htmlPages,
-    matrix,
-    localeAxis,
-    discovery,
-    robots,
-    favicon,
-    // Same index the matrix was built from, so a rule that groups by route
-    // and the grid that reports holes cannot disagree about which URLs are
-    // one page.
-    clusterRouteOf: clusters.routeOf,
-  };
-  // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
-  // a global index, so adding or reordering a rule cannot renumber unrelated
-  // findings and invalidate a stored baseline.
-  const siteOccurrence = new Map<string, number>();
-  const siteIssues: SiteIssue[] = lintSite(siteContext).map((draft) => {
-    const key = `${draft.ruleId}\u0000${draft.pageUrl}`;
-    const n = siteOccurrence.get(key) ?? 0;
-    siteOccurrence.set(key, n + 1);
-    const rule = getSiteRule(draft.ruleId);
-    return {
-      id: fingerprint("site", draft.ruleId, routeKey(draft.pageUrl), String(n)),
-      pageUrl: draft.pageUrl,
-      ruleId: draft.ruleId,
-      severity: draft.severity,
-      message: draft.message,
-      why: rule?.summary,
-      fix: draft.fix?.snippet,
-    };
-  });
-
   // --- Link audit over the healthy crawled page set ----------------------
   //
   // `effectiveMaxPages`, not `maxPages`. The crawl was told the selection is
@@ -854,6 +828,68 @@ export async function runAudit(
       }),
   });
   warnings.push(...linkReport.diagnostics.warnings);
+
+  // --- What the sitemap promises -----------------------------------------
+  //
+  // Runs here, after the link audit, so it can skip every URL the crawl or
+  // the link engine already answered. On a site whose sitemap and link graph
+  // describe the same pages that is nearly all of them; where they diverge,
+  // the leftovers are exactly what `sitemap.entry.unreachable` is about.
+  //
+  // This is also why the cross-page rules moved below the link audit: they
+  // used to run before it and could not see any of this.
+  const sitemapEntries = discovery
+    ? await probeSitemapEntries(
+        discovery.urls.map((entry) => entry.loc),
+        {
+          crawled: new Map(
+            crawlResult.pages.map((page) => [page.fetch.finalUrl, page.fetch.status]),
+          ),
+          checked: new Map(Object.values(linkReport.checks).map((check) => [check.url, check])),
+          maxProbes: effectiveMaxPages,
+          signal: options.signal,
+          timeoutMs: options.timeoutMs,
+          allowInsecureTls: options.allowInsecureTls,
+        },
+      )
+    : undefined;
+
+  // --- Cross-page rules ---------------------------------------------------
+  const siteContext: SiteContext = {
+    origin,
+    pages: htmlPages,
+    matrix,
+    localeAxis,
+    discovery,
+    robots,
+    favicon,
+    sitemapEntries,
+    // Same index the matrix was built from, so a rule that groups by route
+    // and the grid that reports holes cannot disagree about which URLs are
+    // one page.
+    clusterRouteOf: clusters.routeOf,
+  };
+  // Fingerprints key on (rule, page, occurrence-within-that-pair) rather than
+  // a global index, so adding or reordering a rule cannot renumber unrelated
+  // findings and invalidate a stored baseline.
+  const siteOccurrence = new Map<string, number>();
+  const siteIssues: SiteIssue[] = lintSite(siteContext).map((draft) => {
+    const key = `${draft.ruleId}\u0000${draft.pageUrl}`;
+    const n = siteOccurrence.get(key) ?? 0;
+    siteOccurrence.set(key, n + 1);
+    const rule = getSiteRule(draft.ruleId);
+    return {
+      id: fingerprint("site", draft.ruleId, routeKey(draft.pageUrl), String(n)),
+      pageUrl: draft.pageUrl,
+      ruleId: draft.ruleId,
+      severity: draft.severity,
+      message: draft.message,
+      why: rule?.summary,
+      fix: draft.fix?.snippet,
+      rigor: draft.rigor,
+      sources: draft.sources,
+    };
+  });
 
   const brokenLinks: BrokenLink[] = [];
   for (const { pageUrl, broken } of linkReport.brokenByPage) {

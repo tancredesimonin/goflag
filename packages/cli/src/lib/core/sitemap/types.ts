@@ -98,19 +98,11 @@ export interface SitemapDiagnostics {
   /** Human-readable warnings (malformed XML, gzip failure, caps hit, ...). */
   warnings: string[];
 
-  // --- Strengthened analysis (all optional; populated by analyzeSitemapHealth) ---
-  /** Entry reachability tally (probed via the link engine's checkLink). */
-  reachable?: { checked: number; ok: number; broken: number; redirected: number };
-  /** Pages found by crawl/link-scan but absent from the sitemap. */
-  orphanCount?: number;
-  /** Entries with missing / malformed / future-dated `<lastmod>`. */
-  lastmodIssues?: number;
-  /** Entries mix http and https. */
-  mixedProtocol?: boolean;
-  /** Entries mix hosts (e.g. www vs apex). */
-  mixedHost?: boolean;
-  /** Sitemap entries disallowed by robots.txt. */
-  robotsConflicts?: number;
+  // Six analysis fields used to be declared here, for an
+  // `analyzeSitemapHealth` that was never written — so not one of them ever
+  // held a value. Every one is now a rule that says the same thing with a URL
+  // attached, which is what made them worth having in the first place, and
+  // `docs/sitemap-robots-plan.md` §6 asked for exactly this.
 }
 
 /**

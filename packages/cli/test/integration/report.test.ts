@@ -46,6 +46,14 @@ describe("runAudit report pipeline", () => {
       expect(typeof issue.pageUrl).toBe("string");
       expect(typeof issue.ruleId).toBe("string");
       expect(["error", "warning", "info"]).toContain(issue.severity);
+
+      // End to end, on a real crawl: the rigor survives from the rule
+      // descriptor to the JSON somebody reads in CI. Asserted on the report
+      // rather than on the converter, because everything between the two is
+      // exactly where it used to be dropped.
+      expect(issue.rigor, issue.ruleId).toBeDefined();
+      expect(issue.sources?.length, issue.ruleId).toBeGreaterThan(0);
+      expect(issue.expected, issue.ruleId).toBeTruthy();
     }
 
     // Verdict is not green (reciprocity gap at minimum) -> non-zero exit.
