@@ -1,12 +1,22 @@
-import { getTranslations } from "next-intl/server";
+import { staticTranslator } from "@/i18n/static";
+import { ogImage, ogImageMetadata } from "@/lib/seo/og";
 
-import { OG_CONTENT_TYPE, OG_SIZE, ogImage } from "@/lib/seo/og";
+/** The card's copy, read once and used by both exports below. */
+async function card(params: Promise<{ locale: string }>) {
+  const { locale } = await params;
+  const t = staticTranslator(locale);
 
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
+  return { locale, title: t("changelog.title"), subtitle: t("changelog.lead") };
+}
 
-export default async function Image({ params }: { params: { locale: string } }) {
-  const t = await getTranslations({ locale: params.locale, namespace: "changelog" });
+export async function generateImageMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale, title } = await card(params);
 
-  return ogImage({ title: t("title"), subtitle: t("lead"), label: "changelog" });
+  return ogImageMetadata(title, locale);
+}
+
+export default async function Image({ params }: { params: Promise<{ locale: string }> }) {
+  const { title, subtitle } = await card(params);
+
+  return ogImage({ title, subtitle, label: "changelog" });
 }
