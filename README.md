@@ -1,9 +1,8 @@
-# Goflag
+# goflag
 
-> **A lean CLI that flags the site problems humans can't catch at scale.**
-> Point it at a URL and get four things: broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.
+A CLI that audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata — and a Next.js library that produces the HTML it would have nothing to say about.
 
-[![node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](./package.json)
+[![node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](https://github.com/tancredesimonin/goflag/blob/main/package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
 Goflag crawls a site once and judges what it found. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
@@ -13,7 +12,24 @@ search: a `hreflang` that points at a 404, a canonical that silently
 de-indexes a page, a `robots.txt` that contradicts every `<meta name="robots">`
 on the site. A human cannot check those on 400 pages. That is the whole job.
 
-## What it checks
+## Getting started
+
+```sh
+npx @goflag/cli https://example.com          # one-off, nothing installed
+pnpm add -D @goflag/cli                      # then: pnpm goflag https://example.com
+```
+
+Install it as a dev dependency once you run it more than once — in a script, in
+CI, in a git hook. `npx` is for trying it. The package is `@goflag/cli`; the
+command it installs is `goflag`. Everything under the brand lives in the
+`@goflag` scope; the bare `goflag` name on npm is a deprecated signpost pointing
+here and carries no code.
+
+- Node `>=22`.
+- Nothing else for a static audit. Headless rendering needs Chromium, which is **not** installed with goflag — `playwright` is an optional peer dependency. Add it only if you audit client-rendered pages without `--static`: `pnpm add -D playwright && pnpm exec playwright install chromium`.
+- Working in this repository instead of consuming it: `pnpm install`, then see [AGENTS.md](https://github.com/tancredesimonin/goflag/blob/main/AGENTS.md).
+
+## What it does
 
 - **Broken links** — scrapes every crawled page, dedupes targets globally (a footer link on 500 pages is probed once), and checks each with `HEAD`→`GET` fallback, redirect-chain/loop detection, soft-404 and anti-bot (403/429) triage. Broken links are mapped back to the pages that reference them.
 - **Missing translation pages** — builds a `route × locale` matrix and flags every route that exists in one locale but is missing in another, plus hreflang reciprocity gaps (`A → B` with no `B → A`), missing `x-default`, and locale tags naming a language, script or region that does not exist. Rows are keyed by pathname, unless the site declares its translation clusters — either with `xhtml:link` in the sitemap, or with reciprocal `hreflang` between two crawled pages' `<head>`. Then those declarations decide which URLs are one page, whatever their slugs, and the run reports `diagnostics.declaredClusters`. The sitemap source survives `--coverage structural`, where the two locales of a slug-translating family are rarely both sampled; the `<head>` source needs both pages in hand and is what fixes the common site that declares properly there and nothing in its sitemap.
@@ -43,31 +59,11 @@ fails loudly rather than passing quietly. It is also why `--static` is the right
 default in CI: it needs no browser, and it cannot mistake a broken page for a
 fine one.
 
-## Install
+## Where it runs
 
-Requires Node `>=22`.
+Two packages ship to npm from a tag, published by GitLab CI over OIDC with no stored credential: `@goflag/cli` (`v*`) and `@goflag/next` (`next-v*`). The documentation site `apps/website` runs at [goflag.tech](https://goflag.tech), with `develop.goflag.tech` alongside it, both deployed with Kamal onto the shared OVH host described in the `infrastructure` repository.
 
-```sh
-npx @goflag/cli https://example.com          # one-off, nothing installed
-pnpm add -D @goflag/cli                      # then: pnpm goflag https://example.com
-```
-
-Install it as a dev dependency once you run it more than once — in a script, in
-CI, in a git hook. `npx` is for trying it.
-
-The package is `@goflag/cli`; the command it installs is `goflag`. Everything
-under the brand lives in the `@goflag` scope; the bare `goflag` name on npm is a
-deprecated signpost pointing here and carries no code.
-
-Headless rendering needs Chromium, which is **not** installed with goflag —
-`playwright` is an optional peer dependency. Add it only if you audit
-client-rendered pages without `--static`:
-
-```sh
-pnpm add -D playwright && pnpm exec playwright install chromium
-```
-
-## Getting started
+## Your first audit
 
 Five steps, in this order. Each one is explained in full further down; this is
 the sequence.
@@ -141,15 +137,15 @@ npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
-crawl, no network. Every entry carries its scope, severity and summary; the
-twenty-three page rules and four prose rules also carry a rigor, the documents they
-cite and — where a remedy is a line of code — a fix snippet. Cross-page rules
-may carry them too, and the robots family does; the three hreflang and sitemap
-rules that predate the field still emit `rigor: null` with an empty `sources`,
-because choosing their citations is work nobody has done and inventing an
-authority is worse than admitting the gap. Write your consumer against that. The same document
-ships inside the package as `rules.json`, if you would rather read it than run
-anything.
+crawl, no network. It ships fifty-six rules — twenty-three page rules,
+twenty-eight site rules and five prose rules — and every entry carries its
+scope, severity and summary. All but one also carry a rigor, the documents they
+cite and, where a remedy is a line of code, a fix snippet. The exception is
+`hreflang.sitemap-mismatch`, which emits `rigor: null` with an empty `sources`
+because no specification says which of the two declarations is wrong; inventing
+an authority there is worse than admitting the gap. Write your consumer against
+that. The same document ships inside the package as `rules.json`, if you would
+rather read it than run anything.
 
 The flag list below is data too:
 
@@ -623,7 +619,7 @@ enforces it rather than trusting memory.
 ## The other half: `@goflag/next`
 
 goflag tells you what is wrong. It does not tell you how to stop writing it
-wrong. [`@goflag/next`](packages/next) is a route registry for the Next.js App
+wrong. [`@goflag/next`](https://github.com/tancredesimonin/goflag/tree/main/packages/next) is a route registry for the Next.js App
 Router that produces the HTML this auditor would have nothing to say about.
 
 ```ts
@@ -641,7 +637,7 @@ held in agreement by vigilance, and their disagreement is what goflag reports as
 `hreflang.sitemap-mismatch`. Projecting both from one registry makes that
 finding unrepresentable. Full documentation at
 [goflag.tech/docs/next](https://goflag.tech/docs/next), and the API reference in
-[`packages/next/README.md`](packages/next/README.md).
+[`packages/next/README.md`](https://github.com/tancredesimonin/goflag/blob/main/packages/next/README.md).
 
 ## Develop locally
 
@@ -667,8 +663,17 @@ eslint once at the root and then fans out to any package that defines its own
 across workspace packages with `pnpm -r`. To work on one package, filter:
 `pnpm --filter @goflag/cli test`.
 
-The engine is framework-agnostic and lives in [`packages/cli/src/lib/core/`](packages/cli/src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`packages/cli/src/lib/rules/`](packages/cli/src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`packages/cli/src/report/`](packages/cli/src/report) and [`packages/cli/src/cli.ts`](packages/cli/src/cli.ts).
+The engine is framework-agnostic and lives in [`packages/cli/src/lib/core/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`packages/cli/src/lib/rules/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`packages/cli/src/report/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/report) and [`packages/cli/src/cli.ts`](https://github.com/tancredesimonin/goflag/blob/main/packages/cli/src/cli.ts).
 
 ## License
 
 MIT.
+
+## Learn more
+
+- Strategy and goals: [STRATEGY.md](https://github.com/tancredesimonin/goflag/blob/main/STRATEGY.md)
+- What comes next: [ROADMAP.md](https://github.com/tancredesimonin/goflag/blob/main/ROADMAP.md)
+- Working in this repository (human or agent): [AGENTS.md](https://github.com/tancredesimonin/goflag/blob/main/AGENTS.md)
+- The overall development plan: [docs/spec-and-lib-plan.md](https://github.com/tancredesimonin/goflag/blob/main/docs/spec-and-lib-plan.md)
+- The rule catalogue and its architecture: [docs/rules-catalog-plan.md](https://github.com/tancredesimonin/goflag/blob/main/docs/rules-catalog-plan.md)
+- Publishing `@goflag/next`: [docs/publishing.md](https://github.com/tancredesimonin/goflag/blob/main/docs/publishing.md)
