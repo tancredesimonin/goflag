@@ -11,9 +11,13 @@ wrong. `@goflag/next` is the other half: a route registry for the Next.js App
 Router that produces the HTML goflag would have nothing to say about.
 
 The point is not convenience. A sitemap derived separately from the metadata is
-two derivations of one truth, held in agreement by vigilance, and their
-disagreement is what the [`hreflang.sitemap-mismatch`](/docs/rules) rule
-reports. Projecting both from one registry makes that finding unrepresentable.
+two derivations of one truth, held in agreement by vigilance, and goflag has two
+checks for the day vigilance lapses:
+[`hreflang.cluster-incomplete`](/docs/rules/hreflang.cluster-incomplete) when the
+sitemap publishes a locale the `<head>` never names, and
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) — a question
+rather than a finding — for the other direction. Projecting both artefacts from
+one registry makes either one unrepresentable.
 
 ## Install
 

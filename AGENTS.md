@@ -1,179 +1,109 @@
 # AGENTS.md
 
-## What this is
+Two products in one pnpm workspace, and they must stay independently useful: `@goflag/cli`
+audits any site, `@goflag/next` produces the HTML for one. `@goflag/og` is the remedy for the
+two rules the auditor could only report — the share card, and the `.ico` container no Next
+convention emits. A rule never reads raw HTML — it judges the `Extraction` model — and a rule
+with no citable source states the question (`prose.ts`, `site-prose.ts`) instead of answering
+it.
 
-Goflag is a **Node/TypeScript CLI**. It crawls a site and reports broken links,
-missing translation pages, a robots.txt that contradicts the pages it serves,
-and missing or misconfigured SEO metadata. The JSON
-report is the source of truth. The CLI itself has no UI: nothing it does
-requires a browser to look at.
+## Commands
 
-The repository is a pnpm workspace (`packages/*`, `apps/*`) holding two
-published packages and one deployed app:
+| Goal                       | Command                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Install                    | `corepack enable && pnpm install`                                                |
+| Develop                    | `pnpm dev <url> [flags]` (CLI from source, tsx) · `pnpm dev:website` (port 3004) |
+| Test                       | `pnpm test:unit` · `pnpm test:integration`                                       |
+| Lint / typecheck           | `pnpm lint` · `pnpm typecheck` · `pnpm format:check`                             |
+| Build                      | `pnpm build`                                                                     |
+| Release                    | `pnpm release` / `pnpm release --dry-run`, on a branch cut off `develop`         |
+| Audit the site with itself | `pnpm --filter @goflag/website seo`                                              |
 
-- `packages/cli` (`@goflag/cli`) — the auditor. Published.
-- `packages/next` (`@goflag/next`) — the library that produces what the auditor
-  checks for: declare a site's routes once, derive metadata, the hreflang
-  cluster, the sitemap and robots.txt from them. Published. Plan:
-  `docs/next-plan.md`.
-- `apps/website` — goflag.tech. Deployed, not published, and the first consumer
-  of `@goflag/next`. It audits itself with goflag in its own pipeline
-  (`pnpm --filter @goflag/website seo`), which is the closest thing to an
-  end-to-end test the two products have.
-
-**Invariant I3, enforced by lint**: neither `packages/next` nor `apps/**` may
-import from `packages/cli`. The two products must stay independently useful.
-
-## Layout
-
-- `packages/cli/src/lib/core/**` — framework-agnostic engine: crawl, discovery,
-  page selection (`coverage.ts` — which pages get audited, by the shape of the
-  site rather than by a cap; plan: `docs/coverage-plan.md`), fetch/extract
-  (static and headless Chromium), link audit (`links/`), the i18n matrix and
-  reciprocity check, probes (`robots`, `sitemap`, `manifest`), and the pure
-  `lint()` / `lintSite()` runners. The selection is made in `report/build.ts`
-  before the crawl runs, and it also raises the crawl's `maxPages`.
-- `packages/cli/src/lib/rules/**` — the SEO metadata rule catalog. `index.ts`
-  is the registry: each rule is a sourced descriptor with a pure evaluator over
-  the `Extraction` model (`extraction/`), never over raw HTML. `sources/` is
-  the cited source-of-truth catalog, `profiles/` the `--profile` policy
-  overlay, `evaluate.ts` the runner; `core/lint.ts` wires them to a `Page`.
-  `prose.ts` + `advisory.ts` are the questions goflag states but refuses to
-  answer — they carry evidence to an agent and never a verdict. Design and
-  remaining phases: `docs/rules-catalog-plan.md`.
-- `packages/cli/src/lib/runner/**` — boot-and-audit support for `--start`.
-- `packages/next/src/**` — the route registry. `site.ts` (`defineSite`),
-  `routes.ts` (families, the registry, sitemap and robots projections),
-  `metadata.ts`, `locate.ts` (canonical + hreflang cluster), `locale/` (tag
-  forms; `generated.ts` is written by `pnpm --filter @goflag/next
-generate:locales` — edit the generator, not the file). `conformance.test.ts` judges the library's own output by invariants
-  named after the rules the CLI reports — provisional, and meant to be replaced
-  by the real catalogue once it is exported.
-- `packages/cli/src/report/**` — the `GoflagReport` schema (`types.ts`), the
-  orchestrator (`runAudit` in `build.ts`), and the terminal/summary/diff
-  renderers.
-- `packages/cli/src/cli.ts`, `packages/cli/src/cli-args.ts` — argument parsing,
-  orchestration, exit codes.
-- `packages/cli/test/**` — Hono fixture servers + integration tests (some use
-  real Chromium).
-- `packages/cli/fixtures/**` — static fixture sites. Prettier-ignored on
-  purpose: they are captured verbatim and must stay byte-for-byte identical.
-- `apps/website/**` — the marketing and documentation site (`goflag.tech`).
-  Next.js + next-intl (`en`, `fr`, `es`, `pt`, default `en`), MDX content
-  under `content/`. It is audited by the CLI it documents:
-  `pnpm --filter @goflag/website seo`.
-- `Dockerfile`, `config/deploy*.yml`, `.kamal/**` — how that site is built and
-  shipped. See **Deploy** below.
-- `tools/**` — published artefacts that are not products, deliberately outside
-  the workspace globs. Nothing here is built, tested or released by the
-  workspace scripts.
-
-## Toolchain
-
-- Node `>=22` (`engines`); `.nvmrc` pins `24.19.0`.
-- Repo pins pnpm via **`packageManager`** in the root `package.json` — that is
-  the only place the version is written. Use `corepack enable` and let it read
-  the pin; do not add a `corepack prepare pnpm@<version> --activate` line, which
-  only creates a second number to keep in sync.
-- Headless SPA tests need Chromium. `playwright` is a devDependency of the CLI
-  package, not of the root, so install it from that package:
-  `pnpm --filter @goflag/cli exec playwright install chromium`.
-
-## Verify / test
-
-```sh
-pnpm lint && pnpm typecheck && pnpm format:check
-pnpm build
-pnpm test:unit          # no network / no Chromium
-pnpm test:integration   # boots fixture servers; SPA tests use real Chromium
-```
-
-`lint`, `format:check` and `format` run once at the root over the whole
-repository. `build`, `typecheck`, `test*` and `clean` fan out with `pnpm -r`, so
-they cover every workspace package. To work on one package only, filter:
+`format` and `format:check` run once at the root over the whole repository; `build`,
+`typecheck`, `test*` and `clean` fan out with `pnpm -r`; `lint` does both — root ESLint
+first, then `pnpm -r --if-present lint`. To work on one package:
 `pnpm --filter @goflag/cli test`.
 
-A husky `pre-commit` hook runs Prettier over staged files, so `format:check`
-should never be what CI tells you about. It formats only — linting and
-typechecking stay in the commands above, and in CI. Skip it with
-`git commit --no-verify` when you must; CI still has the last word.
+`test:unit` needs no network and no browser. `test:integration` boots Hono fixture servers
+and drives real Chromium. `playwright` is a devDependency of `packages/cli`, not of the root,
+so install the browser from that package:
+`pnpm --filter @goflag/cli exec playwright install chromium`.
 
-## Run the CLI from source
+The pnpm version is written once, in `packageManager`. Never add a
+`corepack prepare pnpm@<x> --activate` line: it is a second number to keep in sync.
 
-```sh
-pnpm dev https://example.com --static --depth 1
-```
+## Invariants
 
-Root `dev` is `pnpm --filter @goflag/cli dev` (tsx); arguments after the script
-name are forwarded to the CLI.
+- **I1** — a published library's runtime depends on nothing: neither `packages/next` nor
+  `packages/og` declares any `dependencies`, and `next` and `react` are peers.
+- **I2** — goflag stays useful alone, on a site that does not use the library.
+- **I3** — `packages/next` and `apps/**` must not import from `packages/cli`
+  (eslint `no-restricted-imports`, `eslint.config.mjs`). Share by extracting a third package,
+  never by reaching across.
+- **I4** — a `@goflag/spec` package is extracted only once two real consumers want it.
+- **I5** — the library's assumed scope is the Next.js App Router.
+- **I6** — the catalogues are generated, not written: `packages/cli/rules.json` and
+  `packages/cli/flags.json` come from the registries under `src/lib/rules/` and
+  `src/lib/flags/`, and `catalog.test.ts` in each compares the committed file byte for byte.
+  The pre-commit hook regenerates them; `--no-verify` skips the hook, never the test.
 
-Exit codes: `0` clean, `1` findings found, `2` fatal.
+## Pitfalls
 
-## Releasing
+- `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and both
+  `CHANGELOG.md` by relative path at build time — it cannot import them (I3). That is why the
+  Dockerfile copies the workspace root, and why `packages/cli/CHANGELOG.md` is listed by name
+  in `deploy-develop`'s `changes:` rules.
+- Never hand-edit the version pins in `README.md` or `apps/website/src/lib/constants.ts`:
+  `pnpm release` rewrites both, and `constants.test.ts` fails until it has.
+- `packages/cli/README.md` and `packages/cli/LICENSE` are copied from the repository root by
+  `prepack` and are gitignored. Authoring them creates a second source of truth.
+- `packages/next/src/locale/generated.ts` is enumerated from Node's ICU data — edit
+  `packages/next/scripts/generate-locale-types.ts`, then
+  `pnpm --filter @goflag/next generate:locales`.
+- The `playwright` devDependency of `packages/cli` and the `mcr.microsoft.com/playwright:`
+  image tag in `.gitlab-ci.yml` are one pin in two files. They must move together, or
+  `chromium.executablePath()` points at a browser build that is not in the image.
+- `pnpm-workspace.yaml` sets `minimumReleaseAge: 4320` — a dependency published in the last
+  three days does not resolve at all, and no lockfile is written.
+- `apps/website` refuses to build when `CI` or `APP_ENV=production` is set without
+  `NEXT_PUBLIC_WEBSITE_FRONTEND_URL`. Locally the fallback applies, so a green local build
+  proves nothing about that path.
+- Tag the develop side of a merge, never the merge commit. A tag on a merge commit is
+  unreachable from `develop`, `git describe` then finds nothing, and `commit-and-tag-version`
+  replays the entire history into the changelog.
+- `**/fixtures/**` is prettier-ignored on purpose — both `packages/cli/fixtures` and
+  `packages/cli/test/fixtures`: captured verbatim, and compared byte for byte.
 
-Two packages, two tag namespaces: `v*` for the CLI, `next-v*` for the library.
-Both are **protected tags**, creatable by Maintainers — which means the release
-bot, and you when CI is down.
+## Never do
 
-`main` and `develop` accept a push from **no one**, CI included. So the version
-bump and the changelog are written on a branch and reviewed like any other
-commit; nothing but a tag is ever written back to the repository by a runner.
+- `git push --tags` and `git push --follow-tags`, from CI or by hand. GitLab declines the
+  whole payload when any single ref in it is refused — on 2026-08-08 a rejected branch took
+  two valid tags down with it. One ref per push.
+- Pushing to `main` or `develop`. Both refuse a push from everyone, CI included; the version
+  bump and the changelog land through a merge request like any other commit.
+- Creating a `v*`, `next-v*` or `og-v*` tag by hand, or running `npm publish`. The `tag` job
+  creates the tag; `publish:npm`, `publish:next` and `publish:og` trade a short-lived OIDC
+  token for the right to publish. There is no npm credential in this repository to reuse.
+  The one exception is a package's **first** version, which npm forces out by hand because a
+  trusted publisher attaches to a package that already exists — `docs/publishing.md`.
+- `kamal deploy` to production from a workstation, and `kamal proxy reboot` as part of a
+  deploy — that proxy serves 80/443 for every app on the shared host.
+- Reading or committing `.kamal/secrets-common`, or any `.env*`.
 
-```
-pnpm release              on a branch cut off develop — bumps what moved,
-                          writes the changelogs, commits
-  → merge request into develop
-  → merge develop into main         the decision to publish
-  → job `tag` on main               reads each manifest, creates the missing tag
-                          on the develop side of the merge, so the next release can see it
-  → job `publish:npm` / `publish:next`   OIDC, one package each
-```
+## Conventions
 
-`pnpm release` (`scripts/release.mjs`) holds every judgement: a release only
-happens when a package's **published surface** moved (its `src`, its manifest,
-and the files that reach its tarball), so a `fix(ci)` spends no version number.
-The `tag` job decides nothing — it compares the version on `main` against the
-tags on the remote and creates what is missing, which makes it idempotent and
-safe to re-run.
-
-There is no npm credential in CI: each `publish:*` job trades a short-lived OIDC
-token for the right to publish its one package. Pushing the tag needs
-`RELEASE_TOKEN`, a project access token with the Maintainer role.
-
-Never `git push --tags` or `--follow-tags` from CI. GitLab declines an entire
-push payload when any single ref in it is refused, so bundling refs turns one
-rejection into all of them — the 2026-08-08 failure, where a refused branch took
-two valid tags down with it.
-
-## Deploy (apps/website)
-
-| Branch    | Destination               | URL                             |
-| --------- | ------------------------- | ------------------------------- |
-| `develop` | `kamal deploy -d develop` | `https://develop.goflag.tech`   |
-| `main`    | `kamal deploy`            | `https://goflag.tech` (+ `www`) |
-
-Both run from `.gitlab-ci.yml` on push, onto the shared OVH host described in
-the `infrastructure` repository. DNS, TLS, the status page and the host metrics
-all live there; nothing about them is configured here.
-
-They are **two builds, not one image promoted twice**. Next bakes the origin,
-the robots policy and the analytics script into its output, so the environment
-has to be chosen before `next build` runs — that is what `builder.args` in
-`config/deploy.yml` and `config/deploy.develop.yml` set. `APP_ENV` is also
-passed at runtime, because the container's environment is what
-`lib/seo/site.ts` reads when the server module loads: production says `allow`,
-anything else says `Disallow: /` and adds `X-Robots-Tag: noindex`. The two come
-from one `indexable` flag on `defineSite`, so they cannot disagree — which is
-what goflag reports as `robots.conflict` when they do.
-
-The image builds only `@goflag/website` — the Dockerfile installs with
-`--filter "@goflag/website..."`. `packages/cli` reaches users through npm, and
-its devDependencies would drag Playwright into a container that never runs a
-test.
-
-Local dry run, from a clean checkout:
-
-```sh
-SERVER_IP=<host> KAMAL_REGISTRY_USERNAME=<token-user> KAMAL_REGISTRY_PASSWORD=<token> \
-  kamal deploy -d develop
-```
+- Conventional Commits, scoped (`feat(cli):`, `fix(website):`, `chore(release):`). Subjects
+  in this repository are declarative sentences, not imperatives.
+- Branches are `feat/` · `fix/` · `chore/` · `ci/` · `docs/` plus a sentence-shaped slug.
+  Everything merges into `develop`; merging `develop` into `main` is the decision to publish.
+- Three tag namespaces, all protected: `v*` for `@goflag/cli`, `next-v*` for `@goflag/next`,
+  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release, or the
+  `tag` job pushes a ref the remote refuses.
+- `pnpm release` decides whether a version is spent: only a `feat`/`fix`/`perf`/breaking
+  commit touching a package's declared **published surface** earns one, so a `fix(ci)` spends
+  nothing.
+- Comments here carry the reasoning at length, next to the code that needed it —
+  `.gitlab-ci.yml`, `pnpm-workspace.yaml` and the husky hooks are the pattern. Removing a
+  constraint means removing its paragraph too.
+- `docs/*-plan.md` are authored design documents, not generated. Several carry counts and
+  versions that are several releases stale; verify against the code before repeating one.

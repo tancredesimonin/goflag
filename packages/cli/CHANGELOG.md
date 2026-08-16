@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.11](https://github.com/tancredesimonin/goflag/compare/v0.2.10...v0.2.11) (2026-08-16)
+
+
+### Features
+
+* **cli:** keep the sitemap document tree, and judge what it makes judgeable ([92fb93e](https://github.com/tancredesimonin/goflag/commit/92fb93ee258c3f67ddb2bbed66b3ec7b9a09252b))
+* **cli:** let a site be asked a question, not only told a verdict ([2a7cf21](https://github.com/tancredesimonin/goflag/commit/2a7cf21e762da94b795a322e35e8be698011b585))
+* **cli:** source hreflang.missing, and say why the other one cannot be ([2c0669f](https://github.com/tancredesimonin/goflag/commit/2c0669faa4996ffd88efbc5f79a735c3a4769c8a))
+* **cli:** split the sitemap mismatch into the half Google backs and the half it does not ([3b0d2fa](https://github.com/tancredesimonin/goflag/commit/3b0d2fa4d2030eec45fc2ec0fba2e605dc2bd88a))
+
+
+### Bug Fixes
+
+* **cli:** stop reading `/doc/` as a locale, and prove the tree off the wire ([cf1bf0c](https://github.com/tancredesimonin/goflag/commit/cf1bf0cf0da7af3475aab81939fba890aba7306e))
+
 ## [0.2.10](https://github.com/tancredesimonin/goflag/compare/v0.2.9...v0.2.10) (2026-08-15)
 
 

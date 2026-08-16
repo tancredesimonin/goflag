@@ -7,6 +7,7 @@ import type {
   SiteDiscovery,
   SiteDiscoverySource,
   SitemapDiagnostics,
+  SitemapDocument,
   SitemapUrlEntry,
 } from "./types";
 
@@ -57,6 +58,10 @@ interface FetchedDoc {
    * what it answered is that there is nothing there.
    */
   error?: string;
+  /** Uncompressed length of `body`, in bytes. `0` when there is no body. */
+  byteLength: number;
+  /** The payload was inflated, or the server declared `content-encoding: gzip`. */
+  gzipped: boolean;
 }
 
 /**
@@ -148,10 +153,25 @@ export async function discoverSitemap(
 
     const collected: SitemapUrlEntry[] = [];
     const seen = new Set<string>();
+    const documents: SitemapDocument[] = [];
     let truncated = false;
 
+    documents.push({
+      url: candidate.url,
+      status: doc.status,
+      byteLength: doc.byteLength,
+      gzipped: doc.gzipped,
+      kind: parsed.kind === "index" ? "index" : "urlset",
+      childLocs: parsed.kind === "index" ? [...parsed.sitemaps] : [],
+      // What the document declares, not what survived dedupe and the cap: the
+      // ceiling is on the file's contents, and a post-dedupe count would answer
+      // a question the protocol never asked.
+      urlCount: parsed.kind === "urlset" ? parsed.urls.length : 0,
+      declaredInRobots: candidate.declaredInRobots,
+    });
+
     if (parsed.kind === "urlset") {
-      truncated = pushEntries(collected, seen, parsed.urls, maxUrls);
+      truncated = pushEntries(collected, seen, parsed.urls, maxUrls, candidate.url);
     } else {
       diagnostics.isIndex = true;
       const children = parsed.sitemaps.slice(0, maxSitemaps);
@@ -169,17 +189,47 @@ export async function discoverSitemap(
         }
         const childDoc = await fetchDoc(childUrl, options);
         if (!childDoc.body) {
+          // Recorded before the `continue`, so a child that could not be read
+          // is still a node of the tree. Dropping it here is what made the
+          // count in `childSitemapErrors` the only surviving trace of it.
+          documents.push({
+            url: childUrl,
+            status: childDoc.status,
+            byteLength: childDoc.byteLength,
+            gzipped: childDoc.gzipped,
+            kind: "unparsable",
+            childLocs: [],
+            urlCount: 0,
+            declaredInRobots: declaredUrls.includes(childUrl),
+            parentUrl: candidate.url,
+          });
           diagnostics.childSitemapErrors += 1;
           diagnostics.warnings.push(`Child sitemap unreachable: ${childUrl}`);
           continue;
         }
         const childParsed = parseSitemap(childDoc.body);
+        documents.push({
+          url: childUrl,
+          status: childDoc.status,
+          byteLength: childDoc.byteLength,
+          gzipped: childDoc.gzipped,
+          // A child that is itself an index is recorded as one. This run still
+          // treats it as an error below, because that is what it has always
+          // done and replacing that verdict needs a source no specification
+          // provides — see `docs/sitemap-robots-plan.md` §4.3. The tree now
+          // says which of the two it was, which is the part that was lost.
+          kind: childParsed.kind === "unknown" ? "unparsable" : childParsed.kind,
+          childLocs: childParsed.kind === "index" ? [...childParsed.sitemaps] : [],
+          urlCount: childParsed.kind === "urlset" ? childParsed.urls.length : 0,
+          declaredInRobots: declaredUrls.includes(childUrl),
+          parentUrl: candidate.url,
+        });
         if (childParsed.kind !== "urlset") {
           diagnostics.childSitemapErrors += 1;
           diagnostics.warnings.push(`Child sitemap not a urlset: ${childUrl}`);
           continue;
         }
-        if (pushEntries(collected, seen, childParsed.urls, maxUrls)) truncated = true;
+        if (pushEntries(collected, seen, childParsed.urls, maxUrls, childUrl)) truncated = true;
       }
     }
 
@@ -197,6 +247,7 @@ export async function discoverSitemap(
       baseUrl,
       source: candidate.source,
       urls: collected,
+      documents,
       diagnostics,
       truncated,
     };
@@ -208,7 +259,15 @@ export async function discoverSitemap(
   }
 
   diagnostics.warnings.push("No sitemap found.");
-  return { origin, baseUrl, source: "well-known", urls: [], diagnostics, truncated: false };
+  return {
+    origin,
+    baseUrl,
+    source: "well-known",
+    urls: [],
+    documents: [],
+    diagnostics,
+    truncated: false,
+  };
 }
 
 /**
@@ -245,6 +304,10 @@ async function crawlSite(
     baseUrl,
     source: "crawl",
     urls,
+    // No document declared these: the crawl found them by following links. An
+    // empty tree is the honest answer, and the rules that read it are the ones
+    // that judge documents — which this run has none of.
+    documents: [],
     diagnostics,
     truncated: result.truncated,
   };
@@ -256,12 +319,16 @@ function pushEntries(
   seen: Set<string>,
   entries: SitemapUrlEntry[],
   cap: number,
+  documentUrl: string,
 ): boolean {
   for (const entry of entries) {
     if (out.length >= cap) return true;
     if (seen.has(entry.loc)) continue;
     seen.add(entry.loc);
-    out.push(entry);
+    // Stamped here rather than in the parser: the parser reads a body and has
+    // no idea which URL it came from, and the first document to claim a `<loc>`
+    // is the one whose scope that entry is judged against.
+    out.push({ ...entry, documentUrl });
   }
   return out.length >= cap;
 }
@@ -299,7 +366,7 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
         accept: "application/xml,text/xml,application/gzip;q=0.9,*/*;q=0.5",
       },
     });
-    if (!res.ok) return { status: res.status };
+    if (!res.ok) return { status: res.status, byteLength: 0, gzipped: false };
 
     const encoding = res.headers.get("content-encoding")?.toLowerCase() ?? "";
     const looksGzip = url.toLowerCase().endsWith(".gz") || encoding.includes("gzip");
@@ -307,24 +374,32 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
       // undici transparently decodes a `content-encoding: gzip` response,
       // so only inflate manually for `.gz` payloads served as raw bytes.
       const buf = Buffer.from(await res.arrayBuffer());
+      // Measured on the inflated text either way: the protocol's ceiling is
+      // what a consumer must parse, not what crossed the wire, and a gzipped
+      // 50 MB sitemap is over the limit however small the transfer was.
       try {
-        return { status: res.status, body: gunzipSync(buf).toString("utf8") };
+        return withLength(res.status, gunzipSync(buf).toString("utf8"), true);
       } catch {
         // Already-decoded (or not really gzip) — fall back to raw text.
-        return { status: res.status, body: buf.toString("utf8") };
+        return withLength(res.status, buf.toString("utf8"), true);
       }
     }
-    return { status: res.status, body: await res.text() };
+    return withLength(res.status, await res.text(), false);
   } catch (err) {
     // Timeouts land here, and a timeout is not a 404. Conflating them is what
     // let a 3.5 MB sitemap intermittently read as "this site has no sitemap",
     // which silently cost the crawl its seeds and 90% of its coverage.
     const reason = err instanceof Error ? err.message : String(err);
-    return { status: 0, error: reason || "network error" };
+    return { status: 0, error: reason || "network error", byteLength: 0, gzipped: false };
   } finally {
     cleanup();
     restoreTls();
   }
+}
+
+/** A read body, measured. `Buffer.byteLength` counts UTF-8 octets, not code units. */
+function withLength(status: number, body: string, gzipped: boolean): FetchedDoc {
+  return { status, body, byteLength: Buffer.byteLength(body, "utf8"), gzipped };
 }
 
 function relaxTlsIfRequested(enabled: boolean | undefined): () => void {

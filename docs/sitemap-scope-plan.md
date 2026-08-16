@@ -195,6 +195,14 @@ ne la signale aujourd'hui.
 Donc un **advisory**, pas une règle : goflag pose la question et refuse de
 trancher, ce qui est exactement le mécanisme du §7 de `rules-catalog-plan.md`.
 
+> **Le mécanisme existe depuis le 2026-08-15**, et X-4 en est la moitié de la
+> justification. Les advisories étaient par page — des `ProseRule` sur une
+> `Extraction` — et celui-ci a besoin du sitemap, du crawl et du graphe de
+> liens. `packages/cli/src/lib/rules/site-prose.ts` porte la version à portée
+> site, écrite pour `hreflang.sitemap-mismatch`, qui rendait un verdict sans
+> pouvoir dire de quel droit. X-4 n'a donc plus qu'à écrire sa question et sa
+> collecte de preuves : `SiteProseRule` + une entrée au registre.
+
 ```
 sitemap.unlisted-indexable   advisory
   La page répond 200, se déclare indexable, est atteinte par le crawl,
@@ -210,13 +218,13 @@ fonctionnalité crée le cas, donc elle arrive avec la question.
 
 ## 7. Phasage
 
-| Étape   | Contenu                                                                                    | État |
-| ------- | ------------------------------------------------------------------------------------------ | ---- |
-| **X-0** | `sitemap?: boolean` sur une route simple, `boolean \| (entry) => boolean` sur `collection` | ✅   |
-| **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs        | ✅   |
-| **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2              | ✅   |
-| **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)              | ⬜   |
-| **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue                                         | ⬜   |
+| Étape   | Contenu                                                                                     | État |
+| ------- | ------------------------------------------------------------------------------------------- | ---- |
+| **X-0** | `sitemap?: boolean` sur une route simple, `boolean \| (entry) => boolean` sur `collection`  | ✅   |
+| **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs         | ✅   |
+| **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2               | ✅   |
+| **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)               | ⬜   |
+| **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue — **le mécanisme existe** (§ ci-dessous) | ⬜   |
 
 X-3 n'est pas une migration mécanique : la question du §2 se pose avant le code.
 Si la réponse est « on liste tout », la fonctionnalité n'est pas ce qui débloque

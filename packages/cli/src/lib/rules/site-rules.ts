@@ -19,6 +19,7 @@
 
 import { splitRoute } from "../core/i18n";
 import { robotsAllows } from "../core/robots/match";
+import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
 
@@ -56,9 +57,13 @@ function rowOf(site: SiteContext, url: string, pathname: string): string {
   return site.clusterRouteOf?.(url) ?? splitRoute(pathname).route;
 }
 
-/** Route → locales the sitemap lists a URL for. */
+/**
+ * Route → locales the sitemap lists a URL for, counting only locales the site
+ * actually serves.
+ */
 function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
   const byRoute = new Map<string, Set<string>>();
+  const axis = new Set(site.localeAxis.locales.map((l) => l.toLowerCase()));
   for (const entry of site.discovery?.urls ?? []) {
     let pathname: string;
     try {
@@ -68,6 +73,13 @@ function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
     }
     const { locale } = splitRoute(pathname);
     if (locale === "x-default") continue;
+    // The axis is what decides. `splitRoute` reads a segment by **shape
+    // alone** — `bcp47.ts` says so in as many words, and `/de/` and `/api/`
+    // are indistinguishable to it. `api`, `doc` and `www` all pass the
+    // two-or-three-letter test, so a multilingual site with a `/doc/` section
+    // was handing these rules a locale named `doc` and being told to publish
+    // an `hreflang="doc"` alternate for it.
+    if (!axis.has(locale.toLowerCase())) continue;
     const route = rowOf(site, entry.loc, pathname);
     const set = byRoute.get(route) ?? new Set<string>();
     set.add(locale.toLowerCase());
@@ -87,11 +99,38 @@ function sorted(set: Set<string>): string[] {
  * variants of a route, so they compete with each other instead of consolidating
  * — and the tool that was supposed to notice was itself relying on the missing
  * tags to know the locales existed.
+ *
+ * ## Why `vendor-spec`, and why two sources
+ *
+ * The obligation and the mechanism come from different documents, and the rule
+ * cites both because an agent reading only one would draw the wrong conclusion.
+ *
+ * WHATWG defines the **mechanism** normatively: `rel="alternate"` with an
+ * `hreflang` attribute designates a translation. What it does not do is require
+ * anyone to emit one. No web standard says a multilingual site must declare its
+ * alternates; that requirement belongs to Google alone, which is why the rule
+ * claims `vendor-spec` and not `spec-required`, and why it stays silent on a
+ * single-locale site where the obligation has no subject.
+ *
+ * Google's document is unambiguous about it, re-read 2026-08-15: *"Each language
+ * version must list itself as well as all other language versions"*, and *"If two
+ * pages don't both point to each other, the tags will be ignored."*
+ *
+ * ## Why `error` under a merely vendor-spec requirement
+ *
+ * Rigor and severity are different axes, and this rule is where the difference
+ * shows. Rigor says how authoritative the requirement is — here, one vendor's.
+ * Severity says how bad the consequence is, and the consequence is total: the
+ * quoted sentence means a broken cluster is not degraded but **discarded**, so a
+ * site that half-declares its alternates gets exactly what a site declaring none
+ * gets. There is no partial credit to warn about.
  */
 const hreflangMissing: SiteRule = {
   id: "hreflang.missing",
   severity: "error",
   summary: "Pages on a multilingual site must advertise their locale alternates",
+  rigor: "vendor-spec",
+  sources: ["google-hreflang", "whatwg-html-link-types"],
   appliesTo: isMultilingual,
   check: ({ site, issue }) => {
     const locales = site.localeAxis.locales.join(", ");
@@ -132,80 +171,145 @@ const hreflangMissing: SiteRule = {
   },
 };
 
+/** One route where the sitemap publishes a locale the `<head>` leaves out. */
+interface CoverageGap {
+  page: Page;
+  route: string;
+  /** Locales the sitemap lists that the `<head>` does not advertise. */
+  onlyInSitemap: string[];
+}
+
 /**
- * The `<head>` and the sitemap disagree about a route's locale coverage.
+ * Locales the sitemap publishes and the `<head>` does not name, per route.
  *
- * Both are declarations of the same intent, produced by different code paths,
- * so they drift. Under-declaring in the `<head>` hides real translations from
- * search engines; over-declaring points `hreflang` at URLs the site itself does
- * not list, which Google treats as a broken cluster.
+ * This computed the opposite direction too until the unsourceable half became a
+ * question (`./site-prose.ts`), and kept computing it for a day after nothing
+ * read it. Dropped rather than left in: a field nobody reads is the shape every
+ * dead-signal entry in this repository's plans started as.
  *
  * Pages with no alternates at all are skipped: that is `hreflang.missing`'s
- * finding, and reporting both would double-count the same defect.
+ * finding, and reporting it twice would double-count one defect.
  */
-const hreflangSitemapMismatch: SiteRule = {
-  id: "hreflang.sitemap-mismatch",
+function coverageGaps(site: SiteContext): CoverageGap[] {
+  const bySitemap = sitemapLocalesByRoute(site);
+  const gaps: CoverageGap[] = [];
+
+  for (const page of site.pages) {
+    const head = declaredLocales(page);
+    if (head.size === 0) continue;
+
+    let pathname: string;
+    try {
+      pathname = new URL(page.fetch.finalUrl).pathname;
+    } catch {
+      continue;
+    }
+    const route = rowOf(site, page.fetch.finalUrl, pathname);
+    const inSitemap = bySitemap.get(route);
+    if (!inSitemap || inSitemap.size === 0) continue;
+
+    gaps.push({
+      page,
+      route,
+      onlyInSitemap: sorted(new Set([...inSitemap].filter((l) => !head.has(l)))),
+    });
+  }
+
+  return gaps;
+}
+
+/** One registry away from its twin question, and the same remedy answers both. */
+const ONE_SOURCE_FIX = {
+  title: "Derive both from one locale-availability source",
+  snippet: [
+    "// Compute availability once, feed both the <head> and the sitemap.",
+    "const localesFor = (slug: string) =>",
+    "  allDocs.filter((d) => d.slug === slug && !d.draft).map((d) => d.locale);",
+    "",
+    "// generateMetadata(): alternates.languages ← localesFor(slug)",
+    "// sitemap.ts:        alternates.languages ← localesFor(slug)",
+  ].join("\n"),
+  language: "ts",
+} as const;
+
+const bothApply = (site: SiteContext) =>
+  isMultilingual(site) && (site.discovery?.urls.length ?? 0) > 0;
+
+/**
+ * The site publishes a translation its own `<head>` does not advertise.
+ *
+ * The sitemap listing `/fr/x` is the site asserting that the French version
+ * exists and should be indexed. If `/en/x` then names no `fr` alternate, that
+ * version sits outside the cluster: the two pages compete instead of
+ * consolidating, which is the whole failure `hreflang` exists to prevent.
+ *
+ * ## Why this half is sourceable and the other is not
+ *
+ * Google requires the set to be complete — *"Each language version must list
+ * itself as well as all other language versions"* — and the sitemap is the
+ * site's own evidence that the omitted version is real. That chain is what makes
+ * this `vendor-spec`: a cited requirement plus a fact the site supplied, not an
+ * inference about what a site probably meant.
+ *
+ * ## The hidden link in that chain, and where it actually broke
+ *
+ * "The sitemap lists `/fr/x`" only means "a French version exists" if something
+ * established that `/fr/x` is a locale variant at all. `splitRoute` answers that
+ * by **shape alone** — `bcp47.ts` is explicit that `/de/` and `/api/` are
+ * indistinguishable to it and that the locale axis is what decides — and
+ * `sitemapLocalesByRoute` was not consulting the axis. `api`, `doc` and `www`
+ * all pass its two-or-three-letter test, so a multilingual site with a `/doc/`
+ * section produced a locale named `doc`, and this rule told its owner to
+ * publish an `hreflang="doc"` alternate.
+ *
+ * That was the real defect behind the doubt this rule was raised under — not
+ * the slug-translating case, where two paths simply form two rows and nothing
+ * fires. The fix is in `sitemapLocalesByRoute`, one line, and it belongs there
+ * rather than here: both halves read those rows, and only one of them was ever
+ * going to be audited for it.
+ *
+ * `warning` and not `error`, unlike `hreflang.missing`: a partial cluster still
+ * consolidates the versions it does list, so the damage is bounded to the ones
+ * left out. There is no cluster at all in the `error` case.
+ */
+const hreflangClusterIncomplete: SiteRule = {
+  id: "hreflang.cluster-incomplete",
   severity: "warning",
-  summary: "`<head>` alternates and sitemap locale coverage must agree",
-  appliesTo: (site) => isMultilingual(site) && (site.discovery?.urls.length ?? 0) > 0,
-  check: ({ site, issue }) => {
-    const bySitemap = sitemapLocalesByRoute(site);
-    const findings = [];
-
-    for (const page of site.pages) {
-      const head = declaredLocales(page);
-      if (head.size === 0) continue;
-
-      let pathname: string;
-      try {
-        pathname = new URL(page.fetch.finalUrl).pathname;
-      } catch {
-        continue;
-      }
-      const route = rowOf(site, page.fetch.finalUrl, pathname);
-      const inSitemap = bySitemap.get(route);
-      if (!inSitemap || inSitemap.size === 0) continue;
-
-      const onlyInSitemap = sorted(new Set([...inSitemap].filter((l) => !head.has(l))));
-      const onlyInHead = sorted(new Set([...head].filter((l) => !inSitemap.has(l))));
-      if (onlyInSitemap.length === 0 && onlyInHead.length === 0) continue;
-
-      const parts: string[] = [];
-      if (onlyInSitemap.length > 0) {
-        parts.push(
-          `the sitemap lists ${onlyInSitemap.join(", ")} but the \`<head>\` does not advertise ${onlyInSitemap.length > 1 ? "them" : "it"}`,
-        );
-      }
-      if (onlyInHead.length > 0) {
-        parts.push(
-          `the \`<head>\` advertises ${onlyInHead.join(", ")} but the sitemap has no entry for ${onlyInHead.length > 1 ? "them" : "it"}`,
-        );
-      }
-
-      findings.push(
+  summary: "Every locale the sitemap publishes must appear in the route's `hreflang` cluster",
+  rigor: "vendor-spec",
+  sources: ["google-hreflang"],
+  appliesTo: bothApply,
+  check: ({ site, issue }) =>
+    coverageGaps(site)
+      .filter((gap) => gap.onlyInSitemap.length > 0)
+      .map(({ page, route, onlyInSitemap }) =>
         issue({
           pageUrl: page.fetch.finalUrl,
-          message: `Route \`${route}\`: ${parts.join("; ")}. Both are derived from the same intent and must not disagree.`,
+          message:
+            `Route \`${route}\`: the sitemap lists ${onlyInSitemap.join(", ")} but the ` +
+            `\`<head>\` does not advertise ${onlyInSitemap.length > 1 ? "them" : "it"}. ` +
+            `The site publishes ${onlyInSitemap.length > 1 ? "those versions" : "that version"} ` +
+            `and leaves ${onlyInSitemap.length > 1 ? "them" : "it"} outside the cluster, so ` +
+            `${onlyInSitemap.length > 1 ? "they compete" : "it competes"} with this page instead ` +
+            `of consolidating with it.`,
           origin: { kind: "link", rel: "alternate" },
-          fix: {
-            title: "Derive both from one locale-availability source",
-            snippet: [
-              "// Compute availability once, feed both the <head> and the sitemap.",
-              "const localesFor = (slug: string) =>",
-              "  allDocs.filter((d) => d.slug === slug && !d.draft).map((d) => d.locale);",
-              "",
-              "// generateMetadata(): alternates.languages ← localesFor(slug)",
-              "// sitemap.ts:        alternates.languages ← localesFor(slug)",
-            ].join("\n"),
-            language: "ts",
-          },
+          fix: ONE_SOURCE_FIX,
         }),
-      );
-    }
-
-    return findings;
-  },
+      ),
 };
+
+/**
+ * `hreflang.sitemap-mismatch` used to sit here, and it is now a question rather
+ * than a verdict — see `./site-prose.ts`.
+ *
+ * It carried `rigor: null` and `severity: warning` at the same time: a refusal
+ * to say how authoritative a claim is, followed by the claim. Splitting it
+ * sourced the half Google backs (`hreflang.cluster-incomplete`, above) and left
+ * this one with nothing behind it, because nothing requires an
+ * hreflang-declared page to appear in a sitemap. The disagreement is still real
+ * and still worth surfacing — goflag simply cannot say which of the two
+ * generators is wrong, which is the definition of a question.
+ */
 
 /** Directive tokens from a page's `<meta name="robots">`. */
 function metaRobotsTokens(page: Page): Set<string> {
@@ -661,6 +765,153 @@ const sitemapEntryInvalidUrl: SiteRule = {
   },
 };
 
+/**
+ * The two ceilings sitemaps.org puts on a single document, verbatim:
+ *
+ * > each Sitemap file that you provide must have no more than 50,000 URLs and
+ * > must be no larger than 50MB (52,428,800 bytes)
+ *
+ * and, for an index:
+ *
+ * > Sitemap index files may not list more than 50,000 Sitemaps and must be no
+ * > larger than 50MB (52,428,800 bytes)
+ *
+ * Same two numbers either way, counted over a different thing — which is why
+ * this is one rule rather than two, and why it needs the document tree: both
+ * are stated **per document**, and a site-wide total answers neither.
+ */
+const DOCUMENT_URL_LIMIT = 50_000;
+const DOCUMENT_BYTE_LIMIT = 52_428_800;
+
+/** What a given document declares, counted the way its own ceiling is written. */
+function declaredCount(doc: SitemapDocument): number {
+  return doc.kind === "index" ? doc.childLocs.length : doc.urlCount;
+}
+
+function oversizedDocuments(site: SiteContext): SitemapDocument[] {
+  return (site.discovery?.documents ?? []).filter(
+    (doc) =>
+      doc.kind !== "unparsable" &&
+      (declaredCount(doc) > DOCUMENT_URL_LIMIT || doc.byteLength > DOCUMENT_BYTE_LIMIT),
+  );
+}
+
+/**
+ * A sitemap document is over one of the protocol's two ceilings.
+ *
+ * Not a style point: a consumer is entitled to stop reading at the limit, so
+ * everything past it is dead weight that looks published and is not. The
+ * failure is silent from every angle — the file serves, it parses, and the
+ * entries beyond the cut simply never get crawled.
+ *
+ * Measured on the **uncompressed** body, because the ceiling is about what a
+ * consumer must parse rather than what crossed the wire. A gzipped document is
+ * over the limit at the same size a plain one is.
+ */
+const sitemapLimitsExceeded: SiteRule = {
+  id: "sitemap.limits.exceeded",
+  severity: "error",
+  summary: "No single sitemap document may exceed 50,000 entries or 50 MB",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => oversizedDocuments(site).length > 0,
+  check: ({ site, issue }) =>
+    oversizedDocuments(site).map((doc) => {
+      const count = declaredCount(doc);
+      const noun = doc.kind === "index" ? "child sitemaps" : "URLs";
+      const over: string[] = [];
+      if (count > DOCUMENT_URL_LIMIT) {
+        over.push(`${count.toLocaleString("en-US")} ${noun} against a ceiling of 50,000`);
+      }
+      if (doc.byteLength > DOCUMENT_BYTE_LIMIT) {
+        over.push(
+          `${(doc.byteLength / 1_048_576).toFixed(1)} MB uncompressed against a ceiling of 50 MB`,
+        );
+      }
+
+      return issue({
+        pageUrl: doc.url,
+        message: `This sitemap document declares ${over.join(" and ")}. A consumer may stop reading at the limit, so everything past it is published in name only — split the document and reference the parts from an index.`,
+        origin: { kind: "computed" },
+      });
+    }),
+};
+
+/**
+ * A sitemap lists URLs outside the directory it is served from.
+ *
+ * sitemaps.org scopes a document's authority by its own location, with an
+ * example rather than a rule of thumb:
+ *
+ * > A Sitemap file located at http://example.com/catalog/sitemap.xml can
+ * > include any URLs starting with http://example.com/catalog/ but can not
+ * > include URLs starting with http://example.com/images/
+ *
+ * A root-level sitemap is exempt by construction: its directory is `/`, so
+ * every path on the host is under it. That is most sitemaps, which is why this
+ * rule is quiet on every site in this repository and still worth having — the
+ * sites it catches are the ones that split sitemaps per section and serve them
+ * from those sections.
+ *
+ * Entries on another host are skipped rather than counted twice:
+ * `sitemap.entry.cross-host` is the finding for those, and reporting one URL
+ * under two rules teaches a reader to discount both.
+ */
+function outOfScopeEntries(site: SiteContext): { loc: string; from: string }[] {
+  const out: { loc: string; from: string }[] = [];
+
+  for (const entry of site.discovery?.urls ?? []) {
+    if (!entry.documentUrl) continue;
+
+    let scope: URL;
+    let loc: URL;
+    try {
+      scope = new URL(entry.documentUrl);
+      loc = new URL(entry.loc);
+    } catch {
+      continue;
+    }
+
+    // Everything up to and including the last `/` — the directory the document
+    // is served from.
+    const prefix = scope.pathname.replace(/[^/]*$/, "");
+    if (prefix === "/") continue;
+    if (loc.origin !== scope.origin) continue;
+    if (loc.pathname.startsWith(prefix)) continue;
+
+    out.push({ loc: entry.loc, from: entry.documentUrl });
+  }
+
+  return out;
+}
+
+const sitemapEntryOutOfScope: SiteRule = {
+  id: "sitemap.entry.out-of-scope",
+  severity: "error",
+  summary: "A sitemap may only list URLs under its own directory",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => outOfScopeEntries(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = outOfScopeEntries(site);
+    // Grouped by the document that overreached: the fix is per document — move
+    // the entries, or move the sitemap to the root — and one finding per stray
+    // URL would bury that under repetition.
+    const byDocument = new Map<string, string[]>();
+    for (const { loc, from } of bad) {
+      byDocument.set(from, [...(byDocument.get(from) ?? []), loc]);
+    }
+
+    return [...byDocument].map(([from, locs]) =>
+      issue({
+        pageUrl: from,
+        message: `${locs.length} entr${locs.length === 1 ? "y is" : "ies are"} outside this sitemap's directory \`${new URL(from).pathname.replace(/[^/]*$/, "")}\`: ${sample(locs)}. A sitemap only speaks for the path it is served from, so a consumer may drop ${locs.length === 1 ? "it" : "them"} — serve the document from the root, or move the entries into a sitemap that covers them.`,
+        origin: { kind: "computed" },
+      }),
+    );
+  },
+};
+
 const sitemapEntryCrossHost: SiteRule = {
   id: "sitemap.entry.cross-host",
   severity: "error",
@@ -1092,7 +1343,7 @@ function isAbsolute(value: string): boolean {
 /** Ordered registry. Ids are unique; the runner relies on that for lookup. */
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
-  hreflangSitemapMismatch,
+  hreflangClusterIncomplete,
   iconsIcoMissing,
   robotsBlocksPage,
   robotsBlocksSite,
@@ -1108,12 +1359,14 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   sitemapEntryInvalidUrl,
   sitemapEntryNoindex,
   sitemapEntryNonCanonical,
+  sitemapEntryOutOfScope,
   sitemapEntryProtocolMismatch,
   sitemapEntryRedirects,
   sitemapEntryUnreachable,
   sitemapFieldInvalid,
   sitemapIndexChildError,
   sitemapLastmodInvalid,
+  sitemapLimitsExceeded,
   sitemapMissing,
   sitemapOrphans,
   sitemapUnparsable,

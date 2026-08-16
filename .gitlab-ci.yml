@@ -343,6 +343,69 @@ test:package:next:
         }
         console.log('imported and rendered from the tarball');
       "
+
+# The same again for the cards, and this is the package that needs it most.
+#
+# npm rewrites `package.json` at publication, not at packing — the CLI once came
+# within a hair of shipping without its command because `bin` was deleted rather
+# than normalised, and the local tarball was fine throughout. This package
+# declares **two** export subpaths where the other two declare one, so it has
+# twice the surface to lose that way, and `@goflag/og/next` disappearing would
+# not show up anywhere until a consuming site's build failed.
+test:package:og:
+  stage: test
+  <<: [*pnpm, *pkg_changes]
+  script:
+    - pnpm --filter @goflag/og build
+    - TARBALL="$(cd packages/og && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - echo "packed $TARBALL"
+
+    # Committed rather than staged by `prepack`, like the library's.
+    - tar -tzf "$TARBALL" > og-tarball-contents.txt
+    - grep -qx 'package/README.md' og-tarball-contents.txt
+    - grep -qx 'package/LICENSE' og-tarball-contents.txt
+
+    - mkdir -p /tmp/goflag-og-install && cd /tmp/goflag-og-install
+    - npm init -y > /dev/null
+    # `react` is a peer of the core — the card is a JSX tree, so `index.js`
+    # imports `react/jsx-runtime` at module scope. Installing it here is also
+    # how we find out whether declaring it as a peer was enough.
+    - npm install "$TARBALL" react
+
+    # A file rather than `-e`, so `import.meta.resolve` below has a real parent
+    # to resolve against.
+    - |
+      cat > check.mjs <<'CHECK'
+      import { buildIco, fitTitle, oklchToHex } from "@goflag/og";
+
+      const ico = buildIco([{ width: 16, bytes: new Uint8Array(8) }]);
+      if (ico.length !== 30) throw new Error(`unexpected ICO length: ${ico.length}`);
+
+      const { fontSize } = fitTitle("Changelog", {
+        steps: [{ upTo: 32, fontSize: 72 }],
+        smallest: 44,
+      });
+      if (fontSize !== 72) throw new Error(`unexpected font size: ${fontSize}`);
+
+      // `--terminal` out of the site's stylesheet. A transform that drifts
+      // stops being a guard against transcription and becomes one more
+      // transcription.
+      const hex = oklchToHex([0.19, 0.005, 250]);
+      if (hex !== "#121416") throw new Error(`unexpected conversion: ${hex}`);
+
+      // Resolved, not imported: importing it would pull `next/og` and satori
+      // into this check, which is Next's contract to keep and not ours. What
+      // has to be true here is that the subpath survived into the published
+      // `exports` map at all.
+      const binding = import.meta.resolve("@goflag/og/next");
+      if (!binding.endsWith("/dist/next.js")) {
+        throw new Error(`@goflag/og/next resolved to ${binding}`);
+      }
+
+      console.log("imported and resolved from the tarball");
+      CHECK
+    - node check.mjs
+
 # ---------------------------------------------------------------------------
 # apps/website — goflag.tech
 # ---------------------------------------------------------------------------
@@ -429,6 +492,7 @@ deploy-develop:
       changes:
         - apps/**/*
         - packages/next/**/*
+        - packages/og/**/*
         - packages/cli/CHANGELOG.md
         - Dockerfile
         - config/deploy*.yml
@@ -466,8 +530,8 @@ kamal-proxy-reboot:
 # is nothing left in CI worth stealing: no NPM_TOKEN, nothing to rotate, and
 # nothing that keeps working if it leaks.
 # One job per package, keyed on the tag namespace. `if: $CI_COMMIT_TAG` alone
-# would fire both on either tag, and each would then fail its own version check
-# — a red pipeline on a release that actually succeeded.
+# would fire all three on any tag, and each would then fail its own version
+# check — a red pipeline on a release that actually succeeded.
 publish:npm:
   # Publishing to npm is not reversible. A version yanked is still a version
   # that existed.
@@ -539,6 +603,35 @@ publish:next:
       fi
     - cd packages/next && npm publish --access public
 
+# And the same again for the cards. Third namespace, third trusted-publisher
+# entry on npmjs.com, same project and same file — and the same first-version
+# problem the paragraph above describes: npm has nothing to attach a publisher
+# to until the package exists, so `og-v0.1.0` goes out by hand and the guard
+# below is what stops the first automatic run from colliding with it.
+publish:og:
+  # Same: not reversible.
+  interruptible: false
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^og-v[0-9]/
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+  script:
+    - PKG_VERSION="$(node -p "require('./packages/og/package.json').version")"
+    - |
+      if [ "$CI_COMMIT_TAG" != "og-v$PKG_VERSION" ]; then
+        echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
+        exit 1
+      fi
+    - |
+      if [ -n "$(npm view "@goflag/og@$PKG_VERSION" version 2>/dev/null)" ]; then
+        echo "@goflag/og@$PKG_VERSION is already on npm — nothing to publish."
+        exit 0
+      fi
+    - cd packages/og && npm publish --access public
+
 # Merging develop into main is the decision to publish. This job is the only
 # thing the pipeline ever writes back to the repository, and it writes exactly
 # one kind of ref: a tag, on a commit that is already on main.
@@ -559,9 +652,13 @@ publish:next:
 # no purpose.
 #
 # Needs RELEASE_TOKEN — a project access token with the Maintainer role and
-# `write_repository`, because `v*` and `next-v*` are protected tags and only
-# Maintainers may create them. The job token cannot, and a push made with it
-# would not trigger the tag pipeline that publishes.
+# `write_repository`, because `v*`, `next-v*` and `og-v*` are protected tags and
+# only Maintainers may create them. The job token cannot, and a push made with
+# it would not trigger the tag pipeline that publishes.
+#
+# A new namespace has to be protected in the project's settings before its first
+# release, or `tag_one` pushes a ref the remote refuses — and refuses silently
+# from the point of view of the two namespaces that worked.
 tag:
   # The only job that writes back to this repository. It is idempotent, but a
   # push of a ref interrupted between `git tag` and `git push` is a tag that
@@ -638,6 +735,7 @@ tag:
 
     - tag_one "@goflag/cli" "packages/cli/package.json" "v"
     - tag_one "@goflag/next" "packages/next/package.json" "next-v"
+    - tag_one "@goflag/og" "packages/og/package.json" "og-v"
 
 workflow:
   rules:

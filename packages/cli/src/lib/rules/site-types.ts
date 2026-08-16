@@ -123,12 +123,20 @@ export interface SiteRule {
    * it — the same two fields `Rule` carries, and for the same reason: an agent
    * must never fix a `guideline` as if it were `spec-required`.
    *
-   * Optional, and deliberately not backfilled. The three rules that predate
-   * this each need their sources chosen rather than guessed, which is phase G's
-   * work; the catalogue keeps emitting `rigor: null` for them, which is how the
-   * gap stays visible instead of being papered over with a plausible citation.
-   * A rule that declares one must cite at least one real source, and
-   * `site-rules.test.ts` enforces that.
+   * Optional, and deliberately not backfilled: the rules that predate this
+   * field need their sources chosen rather than guessed, and the catalogue
+   * emits `rigor: null` for them so the gap stays visible instead of being
+   * papered over with a plausible citation.
+   *
+   * One is left, and it is instructive. `hreflang.missing` was sourced on
+   * 2026-08-15; `hreflang.sitemap-mismatch` was not, because the attempt found
+   * that it bundles a `vendor-spec` claim with one no vendor makes. Its own
+   * comment carries the evidence. An empty `rigor` there is now a verdict about
+   * the rule, not a task nobody got to.
+   *
+   * A rule that declares one must cite at least one real source, and must not
+   * claim more authority than that source carries — `site-rules.test.ts`
+   * enforces both, the same two invariants `rules.test.ts` holds for page rules.
    */
   rigor?: Rigor;
   sources?: string[];

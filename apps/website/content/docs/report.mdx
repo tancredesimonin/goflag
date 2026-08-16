@@ -227,6 +227,35 @@ The judgement calls goflag refuses to fake. Whether a title _describes_ the page
 is not a thing a linter can decide, so goflag states the question, cites what
 makes it a real requirement, attaches the observed facts, and stops.
 
+Two kinds arrive here, and they differ in one field. **Page questions** read a
+single page, and their `evidence` keys are paths into the observation model — the
+example below. **Site questions** read the whole site, so their evidence is a
+comparison rather than a lookup, and the keys are named for what was compared:
+
+{/* prettier-ignore */}
+```jsonc
+{
+  "ruleId": "hreflang.sitemap-mismatch",
+  "kind": "prose",
+  "prose": "Your `<head>` advertises a translation your sitemap does not list. Is the sitemap missing an entry, or is the alternate pointing at a page you did not mean to publish?",
+  // `null` where no document supports the question. Weight it on the evidence
+  // alone — that is the honest answer, and the reason this stopped being a rule.
+  "rigor": null,
+  "sources": [],
+  "evidence": {
+    "route": "/solo",
+    "headAdvertises": ["en", "es", "fr", "pt-br"],
+    "sitemapLists": ["en"],
+    "advertisedButUnlisted": ["es", "fr", "pt-br"]
+  },
+  "verdict": "needs-judgment"
+}
+```
+
+Either kind holds **observations, never conclusions**. You are meant to be able
+to disagree with goflag's reading, which you cannot do if it only ships its
+reading.
+
 {/* prettier-ignore */}
 ```jsonc
 "advisories": [

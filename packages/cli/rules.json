@@ -1,8 +1,8 @@
 {
   "counts": {
     "page": 23,
-    "site": 26,
-    "prose": 4
+    "site": 28,
+    "prose": 5
   },
   "sources": {
     "apple-web-apps": {
@@ -320,22 +320,38 @@
       }
     },
     {
+      "id": "hreflang.cluster-incomplete",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Every locale the sitemap publishes must appear in the route's `hreflang` cluster",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-hreflang"
+      ]
+    },
+    {
       "id": "hreflang.missing",
       "scope": "site",
       "severity": "error",
       "kind": "boolean",
       "summary": "Pages on a multilingual site must advertise their locale alternates",
-      "rigor": null,
-      "sources": []
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-hreflang",
+        "whatwg-html-link-types"
+      ]
     },
     {
       "id": "hreflang.sitemap-mismatch",
-      "scope": "site",
-      "severity": "warning",
-      "kind": "boolean",
-      "summary": "`<head>` alternates and sitemap locale coverage must agree",
+      "scope": "prose",
+      "severity": null,
+      "kind": "prose",
+      "summary": "`<head>` alternates advertise a locale the sitemap does not list",
+      "why": "The two are derived from one intent by different code paths, so a disagreement means one of them is wrong. No specification says which: the declaration methods are equivalent, and a page can legitimately be cross-linked and kept out of the sitemap.",
       "rigor": null,
-      "sources": []
+      "sources": [],
+      "prose": "Your `<head>` advertises a translation your sitemap does not list. Is the sitemap missing an entry, or is the alternate pointing at a page you did not mean to publish?"
     },
     {
       "id": "icons.apple-touch.missing",
@@ -953,6 +969,17 @@
       ]
     },
     {
+      "id": "sitemap.entry.out-of-scope",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A sitemap may only list URLs under its own directory",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
+      ]
+    },
+    {
       "id": "sitemap.entry.protocol-mismatch",
       "scope": "site",
       "severity": "warning",
@@ -1020,6 +1047,17 @@
       "sources": [
         "sitemaps-protocol",
         "google-sitemaps"
+      ]
+    },
+    {
+      "id": "sitemap.limits.exceeded",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "No single sitemap document may exceed 50,000 entries or 50 MB",
+      "rigor": "spec-required",
+      "sources": [
+        "sitemaps-protocol"
       ]
     },
     {

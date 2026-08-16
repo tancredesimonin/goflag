@@ -1,16 +1,16 @@
-import { ALL_RULES } from "@/lib/rules-catalog";
-import { ogImage, ogImageMetadata } from "@/lib/seo/og";
+import { ogImage } from "@goflag/og/next";
 
-const CARD = {
-  title: "Rule catalogue",
+import { ALL_RULES } from "@/lib/rules-catalog";
+import { og, ogAlt } from "@/lib/seo/og";
+
+const TITLE = "Rule catalogue";
+
+const image = ogImage(og, () => ({
+  title: TITLE,
   subtitle: `All ${ALL_RULES.length} rules, what each one checks, and why it matters.`,
   label: "docs",
-};
+  alt: ogAlt(TITLE),
+}));
 
-export function generateImageMetadata() {
-  return ogImageMetadata(CARD.title);
-}
-
-export default function Image() {
-  return ogImage(CARD);
-}
+export const generateImageMetadata = image.generateImageMetadata;
+export default image.render;

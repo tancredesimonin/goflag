@@ -1,0 +1,155 @@
+/**
+ * D7 — the only artefacts this package produces that go into git, and therefore
+ * the only ones that can drift.
+ *
+ * Everything else `@goflag/og` makes is rendered at build time and never
+ * reaches a commit. `favicon.ico` and its sibling PNGs are static files served
+ * from the site's root, so they have to be committed — and an artefact that is
+ * both generated and committed has a failure mode of its own, observed on three
+ * of the four sites this came from. A pre-commit hook regenerates it every
+ * commit, `sharp` encodes the same pixels into slightly different bytes across
+ * versions, and the file is dirtied by every commit that touches anything. The
+ * noise gets committed, review learns to skip it, and a real change to the icon
+ * arrives invisible in the same diff.
+ *
+ * So the guard is on the **inputs** — the source drawing, the list of sizes —
+ * and never on the output's bytes. A `sharp` upgrade that re-compresses the
+ * same picture is not a change to the icon, and this refuses to record it as
+ * one. `docs/og-plan.md` §6.4 makes shipping it idempotent a condition of
+ * shipping it at all: a library that produced the file without the guard would
+ * hand the defect to every site that adopted it.
+ *
+ * `check` is the half that makes the artefact verifiable in CI rather than
+ * regenerated in a hook. A hook that rewrites a file cannot fail a build; a
+ * check that writes nothing can.
+ */
+
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
+import { buildIco, type IcoEntry } from "./ico.js";
+
+export type ArtefactStatus =
+  /** The inputs moved and the files were rewritten. */
+  | "written"
+  /** The files match their inputs. Nothing was rendered and nothing was written. */
+  | "unchanged"
+  /** `check` only: the files exist and no longer match their inputs. */
+  | "stale"
+  /** `check` only: at least one file is not there at all. */
+  | "absent";
+
+export type FingerprintInput = string | number | Uint8Array;
+
+/**
+ * A stable digest of whatever the outputs are a function of.
+ *
+ * Order matters and is the caller's: this hashes the list it is given, with a
+ * separator between the parts so that `["ab", "c"]` and `["a", "bc"]` do not
+ * collide.
+ */
+export function fingerprint(inputs: readonly FingerprintInput[]): string {
+  const hash = createHash("sha256");
+  for (const input of inputs) {
+    hash.update(typeof input === "number" ? String(input) : input);
+    // Written as an escape, not as the byte. A raw NUL in the source makes git
+    // classify this file as binary — no diff in review, invisible to `git grep` —
+    // and it is exactly the kind of thing that gets copied into the next script.
+    // The digest is identical either way.
+    hash.update("\0");
+  }
+
+  return hash.digest("hex");
+}
+
+/** One committed file, and the rendering that is skipped when it is up to date. */
+export interface LazyArtefact {
+  readonly path: string;
+  /**
+   * Called only when the artefact has to be rewritten. Rasterising is the
+   * expensive half — a site that ships seven icons renders none of them on the
+   * commits where nothing moved, and none at all under `check`.
+   */
+  readonly render: () => Uint8Array | Promise<Uint8Array>;
+}
+
+export interface WriteIconsOptions {
+  readonly artefacts: readonly LazyArtefact[];
+  /**
+   * Where the input fingerprint is recorded.
+   *
+   * Required, with no default derived from the artefacts' own directory: on a
+   * Next site that directory is `public/`, everything under it is served, and
+   * build bookkeeping is not something the site should hand to a visitor.
+   */
+  readonly lock: string;
+  /** What the outputs are a function of. Never the outputs' own bytes. */
+  readonly fingerprintOf: readonly FingerprintInput[];
+  /** Report and write nothing. */
+  readonly check?: boolean;
+}
+
+/**
+ * Write a set of committed icons, or report that they are already right.
+ *
+ * Returns rather than exits: a library that called `process.exit` would decide
+ * an exit code on behalf of a script that knows its own name and its own
+ * remediation message.
+ */
+export async function writeIcons(options: WriteIconsOptions): Promise<ArtefactStatus> {
+  const { artefacts, lock, fingerprintOf, check = false } = options;
+
+  if (artefacts.length === 0) {
+    throw new Error("writeIcons: no artefacts to write.");
+  }
+
+  const wanted = fingerprint(fingerprintOf);
+  const recorded = existsSync(lock) ? readFileSync(lock, "utf8").trim() : null;
+  const present = artefacts.every((artefact) => existsSync(artefact.path));
+
+  // Both halves, in this order: a lock that matches while a file has been
+  // deleted is a lock that is wrong, and `absent` is the more useful of the two
+  // things to say about it.
+  if (!present) {
+    if (check) return "absent";
+  } else if (recorded === wanted) {
+    return "unchanged";
+  } else if (check) {
+    return "stale";
+  }
+
+  for (const artefact of artefacts) {
+    const bytes = await artefact.render();
+    write(artefact.path, bytes);
+  }
+
+  write(lock, `${wanted}\n`);
+
+  return "written";
+}
+
+/**
+ * The plan's named case (§6.4): one `.ico`, packed from entries the site
+ * rasterised, guarded like everything else here.
+ */
+export function writeIco(
+  path: string,
+  entries: readonly IcoEntry[] | (() => readonly IcoEntry[] | Promise<readonly IcoEntry[]>),
+  options: Omit<WriteIconsOptions, "artefacts">,
+): Promise<ArtefactStatus> {
+  return writeIcons({
+    ...options,
+    artefacts: [
+      {
+        path,
+        render: async () => buildIco(typeof entries === "function" ? await entries() : entries),
+      },
+    ],
+  });
+}
+
+function write(path: string, contents: Uint8Array | string): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, contents);
+}

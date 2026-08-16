@@ -22,11 +22,13 @@ import { lintSite } from "../core/lint-site";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
 import { getSiteRule, SITE_RULES } from "./site-rules";
 import { getSource } from "./sources";
+import type { SourceRigor } from "./sources/types";
 import type { SiteContext } from "./site-types";
+import type { Rigor } from "./types";
 import { pageFromHtml } from "./test-utils";
 
-const MISMATCH = getSiteRule("hreflang.sitemap-mismatch");
-if (!MISMATCH) throw new Error("hreflang.sitemap-mismatch is not registered");
+const INCOMPLETE = getSiteRule("hreflang.cluster-incomplete");
+if (!INCOMPLETE) throw new Error("hreflang.cluster-incomplete is not registered");
 
 const O = "https://x.com";
 
@@ -44,6 +46,7 @@ function discovery(urls: SitemapUrlEntry[]): SiteDiscovery {
     baseUrl: O,
     source: "well-known",
     urls,
+    documents: [],
     truncated: false,
     diagnostics: {
       found: true,
@@ -78,8 +81,16 @@ function context(pages: ReturnType<typeof page>[], urls: SitemapUrlEntry[]): Sit
   };
 }
 
-function warnings(ctx: SiteContext) {
-  return lintSite(ctx, [MISMATCH!]);
+/**
+ * The sourced half of what was one rule until 2026-08-15.
+ *
+ * The other direction — a `<head>` naming a locale the sitemap omits — is no
+ * longer a rule at all: nothing supports it, so it asks its question through
+ * `./site-prose.ts` and is tested there. What is left here renders verdicts,
+ * and every one of them cites a document.
+ */
+function incomplete(ctx: SiteContext) {
+  return lintSite(ctx, [INCOMPLETE!]);
 }
 
 // The pair at the centre of the defect: same page, translated slug, reciprocal
@@ -90,47 +101,19 @@ const TRANSLATED_SLUGS: SitemapAlternate[] = [
   { hreflang: "x-default", href: `${O}/en/pricing` },
 ];
 
-const translatedPages = [
-  page(`${O}/en/pricing`, TRANSLATED_SLUGS),
-  page(`${O}/fr/tarifs`, TRANSLATED_SLUGS),
-];
-
-describe("hreflang.sitemap-mismatch on translated slugs", () => {
-  it("warns twice when nothing declares the cluster", () => {
-    // The behaviour being fixed, pinned first — so the next test is a
-    // difference and not a tautology. The sitemap lists both URLs but declares
-    // no `xhtml:link`, so there is no cluster to follow and each URL keeps its
-    // own route.
-    const found = warnings(
-      context(translatedPages, [{ loc: `${O}/en/pricing` }, { loc: `${O}/fr/tarifs` }]),
-    );
-
-    expect(found).toHaveLength(2);
-    expect(found.map((i) => i.pageUrl).sort()).toEqual([`${O}/en/pricing`, `${O}/fr/tarifs`]);
-  });
-
-  it("stays silent once the sitemap declares the pair as one cluster", () => {
-    const found = warnings(
-      context(translatedPages, [
-        { loc: `${O}/en/pricing`, alternates: TRANSLATED_SLUGS },
-        { loc: `${O}/fr/tarifs`, alternates: TRANSLATED_SLUGS },
-      ]),
-    );
-
-    expect(found).toEqual([]);
-  });
-
-  it("still fires when the disagreement is real inside a declared cluster", () => {
+describe("hreflang.cluster-incomplete on translated slugs", () => {
+  it("fires when the disagreement is real inside a declared cluster", () => {
     // The guard that matters more than the fix: following the declaration must
     // not amount to trusting it. Here the cluster is declared over three
     // locales, the sitemap lists all three, and the `<head>`s advertise two —
-    // an under-declaration the rule exists to catch.
+    // an under-declaration, so this is `cluster-incomplete`'s finding, not the
+    // other half's.
     const declared: SitemapAlternate[] = [
       ...TRANSLATED_SLUGS,
       { hreflang: "es", href: `${O}/es/precios` },
     ];
     const heads = TRANSLATED_SLUGS;
-    const found = warnings({
+    const found = incomplete({
       ...context(
         [page(`${O}/en/pricing`, heads), page(`${O}/fr/tarifs`, heads)],
         [
@@ -157,7 +140,7 @@ describe("hreflang.sitemap-mismatch on translated slugs", () => {
   });
 });
 
-describe("hreflang.sitemap-mismatch on shared slugs", () => {
+describe("hreflang.cluster-incomplete on shared slugs", () => {
   // The witness for "changes nothing where nothing was broken". A site whose
   // locales share a slug already grouped correctly by pathname, and must keep
   // producing byte-identical findings whether or not it declares clusters.
@@ -169,10 +152,10 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
   const pages = [page(`${O}/en/about`, SHARED), page(`${O}/fr/about`, SHARED)];
 
   it("is silent with or without a declaration when the two agree", () => {
-    const undeclared = warnings(
+    const undeclared = incomplete(
       context(pages, [{ loc: `${O}/en/about` }, { loc: `${O}/fr/about` }]),
     );
-    const declared = warnings(
+    const declared = incomplete(
       context(pages, [
         { loc: `${O}/en/about`, alternates: SHARED },
         { loc: `${O}/fr/about`, alternates: SHARED },
@@ -200,14 +183,14 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
     };
     const subject = [page(`${O}/en/about`, heads), page(`${O}/fr/about`, heads)];
 
-    const undeclared = warnings({
+    const undeclared = incomplete({
       ...context(
         subject,
         locs.map((loc) => ({ loc })),
       ),
       localeAxis: axis,
     });
-    const declared = warnings({
+    const declared = incomplete({
       ...context(
         subject,
         locs.map((loc) => ({ loc, alternates: withEs })),
@@ -220,13 +203,107 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
   });
 });
 
+describe("a path segment that only looks like a locale", () => {
+  // The defect the rigor review went looking for and nearly missed by aiming at
+  // the wrong place. `splitRoute` reads a leading segment by shape alone —
+  // `bcp47.ts` says `/de/` and `/api/` are indistinguishable to it — and
+  // `sitemapLocalesByRoute` was not consulting the locale axis. `api`, `doc`
+  // and `www` all pass its two-or-three-letter test.
+  //
+  // So a bilingual site with a `/doc/` section was told, at `vendor-spec`
+  // rigor, to publish an `hreflang="doc"` alternate for a documentation page.
+  const HEADS: SitemapAlternate[] = [
+    { hreflang: "en", href: `${O}/en/guide` },
+    { hreflang: "fr", href: `${O}/fr/guide` },
+  ];
+
+  const withDocSection = () =>
+    context(
+      [page(`${O}/en/guide`, HEADS)],
+      [{ loc: `${O}/en/guide` }, { loc: `${O}/fr/guide` }, { loc: `${O}/doc/guide` }],
+    );
+
+  it("is not counted as a missing cluster member", () => {
+    expect(incomplete(withDocSection())).toEqual([]);
+  });
+
+  it("still sees the locales the site does serve", () => {
+    // The guard must not be a mute button: with `fr` genuinely absent from the
+    // `<head>`, the finding is real and must survive.
+    const enOnly: SitemapAlternate[] = [{ hreflang: "en", href: `${O}/en/guide` }];
+    const found = incomplete(
+      context(
+        [page(`${O}/en/guide`, enOnly)],
+        [{ loc: `${O}/en/guide` }, { loc: `${O}/fr/guide` }, { loc: `${O}/doc/guide` }],
+      ),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("the sitemap lists fr but");
+    expect(found[0]!.message).not.toContain("doc");
+  });
+});
+
+describe("the two halves, on a route that disagrees in both directions", () => {
+  // The case that proves the split is a split and not a rename. One route, one
+  // page, both gaps at once: the sitemap publishes `es` the `<head>` never
+  // names, and the `<head>` names `de` the sitemap never lists. Before
+  // 2026-08-15 that was one finding carrying two claims of different authority
+  // under one `rigor`; it is now one finding each, and only one of them cites
+  // a specification.
+  const HEADS: SitemapAlternate[] = [
+    { hreflang: "en", href: `${O}/en/about` },
+    { hreflang: "fr", href: `${O}/fr/about` },
+    { hreflang: "de", href: `${O}/de/about` },
+  ];
+  const ctx = (): SiteContext => ({
+    ...context(
+      [page(`${O}/en/about`, HEADS)],
+      [`${O}/en/about`, `${O}/fr/about`, `${O}/es/about`].map((loc) => ({ loc })),
+    ),
+    localeAxis: {
+      locales: ["de", "en", "es", "fr"],
+      source: "sitemap",
+      multilingual: true,
+      candidates: [],
+    },
+  });
+
+  // Matched on the clause that enumerates locales, not on the bare tag: `de`
+  // and `es` both occur inside ordinary words in these messages — "outside",
+  // "competes" — and a substring assertion would pass for the wrong reason.
+  it("blames the missing cluster member on the sourced rule", () => {
+    const found = incomplete(ctx());
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("the sitemap lists es but");
+    expect(found[0]!.message).not.toContain("advertises de");
+  });
+
+  it("cites the document it claims", () => {
+    expect(INCOMPLETE!.rigor).toBe("vendor-spec");
+    expect(INCOMPLETE!.sources).toEqual(["google-hreflang"]);
+  });
+
+  it("leaves nothing in this registry without a rigor", () => {
+    // The state reached on 2026-08-15: the last cross-page rule that could not
+    // cite a document stopped being a rule. A regression here is a rule
+    // shipping a verdict on no authority, which is the thing the whole axis
+    // exists to prevent.
+    for (const rule of SITE_RULES) {
+      expect(rule.rigor, rule.id).toBeDefined();
+      expect(rule.sources?.length, rule.id).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("the cross-page registry", () => {
   it("cites real sources wherever it claims a rigor", () => {
     // The provenance contract `rules.test.ts` enforces for page rules, applied
     // to the cross-page ones that have opted in. A rule may still carry no
-    // rigor — the three that predate the field do, and the catalogue emits the
-    // gap as `rigor: null` — but claiming one and citing nothing would be the
-    // dishonesty the rigor axis exists to prevent.
+    // rigor — `hreflang.sitemap-mismatch` does, on purpose, and the catalogue
+    // emits the gap as `rigor: null` — but claiming one and citing nothing would
+    // be the dishonesty the rigor axis exists to prevent.
     for (const rule of SITE_RULES) {
       if (rule.rigor === undefined) {
         expect(rule.sources ?? [], `${rule.id} cites sources but declares no rigor`).toHaveLength(
@@ -241,6 +318,43 @@ describe("the cross-page registry", () => {
       for (const id of rule.sources ?? []) {
         expect(getSource(id), `${rule.id} cites unknown source ${id}`).toBeDefined();
       }
+    }
+  });
+
+  it("never claims more authority than its sources actually carry", () => {
+    // The other half of the contract, and the half that was missing here: until
+    // now a cross-page rule could claim `spec-required` while citing a blog
+    // post, and only page rules were held to the mapping. Citing *a* source is
+    // cheap; citing one that supports the claimed rigor is the part worth
+    // enforcing, because rigor is what an agent reads to decide how hard to
+    // push a fix.
+    //
+    // `spec-required` and `spec-recommended` differ in what the spec says (MUST
+    // vs SHOULD), not in who published it, so both need a `normative` source;
+    // the rest map onto the source scale directly. Same table as
+    // `rules.test.ts` — deliberately duplicated rather than exported, so that
+    // changing one registry's contract cannot silently change the other's.
+    const NEEDS: Record<Rigor, SourceRigor> = {
+      "spec-required": "normative",
+      "spec-recommended": "normative",
+      "vendor-spec": "vendor-spec",
+      guideline: "guideline",
+      heuristic: "heuristic",
+    };
+    const AUTHORITY: Record<SourceRigor, number> = {
+      normative: 4,
+      "vendor-spec": 3,
+      guideline: 2,
+      heuristic: 1,
+    };
+
+    for (const rule of SITE_RULES) {
+      if (rule.rigor === undefined) continue;
+      const best = Math.max(...(rule.sources ?? []).map((id) => AUTHORITY[getSource(id)!.rigor]));
+      expect(
+        best,
+        `${rule.id} claims ${rule.rigor} but its strongest source is weaker than ${NEEDS[rule.rigor]}`,
+      ).toBeGreaterThanOrEqual(AUTHORITY[NEEDS[rule.rigor]]);
     }
   });
 });

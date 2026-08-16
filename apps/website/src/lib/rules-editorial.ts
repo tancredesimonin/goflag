@@ -143,14 +143,17 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "Conflicting robots directives: X-Robots-Tag header say `noindex`, meta robots say `index`.",
   },
   "hreflang.missing": {
-    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority.",
+    why: "This is the blind spot goflag was built to close. Without alternates, an engine cannot tell four translations of a page from four competing pages, so they consolidate nothing and split each other's authority. Google is explicit that a cluster whose pages do not all point at each other is not weakened but ignored outright, which is why this is an error rather than a warning even though no web standard requires the tags at all.",
     message:
       "Page declares no `hreflang` alternates, but the site serves 4 locales (en, es, fr, pt-br, per the sitemap). Locale variants of this route cannot be associated with each other.",
   },
-  "hreflang.sitemap-mismatch": {
-    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. Under-declaring hides real translations; over-declaring points hreflang at URLs the site itself does not list, which is read as a broken cluster.",
+  "hreflang.cluster-incomplete": {
+    why: "Listing a URL in your sitemap is you saying that version exists and should be indexed. Leaving it out of the hreflang cluster then puts it outside the group it belongs to, so it competes with its own translations instead of consolidating with them — which is the one thing hreflang exists to prevent. Google requires every version to list every other, and the sitemap is your own evidence that the missing one is real.",
     message:
-      "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. Both are derived from the same intent and must not disagree.",
+      "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. The site publishes those versions and leaves them outside the cluster, so they compete with this page instead of consolidating with it.",
+  },
+  "hreflang.sitemap-mismatch": {
+    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. This is the direction no specification covers: nothing requires an hreflang-declared page to appear in a sitemap, and a page deliberately kept out of it is doing nothing wrong. So goflag stopped calling it a defect and started asking about it — you get both lists and the question, and you decide which of your two generators is wrong.",
   },
   "sitemap.entry.unreachable": {
     why: "A sitemap is a list of pages you want indexed, so every dead entry spends crawl budget on a promise the site does not keep. The count is a floor when the caps stopped the pass short, and the message says so rather than implying the rest are fine.",
@@ -201,6 +204,16 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     why: "An index declares an inventory, and part of it is unreachable. Whatever those documents listed is invisible — and because they are the thing that would have said what, nothing reports how much was lost.",
     message:
       "2 of 9 child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.",
+  },
+  "sitemap.limits.exceeded": {
+    why: "A consumer is entitled to stop reading at 50,000 URLs or 50 MB, so everything past the ceiling is published in name only. Nothing about the failure is visible from outside: the file serves, it parses, and the entries beyond the cut are simply never crawled. The size is measured uncompressed, because the limit is about what a consumer must parse rather than what crossed the wire.",
+    message:
+      "This sitemap document declares 61,204 URLs against a ceiling of 50,000. A consumer may stop reading at the limit, so everything past it is published in name only — split the document and reference the parts from an index.",
+  },
+  "sitemap.entry.out-of-scope": {
+    why: "A sitemap only speaks for the directory it is served from: one at `/catalog/sitemap.xml` may list URLs under `/catalog/` and not under `/images/`. A root-level sitemap is exempt by construction, which is most of them — this catches the sites that split sitemaps per section and serve each from its own section, then let one drift outside its own patch.",
+    message:
+      "3 entries are outside this sitemap's directory `/catalog/`: `https://example.com/images/a`, `https://example.com/images/b`, `https://example.com/blog/c`. A sitemap only speaks for the path it is served from, so a consumer may drop them — serve the document from the root, or move the entries into a sitemap that covers them.",
   },
   "sitemap.entry.invalid-url": {
     why: "A sitemap is fetched on its own, with no page behind it, so a relative `<loc>` resolves to nothing. The entry looks like a declaration and names no address.",

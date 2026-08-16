@@ -101,7 +101,12 @@ describe("silent multilingual site — four locales, zero hreflang", () => {
   });
 
   it("does not double-report the same defect as a sitemap mismatch", () => {
+    // Both halves skip a page with no alternates at all, so splitting the rule
+    // must not turn one silence into one finding. Asserted on each, because
+    // asserting on the pair would pass if one of them started firing and the
+    // other stopped.
     expect(siteIssuesFor(report, "hreflang.sitemap-mismatch")).toHaveLength(0);
+    expect(siteIssuesFor(report, "hreflang.cluster-incomplete")).toHaveLength(0);
   });
 
   it("turns the verdict red — this site must not pass a CI gate", () => {
@@ -135,7 +140,13 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
 
   beforeAll(async () => {
     server = await startFixtureServer({ root: "fixtures/sites/sitemap-mismatch" });
-    report = await runAudit(`${server.url}/en/post`, { depth: 2, static: true });
+    // `advisories` on, because the opposite drift stopped being a finding on
+    // 2026-08-15 and became a question — it now arrives only when asked for.
+    report = await runAudit(`${server.url}/en/post`, {
+      depth: 2,
+      static: true,
+      advisories: true,
+    });
   }, 60_000);
 
   afterAll(async () => {
@@ -143,7 +154,9 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
   });
 
   it("flags each page whose <head> under-declares the sitemap's locales", () => {
-    const onPost = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
+    // `/post` is the direction Google backs, so since 2026-08-15 it is
+    // `hreflang.cluster-incomplete`'s finding rather than the other half's.
+    const onPost = siteIssuesFor(report, "hreflang.cluster-incomplete").filter((i) =>
       i.pageUrl.endsWith("/post"),
     );
     expect(onPost).toHaveLength(4);
@@ -151,7 +164,7 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
   });
 
   it("names the route and the specific locales that are missing", () => {
-    const [first] = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
+    const [first] = siteIssuesFor(report, "hreflang.cluster-incomplete").filter((i) =>
       i.pageUrl.endsWith("/post"),
     );
     expect(first?.message).toContain("`/post`");
@@ -159,18 +172,30 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
     expect(first?.message).toContain("the sitemap lists");
   });
 
-  it("also catches the opposite drift: a <head> advertising locales the sitemap lacks", () => {
+  it("asks about the opposite drift rather than reporting it", () => {
     // `/solo` exists in four locales and says so, but only `/en/solo` is in the
-    // sitemap. Google treats alternates pointing at URLs the site itself does
-    // not list as a broken cluster, so this direction matters as much as the
-    // under-declaring one.
-    const onSolo = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
-      i.pageUrl.endsWith("/solo"),
+    // sitemap. No specification covers this direction — Google calls its three
+    // declaration methods "equivalent" and requires no hreflang-declared page
+    // to be in a sitemap at all — so since 2026-08-15 it is a question with its
+    // evidence attached, not a warning.
+    const onSolo = (report.advisories ?? []).filter(
+      (a) => a.ruleId === "hreflang.sitemap-mismatch" && a.pageUrl.endsWith("/solo"),
     );
+
     expect(onSolo).toHaveLength(4);
-    expect(onSolo[0]?.message).toContain("`/solo`");
-    expect(onSolo[0]?.message).toContain("the `<head>` advertises es, fr, pt-br");
-    expect(onSolo[0]?.message).toContain("the sitemap has no entry");
+    expect(onSolo[0]?.verdict).toBe("needs-judgment");
+    expect(onSolo[0]?.rigor).toBeNull();
+    expect(onSolo[0]?.evidence).toMatchObject({
+      route: "/solo",
+      advertisedButUnlisted: ["es", "fr", "pt-br"],
+    });
+  });
+
+  it("keeps that question out of everything that can fail a build", () => {
+    // The containment the move was for. A question in `siteIssues` would be a
+    // warning again under a quieter name, and it would carry no rigor.
+    expect(siteIssuesFor(report, "hreflang.sitemap-mismatch")).toHaveLength(0);
+    expect(report.siteIssues.every((i) => i.ruleId !== "hreflang.sitemap-mismatch")).toBe(true);
   });
 
   it("stays silent on hreflang.missing — these pages do declare alternates", () => {
