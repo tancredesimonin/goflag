@@ -95,6 +95,31 @@ Because `render` is only called when something has to be rewritten, `--check`
 rasterises nothing. Import `sharp` lazily and the check needs no native binary at
 all, which is what lets it run on an Alpine image.
 
+## The four calls
+
+| Call                                                    | Returns                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------- |
+| `buildIco(entries)`                                     | a `Uint8Array` — the container, packed from encoded PNGs |
+| `writeIcons({ artefacts, lock, fingerprintOf, check })` | one of the four statuses above                           |
+| `writeIco(path, entries, options)`                      | the same, for the single-`.ico` case                     |
+| `fingerprint(inputs)`                                   | the digest, if you are guarding something of your own    |
+
+`writeIco` is the shorthand: one path, the entries to pack into it, and the same
+options. `writeIcons` is the one to reach for as soon as a site ships more than
+the container — the PWA sizes, the apple-touch icon, a maskable variant — because
+guarding four files with one fingerprint and guarding one of them is the same
+call with a longer list.
+
+`buildIco` takes `{ width, height?, bytes }`. `height` defaults to `width`, since
+every icon these sites ship is square, and a dimension outside 1–256 is refused
+rather than truncated — the format has one byte per side, and a container no
+shell will read is not a file worth writing.
+
+`Uint8Array` and not `Buffer`, deliberately: `Buffer` is a global `@types/node`
+contributes, and a declaration file naming it fails to compile for a consumer
+whose tsconfig does not pull those types in. A `Buffer` **is** a `Uint8Array`, so
+`sharp`'s output goes straight in.
+
 ## The rule that asks for this
 
 [`icons.ico.missing`](/docs/rules/icons.ico.missing) is a guideline rather than a
