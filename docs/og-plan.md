@@ -12,7 +12,8 @@
 > pas servi en production, §10.7) · **Amendé** 2026-08-16 (OG-5 vérifiée avant
 > d’être écrite : sa prémisse était fausse, elle est redéfinie — §10.9, §6.1) · **Amendé**
 > 2026-08-16 (§10.10 : `og:image:alt` présent et faux sur douze pages, trouvé
-> par `goflag preview`)
+> par `goflag preview`) · **Amendé** 2026-08-16 (l’audit se place où le
+> conteneur se place, §10.7)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -909,8 +910,22 @@ ce défaut. C'est le §10.3 sous un autre angle : une famille de règles qui jug
 déclaration a un angle mort de la taille du réseau, et un audit qui tourne à côté
 de l'artefact déployé a un angle mort de la taille du conteneur.
 
-Le combler pour de bon, c'est auditer la sortie standalone plutôt que le
-workspace. Plus gros que le `COPY`, et pas encore fait.
+**Comblé le 2026-08-16.** `pnpm --filter @goflag/website seo` ne lance plus
+`next start` : il assemble la disposition de l'image — `.next/standalone`, puis
+`.next/static` et `public/` recopiés à la main, les trois mêmes lignes que le
+Dockerfile — et audite l'entrypoint du conteneur. `scripts/serve-standalone.mjs`
+porte la raison à côté du code, parce que si ces lignes divergent du Dockerfile
+l'audit cesse d'être une répétition du déploiement, qui est sa seule utilité.
+
+Vérifié dans les deux sens, et c'est la vérification qui compte : avec `public/`
+copié, `/favicon.ico` répond 200 et l'audit est propre sur 103 pages ; sans lui —
+la disposition d'avant le correctif — `icons.ico.missing` tombe, au mot près. Le
+défaut qui a vécu des mois en production est désormais attrapé avant le
+déploiement.
+
+Ce qui reste hors de portée : ce que le conteneur fait et que rien de local ne
+reproduit — le proxy, les en-têtes, l'origine réelle. C'est un audit de
+`develop.goflag.tech`, pas un audit local, et c'est une autre marche.
 
 ### 10.8 stereo-house migrée — le critère de sortie est rempli
 
