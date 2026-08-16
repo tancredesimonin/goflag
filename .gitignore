@@ -1,7 +1,30 @@
 # Secrets — never commit
+#
+# Deliberately wider than the three patterns this started as. `.env`,
+# `.env.local` and `.env.*.local` left `.env.production` and `.env.development`
+# tracked by default, which is the pair most likely to hold a real value. On a
+# public repository the cost of the miss is unbounded and the cost of the extra
+# lines is nothing.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Kamal reads these at deploy time and they are the one place a registry
+# password or a host key would land. `secrets-common` is committed on purpose —
+# it holds `KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD`, a passthrough to
+# the environment with no value in it — so it is excepted by name rather than by
+# leaving the whole directory unguarded.
+.kamal/secrets*
+!.kamal/secrets-common
+
+# Private keys and certificates. Nothing in this repository needs one; the rule
+# exists so that a stray copy cannot be staged by a `git add .`.
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
 
 # Dependencies
 node_modules/

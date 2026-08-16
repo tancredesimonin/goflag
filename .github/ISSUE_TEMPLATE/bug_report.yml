@@ -1,0 +1,77 @@
+name: Bug report
+description: goflag crashed, hung, or reported something that is not true.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A report that lets someone reproduce the finding is worth ten that describe it.
+        If the site is not public, a reduced HTML file does the same job — that is exactly
+        what the fixtures under `packages/cli/fixtures/sites/` are.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package
+      options:
+        - "@goflag/cli"
+        - "@goflag/next"
+        - the website (goflag.tech)
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`goflag --version`, or the version in your package.json."
+      placeholder: "0.2.11"
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: "`node --version`. goflag requires >=22."
+      placeholder: "v22.11.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The exact command
+      description: >-
+        Flags included. `--static`, `--profile` and `--coverage` change what is even
+        looked at, so a command without them is a different run.
+      render: shell
+      placeholder: goflag https://example.com --static --profile strict
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: The URL, if it is public
+      description: Nothing else pins down a finding as precisely.
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what you got
+      description: >-
+        For a wrong finding, say which rule id and why the page is in fact correct —
+        that is the most useful issue you can open.
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: The JSON report
+      description: >-
+        `goflag <url> --json > report.json`. The JSON is the source of truth; the
+        terminal output is a summary of it. Trim it to the relevant finding if it is large.
+      render: json

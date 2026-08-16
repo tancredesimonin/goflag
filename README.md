@@ -665,6 +665,17 @@ across workspace packages with `pnpm -r`. To work on one package, filter:
 
 The engine is framework-agnostic and lives in [`packages/cli/src/lib/core/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/lib/core) (crawl, fetch/extract, link audit, i18n) and [`packages/cli/src/lib/rules/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/lib/rules) (SEO checks). The CLI shell — orchestration, the `GoflagReport` schema, and rendering — lives in [`packages/cli/src/report/`](https://github.com/tancredesimonin/goflag/tree/main/packages/cli/src/report) and [`packages/cli/src/cli.ts`](https://github.com/tancredesimonin/goflag/blob/main/packages/cli/src/cli.ts).
 
+## Contributing
+
+GitHub is a read-only mirror; the canonical repository and the CI are on GitLab,
+so a pull request opened here cannot be merged. **Issues are the useful thing to
+open on GitHub** — a wrong finding especially, which is the class of bug handled
+first. [CONTRIBUTING.md](https://github.com/tancredesimonin/goflag/blob/main/CONTRIBUTING.md)
+has the whole story, including what makes a report reproducible and what a rule
+proposal needs. Vulnerabilities go to <hello@goflag.tech> rather than to an
+issue — see
+[SECURITY.md](https://github.com/tancredesimonin/goflag/blob/main/SECURITY.md).
+
 ## License
 
 MIT.

@@ -1,0 +1,11 @@
+# `blank_issues_enabled: true` on purpose. The two templates cover the reports
+# that have a shape; a question about whether goflag does something at all has
+# none, and forcing it into a bug report loses it.
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://goflag.tech/docs
+    about: The rule catalogue, the flag reference, and what goflag deliberately does not do.
+  - name: Security vulnerability
+    url: https://github.com/tancredesimonin/goflag/blob/main/SECURITY.md
+    about: Do not open a public issue — an issue is indexed before it is read.
