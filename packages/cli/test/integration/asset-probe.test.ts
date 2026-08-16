@@ -39,6 +39,36 @@ function ico(sizes: number[]): Buffer {
   return Buffer.concat([directory, Buffer.alloc(512)]);
 }
 
+/**
+ * A JPEG whose size sits behind a fat metadata segment.
+ *
+ * The point of the filler: a real photo carries EXIF, an ICC profile and often
+ * a thumbnail in front of the frame header, so the offset of the size is not a
+ * constant and the decoder has to walk. `padding` puts the frame that far in.
+ */
+function jpeg(width: number, height: number, padding = 0): Buffer {
+  const soi = Buffer.from([0xff, 0xd8]);
+
+  // APP1, standing in for EXIF: `FF E1 <length:2> <payload>`.
+  const app1 = Buffer.alloc(padding > 0 ? padding + 4 : 0);
+  if (padding > 0) {
+    app1.writeUInt8(0xff, 0);
+    app1.writeUInt8(0xe1, 1);
+    app1.writeUInt16BE(padding + 2, 2);
+  }
+
+  // SOF0: `FF C0 <length:2> <precision:1> <height:2> <width:2> <components…>`.
+  const sof = Buffer.alloc(11);
+  sof.writeUInt8(0xff, 0);
+  sof.writeUInt8(0xc0, 1);
+  sof.writeUInt16BE(9, 2);
+  sof.writeUInt8(8, 4);
+  sof.writeUInt16BE(height, 5);
+  sof.writeUInt16BE(width, 7);
+
+  return Buffer.concat([soi, app1, sof, Buffer.from([0xff, 0xda]), Buffer.alloc(4 * 1024)]);
+}
+
 describe("probeAsset", () => {
   let server: ServerType;
   let origin: string;
@@ -61,6 +91,24 @@ describe("probeAsset", () => {
       () =>
         new Response(new Uint8Array(ico([16, 32, 48])), {
           headers: { "content-type": "image/x-icon" },
+        }),
+    );
+
+    app.get(
+      "/cover.jpg",
+      () =>
+        new Response(new Uint8Array(jpeg(1024, 1024, 6 * 1024)), {
+          headers: { "content-type": "image/jpeg" },
+        }),
+    );
+
+    // A frame header past the 8 KiB the probe reads. Unknown, and it has to say
+    // so rather than reach for the rest of the file.
+    app.get(
+      "/deep.jpg",
+      () =>
+        new Response(new Uint8Array(jpeg(800, 600, 16 * 1024)), {
+          headers: { "content-type": "image/jpeg" },
         }),
     );
 
@@ -106,6 +154,25 @@ describe("probeAsset", () => {
       { width: 32, height: 32 },
       { width: 48, height: 48 },
     ]);
+  });
+
+  it("walks a JPEG's segments to the frame that states its size", async () => {
+    // Six kilobytes of metadata in front of it, which is what a real photo
+    // looks like: the offset of the size is not a constant, so it is a walk.
+    const probe = await probeAsset(`${origin}/cover.jpg`);
+
+    expect(probe.ok).toBe(true);
+    expect(probe.sizes).toEqual([{ width: 1024, height: 1024 }]);
+  });
+
+  it("says nothing about a JPEG whose frame is past the header it reads", async () => {
+    // The restraint the rules on top of this depend on: no size means unknown,
+    // and unknown is not a mismatch. Fetching the rest of the file to settle it
+    // would be a download the probe exists to avoid.
+    const probe = await probeAsset(`${origin}/deep.jpg`);
+
+    expect(probe.ok).toBe(true);
+    expect(probe.sizes).toBeUndefined();
   });
 
   it("refuses a 200 of HTML", async () => {
