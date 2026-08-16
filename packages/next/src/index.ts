@@ -20,7 +20,7 @@ export {
   type SitemapFacts,
   type SitemapOptions,
 } from "./routes";
-export { buildMetadata, type RouteContent } from "./metadata";
+export { buildMetadata, type RouteContent, type RouteImage } from "./metadata";
 export { clusterOf, locate } from "./locate";
 export {
   isLanguage,

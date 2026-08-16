@@ -125,18 +125,53 @@ describe("metadata — monolingual pages", () => {
     });
   });
 
-  it("resolves a named card against the origin", () => {
-    const expected = [
-      {
-        url: "https://goflag.tech/og/docs/install",
-        width: 1200,
-        height: 630,
-        alt: "Install goflag",
-      },
-    ];
+  it("resolves a named card against the origin, and declares nothing else about it", () => {
+    // The dimensions used to be here, and they were invented: `1200 × 630`
+    // attached to whatever path the caller handed over, sight unseen. On a site
+    // naming cover art they were false — 1024×1024 artwork and a 337-byte 1×1
+    // placeholder, both declared 1200×630 by this library, with
+    // `og.image.ratio` reading the lie and passing it.
+    const expected = [{ url: "https://goflag.tech/og/docs/install", alt: "Install goflag" }];
 
     expect(meta.openGraph).toMatchObject({ images: expected });
     expect(meta.twitter).toMatchObject({ images: expected });
+    expect(meta.openGraph?.images?.[0]).not.toHaveProperty("width");
+    expect(meta.openGraph?.images?.[0]).not.toHaveProperty("height");
+  });
+
+  it("declares the shape when the caller measured it", () => {
+    const measured = routes.metadata({
+      path: "/docs/install",
+      ...content,
+      image: { url: "/og/docs/install", width: 1200, height: 630, type: "image/png" },
+    });
+
+    expect(measured.openGraph).toMatchObject({
+      images: [
+        {
+          url: "https://goflag.tech/og/docs/install",
+          width: 1200,
+          height: 630,
+          type: "image/png",
+          alt: "Install goflag",
+        },
+      ],
+    });
+  });
+
+  it("takes a sentence for the picture over the title of the page", () => {
+    // `alt` describes the image. The page title describes the page, and is the
+    // fallback rather than the answer — the drift `og:image:alt` exists to
+    // close, arriving from the library's side.
+    const described = routes.metadata({
+      path: "/docs/install",
+      ...content,
+      image: { url: "/og/docs/install", alt: "The title “Install” on a dark goflag card." },
+    });
+
+    expect(described.openGraph?.images?.[0]).toMatchObject({
+      alt: "The title “Install” on a dark goflag card.",
+    });
   });
 
   it("ignores a locale it is handed — the route has only one", () => {

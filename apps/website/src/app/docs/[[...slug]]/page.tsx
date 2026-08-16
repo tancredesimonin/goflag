@@ -1,3 +1,4 @@
+import { OG_CONTENT_TYPE, OG_SIZE } from "@goflag/og";
 import { allDocs } from "content-collections";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -5,6 +6,7 @@ import { notFound } from "next/navigation";
 import { DocsPage } from "@/components/docs/docs-page";
 import { Mdx } from "@/components/docs/mdx";
 import { docsHref } from "@/lib/docs-nav";
+import { ogAlt } from "@/lib/seo/og";
 import { routes } from "@/lib/seo/site";
 
 interface PageProps {
@@ -30,7 +32,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     path: docsHref(doc.slug),
     title: doc.title,
     description: doc.description,
-    image: `/og/docs/${doc.slug}`,
+    // Measured, not assumed: `OG_SIZE` and `OG_CONTENT_TYPE` are the same two
+    // constants `ogCatchAllRoute` renders this card with, so the declaration
+    // and the picture cannot disagree. The library stopped inventing them —
+    // `@goflag/next` used to attach 1200×630 to any path it was handed.
+    //
+    // The `alt` too: the catch-all carries none of its own, so without this the
+    // docs shipped the page's title where every other card ships a sentence
+    // describing the picture.
+    image: {
+      url: `/og/docs/${doc.slug}`,
+      width: OG_SIZE.width,
+      height: OG_SIZE.height,
+      type: OG_CONTENT_TYPE,
+      alt: ogAlt(doc.title),
+    },
     og: { modifiedTime: doc.updated },
   });
 }
