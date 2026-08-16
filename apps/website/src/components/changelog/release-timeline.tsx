@@ -16,11 +16,15 @@ export interface Release {
   content: ReactNode;
 }
 
-interface ChangelogContentProps {
-  releases: Release[];
-}
-
-const ChangelogContent = ({ releases }: ChangelogContentProps) => {
+/**
+ * The changelog, drawn as one dated track per release rather than a list of
+ * headings. Two packages ship on their own version lines and share this
+ * timeline, so every row states which one it belongs to.
+ *
+ * Adapted from a shadcn/studio block: the sticky date rail is the good idea,
+ * and the rest is this repository's.
+ */
+export function ReleaseTimeline({ releases }: { releases: Release[] }) {
   return (
     <>
       {releases.map((release) => (
@@ -66,6 +70,4 @@ const ChangelogContent = ({ releases }: ChangelogContentProps) => {
       ))}
     </>
   );
-};
-
-export default ChangelogContent;
+}

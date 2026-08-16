@@ -2,7 +2,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import ChangelogContent from "@/components/shadcn-studio/blocks/timeline-component-05/timeline-component-05";
+import { ReleaseTimeline } from "@/components/changelog/release-timeline";
 import { CopyCommand } from "@/components/site/copy-command";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -97,7 +97,7 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
         ) : null}
       </header>
 
-      <ChangelogContent
+      <ReleaseTimeline
         releases={releases.map((release) => ({
           id: `${release.package}-${release.version}`,
           version: release.version,
