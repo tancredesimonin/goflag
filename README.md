@@ -432,6 +432,30 @@ should boot. In a monorepo audited from the root, point it at the package:
 goflag http://localhost:3000 --start "pnpm start" --start-cwd apps/web
 ```
 
+### Look at the cards before you ship them
+
+Some things are only settleable by looking. `og.image.representative` asks
+whether the shared image survives being cropped to 1.91:1 — a question the
+catalogue states and refuses to answer, because no rule can.
+
+```sh
+goflag preview http://localhost:3000 --start "pnpm start"
+```
+
+It audits like a normal run, then writes `.goflag/preview.html`: one
+self-contained file showing what Google, Open Graph, X, LinkedIn, Slack, Discord
+and WhatsApp make of each page, with the findings pinned on the cards they
+concern and the page's JSON-LD shown beside them.
+
+Each surface is labelled with how well its geometry is actually documented.
+Three of the seven publish real numbers; Slack calls its own rendering a
+"micro-approximation"; Discord publishes nothing; X's card documentation is not
+reachable, and its shape changed twice since 2023. Drawing all seven with the
+same confidence would be six unearned claims, so the file says which is which.
+
+It never gates — it exits 0 unless the run itself failed — and it prints the
+path it wrote, so `open "$(goflag preview http://localhost:3000)"` opens it.
+
 ### Multilingual sites
 
 Discovery is seeded from the sitemap, not just from links. That matters because

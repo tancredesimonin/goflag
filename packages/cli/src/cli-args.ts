@@ -21,14 +21,24 @@ export const HELP = renderHelp();
 
 const COMMAND_NAMES = COMMANDS.map((c) => c.name);
 
+/** The subcommands, as the parser knows them. */
+export type Command = "rules" | "flags" | "preview";
+
+function isCommand(arg: string): arg is Command {
+  return COMMAND_NAMES.includes(arg);
+}
+
 export interface ParsedArgs extends FlagTarget {
   /**
-   * A subcommand instead of an audit. Absent for the usual `goflag <url>`.
+   * A subcommand instead of a plain audit. Absent for the usual
+   * `goflag <url>`.
    *
-   * Both print a catalogue and exit without touching the network — the two
-   * things goflag can answer about itself rather than about a site.
+   * `rules` and `flags` print a catalogue and exit without touching the
+   * network — the two things goflag can answer about itself rather than about
+   * a site. `preview` is the first one that takes a URL and runs the audit:
+   * it renders what the crawl saw instead of judging it.
    */
-  command?: "rules" | "flags";
+  command?: Command;
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -66,12 +76,42 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
 
     if (arg && arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
-    // A command word is a command rather than a URL, and only in first
-    // position: `goflag https://x.test rules` is a typo, and treating it as a
-    // command would audit nothing while looking like it worked.
-    if (arg && COMMAND_NAMES.includes(arg) && i === 0) parsed.command = arg as "rules" | "flags";
+    // A command word is a command rather than a URL, and only before any
+    // positional: `goflag https://x.test rules` is a typo, and treating it as
+    // a command would audit nothing while looking like it worked.
+    //
+    // The gate is "nothing positional seen yet", not "argv[0]". Both reject
+    // that typo, and only the first survives a flag written before the command
+    // — `goflag --report r.json preview <url>` used to swallow `preview` as
+    // the URL and then reject the real one as a surplus argument.
+    if (arg && isCommand(arg) && !parsed.url && !parsed.command) parsed.command = arg;
     else if (arg && !parsed.url) parsed.url = arg;
     else if (arg) throw new Error(`unexpected argument: ${arg}`);
+  }
+
+  // `preview` owns stdout — it prints the path it wrote, so `open "$(…)"`
+  // works — and it never gates. Every flag that asks for a different view, or
+  // for a verdict, would therefore be accepted and then ignored, and a flag
+  // that does nothing is worse than one that refuses. Same reasoning as the
+  // `--baseline` guards below, applied to a command instead of a pair — and
+  // checked first, so `preview --baseline b.json` is told the truth (`preview`
+  // does not gate) rather than being sent to add `--regressions-only`.
+  if (parsed.command === "preview") {
+    const inert = [
+      parsed.json && "--json",
+      parsed.summary && "--summary",
+      parsed.baseline && "--baseline",
+      parsed.updateBaseline && "--update-baseline",
+      parsed.regressionsOnly && "--regressions-only",
+      parsed.maxDebt !== undefined && "--max-debt",
+    ].filter((flag): flag is string => typeof flag === "string");
+    if (inert.length > 0) {
+      throw new Error(
+        `preview renders what the crawl saw, it does not gate or reformat, so ` +
+          `${inert.join(", ")} would change nothing: drop them, or ask for the JSON ` +
+          `with --report <file>`,
+      );
+    }
   }
 
   // Each flag is meaningless without the other, and guessing which one the
