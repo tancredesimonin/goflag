@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.12](https://github.com/tancredesimonin/goflag/compare/v0.2.11...v0.2.12) (2026-08-16)
+
+
+### Features
+
+* **cli:** a JPEG says its size too, and the probe reads it ([30c6ef8](https://github.com/tancredesimonin/goflag/commit/30c6ef8760f5f63751345d1cc67e28894acd32f6))
+* **cli:** og.image.alt.caption — the second site earned it ([1a6e788](https://github.com/tancredesimonin/goflag/commit/1a6e788289c7be4f415c1b60c6bc8b81451de0e6))
+* **cli:** the declared size of a preview image meets the real one ([062ba35](https://github.com/tancredesimonin/goflag/commit/062ba3583fb7d44cddf016273167a2ae2ad59ff5))
+* **cli:** the preview gains the locale axis and the hydration delta ([a2632ce](https://github.com/tancredesimonin/goflag/commit/a2632ceeb3c522d5a9b303236fef3cc22174fa6d))
+* **cli:** the preview shows what the catalogue cannot judge ([24c1d3c](https://github.com/tancredesimonin/goflag/commit/24c1d3c2543b77ddd073c13ad3cd38b154ad403f))
+
+
+### Bug Fixes
+
+* **cli:** --report is written on the run that captures a baseline ([50f9583](https://github.com/tancredesimonin/goflag/commit/50f9583e888ee73310cc1ef41d367d4d002b4e0c))
+* **cli:** --summary is refused in baseline mode rather than swallowed ([4a377d4](https://github.com/tancredesimonin/goflag/commit/4a377d40e2f046399779fea3a807a51e5e994dd2))
+* **cli:** a deeply nested JSON-LD block no longer costs the audit the page ([5cfb0e4](https://github.com/tancredesimonin/goflag/commit/5cfb0e40e7248729c9f1022c23a529296f15e8e6))
+* **cli:** a JSON report piped to another process arrives whole ([b5ff798](https://github.com/tancredesimonin/goflag/commit/b5ff79830e5ee440881220169dec22b8e40101bf))
+* **cli:** the preview survives a hostile page and refuses what it would ignore ([61b17c8](https://github.com/tancredesimonin/goflag/commit/61b17c87f492e87441d531d724c5e0c1876a0dc8))
+* **release:** a release is decided on the package that moved ([7cb9dac](https://github.com/tancredesimonin/goflag/commit/7cb9dac7c4e7d601b769670ccbdffb118efeff40))
+* the README's version pins are held against the manifest ([ecbe0f7](https://github.com/tancredesimonin/goflag/commit/ecbe0f75e7a14db87db7a615f8882ba18654e75a))
+
 ## [0.2.11](https://github.com/tancredesimonin/goflag/compare/v0.2.10...v0.2.11) (2026-08-16)
 
 
