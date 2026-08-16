@@ -343,6 +343,69 @@ test:package:next:
         }
         console.log('imported and rendered from the tarball');
       "
+
+# The same again for the cards, and this is the package that needs it most.
+#
+# npm rewrites `package.json` at publication, not at packing — the CLI once came
+# within a hair of shipping without its command because `bin` was deleted rather
+# than normalised, and the local tarball was fine throughout. This package
+# declares **two** export subpaths where the other two declare one, so it has
+# twice the surface to lose that way, and `@goflag/og/next` disappearing would
+# not show up anywhere until a consuming site's build failed.
+test:package:og:
+  stage: test
+  <<: [*pnpm, *pkg_changes]
+  script:
+    - pnpm --filter @goflag/og build
+    - TARBALL="$(cd packages/og && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - echo "packed $TARBALL"
+
+    # Committed rather than staged by `prepack`, like the library's.
+    - tar -tzf "$TARBALL" > og-tarball-contents.txt
+    - grep -qx 'package/README.md' og-tarball-contents.txt
+    - grep -qx 'package/LICENSE' og-tarball-contents.txt
+
+    - mkdir -p /tmp/goflag-og-install && cd /tmp/goflag-og-install
+    - npm init -y > /dev/null
+    # `react` is a peer of the core — the card is a JSX tree, so `index.js`
+    # imports `react/jsx-runtime` at module scope. Installing it here is also
+    # how we find out whether declaring it as a peer was enough.
+    - npm install "$TARBALL" react
+
+    # A file rather than `-e`, so `import.meta.resolve` below has a real parent
+    # to resolve against.
+    - |
+      cat > check.mjs <<'CHECK'
+      import { buildIco, fitTitle, oklchToHex } from "@goflag/og";
+
+      const ico = buildIco([{ width: 16, bytes: new Uint8Array(8) }]);
+      if (ico.length !== 30) throw new Error(`unexpected ICO length: ${ico.length}`);
+
+      const { fontSize } = fitTitle("Changelog", {
+        steps: [{ upTo: 32, fontSize: 72 }],
+        smallest: 44,
+      });
+      if (fontSize !== 72) throw new Error(`unexpected font size: ${fontSize}`);
+
+      // `--terminal` out of the site's stylesheet. A transform that drifts
+      // stops being a guard against transcription and becomes one more
+      // transcription.
+      const hex = oklchToHex([0.19, 0.005, 250]);
+      if (hex !== "#121416") throw new Error(`unexpected conversion: ${hex}`);
+
+      // Resolved, not imported: importing it would pull `next/og` and satori
+      // into this check, which is Next's contract to keep and not ours. What
+      // has to be true here is that the subpath survived into the published
+      // `exports` map at all.
+      const binding = import.meta.resolve("@goflag/og/next");
+      if (!binding.endsWith("/dist/next.js")) {
+        throw new Error(`@goflag/og/next resolved to ${binding}`);
+      }
+
+      console.log("imported and resolved from the tarball");
+      CHECK
+    - node check.mjs
+
 # ---------------------------------------------------------------------------
 # apps/website — goflag.tech
 # ---------------------------------------------------------------------------
