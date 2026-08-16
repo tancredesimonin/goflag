@@ -84,6 +84,10 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     why: "Generated cards carry the page title as pixels. With no `og:image:alt`, that title is unavailable to anyone using a screen reader — at the moment a link is shared, which is before anyone has had the chance to open the page and find the text again.",
     message: "Page declares an `og:image` with no `og:image:alt`.",
   },
+  "og.image.alt.caption": {
+    why: "A card is a title drawn as pixels, so the tempting alt is the title again — and it is the one description that adds nothing. Someone who cannot see the card hears the same words twice and still does not know what is in the picture. It is also invisible to the rule next door: the tag is present, so the presence check passes, and it will keep passing for as long as the page exists.",
+    message: "`og:image:alt` repeats the title instead of describing the image.",
+  },
   "og.image.dimensions": {
     why: "The first time a URL is shared, the crawler has not seen the image yet. Told the size, it can lay the card out immediately; left to guess, it renders the share without the image and fetches it afterwards. The first share is usually the one that travels.",
     message: "The `og:image` declaration omits `og:image:width` or `og:image:height`.",

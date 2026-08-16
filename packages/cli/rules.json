@@ -1,6 +1,6 @@
 {
   "counts": {
-    "page": 24,
+    "page": 25,
     "site": 28,
     "prose": 5
   },
@@ -577,6 +577,34 @@
         "title": "Carry the alt per image, not as a constant",
         "snippet": "// app/…/opengraph-image.tsx — `export const alt` is one fixed string, so a\n// translated or data-derived description has to go through the metadata fn.\nexport async function generateImageMetadata({ params }) {\n  const t = await getTranslations({ locale: params.locale });\n  return [{ id: \"og\", size, contentType, alt: t(\"og.alt\") }];\n}",
         "language": "tsx"
+      }
+    },
+    {
+      "id": "og.image.alt.caption",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "`og:image:alt` describes the image, it does not repeat the title",
+      "why": "The protocol asks for a description of what is in the image, and says in the same breath that it is not a caption. A copy of the title is the one value that is always available and never describes anything: a reader who cannot see the card is handed the same words twice and learns nothing about the picture. It also satisfies `og.image.alt` forever, which is why it needs an id of its own.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.images",
+        "openGraph.title",
+        "document.title"
+      ],
+      "relates": [
+        "og.image.alt",
+        "og.image.representative"
+      ],
+      "expected": "an `og:image:alt` that says something the title does not",
+      "fix": {
+        "title": "Say what the card shows, not what the page is called",
+        "snippet": "// The card is a title on a background. The alt says so — once, from a\n// template, so every page gets one and none of them is the title alone.\nconst ogAlt = (title: string) => `The title “${title}” on a dark preview card.`;",
+        "language": "ts"
       }
     },
     {
