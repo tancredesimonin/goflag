@@ -241,6 +241,53 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
   });
 });
 
+describe("a path segment that only looks like a locale", () => {
+  // The defect the rigor review went looking for and nearly missed by aiming at
+  // the wrong place. `splitRoute` reads a leading segment by shape alone —
+  // `bcp47.ts` says `/de/` and `/api/` are indistinguishable to it — and
+  // `sitemapLocalesByRoute` was not consulting the locale axis. `api`, `doc`
+  // and `www` all pass its two-or-three-letter test.
+  //
+  // So a bilingual site with a `/doc/` section was told, at `vendor-spec`
+  // rigor, to publish an `hreflang="doc"` alternate for a documentation page.
+  const HEADS: SitemapAlternate[] = [
+    { hreflang: "en", href: `${O}/en/guide` },
+    { hreflang: "fr", href: `${O}/fr/guide` },
+  ];
+
+  const withDocSection = () =>
+    context(
+      [page(`${O}/en/guide`, HEADS)],
+      [{ loc: `${O}/en/guide` }, { loc: `${O}/fr/guide` }, { loc: `${O}/doc/guide` }],
+    );
+
+  it("is not counted as a missing cluster member", () => {
+    expect(incomplete(withDocSection())).toEqual([]);
+  });
+
+  it("is not counted by the other half either", () => {
+    // Same rows feed both, so a fix that only silenced the sourced rule would
+    // leave the invented locale visible one rule over.
+    expect(warnings(withDocSection())).toEqual([]);
+  });
+
+  it("still sees the locales the site does serve", () => {
+    // The guard must not be a mute button: with `fr` genuinely absent from the
+    // `<head>`, the finding is real and must survive.
+    const enOnly: SitemapAlternate[] = [{ hreflang: "en", href: `${O}/en/guide` }];
+    const found = incomplete(
+      context(
+        [page(`${O}/en/guide`, enOnly)],
+        [{ loc: `${O}/en/guide` }, { loc: `${O}/fr/guide` }, { loc: `${O}/doc/guide` }],
+      ),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("the sitemap lists fr but");
+    expect(found[0]!.message).not.toContain("doc");
+  });
+});
+
 describe("the two halves, on a route that disagrees in both directions", () => {
   // The case that proves the split is a split and not a rename. One route, one
   // page, both gaps at once: the sitemap publishes `es` the `<head>` never
