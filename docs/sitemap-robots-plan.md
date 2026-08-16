@@ -1,6 +1,7 @@
 # goflag — Sitemap & robots.txt Validation Spec
 
-> **Status:** G.1, G.2, G.4 and most of G.3's rules shipped 2026-08-15. Only the document tree is left · **Written:** 2026-08-06
+> **Status:** Phase G shipped 2026-08-15, less `sitemap.index.nested`, which no
+> document supports — see §4.3 · **Written:** 2026-08-06
 > **Related:** `docs/rules-catalog-plan.md` — this document is the **artefact
 > layer** built on that design. It lands **after** the rule-catalog build-out
 > (it needs the source catalog, the rule descriptor, and the extraction model)
@@ -105,6 +106,20 @@ Grows out of `SiteDiscovery` — same discovery routine, but the result keeps
 the **document tree** (root + children with their own status/size/parse
 outcome) instead of flattening everything into one warnings array.
 
+> **Shipped as `SiteDiscovery.documents`, not as a parallel type.** G.1 folded
+> the robots parse into `RobotsProbe` "rather than beside it" and this follows
+> that precedent: the tree is an array of `SitemapDocument` on the existing
+> result, and `SitemapUrlEntry` gains a `documentUrl` naming the document that
+> declared it. A second top-level model would have meant two things to thread
+> through `runAudit`, the report and the site rules, for one shape that every
+> existing rule would then have to choose between. The interface below is what
+> was built, minus the wrapper.
+>
+> `documents` is **required and empty** rather than optional on the runs that
+> read no sitemap — the crawl fallback, and a site with none. A rule asking
+> "what did each document declare?" must see no documents, where an absent
+> field would have let it read `undefined` and quietly skip.
+
 ```ts
 interface SitemapExtraction {
   sitemapVersion: number;
@@ -196,7 +211,31 @@ existing two levels (`error` / `warning`).
 | `sitemap.empty`             | boolean | guideline     | warning  | Parses but lists nothing while the crawl found pages. Today this silently falls back to crawling; it becomes a finding **and** keeps the fallback. |
 | `sitemap.limits.exceeded`   | boolean | spec-required | error    | > 50,000 URLs or > 50 MB uncompressed per document (sitemaps.org). Entries past the limit are dead weight the consumer may drop.                   |
 | `sitemap.index.child-error` | boolean | spec-required | error    | Index references a child that is unreachable or unparsable — a hole in the declared inventory.                                                     |
-| `sitemap.index.nested`      | boolean | vendor-spec   | error    | An index references another index. Google does not support nesting; the subtree is invisible.                                                      |
+| ~~`sitemap.index.nested`~~  | —       | —             | —        | **Not shipped — no document says this.** See below.                                                                                                |
+
+**`sitemap.index.nested` did not survive its own sourcing.** The row above
+claimed `vendor-spec` on the strength of "Google does not support nesting",
+and on 2026-08-15 that was looked for in the three documents that could carry
+it. sitemaps.org addresses index files at length — their 50,000/50 MB limits,
+their same-host requirement — and **says nothing about nesting**. Google's
+`large-sitemaps` page states that referenced sitemaps "must be hosted on the
+same site" and "must be in the same directory as the sitemap index file, or
+lower in the site hierarchy", and says nothing about nesting either. Neither
+does the sitemap overview.
+
+The claim is folklore. It may well be true — but a rule labelled `vendor-spec`
+on an uncited belief is precisely what `packages/cli/src/lib/rules/sources/types.ts`
+says the rigor axis exists to prevent, and the same check has now caught the
+same class of mistake twice in one day (see `docs/og-plan.md` and the hreflang
+family). So it is not shipped.
+
+What did ship instead is smaller and true: the document tree records a nested
+child as `kind: "index"`, so the case is visible and correctly named. Discovery
+still counts it under `childSitemapErrors` as it always has — that verdict is
+imprecise, and replacing it needs a source that does not exist. If nesting is
+worth a finding, the honest form is a statement about **this run** ("a declared
+subtree was not followed, so its entries are absent from this audit"), which
+needs no external authority because it is a fact about goflag's own coverage.
 
 ### 4.4 sitemap — entries
 
@@ -276,7 +315,7 @@ must thread `siteIssues` the same way it threads page findings.
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **G.1** | ✅ **shipped** — full RFC 9309 parse with line provenance, folded into `RobotsProbe` rather than beside it; the §3.3 matcher with one test per row of its semantics table                                                 |
 | **G.2** | ✅ **shipped** — §4.1 in full, §4.2 less `sitemap.unreachable` (it needs the sitemap fetch of G.3). `robots.blocks-site` re-expressed on the matcher, `robots.blocks-page` new                                            |
-| **G.3** | `SitemapExtraction`: document tree kept, `SiteDiscovery` consumes it; structure + entry rules (§4.3–4.4)                                                                                                                  |
+| **G.3** | ✅ **shipped** — the document tree, and with it `sitemap.limits.exceeded` and `sitemap.entry.out-of-scope`, the two rules the protocol states **per document**. `sitemap.index.nested` is not shipped (§4.3)              |
 | **G.4** | ✅ **shipped** — all six. `entry.unreachable` and `entry.redirects` run on a probe pass that answers from the crawl and the link audit first and fetches only the leftovers; **all six dead diagnostics fields are gone** |
 
 Each step ships independently (tests + full gate → MR to `develop`), G.1 → G.4

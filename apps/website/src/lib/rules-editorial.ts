@@ -207,6 +207,16 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "2 of 9 child sitemaps could not be read. The index declares an inventory and part of it is missing, so whatever those documents listed is invisible — and nothing says how much that is.",
   },
+  "sitemap.limits.exceeded": {
+    why: "A consumer is entitled to stop reading at 50,000 URLs or 50 MB, so everything past the ceiling is published in name only. Nothing about the failure is visible from outside: the file serves, it parses, and the entries beyond the cut are simply never crawled. The size is measured uncompressed, because the limit is about what a consumer must parse rather than what crossed the wire.",
+    message:
+      "This sitemap document declares 61,204 URLs against a ceiling of 50,000. A consumer may stop reading at the limit, so everything past it is published in name only — split the document and reference the parts from an index.",
+  },
+  "sitemap.entry.out-of-scope": {
+    why: "A sitemap only speaks for the directory it is served from: one at `/catalog/sitemap.xml` may list URLs under `/catalog/` and not under `/images/`. A root-level sitemap is exempt by construction, which is most of them — this catches the sites that split sitemaps per section and serve each from its own section, then let one drift outside its own patch.",
+    message:
+      "3 entries are outside this sitemap's directory `/catalog/`: `https://example.com/images/a`, `https://example.com/images/b`, `https://example.com/blog/c`. A sitemap only speaks for the path it is served from, so a consumer may drop them — serve the document from the root, or move the entries into a sitemap that covers them.",
+  },
   "sitemap.entry.invalid-url": {
     why: "A sitemap is fetched on its own, with no page behind it, so a relative `<loc>` resolves to nothing. The entry looks like a declaration and names no address.",
     message:

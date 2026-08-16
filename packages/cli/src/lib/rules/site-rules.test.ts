@@ -49,6 +49,7 @@ function discovery(urls: SitemapUrlEntry[]): SiteDiscovery {
     baseUrl: O,
     source: "well-known",
     urls,
+    documents: [],
     truncated: false,
     diagnostics: {
       found: true,

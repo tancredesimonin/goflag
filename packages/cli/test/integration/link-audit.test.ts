@@ -30,6 +30,7 @@ describe("runLinkAudit — end to end", () => {
       baseUrl: site.url,
       source: "crawl",
       urls: paths.map((p) => ({ loc: `${site.url}${p}` })),
+      documents: [],
       diagnostics: {
         found: false,
         status: 0,

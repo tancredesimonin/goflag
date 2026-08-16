@@ -1069,6 +1069,10 @@ function syntheticDiscovery(
     baseUrl,
     source: "crawl",
     urls: pages.map((p) => ({ loc: p.fetch.finalUrl })),
+    // Crawl-derived: no sitemap document was read, so the tree is empty rather
+    // than absent. The document rules ask "what did each document declare?" and
+    // must see that nothing declared anything.
+    documents: [],
     diagnostics: {
       found: false,
       status: 0,

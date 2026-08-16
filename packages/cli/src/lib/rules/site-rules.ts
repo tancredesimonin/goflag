@@ -19,6 +19,7 @@
 
 import { splitRoute } from "../core/i18n";
 import { robotsAllows } from "../core/robots/match";
+import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
 
@@ -779,6 +780,153 @@ const sitemapEntryInvalidUrl: SiteRule = {
   },
 };
 
+/**
+ * The two ceilings sitemaps.org puts on a single document, verbatim:
+ *
+ * > each Sitemap file that you provide must have no more than 50,000 URLs and
+ * > must be no larger than 50MB (52,428,800 bytes)
+ *
+ * and, for an index:
+ *
+ * > Sitemap index files may not list more than 50,000 Sitemaps and must be no
+ * > larger than 50MB (52,428,800 bytes)
+ *
+ * Same two numbers either way, counted over a different thing — which is why
+ * this is one rule rather than two, and why it needs the document tree: both
+ * are stated **per document**, and a site-wide total answers neither.
+ */
+const DOCUMENT_URL_LIMIT = 50_000;
+const DOCUMENT_BYTE_LIMIT = 52_428_800;
+
+/** What a given document declares, counted the way its own ceiling is written. */
+function declaredCount(doc: SitemapDocument): number {
+  return doc.kind === "index" ? doc.childLocs.length : doc.urlCount;
+}
+
+function oversizedDocuments(site: SiteContext): SitemapDocument[] {
+  return (site.discovery?.documents ?? []).filter(
+    (doc) =>
+      doc.kind !== "unparsable" &&
+      (declaredCount(doc) > DOCUMENT_URL_LIMIT || doc.byteLength > DOCUMENT_BYTE_LIMIT),
+  );
+}
+
+/**
+ * A sitemap document is over one of the protocol's two ceilings.
+ *
+ * Not a style point: a consumer is entitled to stop reading at the limit, so
+ * everything past it is dead weight that looks published and is not. The
+ * failure is silent from every angle — the file serves, it parses, and the
+ * entries beyond the cut simply never get crawled.
+ *
+ * Measured on the **uncompressed** body, because the ceiling is about what a
+ * consumer must parse rather than what crossed the wire. A gzipped document is
+ * over the limit at the same size a plain one is.
+ */
+const sitemapLimitsExceeded: SiteRule = {
+  id: "sitemap.limits.exceeded",
+  severity: "error",
+  summary: "No single sitemap document may exceed 50,000 entries or 50 MB",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => oversizedDocuments(site).length > 0,
+  check: ({ site, issue }) =>
+    oversizedDocuments(site).map((doc) => {
+      const count = declaredCount(doc);
+      const noun = doc.kind === "index" ? "child sitemaps" : "URLs";
+      const over: string[] = [];
+      if (count > DOCUMENT_URL_LIMIT) {
+        over.push(`${count.toLocaleString("en-US")} ${noun} against a ceiling of 50,000`);
+      }
+      if (doc.byteLength > DOCUMENT_BYTE_LIMIT) {
+        over.push(
+          `${(doc.byteLength / 1_048_576).toFixed(1)} MB uncompressed against a ceiling of 50 MB`,
+        );
+      }
+
+      return issue({
+        pageUrl: doc.url,
+        message: `This sitemap document declares ${over.join(" and ")}. A consumer may stop reading at the limit, so everything past it is published in name only — split the document and reference the parts from an index.`,
+        origin: { kind: "computed" },
+      });
+    }),
+};
+
+/**
+ * A sitemap lists URLs outside the directory it is served from.
+ *
+ * sitemaps.org scopes a document's authority by its own location, with an
+ * example rather than a rule of thumb:
+ *
+ * > A Sitemap file located at http://example.com/catalog/sitemap.xml can
+ * > include any URLs starting with http://example.com/catalog/ but can not
+ * > include URLs starting with http://example.com/images/
+ *
+ * A root-level sitemap is exempt by construction: its directory is `/`, so
+ * every path on the host is under it. That is most sitemaps, which is why this
+ * rule is quiet on every site in this repository and still worth having — the
+ * sites it catches are the ones that split sitemaps per section and serve them
+ * from those sections.
+ *
+ * Entries on another host are skipped rather than counted twice:
+ * `sitemap.entry.cross-host` is the finding for those, and reporting one URL
+ * under two rules teaches a reader to discount both.
+ */
+function outOfScopeEntries(site: SiteContext): { loc: string; from: string }[] {
+  const out: { loc: string; from: string }[] = [];
+
+  for (const entry of site.discovery?.urls ?? []) {
+    if (!entry.documentUrl) continue;
+
+    let scope: URL;
+    let loc: URL;
+    try {
+      scope = new URL(entry.documentUrl);
+      loc = new URL(entry.loc);
+    } catch {
+      continue;
+    }
+
+    // Everything up to and including the last `/` — the directory the document
+    // is served from.
+    const prefix = scope.pathname.replace(/[^/]*$/, "");
+    if (prefix === "/") continue;
+    if (loc.origin !== scope.origin) continue;
+    if (loc.pathname.startsWith(prefix)) continue;
+
+    out.push({ loc: entry.loc, from: entry.documentUrl });
+  }
+
+  return out;
+}
+
+const sitemapEntryOutOfScope: SiteRule = {
+  id: "sitemap.entry.out-of-scope",
+  severity: "error",
+  summary: "A sitemap may only list URLs under its own directory",
+  rigor: "spec-required",
+  sources: ["sitemaps-protocol"],
+  appliesTo: (site) => outOfScopeEntries(site).length > 0,
+  check: ({ site, issue }) => {
+    const bad = outOfScopeEntries(site);
+    // Grouped by the document that overreached: the fix is per document — move
+    // the entries, or move the sitemap to the root — and one finding per stray
+    // URL would bury that under repetition.
+    const byDocument = new Map<string, string[]>();
+    for (const { loc, from } of bad) {
+      byDocument.set(from, [...(byDocument.get(from) ?? []), loc]);
+    }
+
+    return [...byDocument].map(([from, locs]) =>
+      issue({
+        pageUrl: from,
+        message: `${locs.length} entr${locs.length === 1 ? "y is" : "ies are"} outside this sitemap's directory \`${new URL(from).pathname.replace(/[^/]*$/, "")}\`: ${sample(locs)}. A sitemap only speaks for the path it is served from, so a consumer may drop ${locs.length === 1 ? "it" : "them"} — serve the document from the root, or move the entries into a sitemap that covers them.`,
+        origin: { kind: "computed" },
+      }),
+    );
+  },
+};
+
 const sitemapEntryCrossHost: SiteRule = {
   id: "sitemap.entry.cross-host",
   severity: "error",
@@ -1227,12 +1375,14 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   sitemapEntryInvalidUrl,
   sitemapEntryNoindex,
   sitemapEntryNonCanonical,
+  sitemapEntryOutOfScope,
   sitemapEntryProtocolMismatch,
   sitemapEntryRedirects,
   sitemapEntryUnreachable,
   sitemapFieldInvalid,
   sitemapIndexChildError,
   sitemapLastmodInvalid,
+  sitemapLimitsExceeded,
   sitemapMissing,
   sitemapOrphans,
   sitemapUnparsable,

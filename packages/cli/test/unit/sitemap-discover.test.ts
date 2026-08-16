@@ -225,9 +225,17 @@ describe("discoverSitemap", () => {
     routes.set("/sm-2.xml", { status: 200, body: urlset("/p2") });
 
     const result = await discoverSitemap(baseUrl, { crawlFallback: false, maxSitemaps: 1 });
-    expect(result.urls).toEqual([{ loc: `${baseUrl}/p1` }]);
+    expect(result.urls).toEqual([{ loc: `${baseUrl}/p1`, documentUrl: `${baseUrl}/sm-1.xml` }]);
     expect(result.truncated).toBe(true);
     expect(result.diagnostics.warnings.some((w) => w.includes("only the first 1"))).toBe(true);
+    // The unfollowed child is still declared, so the cap reads as a difference
+    // between what the index lists and what the tree holds rather than as an
+    // index that only ever had one child.
+    expect(result.documents[0]!.childLocs).toEqual([`${baseUrl}/sm-1.xml`, `${baseUrl}/sm-2.xml`]);
+    expect(result.documents.map((d) => d.url)).toEqual([
+      `${baseUrl}/sitemap.xml`,
+      `${baseUrl}/sm-1.xml`,
+    ]);
   });
 
   it("stops collecting child URLs once maxUrls is reached", async () => {
@@ -252,7 +260,13 @@ describe("discoverSitemap", () => {
     });
 
     const result = await discoverSitemap(baseUrl, { crawlFallback: false });
-    expect(result.urls).toEqual([{ loc: `${baseUrl}/plain` }]);
+    expect(result.urls).toEqual([
+      { loc: `${baseUrl}/plain`, documentUrl: `${baseUrl}/sitemap.xml.gz` },
+    ]);
+    // `gzipped` records how it arrived, not whether inflating worked: the
+    // ceiling this feeds is measured on the parsed text either way.
+    expect(result.documents[0]!.gzipped).toBe(true);
+    expect(result.documents[0]!.byteLength).toBe(Buffer.byteLength(urlset("/plain"), "utf8"));
   });
 
   it("honours allowInsecureTls without affecting plain http", async () => {
