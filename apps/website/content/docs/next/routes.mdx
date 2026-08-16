@@ -196,7 +196,7 @@ page: if the goal is to keep something out of an index, the instruments are
 
 | Call                                                        | Returns                                              |
 | ----------------------------------------------------------- | ---------------------------------------------------- |
-| `routes.metadata({ path, locale, title, description })`     | `Metadata`                                           |
+| `routes.metadata({ path, locale, ...content })`             | `Metadata` — the content fields are below            |
 | `routes.sitemap({ lastModified })`                          | `MetadataRoute.Sitemap`                              |
 | `routes.robots({ disallow })`                               | `MetadataRoute.Robots`                               |
 | `site.rootMetadata({ description })`                        | `Metadata` for the root layout                       |
@@ -205,6 +205,36 @@ page: if the goal is to keep something out of an index, the instruments are
 | `site.resolveLocale(segment)`                               | the served locale a segment means, or `undefined`    |
 | `site.servesLocale(segment)`                                | a type guard — exact match on a declared locale      |
 | `site.lang(locale)` / `site.bcp47(locale)`                  | `<html lang>` and the `hreflang` tag                 |
+
+### What a page contributes
+
+`routes.metadata` takes the route's identity — `path`, and `locale` for a
+localized route — plus the words the registry cannot know:
+
+| Field           |                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------- |
+| `title`         | required                                                                               |
+| `description`   | required                                                                               |
+| `absoluteTitle` | skip the layout's title template, for a title that already names the product           |
+| `keywords`      |                                                                                        |
+| `image`         | an explicit `og:image`, as a site-absolute path                                        |
+| `imageAlt`      | what is _in_ that image — see below                                                    |
+| `og`            | `{ title, description, type, publishedTime, modifiedTime }`, each overriding a default |
+
+`image` exists for the routes that cannot use the file convention: Next refuses
+to place a metadata image under a catch-all segment, so a `[[...slug]]` docs
+tree has to name its card. Everywhere `opengraph-image.tsx` applies, leave it
+unset — naming one here overrides a file that is already correct.
+
+**`imageAlt` has no default, and that is the point.** The obvious one is the
+title, and it is the only description that adds nothing: the protocol asks for
+what is _in_ the image and says in the same breath that it is not a caption.
+A repeated title also satisfies `og.image.alt`, which checks presence — so the
+defect passes the audit and keeps passing. Left out, the tag is omitted, the
+rule fires, and it tells you what to write. Left wrong, nothing ever does.
+
+Both mistakes have names in the catalogue: [`og.image.alt`](/docs/rules) for the
+missing tag, `og.image.alt.caption` for the one that repeats the title.
 
 `resolveLocale` is RFC 4647 Lookup and folds case, so `/pt-BR/` and `/PT/` both
 find a site that serves `pt`; it never falls back to the default locale, which is

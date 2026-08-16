@@ -1,0 +1,130 @@
+---
+title: Look at the cards
+description: goflag preview renders a page's share cards as seven consumers make them, so you can settle the questions no rule can answer.
+navTitle: Preview
+group: use
+order: 4
+---
+
+Five rules in the catalogue state a question and refuse to answer it. One of
+them asks whether your `og:image` survives being cropped to 1.91:1 — which is
+not something a rule can decide. It needs an eye.
+
+Until now that meant deploying, posting the link somewhere, and looking at what
+came out.
+
+```bash
+goflag preview http://localhost:3000
+```
+
+It crawls exactly as a normal run does, then writes `.goflag/preview.html`: one
+self-contained file showing what Google, Open Graph, X, LinkedIn, Slack, Discord
+and WhatsApp make of every page it read.
+
+It never gates. It exits `0` on a run full of findings, because looking at your
+own cards is not a check. Only a run that could not happen exits `2`.
+
+## Opening it
+
+The command prints the path on stdout, alone, so it composes:
+
+```bash
+open "$(goflag preview http://localhost:3000)"
+```
+
+**Leave the server running while you look.** The file loads your images from the
+origin it audited, so a card whose site has since stopped shows a broken image
+and its `alt` text — which looks like a defect in the preview and is not. If you
+booted the site with `--start`, goflag stopped it on the way out. Start it
+yourself, audit without `--start`, and it stays up:
+
+```bash
+pnpm start &                                   # and leave it
+goflag preview http://localhost:3000 --static
+```
+
+`--start` is still the right choice in CI, where nobody is looking and the file
+is an artefact.
+
+## Seven surfaces, and how much each one is worth
+
+The surfaces are not equally documented, and the file says so on every card
+using the same [rigor scale](/docs/rules) the rules use.
+
+| Surface    | Rigor         | What the vendor actually publishes                                         |
+| ---------- | ------------- | -------------------------------------------------------------------------- |
+| Open Graph | `vendor-spec` | 1200×630 recommended, 600×315 floor, 200×200 minimum, 8MB, 1.91:1          |
+| LinkedIn   | `vendor-spec` | 1200×627 minimum, 1.91:1, 5MB — and a thumbnail below 401px wide           |
+| WhatsApp   | `vendor-spec` | under 600KB, ≥300px wide, ratio ≤ 4:1, title in two lines, description ~80 |
+| Slack      | `guideline`   | which tags it reads, and that the result is a "micro-approximation"        |
+| Google     | `heuristic`   | that it truncates "to fit the device width", and no number at all          |
+| X          | none          | nothing reachable — the card documentation is not public                   |
+| Discord    | none          | nothing at all about link unfurls                                          |
+
+Three of the seven publish real geometry. Drawing all seven with the same
+confidence would be four unearned claims, so each card carries its own.
+
+Two consequences worth knowing before you trust another preview tool:
+
+- **Google is not a card.** No image, no ratio. `og:title` is one documented
+  source for the title link; `og:description` is documented nowhere — the
+  snippet comes from the page or from `meta description`.
+- **X has not shown a description since 4 October 2023.** The headline came back
+  in January 2024 as small text laid over the image, and the description never
+  did. Any tool still drawing three stacked rows is drawing a card that stopped
+  existing years ago.
+
+## What else is on the page
+
+**The head, field by field, with the tag each value came from.** When
+`og:title` is absent and the card falls back to `<title>`, the file says so
+rather than quietly showing a title.
+
+**The image as goflag actually found it.** Declared dimensions, dimensions
+decoded from the file, the ratio against the band `og.image.ratio` scores, and
+what the URL answered when it was fetched. A card whose image 404s is drawn as a
+card whose image 404s.
+
+**Findings, pinned to the card they concern** — every `og.*`, `icons.*`,
+`title.*`, `description.*` and `canonical.*` finding on that page, with its
+severity and its rigor. Everything else stays in the report.
+
+**The route in its other languages**, when it has them: locale, `og:locale`,
+title, and the title's length in graphemes. This is where a translation that
+outgrew its card becomes visible — on this site's own home page the four
+locales run 53, 65, 68 and 68, and the card's size ladder reads exactly that
+number.
+
+**JSON-LD, shown and never judged.** No rule in the catalogue reads it, and
+[that is deliberate](/docs/limits). The panel lists each block, its `@type`
+values and any parse error, and passes no verdict.
+
+**What hydration changed in the `<head>`**, when goflag has two readings to
+compare. A `+` is a tag only the browser has — and unfurlers run no JavaScript,
+so a card drawn from one is drawn from something a crawler may never receive.
+When there is nothing to compare, the panel says "not established" rather than
+drawing an empty box that would read like a pass.
+
+## The JSON, if you want it
+
+`--report` still writes the full report beside the HTML, and on a preview run it
+carries an extra section — [`extractions`](/docs/report#extractions--asked-for-with-auditoptionsextractions),
+what every page declared, which no other run emits.
+
+```bash
+goflag preview http://localhost:3000 --report preview.json
+```
+
+`--json` and `--summary` are refused here, along with the gate flags: the
+command owns stdout and does not gate, so a flag that would change neither is
+rejected rather than accepted and ignored.
+
+## What it is not
+
+It does not render your card — [`@goflag/og`](/docs/next) does that. The preview
+shows the image your site serves at the URL your page declares, exactly as a
+consumer would fetch it, and a site that uses no goflag library gets the same
+view.
+
+It also judges nothing new. Every verdict on the page comes from a rule that
+already existed; the file's contribution is the part no verdict can carry.
