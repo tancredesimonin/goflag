@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { LIB, PACKAGE } from "./constants";
+import { CARDS, LIB, PACKAGE } from "./constants";
 
 /**
  * The versions the site quotes are literals, so nothing stops them from rotting.
@@ -25,5 +25,9 @@ describe("the versions the site quotes", () => {
 
   it("matches what @goflag/next actually declares", () => {
     expect(LIB.version).toBe(manifestVersion("next"));
+  });
+
+  it("matches what @goflag/og actually declares", () => {
+    expect(CARDS.version).toBe(manifestVersion("og"));
   });
 });

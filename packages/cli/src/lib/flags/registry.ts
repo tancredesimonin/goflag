@@ -106,6 +106,8 @@ export const FLAGS: readonly FlagSpec[] = [
     help: [
       "Roll findings up (dedup by link/rule/code). Pairs",
       "with --json for a compact, agent-friendly payload.",
+      "Not available with --baseline: there the diff is the",
+      "answer, and --report writes the full report.",
     ],
     takesValue: false,
     apply: ({ parsed }) => {
@@ -543,8 +545,19 @@ export const EXIT_CODES: ReadonlyArray<{ code: 0 | 1 | 2; label: string }> = [
   { code: 2, label: "fatal error" },
 ];
 
-/** Subcommands that answer without touching the network. */
-export const COMMANDS: ReadonlyArray<{ name: string; help: readonly string[] }> = [
+/**
+ * Subcommands. The first two answer without touching the network; `preview`
+ * audits like a normal run and renders what it saw.
+ *
+ * `usage` exists only for the help: the parser dispatches on `name`, and a
+ * command that shows its argument in the help must not have that argument
+ * become part of the word the parser matches.
+ */
+export const COMMANDS: ReadonlyArray<{
+  name: string;
+  usage?: string;
+  help: readonly string[];
+}> = [
   {
     name: "rules",
     help: [
@@ -559,6 +572,16 @@ export const COMMANDS: ReadonlyArray<{ name: string; help: readonly string[] }> 
       "Print this flag reference as JSON and exit. The same",
       "table this help is rendered from, so the two cannot",
       "disagree.",
+    ],
+  },
+  {
+    name: "preview",
+    usage: "preview <url>",
+    help: [
+      "Write .goflag/preview.html — the page's share cards",
+      "as Google, Open Graph, X, LinkedIn, Slack, Discord",
+      "and WhatsApp make them, each with the rigor of its",
+      "source. Never gates: exits 0 unless the run failed.",
     ],
   },
 ];
@@ -592,8 +615,9 @@ export function renderHelp(): string {
   // descriptions long, and the original text lined them up that way.
   for (const command of COMMANDS) {
     const pad = " ".repeat(28);
+    const label = command.usage ?? command.name;
     command.help.forEach((line, i) => {
-      lines.push(i === 0 ? `  goflag ${command.name.padEnd(19)}${line}` : `${pad}${line}`);
+      lines.push(i === 0 ? `  goflag ${label.padEnd(19)}${line}` : `${pad}${line}`);
     });
   }
 

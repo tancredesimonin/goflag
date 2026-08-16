@@ -595,6 +595,75 @@ const ogImageAlt: BooleanRule = {
   },
 };
 
+/**
+ * The sibling of `og.image.alt`, and a separate id for a separate defect.
+ *
+ * The presence rule cannot see this one: the tag is there, so it passes, and
+ * it will keep passing. Splitting it costs a catalogue entry and makes both
+ * verdicts readable — the same reasoning that split `og.image.dimensions` from
+ * `og.image.ratio`.
+ *
+ * Found by looking, not by auditing. `goflag preview` put the alt beside the
+ * card on two independent sites and both repeated the title: twelve pages of
+ * this project's own documentation, three articles on the second site. The
+ * catalogue waits for two consumers, and that was the second.
+ */
+const ogImageAltCaption: BooleanRule = {
+  id: "og.image.alt.caption",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "info",
+  title: "`og:image:alt` describes the image, it does not repeat the title",
+  why:
+    "The protocol asks for a description of what is in the image, and says in " +
+    "the same breath that it is not a caption. A copy of the title is the one " +
+    "value that is always available and never describes anything: a reader " +
+    "who cannot see the card is handed the same words twice and learns " +
+    "nothing about the picture. It also satisfies `og.image.alt` forever, " +
+    "which is why it needs an id of its own.",
+  rigor: "guideline",
+  sources: ["ogp"],
+  reads: ["openGraph.images", "openGraph.title", "document.title"],
+  expected: "an `og:image:alt` that says something the title does not",
+  relates: ["og.image.alt", "og.image.representative"],
+  fix: {
+    title: "Say what the card shows, not what the page is called",
+    snippet: [
+      "// The card is a title on a background. The alt says so — once, from a",
+      "// template, so every page gets one and none of them is the title alone.",
+      "const ogAlt = (title: string) => `The title \u201C${title}\u201D on a dark preview card.`;",
+    ].join("\n"),
+    language: "ts",
+  },
+  evaluate: (ex) => {
+    const described = ex.openGraph.images.filter((image) => image.alt?.value.trim());
+    if (described.length === 0) return { status: "na", observed: null };
+
+    // Compared against whichever title the card was built from: a page that
+    // sets `og:title` names its card there, and one that does not falls back
+    // to `<title>`, exactly as every consumer does.
+    const title = (ex.openGraph.title?.value ?? ex.document.title?.value ?? "").trim();
+    if (title === "") return { status: "na", observed: null };
+
+    const observed = described.map((image) => ({
+      url: image.url.value,
+      alt: image.alt?.value ?? "",
+    }));
+    const captions = observed.filter((image) => image.alt.trim() === title);
+    if (captions.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message:
+        captions.length === observed.length
+          ? "`og:image:alt` repeats the title instead of describing the image."
+          : `${captions.length} of ${observed.length} \`og:image:alt\` values repeat the title.`,
+      origin: { kind: "meta", property: "og:image:alt" },
+    };
+  },
+};
+
 const ogImageDimensions: BooleanRule = {
   id: "og.image.dimensions",
   kind: "boolean",
@@ -982,6 +1051,80 @@ const ogImageReachable: BooleanRule = {
   },
 };
 
+const ogImageSizesMismatch: BooleanRule = {
+  id: "og.image.sizes-mismatch",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "`og:image:width` and `og:image:height` must be the image's real size",
+  why:
+    "The declared size is what a crawler lays the card out with before it has " +
+    "the file, which is the whole reason `og.image.dimensions` asks for it. A " +
+    "wrong one is therefore worse than none: the crawler reserves a shape the " +
+    "image does not have, and the card is letterboxed or cropped on the first " +
+    "share — the one that matters most.\n\n" +
+    "It is also the declaration that blinds every other check. `og.image.ratio` " +
+    "reads these two numbers and refuses to fetch, so an invented 1200×630 " +
+    "scores 1.9 and passes over an image that is square. Found on a site whose " +
+    "cover art is 1024×1024 and one of whose covers is a 337-byte 1×1 " +
+    "placeholder, all three declared 1200×630 by a library that had never " +
+    "looked at them.",
+  rigor: "guideline",
+  sources: ["ogp", "meta-og-sharing"],
+  reads: ["openGraph.images", "assets"],
+  expected: "declared dimensions equal to the file's own",
+  relates: ["og.image.dimensions", "og.image.ratio", "og.image.reachable"],
+  fix: {
+    title: "Measure the image, or let the file convention do it",
+    snippet: [
+      "// app/…/opengraph-image.tsx — `size` is the truth and the declaration at once",
+      "export const size = { width: 1200, height: 630 };",
+      "",
+      "// Naming a file instead? Then the numbers are that file's, not a default.",
+      "openGraph: { images: [{ url: cover.url, width: cover.width, height: cover.height }] }",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    // No probe pass ran. Comparing a declaration against nothing would be
+    // inventing the half of the finding goflag did not measure.
+    if (!ex.assets) return { status: "na", observed: null };
+
+    const comparable = ex.openGraph.images
+      .map((image) => ({ image, probe: ex.assets?.[image.url.value.trim()] }))
+      .filter(
+        (pair) =>
+          // Both sides have to have said something. A format goflag does not
+          // decode leaves `sizes` absent, and absent means unknown — which is
+          // not a mismatch.
+          Boolean(pair.probe?.ok && pair.probe.sizes?.length) &&
+          pair.image.width?.value !== undefined &&
+          pair.image.height?.value !== undefined,
+      );
+    if (comparable.length === 0) return { status: "na", observed: null };
+
+    const observed = comparable.map(({ image, probe }) => ({
+      url: image.url.value,
+      declared: `${image.width!.value}x${image.height!.value}`,
+      // The first frame. An `og:image` is one picture; a container carrying
+      // several is an icon, and `icons.sizes-mismatch` is the rule for those.
+      actual: `${probe!.sizes![0]!.width}x${probe!.sizes![0]!.height}`,
+    }));
+
+    const wrong = observed.filter((entry) => entry.declared !== entry.actual);
+    if (wrong.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `The declared size is not the image's: ${wrong
+        .map((entry) => `\`${entry.url}\` declares ${entry.declared} and is ${entry.actual}`)
+        .join("; ")}.`,
+      origin: { kind: "meta", property: "og:image:width" },
+    };
+  },
+};
+
 const iconsUnreachable: BooleanRule = {
   id: "icons.unreachable",
   kind: "boolean",
@@ -1172,10 +1315,12 @@ export const RULES: ReadonlyArray<Rule> = [
   ogDescriptionMissing,
   ogImageAbsolute,
   ogImageAlt,
+  ogImageAltCaption,
   ogImageDimensions,
   ogImageMissing,
   ogImageRatio,
   ogImageReachable,
+  ogImageSizesMismatch,
   ogLocaleAlternates,
   ogLocaleMissing,
   ogTitleMissing,

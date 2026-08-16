@@ -312,9 +312,67 @@ exit code, because nobody has judged them yet. They are asked only where the
 subject exists: no question about a description on a page that has none, since
 `description.missing` already says that.
 
-Both sections are **omitted entirely** when not asked for, rather than emitted
-empty. An empty `advisories: []` would read as "goflag looked and had nothing to
-ask", which is a claim it has not made.
+## `extractions` — asked for with `AuditOptions.extractions`
+
+Every other section of this document is a _judgement_: a rule fired, or it did
+not. This one is the observation the judgements were made from — what each page
+declared in its `<head>`, as the rules read it.
+
+It exists because a violations list cannot describe a page. A page that passes
+every `og.*` rule still has a title, an image and a description that somebody
+wants to look at, and none of them appears anywhere else in this file. That is
+what [`goflag preview`](/docs/preview) draws, and it is the one section with no
+CLI flag: the command sets the option, and a programmatic caller passes it to
+`runAudit`.
+
+```ts
+const report = await runAudit("https://example.com", { extractions: true });
+```
+
+Each entry carries its own `http.finalUrl` — the same string `pages[].url` and
+`seoIssues[].pageUrl` use — so nothing keys it.
+
+{/* prettier-ignore */}
+```jsonc
+{
+  "extractionVersion": 1,
+  "fetchedAt": "2026-08-16T09:14:03.221Z",
+  "http": { "requestedUrl": "…/fr", "finalUrl": "…/fr", "status": 200, "redirects": 0 },
+  "rendering": { "mode": "static", "escalated": false },
+  "document": { "title": { "value": "…", "origin": { "kind": "title" } } },
+  "meta": { "description": { "value": "…", "origin": { "kind": "meta", "name": "description" } } },
+  "openGraph": { "title": …, "images": [ { "url": …, "width": …, "alt": … } ], "localeAlternates": [] },
+  "twitter": { "card": … },
+  "links": { "hreflang": [], "icons": [], "feeds": [] },
+  "jsonLd": [],
+  "assets": { "https://cdn.example.com/og.png": { "status": 200, "ok": true, "sizes": [ … ] } },
+  "hydration": { "titleChanged": false, "injectedMetas": [], "jsonLdBlocksAdded": 0 }
+}
+```
+
+Three fields repay a careful read, because each is three-valued rather than two:
+
+- **`assets`** absent means no probe pass ran; an empty object means one ran and
+  found nothing to fetch. Inside an entry, `sizes` absent means the format was
+  not decoded — goflag reads PNG and ICO headers — never that the file has no
+  dimensions.
+- **`links.manifest.parsed`** absent means the manifest was never looked at,
+  `false` that it was fetched and could not be read, `true` that it was read.
+- **`hydration`** absent means goflag has no two readings to compare, which is
+  the case on any `--static` run — never that hydration changed nothing. When it
+  is present, it lists the tags client JavaScript added to or took from the
+  `<head>`: the values a browser shows and a crawler that runs no JavaScript
+  never receives.
+
+Scalar values are `{ value, origin }` — and `raw` too, when normalising changed
+the string. `origin` names the tag the value came from, never the render pass.
+
+The section covers fewer pages than `pages`, for the same reason `conformance`
+does: only healthy HTML documents reach the rule layer.
+
+All three optional sections are **omitted entirely** when not asked for, rather
+than emitted empty. An empty `advisories: []` would read as "goflag looked and
+had nothing to ask", which is a claim it has not made.
 
 ## Stability
 

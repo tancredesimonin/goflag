@@ -78,7 +78,7 @@ describe("rule registry", () => {
       expect(seen.has(rule.id)).toBe(false);
       seen.add(rule.id);
     }
-    expect(RULES.length).toBe(23);
+    expect(RULES.length).toBe(25);
   });
 
   it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
@@ -303,6 +303,56 @@ describe("og.image.absolute", () => {
     expect(ids(`<html><head><title>xxxxxxxxxx</title></head></html>`)).not.toContain(
       "og.image.absolute",
     );
+  });
+});
+
+describe("og.image.alt.caption", () => {
+  it("fires when the alt is the og:title verbatim", () => {
+    // The shape `goflag preview` found on two sites: the tag is present, so
+    // `og.image.alt` passes and would pass forever.
+    const html = `<html><head>
+      <meta property="og:title" content="Running goflag in CI" />
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="Running goflag in CI" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt.caption");
+    expect(ids(html)).not.toContain("og.image.alt");
+  });
+
+  it("falls back to <title> for a page that names no og:title", () => {
+    const html = `<html><head>
+      <title>Running goflag in CI</title>
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="Running goflag in CI" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt.caption");
+  });
+
+  it("stays silent on an alt that says something the title does not", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="Running goflag in CI" />
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="The title on a dark terminal card." />
+    </head></html>`;
+    expect(ids(html)).not.toContain("og.image.alt.caption");
+  });
+
+  it("says nothing when there is no alt to judge — that is the other rule's job", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="Running goflag in CI" />
+      <meta property="og:image" content="https://example.com/og.png" />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt");
+    expect(ids(html)).not.toContain("og.image.alt.caption");
+  });
+
+  it("ignores surrounding whitespace rather than letting it hide a repeat", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="Running goflag in CI" />
+      <meta property="og:image" content="https://example.com/og.png" />
+      <meta property="og:image:alt" content="  Running goflag in CI  " />
+    </head></html>`;
+    expect(ids(html)).toContain("og.image.alt.caption");
   });
 });
 

@@ -70,6 +70,12 @@ having rather than an accident to correct.
 
 ## What it deliberately does not do
 
+- **It will not write `og:image:alt` for you.** A library cannot describe a card
+  it did not draw, and the only value always available — the page title — is the
+  one the protocol excludes: "a description of what is in the image (not a
+  caption)". Pass `imageAlt` beside `image`, or the tag is omitted and an
+  auditor tells you so. Synthesising it would satisfy the check that looks for
+  it, which is worse than failing: the defect would never be reported again.
 - **No `next-intl` wrapper.** Forty lines with nothing added.
 - **No React components.** They drag a design system in with them.
 - **No `process.env`.** See [the registry](/docs/next/routes#it-reads-no-environment-variable).

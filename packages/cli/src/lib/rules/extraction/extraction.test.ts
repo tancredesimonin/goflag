@@ -135,6 +135,62 @@ describe("extractionFromPage", () => {
   });
 });
 
+describe("extractionFromPage — the hydration delta", () => {
+  it("is absent when the engine established none, which is not the same as none", () => {
+    // A `--static` run never renders, so there is no second reading. Emitting
+    // an empty delta would read as "hydration changed nothing" — a claim the
+    // run is in no position to make.
+    const page = pageFromHtml(BARE, { url: "https://example.com/" });
+    expect(extractionFromPage(page)).not.toHaveProperty("hydration");
+  });
+
+  it("projects what client JS moved, renamed away from the engine's vocabulary", () => {
+    const page = {
+      ...pageFromHtml(BARE, { url: "https://example.com/" }),
+      hydration: {
+        fromMode: "static" as const,
+        toMode: "headless" as const,
+        titleChanged: true,
+        htmlLangChanged: false,
+        clientInjectedMetas: [{ property: "og:image", content: "https://example.com/late.png" }],
+        clientRemovedMetas: [],
+        clientInjectedLinks: [{ rel: "canonical", href: "https://example.com/" }],
+        clientRemovedLinks: [],
+        jsonLdBlocksAdded: 1,
+      },
+    };
+
+    expect(extractionFromPage(page).hydration).toEqual({
+      titleChanged: true,
+      htmlLangChanged: false,
+      injectedMetas: [{ property: "og:image", content: "https://example.com/late.png" }],
+      removedMetas: [],
+      injectedLinks: [{ rel: "canonical", href: "https://example.com/" }],
+      removedLinks: [],
+      jsonLdBlocksAdded: 1,
+    });
+  });
+
+  it("stays JSON-serializable with the delta on board", () => {
+    const page = {
+      ...pageFromHtml(BARE, { url: "https://example.com/" }),
+      hydration: {
+        fromMode: "static" as const,
+        toMode: "headless" as const,
+        titleChanged: false,
+        htmlLangChanged: false,
+        clientInjectedMetas: [],
+        clientRemovedMetas: [],
+        clientInjectedLinks: [],
+        clientRemovedLinks: [],
+        jsonLdBlocksAdded: 0,
+      },
+    };
+    const round = JSON.parse(JSON.stringify(extractionFromPage(page)));
+    expect(round.hydration.jsonLdBlocksAdded).toBe(0);
+  });
+});
+
 describe("extractionFromPage on a bare page", () => {
   const extraction = extractionFromPage(pageFromHtml(BARE));
 

@@ -1,6 +1,6 @@
 {
   "counts": {
-    "page": 23,
+    "page": 25,
     "site": 28,
     "prose": 5
   },
@@ -580,6 +580,34 @@
       }
     },
     {
+      "id": "og.image.alt.caption",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "info",
+      "kind": "boolean",
+      "summary": "`og:image:alt` describes the image, it does not repeat the title",
+      "why": "The protocol asks for a description of what is in the image, and says in the same breath that it is not a caption. A copy of the title is the one value that is always available and never describes anything: a reader who cannot see the card is handed the same words twice and learns nothing about the picture. It also satisfies `og.image.alt` forever, which is why it needs an id of its own.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp"
+      ],
+      "reads": [
+        "openGraph.images",
+        "openGraph.title",
+        "document.title"
+      ],
+      "relates": [
+        "og.image.alt",
+        "og.image.representative"
+      ],
+      "expected": "an `og:image:alt` that says something the title does not",
+      "fix": {
+        "title": "Say what the card shows, not what the page is called",
+        "snippet": "// The card is a title on a background. The alt says so — once, from a\n// template, so every page gets one and none of them is the title alone.\nconst ogAlt = (title: string) => `The title “${title}” on a dark preview card.`;",
+        "language": "ts"
+      }
+    },
+    {
       "id": "og.image.dimensions",
       "scope": "page",
       "category": "opengraph",
@@ -710,6 +738,35 @@
         "http.finalUrl"
       ],
       "prose": "Does the og:image represent what this page is about, rather than being a site-wide default, and does its subject survive being cropped to the 1.91:1 aspect ratio consumers render?"
+    },
+    {
+      "id": "og.image.sizes-mismatch",
+      "scope": "page",
+      "category": "opengraph",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`og:image:width` and `og:image:height` must be the image's real size",
+      "why": "The declared size is what a crawler lays the card out with before it has the file, which is the whole reason `og.image.dimensions` asks for it. A wrong one is therefore worse than none: the crawler reserves a shape the image does not have, and the card is letterboxed or cropped on the first share — the one that matters most.\n\nIt is also the declaration that blinds every other check. `og.image.ratio` reads these two numbers and refuses to fetch, so an invented 1200×630 scores 1.9 and passes over an image that is square. Found on a site whose cover art is 1024×1024 and one of whose covers is a 337-byte 1×1 placeholder, all three declared 1200×630 by a library that had never looked at them.",
+      "rigor": "guideline",
+      "sources": [
+        "ogp",
+        "meta-og-sharing"
+      ],
+      "reads": [
+        "openGraph.images",
+        "assets"
+      ],
+      "relates": [
+        "og.image.dimensions",
+        "og.image.ratio",
+        "og.image.reachable"
+      ],
+      "expected": "declared dimensions equal to the file's own",
+      "fix": {
+        "title": "Measure the image, or let the file convention do it",
+        "snippet": "// app/…/opengraph-image.tsx — `size` is the truth and the declaration at once\nexport const size = { width: 1200, height: 630 };\n\n// Naming a file instead? Then the numbers are that file's, not a default.\nopenGraph: { images: [{ url: cover.url, width: cover.width, height: cover.height }] }",
+        "language": "tsx"
+      }
     },
     {
       "id": "og.locale.alternates",

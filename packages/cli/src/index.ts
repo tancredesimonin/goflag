@@ -17,6 +17,7 @@ export {
 } from "./report/build";
 export { renderTerminal } from "./report/render-terminal";
 export { renderSummaryTerminal } from "./report/render-summary";
+export { renderPreview, type RenderPreviewOptions } from "./report/render-preview";
 export {
   summarize,
   SAMPLE_LIMIT,

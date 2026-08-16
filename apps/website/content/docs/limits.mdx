@@ -58,8 +58,16 @@ These are decisions, not oversights:
   properly.
 - **Content quality.** No keyword analysis, no readability score, no rank
   tracking, no competitor comparison.
-- **Structured data validity.** JSON-LD presence is used as a signal that a page's
-  head is not empty. Its _correctness_ is not judged.
+- **The static/hydrated gap is reported, never judged.** When goflag escalates to
+  Chromium it holds two readings of the `<head>` and knows exactly which tags only
+  the browser has — the failure mode every `og.*` rule is blind to, since each
+  judges the declaration it was handed rather than which pass handed it over. No
+  rule reads that delta. [`goflag preview`](/docs/preview) draws it, and the
+  report carries it under `extractions[].hydration` when both readings exist.
+
+**Structured data validity.** JSON-LD presence is used as a signal that a page's
+head is not empty. Its _correctness_ is not judged.
+
 - **Images.** No `alt` audit, no weight checks, no format advice.
 - **JavaScript errors.** The headless path renders a page; it does not report what
   the console said while doing it.

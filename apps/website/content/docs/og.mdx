@@ -1,0 +1,194 @@
+---
+title: The picture goflag asks for
+description: "@goflag/og draws the share card a multilingual site puts in front of every link, and packs the favicon.ico no Next convention emits. The core renders nothing."
+navTitle: Share cards
+group: library
+order: 4
+---
+
+Two of this catalogue's rules had no remedy to point at.
+[`og.image.missing`](/docs/rules/og.image.missing) fired 24 times on one site and
+[`og.image.alt`](/docs/rules/og.image.alt) 46 times on another, and the fix for
+both is "either an asset or a route you have to write" — which is how a rule
+becomes permanent debt rather than a thing anybody acts on.
+
+`@goflag/og` is that route, written once.
+
+```sh
+pnpm add -D @goflag/og
+```
+
+Node `>=22`. `react` is a peer dependency and `next` an optional one; the runtime
+depends on nothing.
+
+## The core renders nothing
+
+That is the design, not an omission. `defineOg` hands back a JSX tree, a size and
+an alt. `@goflag/og/next` passes the tree to `ImageResponse`, which already
+embeds satori — so nothing installs a second renderer, no native binary joins
+your dependency tree, and a card can be asserted about in a plain unit test with
+no framework build anywhere near it.
+
+```tsx
+// lib/og.tsx
+import { defineOg } from "@goflag/og";
+
+export const og = defineOg({
+  name: "Example",
+  footer: "example.com",
+  mark: (side) => <Logo size={side} />,
+  tokens: { bg: "#200b03", fg: "#dfcab2", dim: "#9e7f69", border: "#4b2915", accent: "#ab4500" },
+  fit: { steps: [{ upTo: 32, fontSize: 72 }], smallest: 48 },
+});
+```
+
+| Field    | What it is                                                                      |
+| -------- | ------------------------------------------------------------------------------- |
+| `tokens` | Five colours. Not eight — one accent and never three is a constraint, not taste |
+| `name`   | The wordmark beside the mark                                                    |
+| `mark`   | Your logo, as a function of its side in pixels                                  |
+| `footer` | Bottom left. The host, on both sites this came from                             |
+| `dots`   | Bottom right, for a site whose taxonomy is a colour rather than decoration      |
+| `fit`    | The title degression. **Required, and it has no default** — see below           |
+
+`mark` takes its side as an argument so one drawing serves the card and every
+icon size. That is not a convenience: on the site you are reading, the flag was
+drawn three times — in the card, in `apple-icon.tsx` and in `icon.svg` — and two
+of the three used colours the stylesheet does not declare anywhere.
+
+## `fit` is required, and shipping a default would be shipping a defect
+
+Satori cannot measure text before rendering. There is no honest `fitText` to
+write, so the card counts glyphs and picks a step, with `lineClamp` and
+`textWrap: balance` catching what a guess cannot.
+
+**The boundaries are yours, and they have to be measured.** List every title a
+card on your site can carry, count the graphemes, and put the boundaries in the
+gaps between the clusters.
+
+Two sites did this and got tables that share no number. One is calibrated on rule
+ids with sentence-long summaries; the other has fifteen page titles grouped at
+5–31 and 51–56 glyphs. Reusing the first table on the second put a boundary
+exactly on its longest real title — so two locales would have rendered a size
+apart over one character of difference, which is worse than not degrading at all.
+A default here would be that defect, shipped to everyone.
+
+## The routes
+
+```tsx
+// app/[locale]/opengraph-image.tsx
+import { ogImage } from "@goflag/og/next";
+import { og } from "@/lib/og";
+
+const image = ogImage(og, async ({ params }) => {
+  const { locale } = await params;
+  const t = translator(locale);
+  const title = t("hero.title");
+
+  return { title, subtitle: t("hero.lead"), alt: t("meta.ogAlt", { title }) };
+});
+
+export const generateImageMetadata = image.generateImageMetadata;
+export default image.render;
+```
+
+The loader returns what goes on the card, and is called once per export — so the
+copy is read in one place and the picture and its description cannot disagree.
+
+| Field      | On the card                                                            |
+| ---------- | ---------------------------------------------------------------------- |
+| `title`    | The one large body. Its size comes from `fit`                          |
+| `subtitle` | Under it, cut at 160 glyphs — measured in glyphs, like the title       |
+| `label`    | The pill beside the wordmark: a section, a severity, a kind. Optional  |
+| `alt`      | The sentence `og:image:alt` carries. Yours, translated, from your data |
+
+**`generateImageMetadata`, never the `alt` export.** Next's static `alt` is one
+constant string per file, and the description of a generated card cannot be a
+constant: the card carries the page's title as pixels, so the sentence describing
+it is translated and derived from data. That is the difference between an
+`og:image` a screen reader can announce and one it cannot.
+
+<Callout type="warning" title="Do not call getTranslations in there.">
+  Next runs `generateImageMetadata` the way it runs `generateStaticParams` — at build time, with no
+  request — and a request-scoped i18n config reaches for `headers()`, so the build fails outright
+  rather than degrading, with `Route /[locale]/… used headers() inside generateStaticParams`.
+</Callout>
+
+Build a translator straight from your message JSON instead. It is four lines, and
+this package deliberately does not ship them: depending on one i18n library to
+save four lines would cost every consumer more than it saved.
+
+`ogIcon(og, 180)` gives `icon.tsx` and `apple-icon.tsx` the same mark and the
+same palette as the card. `ogCatchAllRoute(og, …)` covers the one case Next has
+no convention for at all: **it refuses to place a metadata image under a
+catch-all segment**, so a `[...slug]` route needs a `force-static` route handler
+instead. That is the special case, not the normal path — an ordinary `[slug]`
+segment takes `opengraph-image.tsx` directly.
+
+## Your tokens will drift unless something compares them
+
+Satori resolves no CSS variable and does not speak `oklch()`, so a theme written
+in OKLCH has to be restated as sRGB somewhere. That duplication is forced. Going
+unnoticed when the theme moves is not — and it is what actually happens. On one
+of these sites all four transcribed greys were wrong, by a hue step and by
+sixteen levels: invisible, which is exactly why the comment claiming they were
+the theme's colours was never going to be enough.
+
+So `oklchPalette` is here, and there are two honest ways to use it. In a build
+script, read the stylesheet and there is nothing left to transcribe:
+
+```js
+const theme = oklchPalette(readFileSync("src/app/globals.css", "utf8"), { scope: ".dark" });
+```
+
+In a module a bundler picks up — where reading a file by relative path is a bet
+on the working directory — keep the literals and let a test hold them against the
+sheet.
+
+**Name the scope.** A theme declares the same property once per scheme, and
+without a scope the first declaration in the file wins: the light one, on a site
+whose card is dark.
+
+## What the package gives back
+
+| Call                                             | Returns                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| `defineOg(definition)`                           | an `Og` — `card()`, `icon()`, and the definition it was given |
+| `og.card({ title, subtitle, label, alt })`       | `{ element, size, contentType, alt }` — renders nothing       |
+| `og.icon(side)`                                  | `{ element, size, contentType }`, the mark on the surface     |
+| `ogImage(og, loader)`                            | `{ generateImageMetadata, render }` for one route file        |
+| `ogIcon(og, side)`                               | `{ size, contentType, render }` for `icon.tsx`                |
+| `ogCatchAllRoute(og, { entries, slugOf, card })` | `{ generateStaticParams, GET }`                               |
+| `fitTitle(title, fit)`                           | `{ fontSize, lineClamp }` — the degression, on its own        |
+| `countGraphemes(value)`                          | length in glyphs rather than UTF-16 units                     |
+| `truncateGraphemes(value, max)`                  | cut to `max` glyphs, ellipsis included in the count           |
+| `oklchPalette(css, { scope })`                   | every `--name: oklch(…)` in scope, as sRGB hex                |
+| `readOklch(css, property, { scope })`            | one declaration, or a throw naming what is absent             |
+| `oklchToHex([l, c, h])` / `oklchToRgb`           | the conversion on its own, for a value not in a stylesheet    |
+| `OG_SIZE` / `OG_CONTENT_TYPE`                    | `1200 × 630` and `image/png`, the two constants the card uses |
+
+`OG_SIZE` and `OG_CONTENT_TYPE` are worth taking rather than restating. A route
+that names its own card — the catch-all, which cannot use the file convention —
+has to declare the image's shape to `@goflag/next`, and taking the same two
+constants the renderer draws with is how the declaration and the picture are kept
+from disagreeing. See
+[what a route says about its card](/docs/next/routes#what-a-route-says-about-its-card).
+
+`fitTitle` and the two grapheme helpers are exported because the degression is
+the part you have to measure. A test that pins where your boundaries fall — that
+no real title of yours sits on one — is four lines, and it is the only thing
+standing between a copy change and two locales rendering a size apart.
+
+`buildIco`, `writeIcons`, `writeIco` and `fingerprint` are the icon half:
+[the favicon no convention emits](/docs/og/icons).
+
+## What this is not
+
+- **Not a gallery of templates.** One card, driven by tokens.
+- **Not a renderer.** No satori and no `@resvg/resvg-js` in the dependency tree,
+  so no native binary and no Alpine friction.
+- **Not a rasteriser**, including for the `.ico` — see
+  [the icons](/docs/og/icons). The core packs buffers; your site produces them,
+  with the `sharp` it already has.
+- **Not RTL-capable.** Satori does not do RTL. This is a hard boundary rather
+  than a missing feature.

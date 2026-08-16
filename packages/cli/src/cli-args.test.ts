@@ -110,6 +110,22 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["u", "--nope"])).toThrow(/unknown option: --nope/);
   });
 
+  it("refuses --summary in baseline mode rather than accepting and ignoring it", () => {
+    // Both name what the run prints, and the diff wins: the CLI rendered it and
+    // returned, so --summary parsed and then vanished. Under --json it was
+    // worse than ignored — a rollup of the whole site, with no diff in it, next
+    // to an exit code decided by the findings it did not name.
+    const gated = ["u", "--baseline", "b.json", "--regressions-only", "--summary"];
+    expect(() => parseArgs(gated)).toThrow(/--summary cannot summarise a diff/);
+    // Capturing a baseline swallows it just as silently, and for the same
+    // reason: that path writes the file and returns before any view is chosen.
+    const capture = ["u", "--baseline", "b.json", "--update-baseline", "-s"];
+    expect(() => parseArgs(capture)).toThrow(/--summary cannot summarise a diff/);
+    // Outside baseline mode the flag is untouched, and --report is the way to
+    // keep the full report either way.
+    expect(parseArgs(["u", "--summary", "--report", "r.json"]).summary).toBe(true);
+  });
+
   it("throws on a second positional argument", () => {
     expect(() => parseArgs(["one", "two"])).toThrow(/unexpected argument: two/);
   });
@@ -136,5 +152,65 @@ describe("parseArgs", () => {
 
   it("HELP lists every profile, so the flag documents itself", () => {
     for (const name of PROFILE_NAMES) expect(HELP).toContain(name);
+  });
+});
+
+describe("parseArgs — subcommands", () => {
+  it("reads a command word in first position", () => {
+    expect(parseArgs(["rules"]).command).toBe("rules");
+    expect(parseArgs(["flags"]).command).toBe("flags");
+    expect(parseArgs(["preview"]).command).toBe("preview");
+  });
+
+  it("takes the positional after a command as its argument", () => {
+    const a = parseArgs(["preview", "https://example.com"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://example.com");
+  });
+
+  it("keeps flags working around a command and its URL", () => {
+    const a = parseArgs(["preview", "https://example.com", "--static", "--locales", "fr,en"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://example.com");
+    expect(a.options.static).toBe(true);
+    expect(a.options.locales).toEqual(["fr", "en"]);
+  });
+
+  it("rejects a command word that trails the URL instead of silently ignoring it", () => {
+    // The existing first-position rule, now that a command can take an
+    // argument: `goflag https://x.test preview` is a typo, and it fails loudly
+    // rather than auditing while looking like it previewed.
+    expect(() => parseArgs(["https://x.test", "preview"])).toThrow(/unexpected argument: preview/);
+    expect(() => parseArgs(["preview", "https://x.test", "https://y.test"])).toThrow(
+      /unexpected argument/,
+    );
+  });
+
+  it("reads a command word written after a flag", () => {
+    const a = parseArgs(["--report", "r.json", "preview", "https://x.test"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://x.test");
+    expect(a.report).toBe("r.json");
+  });
+
+  it("refuses every flag preview would accept and then ignore", () => {
+    // A flag that does nothing is worse than one that refuses.
+    expect(() => parseArgs(["preview", "https://x.test", "--json"])).toThrow(/--json/);
+    expect(() => parseArgs(["preview", "https://x.test", "-s"])).toThrow(/--summary/);
+    expect(() => parseArgs(["preview", "https://x.test", "--max-debt", "0"])).toThrow(/--max-debt/);
+    // And it says so before the --baseline pair guard does, because "preview
+    // does not gate" is the true reason, not "add --regressions-only".
+    expect(() => parseArgs(["preview", "https://x.test", "--baseline", "b.json"])).toThrow(
+      /does not gate/,
+    );
+    expect(() =>
+      parseArgs(["preview", "https://x.test", "--baseline", "b.json", "--update-baseline"]),
+    ).toThrow(/--baseline, --update-baseline/);
+    // A file is not a view: the JSON is still available beside the HTML.
+    expect(() => parseArgs(["preview", "https://x.test", "--report", "out.json"])).not.toThrow();
+  });
+
+  it("HELP shows preview with its argument, not as a bare word", () => {
+    expect(HELP).toContain("goflag preview <url>");
   });
 });

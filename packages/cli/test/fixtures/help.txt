@@ -8,11 +8,17 @@ Usage:
   goflag flags              Print this flag reference as JSON and exit. The same
                             table this help is rendered from, so the two cannot
                             disagree.
+  goflag preview <url>      Write .goflag/preview.html — the page's share cards
+                            as Google, Open Graph, X, LinkedIn, Slack, Discord
+                            and WhatsApp make them, each with the rigor of its
+                            source. Never gates: exits 0 unless the run failed.
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).
   --summary, -s          Roll findings up (dedup by link/rule/code). Pairs
                          with --json for a compact, agent-friendly payload.
+                         Not available with --baseline: there the diff is the
+                         answer, and --report writes the full report.
   --report <file>        Write the (full) JSON report to <file>.
   --depth <n>            How far to follow links out of each page (0 = follow
                          none). Sitemap URLs are seeded regardless, so --depth 0

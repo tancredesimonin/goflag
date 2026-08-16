@@ -68,6 +68,17 @@ export async function generateMetadata({ params }) {
   return routes.metadata({ path: "", locale, title: "…", description: "…" });
 }
 
+// A route that cannot use `opengraph-image.tsx` — Next refuses to place a
+// metadata image under a catch-all segment — names its card here, and says
+// what is in it. Leave `imageAlt` out and no `og:image:alt` is emitted.
+export const metadata = routes.metadata({
+  path: "/docs/quickstart",
+  title: "…",
+  description: "…",
+  image: "/og/docs/quickstart",
+  imageAlt: "The title “Quickstart” on a dark preview card.",
+});
+
 // app/sitemap.ts
 export default () => routes.sitemap({ lastModified: new Date() });
 
@@ -126,9 +137,23 @@ And two things it gets right that hand-written versions usually do not:
   them is three lines you can see, rather than a guess you cannot.
 - **No `lastModified` unless you supply one.** A date nobody gave would be this
   library asserting when the content changed.
+- **No `og:image:alt` unless you supply one.** The obvious default is the page
+  title, and it is the one description that adds nothing: ogp.me asks for "a
+  description of what is in the image (not a caption)". Worse, it _satisfies_
+  the rule that checks the tag is present, so the defect becomes permanently
+  invisible. Omitted, an auditor says what to write. See `imageAlt` below.
 - **No environment variables.** `NEXT_PUBLIC_…` and `APP_ENV` are one codebase's
   naming conventions. Your site computes; this derives.
 - **No JSON-LD, no `next-intl` wrapper, no React components.**
+
+## Upgrading
+
+**`og:image:alt` no longer defaults to the page title.** Before, naming an
+`image` emitted `alt: title`; now the tag is emitted only when you pass
+`imageAlt`. A site that named an image and relied on the fallback will stop
+emitting the tag, and its own audit will start reporting `og.image.alt` —
+correctly, because the value it used to emit described nothing. Pass `imageAlt`
+alongside every `image`.
 
 ## Status
 

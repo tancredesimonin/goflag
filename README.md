@@ -130,6 +130,19 @@ npx @goflag/cli https://example.com --report report.json      # write JSON to a 
 
 The terminal view is just a render of that JSON.
 
+### Four verbs
+
+```sh
+goflag <url> [options]     # audit a site
+goflag preview <url>       # render its share cards, and look at them
+goflag rules               # print the rule catalogue as JSON
+goflag flags               # print the flag reference as JSON
+```
+
+The last two answer a question about goflag rather than about a site, so they
+take no URL and touch no network. `preview` takes one and audits like a normal
+run — [what it writes](#goflag-preview--look-at-the-cards-before-you-ship-them) is further down.
+
 ### The catalogue is data too
 
 ```sh
@@ -137,7 +150,7 @@ npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
-crawl, no network. It ships fifty-six rules — twenty-three page rules,
+crawl, no network. It ships fifty-eight rules — twenty-five page rules,
 twenty-eight site rules and five prose rules — and every entry carries its
 scope, severity and summary. All but one also carry a rigor, the documents they
 cite and, where a remedy is a line of code, a fix snippet. The exception is
@@ -170,7 +183,8 @@ documentation site came to quote a message the engine had stopped printing.
 --json                 Print the JSON report to stdout (nothing else).
 --summary, -s          Roll findings up (dedup by link/rule/code). Pairs with
                        --json for a compact payload; --report always writes
-                       the full report regardless.
+                       the full report regardless. Not available with
+                       --baseline: there the diff is the answer.
 --report <file>        Write the JSON report to <file>.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0
@@ -430,6 +444,30 @@ should boot. In a monorepo audited from the root, point it at the package:
 ```sh
 goflag http://localhost:3000 --start "pnpm start" --start-cwd apps/web
 ```
+
+### `goflag preview` — look at the cards before you ship them
+
+Some things are only settleable by looking. `og.image.representative` asks
+whether the shared image survives being cropped to 1.91:1 — a question the
+catalogue states and refuses to answer, because no rule can.
+
+```sh
+goflag preview http://localhost:3000 --start "pnpm start"
+```
+
+It audits like a normal run, then writes `.goflag/preview.html`: one
+self-contained file showing what Google, Open Graph, X, LinkedIn, Slack, Discord
+and WhatsApp make of each page, with the findings pinned on the cards they
+concern and the page's JSON-LD shown beside them.
+
+Each surface is labelled with how well its geometry is actually documented.
+Three of the seven publish real numbers; Slack calls its own rendering a
+"micro-approximation"; Discord publishes nothing; X's card documentation is not
+reachable, and its shape changed twice since 2023. Drawing all seven with the
+same confidence would be six unearned claims, so the file says which is which.
+
+It never gates — it exits 0 unless the run itself failed — and it prints the
+path it wrote, so `open "$(goflag preview http://localhost:3000)"` opens it.
 
 ### Multilingual sites
 

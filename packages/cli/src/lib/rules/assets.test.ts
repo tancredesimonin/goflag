@@ -1,9 +1,10 @@
 /**
  * The three rules that judge a file rather than a tag.
  *
- * `og.image.reachable`, `icons.unreachable` and `icons.sizes-mismatch` are the
- * only rules whose subject is not in the page, and the restraint they need is
- * the same in all three: **absence of a probe is not absence of a file.** A run
+ * `og.image.reachable`, `og.image.sizes-mismatch`, `icons.unreachable` and
+ * `icons.sizes-mismatch` are the only rules whose subject is not in the page,
+ * and the restraint they need is the same in all four: **absence of a probe is
+ * not absence of a file.** A run
  * without the asset pass, or a URL the pass skipped, has to come out `na` — a
  * rule that reported a 404 it never asked for would be worse than the defect.
  *
@@ -72,6 +73,63 @@ describe("og.image.reachable", () => {
     expect(issue).toBeDefined();
     expect(issue?.message).toContain("text/html");
     expect(issue?.severity).toBe("error");
+  });
+});
+
+describe("og.image.sizes-mismatch", () => {
+  const sized = (w: number, h: number) =>
+    `<meta property="og:image" content="${OG}" />` +
+    `<meta property="og:image:width" content="${w}" />` +
+    `<meta property="og:image:height" content="${h}" />`;
+
+  it("says nothing without a probe pass — the file was never looked at", () => {
+    expect(ids(sized(1200, 630))).not.toContain("og.image.sizes-mismatch");
+  });
+
+  it("says nothing when the declaration is absent — that is another rule's job", () => {
+    // `og.image.dimensions` reports the missing tags. Two rules on one defect
+    // is two findings for one fix.
+    const probed = { [OG]: ok(OG, [{ width: 1024, height: 1024 }]) };
+
+    expect(ids(OG_TAG, probed)).not.toContain("og.image.sizes-mismatch");
+    expect(ids(OG_TAG, probed)).toContain("og.image.dimensions");
+  });
+
+  it("says nothing when the probe decoded no size — unknown is not a mismatch", () => {
+    expect(ids(sized(1200, 630), { [OG]: ok(OG) })).not.toContain("og.image.sizes-mismatch");
+  });
+
+  it("passes when the declaration is the file's own size", () => {
+    const probed = { [OG]: ok(OG, [{ width: 1200, height: 630 }]) };
+
+    expect(ids(sized(1200, 630), probed)).not.toContain("og.image.sizes-mismatch");
+  });
+
+  it("reports the invented declaration a library wrote without looking", () => {
+    // The measured case: cover art at 1024x1024 declared 1200x630 by
+    // `@goflag/next`, which had never fetched it.
+    const found = lint(page(sized(1200, 630), { [OG]: ok(OG, [{ width: 1024, height: 1024 }]) }));
+    const issue = found.find((i) => i.ruleId === "og.image.sizes-mismatch");
+
+    expect(issue?.message).toContain("declares 1200x630 and is 1024x1024");
+  });
+
+  it("catches the placeholder, which is the shape that hides best", () => {
+    // A 337-byte 1x1 declared 1200x630 renders an empty card, and every rule
+    // that reads the declaration says the card is fine.
+    expect(ids(sized(1200, 630), { [OG]: ok(OG, [{ width: 1, height: 1 }]) })).toContain(
+      "og.image.sizes-mismatch",
+    );
+  });
+
+  it("is what stops `og.image.ratio` from being fooled by its own input", () => {
+    // 1200/630 is 1.9 and passes; the real 1024x1024 is 1.0. The ratio rule
+    // reads the declaration and refuses to fetch, deliberately — so this is
+    // the only rule in the catalogue that can say the input was false.
+    const found = ids(sized(1200, 630), { [OG]: ok(OG, [{ width: 1024, height: 1024 }]) });
+
+    expect(found).toContain("og.image.sizes-mismatch");
+    expect(found).not.toContain("og.image.ratio");
   });
 });
 

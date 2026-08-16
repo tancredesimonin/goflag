@@ -246,6 +246,46 @@ export interface ExtractionAsset {
   sizes?: ExtractionAssetSize[];
 }
 
+/** One tag, named the way the page named it. */
+export interface ExtractionHydratedMeta {
+  name?: string;
+  property?: string;
+  httpEquiv?: string;
+  content?: string;
+}
+
+/** One link, named the way the page named it. */
+export interface ExtractionHydratedLink {
+  rel: string;
+  href?: string;
+  hreflang?: string;
+}
+
+/**
+ * What client JavaScript added to, or took from, the `<head>`.
+ *
+ * The gap between the two passes, at tag granularity — not per `Fact`, which
+ * carries which *tag* produced a value and never which *pass*. A value present
+ * here is a value the browser shows and a non-JS crawler never sees: the
+ * failure mode every `og.*` rule is blind to, because each of them judges the
+ * declaration it is given and this is about which declaration that was.
+ *
+ * **Absent on most runs, and that is not "nothing changed".** The delta only
+ * exists where both bodies do: the auto-escalation path, where a static fetch
+ * looked empty and a headless pass followed. A `--static` run never renders,
+ * and an explicit `--headless` run keeps no static body to compare against.
+ */
+export interface ExtractionHydration {
+  titleChanged: boolean;
+  htmlLangChanged: boolean;
+  injectedMetas: ExtractionHydratedMeta[];
+  removedMetas: ExtractionHydratedMeta[];
+  injectedLinks: ExtractionHydratedLink[];
+  removedLinks: ExtractionHydratedLink[];
+  /** JSON-LD blocks that exist only after hydration. */
+  jsonLdBlocksAdded: number;
+}
+
 /**
  * The per-page observation. Everything a page rule (or an agent judging a
  * prose rule) may read; nothing else.
@@ -269,4 +309,9 @@ export interface Extraction {
    * manifest gets.
    */
   assets?: Record<string, ExtractionAsset>;
+  /**
+   * What hydration changed in the `<head>`, when both passes ran and can be
+   * compared. Absent means "not established" — never "nothing moved".
+   */
+  hydration?: ExtractionHydration;
 }

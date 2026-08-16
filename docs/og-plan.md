@@ -9,7 +9,11 @@
 > 2026-08-16 (OG-4 livrée côté goflag : le paquet existe, `apps/website` est
 > migrée, §10.6 dit ce que l’extraction a trouvé et ce qu’elle n’a pas fait) ·
 > **Amendé** 2026-08-16 (stereo-house migrée, §10.8 ; le remède d’OG-1d n’était
-> pas servi en production, §10.7)
+> pas servi en production, §10.7) · **Amendé** 2026-08-16 (OG-5 vérifiée avant
+> d’être écrite : sa prémisse était fausse, elle est redéfinie — §10.9, §6.1) · **Amendé**
+> 2026-08-16 (§10.10 : `og:image:alt` présent et faux sur douze pages, trouvé
+> par `goflag preview`) · **Amendé** 2026-08-16 (l’audit se place où le
+> conteneur se place, §10.7)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -317,9 +321,16 @@ de `fit`, que le §10.2 avait déjà repoussé au jour où une locale déborde
 vraiment. Les écrire aurait été le mode d'échec du §4 du plan principal, dans le
 paquet qui le cite.
 
-Quand `@goflag/next` est présent, `defineSite({ og })` prend ce même objet et
-câble l'URL de l'image dans la metadata. Quand il est absent, `defineOg` se
-suffit — c'est tout l'intérêt de D1.
+`defineOg` se suffit, et pas seulement quand `@goflag/next` est absent : **il n'y
+a pas d'URL à câbler.** `OgDefinition` ne porte ni chemin ni origine, et l'URL que
+Next émet — `/{segment}/opengraph-image/og?<hash>` — contient une empreinte du
+contenu calculée au build que rien dans `og` ne peut dériver.
+
+La phrase que ce paragraphe remplaçait est un résidu d'avant D1 : tant que la
+config og vivait dans `defineSite`, « `defineSite` porte l'og et câble l'image »
+était vrai par construction. Elle a cessé de l'être le jour du split, et a été
+recopiée en tâche à faire. Le §10.9 dit ce que la vérification a trouvé à sa
+place.
 
 ### 6.2 La route — deux lignes d'export
 
@@ -596,7 +607,7 @@ texte sur une zone chargée sans voile.
 | **OG-2**  | ✅ **livrée** — alt traduit via `generateImageMetadata`, `alternateLocale` dans `@goflag/next`, `OG_TOKENS` comparés au thème par un test, `fitTitle` + `lineClamp`, le catch-all derrière `ogCatchAllRoute`, et le `.ico` par script local (consommateur n°1 du §6.4)                                                                                                                                      | OG-1a     |
 | **OG-3**  | ✅ **livrée** — stereo-house a écrit sa carte à la main sur six routes : les 24 `og.image.missing` tombent, et les 24 `og.locale.alternates` du §10.4 avec, par un bump. 39 findings deviennent 15 sur un build production-shaped. Son `generate-favicons.mjs` à 7 sorties en fait le consommateur n°2 du `.ico` sans travail supplémentaire. Ce que l'écriture a révélé : §10.5                            | OG-2      |
 | **OG-4**  | ✅ **livrée** — `packages/og` publiée en `og-v0.1.0`, `apps/website` migrée (**−299 lignes**) et stereo-house avec elle (**−256**, §10.8) : le critère de sortie du §10.3 est rempli des deux côtés. `buildIco` / `writeIco` sont dans le cœur. Ce que l'extraction a trouvé et les deux points où elle s'écarte du plan : §10.6. Reste, hors chemin critique, les trois `generate-favicon*.mjs` non migrés | OG-3      |
-| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                                                                                                                                                                             | OG-4, N-2 |
+| **OG-5**  | **Redéfinie, §10.9.** `RouteContent.image` cesse d'inventer la forme de l'image qu'on lui nomme — `image?: string \| { url, width?, height?, type?, alt? }` — et le catalogue gagne `og.image.sizes-mismatch`, qui compare la déclaration aux dimensions réelles que `probeAssets` collecte déjà sans que rien ne les lise                                                                                  | OG-4, N-2 |
 | hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                                                                                                                                                                            | —         |
 | hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                                                                                                                                                                    | OG-4      |
 | hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                                                                                                                                                                      | —         |
@@ -899,8 +910,22 @@ ce défaut. C'est le §10.3 sous un autre angle : une famille de règles qui jug
 déclaration a un angle mort de la taille du réseau, et un audit qui tourne à côté
 de l'artefact déployé a un angle mort de la taille du conteneur.
 
-Le combler pour de bon, c'est auditer la sortie standalone plutôt que le
-workspace. Plus gros que le `COPY`, et pas encore fait.
+**Comblé le 2026-08-16.** `pnpm --filter @goflag/website seo` ne lance plus
+`next start` : il assemble la disposition de l'image — `.next/standalone`, puis
+`.next/static` et `public/` recopiés à la main, les trois mêmes lignes que le
+Dockerfile — et audite l'entrypoint du conteneur. `scripts/serve-standalone.mjs`
+porte la raison à côté du code, parce que si ces lignes divergent du Dockerfile
+l'audit cesse d'être une répétition du déploiement, qui est sa seule utilité.
+
+Vérifié dans les deux sens, et c'est la vérification qui compte : avec `public/`
+copié, `/favicon.ico` répond 200 et l'audit est propre sur 103 pages ; sans lui —
+la disposition d'avant le correctif — `icons.ico.missing` tombe, au mot près. Le
+défaut qui a vécu des mois en production est désormais attrapé avant le
+déploiement.
+
+Ce qui reste hors de portée : ce que le conteneur fait et que rien de local ne
+reproduit — le proxy, les en-têtes, l'origine réelle. C'est un audit de
+`develop.goflag.tech`, pas un audit local, et c'est une autre marche.
 
 ### 10.8 stereo-house migrée — le critère de sortie est rempli
 
@@ -931,6 +956,113 @@ Pire que redondant : le hook écrit **après** que git a figé l'index et ne sta
 rien, donc un changement de thème committe la nouvelle feuille avec les anciennes
 icônes, et la CI échouait ensuite en pointant une commande devenue sans effet.
 Corrigé. `tancrede` faisait déjà `favicon:check` dans son hook.
+
+**Une transcription de plus, sur un cinquième site.** `tancredo` annotait ses deux
+couleurs `oklch(0.68 0.07 42)` et `oklch(0.22 0.012 58)` — qui sont `--primary` et
+`--primary-foreground` mot pour mot — et livrait `#c8866a` et `#2a2522`, quand le
+thème résout `#be8a76` et `#1f1915`. Les bonnes déclarations copiées, les deux hex
+faux. Trois sites sur cinq avaient cette dérive ; c'est le seul dépôt de la série
+dont les icônes changent de pixels.
+
+### 10.9 OG-5 — la prémisse était fausse le jour où elle a été écrite
+
+Avant d'écrire `defineSite({ og })`, la question posée par D5 : **quel appelant ?**
+La réponse est aucun, et pour trois raisons qui s'empilent.
+
+**Il n'y a pas d'URL à câbler.** `OgDefinition` porte `tokens`, `name`, `mark`,
+`footer`, `dots`, `fit` — ni chemin, ni origine. L'URL que Next émet est
+`/{segment}/opengraph-image/og?<hash>`, et le hash est calculé au build à partir
+des octets rendus. Les deux URL nommées à la main — `/og/docs/${slug}` et
+`/covers/${cover}` — sont des données de site que `og` ne connaît pas davantage.
+
+**Il n'y a nulle part où l'écrire.** Next remplace `openGraph` en bloc par
+segment, et `buildMetadata` émet une clé `openGraph` sur chaque page : ce qu'un
+`defineSite` y mettrait au niveau du site serait jeté par toute page appelant
+`routes.metadata()`.
+
+**Et l'écrire serait une régression.** La porte de la convention de fichier est
+`if (openGraph && !source?.openGraph?.hasOwnProperty("images"))` — un test de
+présence de clé, pas de valeur. Poser cette propriété, fût-ce à `undefined`,
+éteint l'image du fichier. Un câblage au niveau du site la remplacerait partout
+par une URL sans empreinte de contenu, sans `og:image:type`, et avec un `alt`
+moins bon que la phrase traduite que `generateImageMetadata` porte.
+
+Cette ligne du §10 n'a pas d'ancêtre : elle a été créée par le commit qui a
+exécuté D1. Avant le split, la config og vivait dans `defineSite` et la phrase
+était vraie par construction ; elle a été recopiée en tâche à faire le jour où
+elle a cessé de l'être.
+
+#### Ce que la vérification a trouvé à la place, et qui est réel
+
+**`buildMetadata` invente la forme de l'image qu'on lui nomme.**
+
+```ts
+// packages/next/src/metadata.ts
+const images = content.image
+  ? [{ url: `${site.baseUrl}${content.image}`, width: 1200, height: 630, alt: content.title }]
+  : undefined;
+```
+
+Sur le site de goflag c'est sans conséquence — le catch-all sert bien du
+1200 × 630. Sur stereo-house, le même champ porte des pochettes :
+`/en/library/tr-808-legacy` déclare `1200 × 630` pour un PNG dont l'IHDR dit
+**1024 × 1024**, et `forro-accordion-soul.jpg` est un placeholder **1 × 1** de 337
+octets, déclaré 1200 × 630 lui aussi. **La lib produit le défaut sur le site qui
+l'adopte** — la boucle du §10, une seconde fois après `alternateLocale`.
+
+**Et l'auditeur ne peut pas le voir, parce qu'il lit les chiffres que la lib a
+inventés.** `og.image.ratio` prend la largeur et la hauteur déclarées, calcule
+1200/630 = 1,9, et passe. Le 1,0 réel tomberait dans `acceptable`, donc en `info`.
+C'est le seul cas connu où goflag est aveuglé par `@goflag/next` — l'inverse exact
+de la boucle du §1.
+
+**Le remède est déjà à moitié construit.** `probeAssets` sonde chaque URL
+d'`og:image` à chaque run, et `probeAsset` en décode déjà les dimensions
+intrinsèques. Le seul lecteur de `probe.sizes` dans tout le catalogue est
+`icons.sizes-mismatch`, qui regarde `links.icons` et jamais `openGraph.images`.
+Septième occurrence du signal collecté et jamais jugé.
+
+D'où l'OG-5 redéfinie, dans l'ordre que D5 impose — **la règle avant l'outil** :
+`og.image.sizes-mismatch` d'abord, qui nommera le défaut sur stereo-house ; puis
+`RouteContent.image` cesse d'inventer, et prend `{ url, width?, height?, type?,
+alt? }` du site qui, lui, connaît son image.
+
+**Un danger à consigner et à ne pas coder.** Comme `buildMetadata` écrit toujours
+une clé `openGraph`, il coupe l'héritage de la convention par segment : une route
+passant par `routes.metadata()` dont le plus proche `opengraph-image.tsx` est sur
+un segment ancêtre n'aurait aucune image. Zéro occurrence aujourd'hui sur les deux
+sites. Écrire le `fallback` du §6.1 pour ça serait le mode d'échec, encore.
+
+### 10.10 `og:image:alt` était présent partout, et faux sur douze pages
+
+Trouvé le 2026-08-16 par `goflag preview`, la première fois qu'elle a tourné sur
+un vrai site — `docs/preview-plan.md` §10.3 raconte la mécanique.
+
+OG-2 a réglé l'`alt` pour les cartes qui passent par `generateImageMetadata`.
+Les pages `/docs` n'y passent pas : le contournement du catch-all du §6.3 leur
+fait nommer leur image dans `routes.metadata({ image })`, et là `metadata.ts`
+écrivait `alt: content.title`. Douze pages annonçaient donc « Running goflag in
+CI » comme description d'une image, quand ogp.me demande _a description of what
+is in the image (**not a caption**)_.
+
+**`og.image.alt` juge la présence, et la valeur était présente** : la règle
+passait, sur les douze, depuis OG-2. Le compte de findings avant et après le
+remède est identique. C'est la troisième fois que la lib produit elle-même le
+défaut — après `alternateLocale` et après les couleurs du §10.2 — et la première
+où aucune règle du catalogue ne pouvait le nommer.
+
+`imageAlt` est donc un champ à part de `RouteContent`, **sans valeur par
+défaut** : absent, la balise est omise et `og.image.alt` tire. Une règle qui
+passe sur une valeur fausse est pire qu'une règle qui échoue, parce qu'elle ne
+tirera plus jamais.
+
+**Suite, le même jour : le second consommateur est arrivé et la règle existe.**
+stereo-house porte la même forme sur ses trois articles — `og:image:alt` égal à
+`og:title`. Deux sites indépendants, quinze occurrences : le catalogue gagne
+`og.image.alt.caption`, `guideline`, sourcée sur la phrase d'ogp.me qui exclut la
+caption. Elle a un id à part parce que `og.image.alt` ne peut pas la voir : la
+balise est présente, donc la présence passe. Vérifiée dans les deux sens — trois
+findings sur stereo-house, zéro sur `apps/website`, qui porte déjà le remède.
 
 ---
 

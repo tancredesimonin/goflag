@@ -84,6 +84,10 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     why: "Generated cards carry the page title as pixels. With no `og:image:alt`, that title is unavailable to anyone using a screen reader — at the moment a link is shared, which is before anyone has had the chance to open the page and find the text again.",
     message: "Page declares an `og:image` with no `og:image:alt`.",
   },
+  "og.image.alt.caption": {
+    why: "A card is a title drawn as pixels, so the tempting alt is the title again — and it is the one description that adds nothing. Someone who cannot see the card hears the same words twice and still does not know what is in the picture. It is also invisible to the rule next door: the tag is present, so the presence check passes, and it will keep passing for as long as the page exists.",
+    message: "`og:image:alt` repeats the title instead of describing the image.",
+  },
   "og.image.dimensions": {
     why: "The first time a URL is shared, the crawler has not seen the image yet. Told the size, it can lay the card out immediately; left to guess, it renders the share without the image and fetches it afterwards. The first share is usually the one that travels.",
     message: "The `og:image` declaration omits `og:image:width` or `og:image:height`.",
@@ -126,6 +130,11 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
   "icons.unreachable": {
     why: "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would otherwise have fallen back to. Declaring it is what took the fallback away.",
     message: "Declared icon does not serve an image: `icon` → `/icon-32.png` (HTTP 404).",
+  },
+  "og.image.sizes-mismatch": {
+    why: "The declared size is what a crawler lays the card out with before it has the file — which is the whole reason to declare it. A wrong one is therefore worse than none: the crawler reserves a shape the image does not have, and the first share, the one that matters most, renders letterboxed or cropped. It is also the declaration that blinds the rest of the catalogue: `og.image.ratio` reads these two numbers and deliberately refuses to fetch, so an invented 1200×630 scores 1.9 and passes over an image that is square. Found on a site whose cover art is 1024×1024, declared 1200×630 by a library that had never looked at it.",
+    message:
+      "The declared size is not the image's: `/covers/tr-808-legacy.png` declares 1200x630 and is 1024x1024.",
   },
   "icons.sizes-mismatch": {
     why: "`sizes` exists so a client can pick one icon out of several without fetching them all. A wrong value costs exactly what the attribute was there to save. The usual shape is not a lie but a half-truth: a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself.",
