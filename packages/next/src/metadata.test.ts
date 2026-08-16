@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { describe, expect, it } from "vitest";
 
 import { collection } from "./routes";
@@ -28,6 +29,18 @@ const routes = site.routes({
 });
 
 const content = { title: "Install goflag", description: "Two ways in, and when to pick each." };
+
+/**
+ * The first `og:image`, whatever shape Next's type allows.
+ *
+ * `openGraph.images` is `OGImage | OGImage[]`, so indexing it directly is a
+ * type error — and the assertions below are about a single image's fields.
+ */
+function firstImage(meta: Metadata) {
+  const images = meta.openGraph?.images;
+
+  return Array.isArray(images) ? images[0] : images;
+}
 
 describe("metadata — localized pages", () => {
   const meta = routes.metadata({ path: "", locale: "fr-FR", ...content });
@@ -135,8 +148,8 @@ describe("metadata — monolingual pages", () => {
 
     expect(meta.openGraph).toMatchObject({ images: expected });
     expect(meta.twitter).toMatchObject({ images: expected });
-    expect(meta.openGraph?.images?.[0]).not.toHaveProperty("width");
-    expect(meta.openGraph?.images?.[0]).not.toHaveProperty("height");
+    expect(firstImage(meta)).not.toHaveProperty("width");
+    expect(firstImage(meta)).not.toHaveProperty("height");
   });
 
   it("declares the shape when the caller measured it", () => {
@@ -169,7 +182,7 @@ describe("metadata — monolingual pages", () => {
       image: { url: "/og/docs/install", alt: "The title “Install” on a dark goflag card." },
     });
 
-    expect(described.openGraph?.images?.[0]).toMatchObject({
+    expect(firstImage(described)).toMatchObject({
       alt: "The title “Install” on a dark goflag card.",
     });
   });
