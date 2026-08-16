@@ -53,6 +53,13 @@ export const LIB = {
   docs: "/docs/next",
 } as const;
 
+export const CARDS = {
+  name: "@goflag/og",
+  version: "0.2.0",
+  npm: "https://www.npmjs.com/package/@goflag/og",
+  docs: "/docs/og",
+} as const;
+
 export const INSTALL = {
   tryIt: `npx ${PACKAGE.name} https://example.com`,
   addDev: `pnpm add -D ${PACKAGE.name}`,
