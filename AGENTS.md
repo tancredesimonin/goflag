@@ -8,7 +8,7 @@ and missing or misconfigured SEO metadata. The JSON
 report is the source of truth. The CLI itself has no UI: nothing it does
 requires a browser to look at.
 
-The repository is a pnpm workspace (`packages/*`, `apps/*`) holding two
+The repository is a pnpm workspace (`packages/*`, `apps/*`) holding three
 published packages and one deployed app:
 
 - `packages/cli` (`@goflag/cli`) — the auditor. Published.
@@ -16,10 +16,14 @@ published packages and one deployed app:
   checks for: declare a site's routes once, derive metadata, the hreflang
   cluster, the sitemap and robots.txt from them. Published. Plan:
   `docs/next-plan.md`.
+- `packages/og` (`@goflag/og`) — the remedy for the rules the auditor could
+  only report: the share card, and the `.ico` container no Next convention
+  emits. The core renders nothing — it returns a JSX tree — and
+  `@goflag/og/next` is the ~30-line binding. Published. Plan: `docs/og-plan.md`.
 - `apps/website` — goflag.tech. Deployed, not published, and the first consumer
-  of `@goflag/next`. It audits itself with goflag in its own pipeline
-  (`pnpm --filter @goflag/website seo`), which is the closest thing to an
-  end-to-end test the two products have.
+  of `@goflag/next` and `@goflag/og`. It audits itself with goflag in its own
+  pipeline (`pnpm --filter @goflag/website seo`), which is the closest thing to
+  an end-to-end test the two products have.
 
 **Invariant I3, enforced by lint**: neither `packages/next` nor `apps/**` may
 import from `packages/cli`. The two products must stay independently useful.
@@ -49,6 +53,14 @@ import from `packages/cli`. The two products must stay independently useful.
 generate:locales` — edit the generator, not the file). `conformance.test.ts` judges the library's own output by invariants
   named after the rules the CLI reports — provisional, and meant to be replaced
   by the real catalogue once it is exported.
+- `packages/og/src/**` — the card and the icon container. `card.tsx`
+  (`defineOg`, and the one template §8's constraints describe), `fit.ts` (the
+  degression, whose steps every site measures for itself — there is no default
+  and there must not be), `oklch.ts` (theme conversion, so tokens are read from
+  the stylesheet instead of transcribed), `ico.ts` + `write.ts` (the ICO
+  container and the guard that keeps a generated-and-committed file from being
+  dirtied by every commit), `next/` (the whole framework surface, and it is
+  short on purpose).
 - `packages/cli/src/report/**` — the `GoflagReport` schema (`types.ts`), the
   orchestrator (`runAudit` in `build.ts`), and the terminal/summary/diff
   renderers.
@@ -111,9 +123,11 @@ Exit codes: `0` clean, `1` findings found, `2` fatal.
 
 ## Releasing
 
-Two packages, two tag namespaces: `v*` for the CLI, `next-v*` for the library.
-Both are **protected tags**, creatable by Maintainers — which means the release
-bot, and you when CI is down.
+Three packages, three tag namespaces: `v*` for the CLI, `next-v*` for the
+library, `og-v*` for the cards. All three are **protected tags**, creatable by
+Maintainers — which means the release bot, and you when CI is down. A namespace
+has to be protected in the project's settings before its first release, or the
+`tag` job pushes a ref the remote refuses.
 
 `main` and `develop` accept a push from **no one**, CI included. So the version
 bump and the changelog are written on a branch and reviewed like any other
@@ -126,7 +140,7 @@ pnpm release              on a branch cut off develop — bumps what moved,
   → merge develop into main         the decision to publish
   → job `tag` on main               reads each manifest, creates the missing tag
                           on the develop side of the merge, so the next release can see it
-  → job `publish:npm` / `publish:next`   OIDC, one package each
+  → job `publish:npm` / `publish:next` / `publish:og`   OIDC, one package each
 ```
 
 `pnpm release` (`scripts/release.mjs`) holds every judgement: a release only

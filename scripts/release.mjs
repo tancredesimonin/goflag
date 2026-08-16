@@ -51,6 +51,21 @@ const PACKAGES = [
       "packages/next/LICENSE",
     ],
   },
+  {
+    name: "@goflag/og",
+    tagPrefix: "og-v",
+    manifest: "packages/og/package.json",
+    // No `quotedAs`: the site documents the CLI and the library and quotes
+    // their versions in install snippets. It has no page for this one yet, so
+    // there is no literal to keep in step — and inventing a constant nothing
+    // renders would be a guard over nothing.
+    surface: [
+      "packages/og/src",
+      "packages/og/package.json",
+      "packages/og/README.md",
+      "packages/og/LICENSE",
+    ],
+  },
 ];
 
 /** A commit that earns a version number: a feature, a fix, or a break. */
@@ -219,8 +234,10 @@ for (const pkg of PACKAGES) {
     }),
   ).version;
 
-  quoteVersion(pkg.quotedAs, version);
-  run("git", "add", "apps/website/src/lib/constants.ts");
+  if (pkg.quotedAs) {
+    quoteVersion(pkg.quotedAs, version);
+    run("git", "add", "apps/website/src/lib/constants.ts");
+  }
   if (pkg.name === "@goflag/cli") {
     quoteVersionInReadme(version);
     run("git", "add", "README.md");

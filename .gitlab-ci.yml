@@ -429,6 +429,7 @@ deploy-develop:
       changes:
         - apps/**/*
         - packages/next/**/*
+        - packages/og/**/*
         - packages/cli/CHANGELOG.md
         - Dockerfile
         - config/deploy*.yml
@@ -466,8 +467,8 @@ kamal-proxy-reboot:
 # is nothing left in CI worth stealing: no NPM_TOKEN, nothing to rotate, and
 # nothing that keeps working if it leaks.
 # One job per package, keyed on the tag namespace. `if: $CI_COMMIT_TAG` alone
-# would fire both on either tag, and each would then fail its own version check
-# — a red pipeline on a release that actually succeeded.
+# would fire all three on any tag, and each would then fail its own version
+# check — a red pipeline on a release that actually succeeded.
 publish:npm:
   # Publishing to npm is not reversible. A version yanked is still a version
   # that existed.
@@ -539,6 +540,35 @@ publish:next:
       fi
     - cd packages/next && npm publish --access public
 
+# And the same again for the cards. Third namespace, third trusted-publisher
+# entry on npmjs.com, same project and same file — and the same first-version
+# problem the paragraph above describes: npm has nothing to attach a publisher
+# to until the package exists, so `og-v0.1.0` goes out by hand and the guard
+# below is what stops the first automatic run from colliding with it.
+publish:og:
+  # Same: not reversible.
+  interruptible: false
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^og-v[0-9]/
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+  script:
+    - PKG_VERSION="$(node -p "require('./packages/og/package.json').version")"
+    - |
+      if [ "$CI_COMMIT_TAG" != "og-v$PKG_VERSION" ]; then
+        echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
+        exit 1
+      fi
+    - |
+      if [ -n "$(npm view "@goflag/og@$PKG_VERSION" version 2>/dev/null)" ]; then
+        echo "@goflag/og@$PKG_VERSION is already on npm — nothing to publish."
+        exit 0
+      fi
+    - cd packages/og && npm publish --access public
+
 # Merging develop into main is the decision to publish. This job is the only
 # thing the pipeline ever writes back to the repository, and it writes exactly
 # one kind of ref: a tag, on a commit that is already on main.
@@ -559,9 +589,13 @@ publish:next:
 # no purpose.
 #
 # Needs RELEASE_TOKEN — a project access token with the Maintainer role and
-# `write_repository`, because `v*` and `next-v*` are protected tags and only
-# Maintainers may create them. The job token cannot, and a push made with it
-# would not trigger the tag pipeline that publishes.
+# `write_repository`, because `v*`, `next-v*` and `og-v*` are protected tags and
+# only Maintainers may create them. The job token cannot, and a push made with
+# it would not trigger the tag pipeline that publishes.
+#
+# A new namespace has to be protected in the project's settings before its first
+# release, or `tag_one` pushes a ref the remote refuses — and refuses silently
+# from the point of view of the two namespaces that worked.
 tag:
   # The only job that writes back to this repository. It is idempotent, but a
   # push of a ref interrupted between `git tag` and `git push` is a tag that
@@ -638,6 +672,7 @@ tag:
 
     - tag_one "@goflag/cli" "packages/cli/package.json" "v"
     - tag_one "@goflag/next" "packages/next/package.json" "next-v"
+    - tag_one "@goflag/og" "packages/og/package.json" "og-v"
 
 workflow:
   rules:
