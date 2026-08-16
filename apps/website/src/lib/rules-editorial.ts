@@ -153,9 +153,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "Route `/pricing`: the sitemap lists es, pt-br but the `<head>` does not advertise them. The site publishes those versions and leaves them outside the cluster, so they compete with this page instead of consolidating with it.",
   },
   "hreflang.sitemap-mismatch": {
-    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. This is the direction no specification covers: nothing requires an hreflang-declared page to appear in a sitemap, and a page deliberately kept out of it is doing nothing wrong. It is reported because the disagreement means one of your two generators is wrong — goflag cannot say which, which is exactly why this rule claims no rigor.",
-    message:
-      "Route `/pricing`: the `<head>` advertises de but the sitemap has no entry for it. Both are derived from the same intent, so the disagreement means one of the two generators is wrong — goflag cannot say which, and no specification requires a page to be in both.",
+    why: "The head and the sitemap are two declarations of one intent, produced by different code paths, so they drift. This is the direction no specification covers: nothing requires an hreflang-declared page to appear in a sitemap, and a page deliberately kept out of it is doing nothing wrong. So goflag stopped calling it a defect and started asking about it — you get both lists and the question, and you decide which of your two generators is wrong.",
   },
   "sitemap.entry.unreachable": {
     why: "A sitemap is a list of pages you want indexed, so every dead entry spends crawl budget on a promise the site does not keep. The count is a floor when the caps stopped the pass short, and the message says so rather than implying the rest are fine.",

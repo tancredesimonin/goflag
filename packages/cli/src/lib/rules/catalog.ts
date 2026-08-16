@@ -21,13 +21,15 @@
  *   what a mistake *costs a reader* is writing, and belongs to whoever writes.
  *   A consumer keys its own text by rule id and derives everything else.
  *
- * `rigor: null` on the cross-page rules is not an omission — `SiteRule` has no
- * `rigor` field yet (phase G). Emitting the gap is how it stops being
- * invisible.
+ * `rigor: null` used to appear on the cross-page rules, which had no `rigor`
+ * field before phase G. Every rule in this catalogue now carries one and cites
+ * at least one source. The one that could not carry either is no longer a rule:
+ * it asks its question through `./site-prose.ts` and renders no verdict.
  */
 
 import { RULES } from "./index";
 import { PROSE_RULES } from "./prose";
+import { SITE_PROSE_RULES } from "./site-prose";
 import { SITE_RULES } from "./site-rules";
 import { getSource } from "./sources";
 import type { Band, Rigor } from "./types";
@@ -150,9 +152,11 @@ export function buildRuleCatalog(version?: string): RuleCatalog {
       severity: rule.severity,
       kind: "boolean",
       summary: rule.summary,
-      // `null` where a cross-page rule has not declared one yet — the three
-      // that predate the field still need their sources chosen rather than
-      // guessed, and emitting the gap is how it stays visible.
+      // Kept nullable, and no longer used: every cross-page rule cites its
+      // sources since 2026-08-15. The last holdout could not, so it stopped
+      // being a rule — `./site-prose.ts` asks it as a question instead. The
+      // `?? null` stays because the field is optional on `SiteRule`, not
+      // because a gap is expected.
       rigor: rule.rigor ?? null,
       sources: rule.sources ?? [],
     });
@@ -170,6 +174,24 @@ export function buildRuleCatalog(version?: string): RuleCatalog {
       rigor: rule.rigor,
       sources: [...rule.sources],
       reads: [...rule.reads],
+      prose: rule.prose,
+    });
+  }
+
+  // Cross-page questions land in the same `prose` bucket as the per-page ones.
+  // What a reader needs from the scope is that no verdict is rendered; where
+  // the rule looked is its summary's business, and a fourth scope value would
+  // leave these out of all three lists `apps/website` renders off this split.
+  for (const rule of SITE_PROSE_RULES) {
+    rules.push({
+      id: rule.id,
+      scope: "prose",
+      severity: null,
+      kind: "prose",
+      summary: rule.summary,
+      why: rule.why,
+      rigor: rule.rigor ?? null,
+      sources: [...(rule.sources ?? [])],
       prose: rule.prose,
     });
   }
@@ -199,7 +221,11 @@ export function buildRuleCatalog(version?: string): RuleCatalog {
     counts: {
       page: RULES.length,
       site: SITE_RULES.length,
-      prose: PROSE_RULES.length,
+      // Both registries, because both land in the `prose` bucket above and a
+      // count that disagreed with the list it summarises is worse than no
+      // count. Counted off the registries rather than by filtering `rules`, so
+      // the two stay independently derived and a mismatch shows up as one.
+      prose: PROSE_RULES.length + SITE_PROSE_RULES.length,
     },
     sources,
     rules,

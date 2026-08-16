@@ -140,7 +140,13 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
 
   beforeAll(async () => {
     server = await startFixtureServer({ root: "fixtures/sites/sitemap-mismatch" });
-    report = await runAudit(`${server.url}/en/post`, { depth: 2, static: true });
+    // `advisories` on, because the opposite drift stopped being a finding on
+    // 2026-08-15 and became a question — it now arrives only when asked for.
+    report = await runAudit(`${server.url}/en/post`, {
+      depth: 2,
+      static: true,
+      advisories: true,
+    });
   }, 60_000);
 
   afterAll(async () => {
@@ -166,21 +172,30 @@ describe("sitemap mismatch site — head declares fewer locales than the sitemap
     expect(first?.message).toContain("the sitemap lists");
   });
 
-  it("also catches the opposite drift: a <head> advertising locales the sitemap lacks", () => {
+  it("asks about the opposite drift rather than reporting it", () => {
     // `/solo` exists in four locales and says so, but only `/en/solo` is in the
-    // sitemap. This is the half no specification covers — checked at the source
-    // on 2026-08-15, where Google calls its three declaration methods
-    // "equivalent" and requires no hreflang-declared page to be in a sitemap at
-    // all. It keeps the `hreflang.sitemap-mismatch` id and its empty `rigor`,
-    // and it is still worth reporting: two generators deriving one intent and
-    // disagreeing is a defect somewhere, just not one goflag can attribute.
-    const onSolo = siteIssuesFor(report, "hreflang.sitemap-mismatch").filter((i) =>
-      i.pageUrl.endsWith("/solo"),
+    // sitemap. No specification covers this direction — Google calls its three
+    // declaration methods "equivalent" and requires no hreflang-declared page
+    // to be in a sitemap at all — so since 2026-08-15 it is a question with its
+    // evidence attached, not a warning.
+    const onSolo = (report.advisories ?? []).filter(
+      (a) => a.ruleId === "hreflang.sitemap-mismatch" && a.pageUrl.endsWith("/solo"),
     );
+
     expect(onSolo).toHaveLength(4);
-    expect(onSolo[0]?.message).toContain("`/solo`");
-    expect(onSolo[0]?.message).toContain("the `<head>` advertises es, fr, pt-br");
-    expect(onSolo[0]?.message).toContain("the sitemap has no entry");
+    expect(onSolo[0]?.verdict).toBe("needs-judgment");
+    expect(onSolo[0]?.rigor).toBeNull();
+    expect(onSolo[0]?.evidence).toMatchObject({
+      route: "/solo",
+      advertisedButUnlisted: ["es", "fr", "pt-br"],
+    });
+  });
+
+  it("keeps that question out of everything that can fail a build", () => {
+    // The containment the move was for. A question in `siteIssues` would be a
+    // warning again under a quieter name, and it would carry no rigor.
+    expect(siteIssuesFor(report, "hreflang.sitemap-mismatch")).toHaveLength(0);
+    expect(report.siteIssues.every((i) => i.ruleId !== "hreflang.sitemap-mismatch")).toBe(true);
   });
 
   it("stays silent on hreflang.missing — these pages do declare alternates", () => {

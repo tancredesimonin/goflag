@@ -171,25 +171,21 @@ const hreflangMissing: SiteRule = {
   },
 };
 
-/** One route's disagreement between what the `<head>` says and what the sitemap lists. */
+/** One route where the sitemap publishes a locale the `<head>` leaves out. */
 interface CoverageGap {
   page: Page;
   route: string;
   /** Locales the sitemap lists that the `<head>` does not advertise. */
   onlyInSitemap: string[];
-  /** Locales the `<head>` advertises that the sitemap does not list. */
-  onlyInHead: string[];
 }
 
 /**
- * Walk both declarations once, for the two rules that read opposite halves of
- * the result.
+ * Locales the sitemap publishes and the `<head>` does not name, per route.
  *
- * They were one rule until 2026-08-15 and are split because their claims have
- * different backing (see each below), not because they see different data. One
- * traversal keeps that true: `rowOf` decides what "the same route" means, and
- * two copies of this loop could answer differently on a site that translates
- * its slugs — which is the exact defect `site-rules.test.ts` was written for.
+ * This computed the opposite direction too until the unsourceable half became a
+ * question (`./site-prose.ts`), and kept computing it for a day after nothing
+ * read it. Dropped rather than left in: a field nobody reads is the shape every
+ * dead-signal entry in this repository's plans started as.
  *
  * Pages with no alternates at all are skipped: that is `hreflang.missing`'s
  * finding, and reporting it twice would double-count one defect.
@@ -216,14 +212,13 @@ function coverageGaps(site: SiteContext): CoverageGap[] {
       page,
       route,
       onlyInSitemap: sorted(new Set([...inSitemap].filter((l) => !head.has(l)))),
-      onlyInHead: sorted(new Set([...head].filter((l) => !inSitemap.has(l)))),
     });
   }
 
   return gaps;
 }
 
-/** Shared by both halves: they differ in what they claim, not in how to fix it. */
+/** One registry away from its twin question, and the same remedy answers both. */
 const ONE_SOURCE_FIX = {
   title: "Derive both from one locale-availability source",
   snippet: [
@@ -304,55 +299,17 @@ const hreflangClusterIncomplete: SiteRule = {
 };
 
 /**
- * The `<head>` advertises a translation the sitemap does not list.
+ * `hreflang.sitemap-mismatch` used to sit here, and it is now a question rather
+ * than a verdict — see `./site-prose.ts`.
  *
- * The other direction, kept separate because it is a weaker claim wearing the
- * same words. It is real drift — two code paths deriving one intent and
- * disagreeing — and it is worth surfacing, because a generator that disagrees
- * this way today can disagree the other way tomorrow, where it does cost
- * something.
- *
- * ## Deliberately `rigor: null`, and it survives the split
- *
- * Splitting was expected to source both halves. It sources one. **No document
- * supports this direction**, and that was checked rather than assumed on
- * 2026-08-15: Google presents the three declaration methods — HTML, HTTP
- * headers, sitemap — as *"equivalent from Google's perspective"*, actively
- * discourages combining them (*"there's no benefit in Search"*), and nowhere
- * requires an hreflang-declared page to appear in a sitemap. A page correctly
- * cross-linked and deliberately kept out of the sitemap is doing nothing wrong,
- * and this rule still says something about it.
- *
- * So it keeps the id it always had, and keeps an empty `rigor` — which is now a
- * verdict about the claim rather than a job nobody did. What it actually wants
- * to be is an **advisory**: evidence handed to an agent with no verdict attached,
- * exactly as `../advisory.ts` describes its own role. The blocker is that
- * advisories are page-scoped `ProseRule`s over an `Extraction`, and this needs
- * the sitemap and every page. One caller is thin justification for a
- * site-scoped advisory mechanism, in a repository that has logged six instances
- * of "written, tested, called by nobody". It moves when a second caller appears.
+ * It carried `rigor: null` and `severity: warning` at the same time: a refusal
+ * to say how authoritative a claim is, followed by the claim. Splitting it
+ * sourced the half Google backs (`hreflang.cluster-incomplete`, above) and left
+ * this one with nothing behind it, because nothing requires an
+ * hreflang-declared page to appear in a sitemap. The disagreement is still real
+ * and still worth surfacing — goflag simply cannot say which of the two
+ * generators is wrong, which is the definition of a question.
  */
-const hreflangSitemapMismatch: SiteRule = {
-  id: "hreflang.sitemap-mismatch",
-  severity: "warning",
-  summary: "`<head>` alternates advertise a locale the sitemap does not list",
-  appliesTo: bothApply,
-  check: ({ site, issue }) =>
-    coverageGaps(site)
-      .filter((gap) => gap.onlyInHead.length > 0)
-      .map(({ page, route, onlyInHead }) =>
-        issue({
-          pageUrl: page.fetch.finalUrl,
-          message:
-            `Route \`${route}\`: the \`<head>\` advertises ${onlyInHead.join(", ")} but the ` +
-            `sitemap has no entry for ${onlyInHead.length > 1 ? "them" : "it"}. Both are derived ` +
-            `from the same intent, so the disagreement means one of the two generators is wrong ` +
-            `— goflag cannot say which, and no specification requires a page to be in both.`,
-          origin: { kind: "link", rel: "alternate" },
-          fix: ONE_SOURCE_FIX,
-        }),
-      ),
-};
 
 /** Directive tokens from a page's `<meta name="robots">`. */
 function metaRobotsTokens(page: Page): Set<string> {
@@ -1387,7 +1344,6 @@ function isAbsolute(value: string): boolean {
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangClusterIncomplete,
-  hreflangSitemapMismatch,
   iconsIcoMissing,
   robotsBlocksPage,
   robotsBlocksSite,

@@ -156,7 +156,17 @@ export interface AdvisoryFinding {
   ruleId: string;
   kind: "prose";
   prose: string;
-  rigor: Rigor;
+  /**
+   * `null` where no document supports the question.
+   *
+   * Every page prose rule carries one. The cross-page ones (`./site-prose.ts`)
+   * may not: `hreflang.sitemap-mismatch` asks about a disagreement no
+   * specification addresses, and inventing a rigor for it would put back the
+   * dishonesty that moving it out of the verdict-bearing registry removed.
+   * An agent reads this to weight the question; `null` says "weight it on the
+   * evidence alone".
+   */
+  rigor: Rigor | null;
   sources: string[];
   /**
    * Extraction path → the observed value there, one entry per declared

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildRuleCatalog, serialiseCatalog } from "./catalog";
 import { RULES } from "./index";
 import { PROSE_RULES } from "./prose";
+import { SITE_PROSE_RULES } from "./site-prose";
 import { SITE_RULES } from "./site-rules";
 import { getSource } from "./sources";
 
@@ -16,7 +17,7 @@ describe("buildRuleCatalog", () => {
     // The whole point: a consumer reading this cannot be missing a rule the
     // engine runs, which is what a hand-written mirror cannot promise.
     const ids = catalog.rules.map((r) => r.id);
-    const shipped = [...RULES, ...SITE_RULES, ...PROSE_RULES].map((r) => r.id);
+    const shipped = [...RULES, ...SITE_RULES, ...PROSE_RULES, ...SITE_PROSE_RULES].map((r) => r.id);
 
     expect(ids.length).toBe(shipped.length);
     expect(new Set(ids).size).toBe(ids.length);
@@ -32,11 +33,14 @@ describe("buildRuleCatalog", () => {
     const byScope = (scope: string) => catalog.rules.filter((r) => r.scope === scope).length;
     expect(byScope("page")).toBe(RULES.length);
     expect(byScope("site")).toBe(SITE_RULES.length);
-    expect(byScope("prose")).toBe(PROSE_RULES.length);
+    // Both prose registries share the bucket: what the scope tells a reader
+    // is that no verdict is rendered, and a fourth value would leave the
+    // cross-page questions out of all three lists the site renders off it.
+    expect(byScope("prose")).toBe(PROSE_RULES.length + SITE_PROSE_RULES.length);
     expect(catalog.counts).toEqual({
       page: RULES.length,
       site: SITE_RULES.length,
-      prose: PROSE_RULES.length,
+      prose: PROSE_RULES.length + SITE_PROSE_RULES.length,
     });
   });
 
