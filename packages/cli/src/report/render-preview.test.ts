@@ -146,6 +146,14 @@ describe("renderPreview — the document", () => {
     expect(out).not.toContain("Open Graph — the source card");
   });
 
+  it("distinguishes a report never asked for extractions from a crawl that read nothing", () => {
+    // Telling an operator who just ran `goflag preview` to run `goflag preview`
+    // is the wrong half of the message.
+    const out = renderPreview(report({ extractions: [] }));
+    expect(out).toContain("no HTML page it could read");
+    expect(out).not.toContain("carries no extractions");
+  });
+
   it("lists the pages when there is more than one, and does not when there is one", () => {
     expect(renderPreview(report())).not.toContain('class="nav"');
     const two = report({
@@ -215,6 +223,29 @@ describe("renderPreview — what the page declared", () => {
     );
   });
 
+  it("bands the rounded ratio, so the caption cannot contradict og.image.ratio", () => {
+    // The rule rounds to two decimals before banding; 1.69731 is 1.70, which
+    // is inside the ideal band. A caption that called it cropped would put the
+    // page in an argument with the finding printed below it.
+    const near = extraction();
+    near.openGraph.images[0]!.height = {
+      value: 707,
+      origin: { kind: "meta", property: "og:image:height" },
+    };
+    const out = renderPreview(report({ extractions: [near] }));
+    expect(out).toContain("1.70:1 declared — inside the 1.91:1 band");
+  });
+
+  it("says how many images the page declared, since consumers take the first", () => {
+    const several = extraction();
+    several.openGraph.images = [
+      ...several.openGraph.images,
+      { url: meta("https://cdn.example.com/b.png", "og:image") },
+    ];
+    expect(renderPreview(report({ extractions: [several] }))).toContain("1 of 2");
+    expect(renderPreview(report())).not.toContain("1 of 1");
+  });
+
   it("falls back to the size decoded from the file when the page declares none", () => {
     const undeclared = extraction();
     undeclared.openGraph.images[0]!.width = undefined;
@@ -278,6 +309,51 @@ describe("renderPreview — when the page is wrong", () => {
     expect(renderPreview(report({ extractions: [none] }))).toContain("no <code>og:image</code>");
   });
 
+  it("does not let an empty og:image hide a real twitter:image", () => {
+    // The extractor keeps `content=""` verbatim, so `??` would never fire.
+    const blank = extraction();
+    blank.openGraph.images[0]!.url = meta("", "og:image");
+    blank.twitter.image = meta("https://cdn.example.com/x.png", "twitter:image");
+    blank.assets = undefined;
+    const out = renderPreview(report({ extractions: [blank] }));
+    expect(out).toContain("https://cdn.example.com/x.png");
+    expect(out).toContain("twitter:image");
+  });
+
+  it("treats a declared height of 0 as unknown rather than as a ratio", () => {
+    const zero = extraction();
+    zero.openGraph.images[0]!.height = {
+      value: 0,
+      origin: { kind: "meta", property: "og:image:height" },
+    };
+    zero.assets = {
+      "https://cdn.example.com/og.png": {
+        status: 200,
+        ok: true,
+        sizes: [{ width: 1200, height: 630 }],
+      },
+    };
+    // The decoded pair is usable, so it is what the caption reads.
+    expect(renderPreview(report({ extractions: [zero] }))).toContain(
+      "1.90:1 decoded from the file",
+    );
+  });
+
+  it("does not escape the content type twice", () => {
+    const typed = extraction({
+      assets: {
+        "https://cdn.example.com/og.png": {
+          status: 200,
+          ok: true,
+          contentType: "image/png;charset=<x>",
+        },
+      },
+    });
+    const out = renderPreview(report({ extractions: [typed] }));
+    expect(out).toContain("image/png;charset=&lt;x&gt;");
+    expect(out).not.toContain("&amp;lt;");
+  });
+
   it("warns on LinkedIn when the declared width is under the documented 401px cutoff", () => {
     const small = extraction();
     small.openGraph.images[0]!.width = {
@@ -287,6 +363,50 @@ describe("renderPreview — when the page is wrong", () => {
     const out = renderPreview(report({ extractions: [small] }));
     expect(out).toContain("320px wide, under LinkedIn");
     expect(renderPreview(report())).not.toContain("under LinkedIn");
+  });
+});
+
+describe("renderPreview — a site does not get to veto its own preview", () => {
+  it("survives a JSON-LD block deep enough to blow the stack", () => {
+    // The extractor's type walker skips `@type`, so a chain of them parses
+    // cleanly and `JSON.stringify` is the first thing that ever walks it.
+    let deep: unknown = "x";
+    for (let i = 0; i < 7000; i++) deep = { "@type": deep };
+    const bomb = extraction({
+      jsonLd: [{ index: 0, types: [], data: deep, raw: "{…}" }],
+    });
+    expect(() => renderPreview(report({ extractions: [bomb] }))).not.toThrow();
+  });
+
+  it("caps a pretty-printed block instead of inlining megabytes of it", () => {
+    let deep: unknown = "x";
+    for (let i = 0; i < 400; i++) deep = { "@type": deep };
+    const out = renderPreview(
+      report({
+        extractions: [extraction({ jsonLd: [{ index: 0, types: [], data: deep, raw: "{}" }] })],
+      }),
+    );
+    expect(out).toContain("… truncated");
+    expect(out.length).toBeLessThan(200_000);
+  });
+
+  it("clips a data: URI instead of echoing it once per surface", () => {
+    const huge = extraction();
+    huge.openGraph.images[0]!.url = meta(
+      `data:image/png;base64,${"A".repeat(200_000)}`,
+      "og:image",
+    );
+    huge.assets = undefined;
+    const out = renderPreview(report({ extractions: [huge] }));
+    expect(out).toContain("…");
+    expect(out.length).toBeLessThan(200_000);
+  });
+
+  it("ships a policy that allows images and nothing else", () => {
+    const out = renderPreview(report());
+    expect(out).toContain("Content-Security-Policy");
+    expect(out).toContain("default-src 'none'");
+    expect(out).toContain('referrerpolicy="no-referrer"');
   });
 });
 
@@ -359,6 +479,24 @@ describe("renderPreview — the findings rail", () => {
     backticked.openGraph.title = meta("Using `npm install` in CI", "og:title");
     const out = renderPreview(report({ extractions: [backticked] }));
     expect(out).toContain("Using `npm install` in CI");
+  });
+
+  it("pins a site-scoped head finding too — /favicon.ico belongs to an origin", () => {
+    const out = renderPreview(
+      report({
+        siteIssues: [
+          {
+            id: "site-0123456789",
+            pageUrl: "https://example.com/fr",
+            ruleId: "icons.ico.missing",
+            severity: "info",
+            message: "No /favicon.ico is served at the root.",
+          },
+        ],
+      }),
+    );
+    expect(out).toContain("icons.ico.missing");
+    expect(out).not.toContain("Nothing the catalogue judges");
   });
 
   it("ignores findings belonging to another page", () => {

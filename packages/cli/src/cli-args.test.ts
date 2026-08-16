@@ -186,16 +186,26 @@ describe("parseArgs — subcommands", () => {
     );
   });
 
-  it("does not read a command word that follows a flag", () => {
-    expect(parseArgs(["--json", "preview"]).command).toBeUndefined();
-    expect(parseArgs(["--json", "preview"]).url).toBe("preview");
+  it("reads a command word written after a flag", () => {
+    const a = parseArgs(["--report", "r.json", "preview", "https://x.test"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://x.test");
+    expect(a.report).toBe("r.json");
   });
 
-  it("refuses a view flag on preview rather than accepting and ignoring it", () => {
-    expect(() => parseArgs(["preview", "https://x.test", "--json"])).toThrow(
-      /--json and --summary/,
+  it("refuses every flag preview would accept and then ignore", () => {
+    // A flag that does nothing is worse than one that refuses.
+    expect(() => parseArgs(["preview", "https://x.test", "--json"])).toThrow(/--json/);
+    expect(() => parseArgs(["preview", "https://x.test", "-s"])).toThrow(/--summary/);
+    expect(() => parseArgs(["preview", "https://x.test", "--max-debt", "0"])).toThrow(/--max-debt/);
+    // And it says so before the --baseline pair guard does, because "preview
+    // does not gate" is the true reason, not "add --regressions-only".
+    expect(() => parseArgs(["preview", "https://x.test", "--baseline", "b.json"])).toThrow(
+      /does not gate/,
     );
-    expect(() => parseArgs(["preview", "https://x.test", "-s"])).toThrow(/--json and --summary/);
+    expect(() =>
+      parseArgs(["preview", "https://x.test", "--baseline", "b.json", "--update-baseline"]),
+    ).toThrow(/--baseline, --update-baseline/);
     // A file is not a view: the JSON is still available beside the HTML.
     expect(() => parseArgs(["preview", "https://x.test", "--report", "out.json"])).not.toThrow();
   });

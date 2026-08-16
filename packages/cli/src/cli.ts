@@ -40,14 +40,14 @@ async function readVersion(): Promise<string> {
 }
 
 /**
- * Write JSON to a path, creating the directory it names.
+ * Write a file, creating the directory it names.
  *
  * `writeFileSync` does not, and the one moment that matters is the first: a
  * repository adopting the gate runs `--update-baseline --baseline
  * .goflag/baseline.json` with no `.goflag/` yet, and the command that the
  * runbook documents as step one is the only one that fails. The audit had
  * already run at that point, so the failure also threw away several minutes of
- * crawling.
+ * crawling. `goflag preview` writes into the same directory and inherits it.
  */
 async function writeText(path: string, contents: string): Promise<void> {
   const { mkdirSync, writeFileSync } = await import("node:fs");

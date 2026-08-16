@@ -21,9 +21,12 @@
  * untrusted text, and the output is a file a human opens in a browser. Values
  * go through `esc`; URLs that are not `http(s)` never become an `src`.
  *
- * The document loads the audited site's own images and icons when it is opened.
- * That is what makes it a preview rather than a table, and it is the one way it
- * reaches the network — never at render time.
+ * Opening the document asks for the image URLs the pages declared, which is
+ * what makes it a preview rather than a table. Those URLs are the site's own
+ * choice and need not point at the audited origin, so the document ships a CSP
+ * that allows images and nothing else — no script, no frame, no fetch — and
+ * every image is `referrerpolicy="no-referrer"`. Rendering itself never touches
+ * the network.
  */
 
 import type { TagOrigin } from "../lib/core/types";
@@ -34,7 +37,13 @@ import type {
   ExtractionOpenGraphImage,
   Fact,
 } from "../lib/rules/extraction/types";
-import type { GoflagReport, SeoIssue } from "./types";
+import type { GoflagReport, SeoIssue, SiteIssue } from "./types";
+
+/**
+ * What the rail pins. `SiteIssue` is the same shape minus `observed` /
+ * `expected`, and some of its ids are head ids — see `findingsPanel`.
+ */
+type HeadFinding = SeoIssue | SiteIssue;
 
 export interface RenderPreviewOptions {
   /** Document `<title>`. Defaults to the audited origin. */
@@ -66,12 +75,39 @@ function esc(value: string): string {
 
 /**
  * Rule messages mark code spans with backticks — `render-terminal` strips them
- * because a terminal has nowhere to put them, and HTML does. Applied only to
- * catalogue text, never to what a site said: a title containing backticks is a
- * title, not markup.
+ * because a terminal has nowhere to put them, and HTML does.
+ *
+ * Applied to catalogue text only, and after `esc`. Several rule messages
+ * interpolate what the page said inside those backticks (`og.image.absolute`
+ * quotes the URL it rejected), so this runs over escaped text on purpose: the
+ * worst a site can do is put a `<code>` where it did not belong.
  */
 function codeSpans(escaped: string): string {
   return escaped.replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+/** Cap a value echoed back into the document — a data: URI is unbounded. */
+function clip(value: string, max = 300): string {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+/**
+ * Pretty-print a parsed JSON-LD block, or nothing.
+ *
+ * `JSON.stringify` is the first thing that walks this value: the extractor's
+ * own type walker skips `@type`, so a page can carry a chain of them thousands
+ * deep, parse cleanly, and blow the stack here. It also indents, which makes
+ * the output quadratic in depth — 50 KB of hostile page measured 50 MB of HTML
+ * before this cap existed. A site does not get to veto its own preview.
+ */
+function prettyJson(value: unknown): string | undefined {
+  try {
+    const out = JSON.stringify(value, null, 2);
+    if (out === undefined) return undefined;
+    return out.length > 20_000 ? `${out.slice(0, 20_000)}\n… truncated` : out;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -153,6 +189,8 @@ interface CardImage {
   src?: string;
   alt?: string;
   from: string;
+  /** How many `og:image` the page declared; consumers take the first. */
+  count: number;
   declaredSize?: { width: number; height: number };
   probedSize?: { width: number; height: number };
   probe?: ExtractionAsset;
@@ -181,31 +219,43 @@ interface Card {
   status: number;
 }
 
+/** A usable pair, or nothing: a CMS that means "unknown" writes 0, not absent. */
+function usable(size: { width: number; height: number } | undefined) {
+  return size && size.width > 0 && size.height > 0 ? size : undefined;
+}
+
 function imageOf(extraction: Extraction): CardImage | undefined {
   const og: ExtractionOpenGraphImage | undefined = extraction.openGraph.images[0];
-  const declared = og?.url.value ?? extraction.twitter.image?.value;
-  if (!declared) return undefined;
+  // `content=""` is kept verbatim by the extractor, so `??` would let an empty
+  // `og:image` hide a perfectly good `twitter:image` behind it.
+  const ogUrl = og?.url.value.trim() ? og.url.value : undefined;
+  const declared = ogUrl ?? extraction.twitter.image?.value;
+  if (!declared || declared.trim() === "") return undefined;
 
   // The probe map is keyed by the trimmed declared URL — `rules/index.ts` looks
   // it up the same way, and a preview that keyed it differently would report
   // "not probed" on an image the audit had just fetched.
   const probe = extraction.assets?.[declared.trim()];
-  const declaredSize =
-    og?.width && og.height ? { width: og.width.value, height: og.height.value } : undefined;
-  const probedSize = probe?.sizes?.[0];
+  const declaredSize = usable(
+    og?.width && og.height ? { width: og.width.value, height: og.height.value } : undefined,
+  );
+  const probedSize = usable(probe?.sizes?.[0]);
   const size = declaredSize ?? probedSize;
 
   return {
     declared,
     src: safeUrl(declared),
     alt: og?.alt?.value ?? extraction.twitter.imageAlt?.value,
-    from: og ? "og:image" : "twitter:image",
+    from: ogUrl ? "og:image" : "twitter:image",
+    count: extraction.openGraph.images.length,
     declaredSize,
     probedSize,
     probe,
-    // Nothing in the codebase computes this: the rule scores it and keeps the
-    // number to itself.
-    ratio: size && size.height > 0 ? size.width / size.height : undefined,
+    // Nothing in the codebase computes this. `og.image.ratio` scores it and
+    // keeps the number to itself — and rounds to two decimals before banding,
+    // which is why this rounds too: a caption that bands 1.69731 as "cropped"
+    // beside a rule that bands 1.70 as ideal makes the page argue with itself.
+    ratio: size ? Math.round((size.width / size.height) * 100) / 100 : undefined,
   };
 }
 
@@ -237,7 +287,7 @@ function cardOf(extraction: Extraction): Card {
 // --- fragments ------------------------------------------------------------
 
 function ratioNote(image: CardImage): string {
-  if (image.ratio === undefined) return "no dimensions declared, and none decoded from the file";
+  if (image.ratio === undefined) return "no usable dimensions declared, and none decoded";
   const value = image.ratio.toFixed(2);
   const source = image.declaredSize ? "declared" : "decoded from the file";
   if (image.ratio >= RATIO_IDEAL[0] && image.ratio <= RATIO_IDEAL[1]) {
@@ -249,10 +299,11 @@ function ratioNote(image: CardImage): string {
   return `${value}:1 ${source} — outside anything a card renders whole`;
 }
 
+/** Plain text — both call sites escape it, so escaping here would double it. */
 function probeNote(image: CardImage): string {
   if (!image.probe) return "not probed on this run";
   if (image.probe.ok) {
-    const type = image.probe.contentType ? `, ${esc(image.probe.contentType)}` : "";
+    const type = image.probe.contentType ? `, ${image.probe.contentType}` : "";
     return `answered ${image.probe.status}${type}`;
   }
   return image.probe.status === 0
@@ -278,12 +329,14 @@ function imageBox(card: Card, className: string): string {
     return (
       `<div class="${className} shot empty">` +
       `<span>not an absolute http(s) URL</span>` +
-      `<em>${esc(image.declared)}</em>` +
+      `<em>${esc(clip(image.declared))}</em>` +
       `</div>`
     );
   }
   const alt = image.alt ? esc(image.alt) : "";
-  return `<div class="${className} shot"><img src="${esc(image.src)}" alt="${alt}" loading="lazy"></div>`;
+  // `no-referrer` because opening this file asks the audited origin for the
+  // image, and the local path of the analyst's preview is nobody's business.
+  return `<div class="${className} shot"><img src="${esc(image.src)}" alt="${alt}" loading="lazy" referrerpolicy="no-referrer"></div>`;
 }
 
 function frame(args: {
@@ -347,7 +400,7 @@ function openGraphSurface(card: Card): string {
   <dl class="facts">
     <dt>title</dt><dd>${card.ogTitle ? `${esc(card.ogTitle.value)} <span class="from">${esc(card.ogTitle.from)}</span>` : `<span class="none">absent</span>`}</dd>
     <dt>description</dt><dd>${card.ogDescription ? `${esc(card.ogDescription.value)} <span class="from">${esc(card.ogDescription.from)}</span>` : `<span class="none">absent</span>`}</dd>
-    <dt>image</dt><dd>${image ? `<span class="mono">${esc(image.declared)}</span> <span class="from">${esc(image.from)}</span>` : `<span class="none">absent</span>`}</dd>
+    <dt>image</dt><dd>${image ? `<span class="mono">${esc(clip(image.declared))}</span> <span class="from">${esc(image.from)}${image.count > 1 ? ` · 1 of ${image.count}` : ""}</span>` : `<span class="none">absent</span>`}</dd>
     <dt>size</dt><dd>${image ? esc(ratioNote(image)) : `<span class="none">—</span>`}</dd>
     <dt>fetched</dt><dd>${image ? esc(probeNote(image)) : `<span class="none">—</span>`}</dd>
     <dt>alt</dt><dd>${image?.alt ? esc(image.alt) : `<span class="none">absent</span>`}</dd>
@@ -394,11 +447,7 @@ function xSurface(card: Card): string {
 
 function linkedInSurface(card: Card): string {
   const title = card.ogTitle?.value ?? card.url;
-  const thumbnail =
-    card.image?.declaredSize && card.image.declaredSize.width < 401
-      ? `<p class="trap"><b>Thumbnail</b>This image declares ${card.image.declaredSize.width}px wide, ` +
-        `under LinkedIn's documented 401px cutoff — it renders as a small square, not as this card.</p>`
-      : "";
+  const narrow = card.image?.declaredSize && card.image.declaredSize.width < 401;
   const body = `<div class="lic">
   ${imageBox(card, "li")}
   <div class="meta"><b>${esc(title)}</b><span>${esc(card.host)}</span></div>
@@ -411,8 +460,18 @@ function linkedInSurface(card: Card): string {
       "Four tags required — <code>og:title</code>, <code>og:image</code>, " +
       "<code>og:description</code>, <code>og:url</code> — and a published geometry: 1200×627 " +
       "minimum, 1.91:1, 5MB. Under 401px wide the card falls back to a thumbnail, which is the " +
-      `only documented layout switch of any surface here.${thumbnail}`,
+      "only documented layout switch of any surface here.",
     source: "linkedin.com/help/linkedin/answer/a521928",
+    ...(narrow
+      ? {
+          trap: {
+            label: "Thumbnail",
+            text:
+              `This image declares ${card.image?.declaredSize?.width}px wide, under LinkedIn's ` +
+              `documented 401px cutoff — it renders as a small square, not as this card.`,
+          },
+        }
+      : {}),
   });
 }
 
@@ -484,7 +543,15 @@ function whatsAppSurface(card: Card): string {
 
 // --- panels ---------------------------------------------------------------
 
-function findingsPanel(issues: SeoIssue[]): string {
+/**
+ * Findings on the head, from both registries.
+ *
+ * `SiteIssue` carries the same shape and some of its ids wear a head prefix —
+ * `icons.ico.missing` is site-scoped because a `/favicon.ico` belongs to an
+ * origin, not to a page. Reading only `seoIssues` would print "nothing the
+ * catalogue judges" on a page the catalogue had just judged.
+ */
+function findingsPanel(issues: HeadFinding[]): string {
   const head = issues.filter((i) => HEAD_PREFIXES.some((p) => i.ruleId.startsWith(p)));
   const others = issues.length - head.length;
   const rest =
@@ -495,13 +562,16 @@ function findingsPanel(issues: SeoIssue[]): string {
     return `<section class="panel"><h3>Findings on the head</h3><p class="none">Nothing the catalogue judges about this page's head. That is not the same as a card worth sharing — which is what the surfaces above are for.</p>${rest}</section>`;
   }
   const rows = head
-    .map(
-      (issue) => `<li class="find ${esc(issue.severity)}">
+    .map((issue) => {
+      // `expected` is a `SeoIssue` field; a site-scoped finding has none, and
+      // the catalogue drops the field for `SITE_RULES` anyway.
+      const expected = "expected" in issue ? issue.expected : undefined;
+      return `<li class="find ${esc(issue.severity)}">
   <span class="rid">${esc(issue.ruleId)}</span>
   <span class="msg">${codeSpans(esc(issue.message))}</span>
-  <span class="pin">${esc(issue.severity)}${issue.rigor ? ` · ${esc(issue.rigor)}` : ""}${issue.expected ? ` · expected ${codeSpans(esc(issue.expected))}` : ""}</span>
-</li>`,
-    )
+  <span class="pin">${esc(issue.severity)}${issue.rigor ? ` · ${esc(issue.rigor)}` : ""}${expected ? ` · expected ${codeSpans(esc(expected))}` : ""}</span>
+</li>`;
+    })
     .join("\n");
   return `<section class="panel"><h3>Findings on the head</h3><ul class="finds">${rows}</ul>${rest}</section>`;
 }
@@ -522,9 +592,11 @@ function jsonLdPanel(blocks: ExtractionJsonLd[]): string {
     })
     .join("");
   const first = blocks.find((block) => block.data !== null);
-  const body = first
-    ? `<pre>${esc(JSON.stringify(first.data, null, 2))}</pre>`
-    : `<pre>${esc(blocks[0]?.raw.slice(0, 2000) ?? "")}</pre>`;
+  const pretty = first ? prettyJson(first.data) : undefined;
+  const body =
+    pretty === undefined
+      ? `<pre>${esc(blocks[0]?.raw.slice(0, 2000) ?? "")}</pre>`
+      : `<pre>${esc(pretty)}</pre>`;
   return `<section class="panel"><h3>JSON-LD <span class="badge unjudged">extracted, unjudged</span></h3><div class="chips">${chips}</div>${body}${note}</section>`;
 }
 
@@ -537,7 +609,7 @@ function renderingNote(card: Card): string {
     : `read from the hydrated DOM — a crawler that runs no JavaScript may see less than this`;
 }
 
-function pageSection(extraction: Extraction, issues: SeoIssue[], index: number): string {
+function pageSection(extraction: Extraction, issues: HeadFinding[], index: number): string {
   const card = cardOf(extraction);
   const surfaces = [
     openGraphSurface(card),
@@ -678,16 +750,23 @@ a{color:var(--brand)}
 export function renderPreview(report: GoflagReport, options: RenderPreviewOptions = {}): string {
   const title = options.title ?? `goflag preview — ${hostOf(report.url)}`;
   const extractions = report.extractions ?? [];
-  const issuesByPage = new Map<string, SeoIssue[]>();
-  for (const issue of report.seoIssues) {
+  const issuesByPage = new Map<string, HeadFinding[]>();
+  for (const issue of [...report.seoIssues, ...report.siteIssues]) {
     const bucket = issuesByPage.get(issue.pageUrl);
     if (bucket) bucket.push(issue);
     else issuesByPage.set(issue.pageUrl, [issue]);
   }
 
+  // Two different facts, and they read differently: a report that was never
+  // asked for extractions, and a crawl that reached no page worth extracting.
+  const empty =
+    report.extractions === undefined
+      ? `This report carries no extractions, so there is nothing to draw. Pass <code>extractions: true</code> to <code>runAudit</code>, or use <code>goflag preview &lt;url&gt;</code>, which does.`
+      : `The crawl reached no HTML page it could read, so there is nothing to draw. Every page was unreachable, not HTML, or a declared duplicate of another.`;
+
   const body =
     extractions.length === 0
-      ? `<section class="page"><p class="none">This report carries no extractions, so there is nothing to draw. Run the audit with <code>goflag preview &lt;url&gt;</code>, or pass <code>extractions: true</code> to <code>runAudit</code>.</p></section>`
+      ? `<section class="page"><p class="none">${empty}</p></section>`
       : extractions
           .map((extraction, index) =>
             pageSection(extraction, issuesByPage.get(extraction.http.finalUrl) ?? [], index),
@@ -710,6 +789,7 @@ export function renderPreview(report: GoflagReport, options: RenderPreviewOption
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'">
 <title>${esc(title)}</title>
 <style>${STYLE}</style>
 </head>
@@ -717,7 +797,7 @@ export function renderPreview(report: GoflagReport, options: RenderPreviewOption
 <div class="wrap">
 <header class="doc">
   <h1>${esc(title)}</h1>
-  <p class="lede">What each surface makes of ${esc(report.url)}, drawn from what the pages declared. Each surface carries the rigor of the geometry it is drawn from — two of the seven publish one, two publish nothing at all.</p>
+  <p class="lede">What each surface makes of ${esc(report.url)}, drawn from what the pages declared. Each surface carries the rigor of the geometry it is drawn from — three of the seven publish one, two publish nothing at all, and Google is not a card.</p>
   ${nav}
 </header>
 ${body}

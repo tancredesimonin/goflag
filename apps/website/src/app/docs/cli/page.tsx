@@ -34,6 +34,8 @@ export default function CliPage() {
             goflag rules
             {"\n"}
             goflag flags
+            {"\n"}
+            goflag preview &lt;url&gt;
           </code>
         </pre>
         <p>
@@ -41,11 +43,18 @@ export default function CliPage() {
           alone; the flags below are the ones worth knowing about when it is not.
         </p>
         <p>
-          <code>goflag rules</code> and <code>goflag flags</code> are the exceptions: they answer a
-          question about goflag rather than about a site, so they take no URL and touch no network.
-          The first prints every rule as JSON — severity, rigor, the documents it cites, the fix
-          snippet. The second prints this page&rsquo;s flag table, the same one{" "}
-          <code>goflag --help</code> is rendered from and the argument parser dispatches on.
+          <code>goflag rules</code> and <code>goflag flags</code> answer a question about goflag
+          rather than about a site, so they take no URL and touch no network. The first prints every
+          rule as JSON — severity, rigor, the documents it cites, the fix snippet. The second prints
+          this page&rsquo;s flag table, the same one <code>goflag --help</code> is rendered from and
+          the argument parser dispatches on.
+        </p>
+        <p>
+          <code>goflag preview</code> does take a URL, and audits like a normal run. It writes{" "}
+          <code>.goflag/preview.html</code> — one self-contained file showing what Google, Open
+          Graph, X, LinkedIn, Slack, Discord and WhatsApp make of each page, each surface labelled
+          with how well its geometry is actually documented. It never gates: it exits 0 unless the
+          run itself failed, because looking at your own cards is not a check.
         </p>
         <p>
           Neither the <Link href="/docs/rules">rule catalogue</Link> nor the flag list below is a
