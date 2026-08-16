@@ -57,9 +57,13 @@ function rowOf(site: SiteContext, url: string, pathname: string): string {
   return site.clusterRouteOf?.(url) ?? splitRoute(pathname).route;
 }
 
-/** Route → locales the sitemap lists a URL for. */
+/**
+ * Route → locales the sitemap lists a URL for, counting only locales the site
+ * actually serves.
+ */
 function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
   const byRoute = new Map<string, Set<string>>();
+  const axis = new Set(site.localeAxis.locales.map((l) => l.toLowerCase()));
   for (const entry of site.discovery?.urls ?? []) {
     let pathname: string;
     try {
@@ -69,6 +73,13 @@ function sitemapLocalesByRoute(site: SiteContext): Map<string, Set<string>> {
     }
     const { locale } = splitRoute(pathname);
     if (locale === "x-default") continue;
+    // The axis is what decides. `splitRoute` reads a segment by **shape
+    // alone** — `bcp47.ts` says so in as many words, and `/de/` and `/api/`
+    // are indistinguishable to it. `api`, `doc` and `www` all pass the
+    // two-or-three-letter test, so a multilingual site with a `/doc/` section
+    // was handing these rules a locale named `doc` and being told to publish
+    // an `hreflang="doc"` alternate for it.
+    if (!axis.has(locale.toLowerCase())) continue;
     const route = rowOf(site, entry.loc, pathname);
     const set = byRoute.get(route) ?? new Set<string>();
     set.add(locale.toLowerCase());
@@ -244,6 +255,23 @@ const bothApply = (site: SiteContext) =>
  * site's own evidence that the omitted version is real. That chain is what makes
  * this `vendor-spec`: a cited requirement plus a fact the site supplied, not an
  * inference about what a site probably meant.
+ *
+ * ## The hidden link in that chain, and where it actually broke
+ *
+ * "The sitemap lists `/fr/x`" only means "a French version exists" if something
+ * established that `/fr/x` is a locale variant at all. `splitRoute` answers that
+ * by **shape alone** — `bcp47.ts` is explicit that `/de/` and `/api/` are
+ * indistinguishable to it and that the locale axis is what decides — and
+ * `sitemapLocalesByRoute` was not consulting the axis. `api`, `doc` and `www`
+ * all pass its two-or-three-letter test, so a multilingual site with a `/doc/`
+ * section produced a locale named `doc`, and this rule told its owner to
+ * publish an `hreflang="doc"` alternate.
+ *
+ * That was the real defect behind the doubt this rule was raised under — not
+ * the slug-translating case, where two paths simply form two rows and nothing
+ * fires. The fix is in `sitemapLocalesByRoute`, one line, and it belongs there
+ * rather than here: both halves read those rows, and only one of them was ever
+ * going to be audited for it.
  *
  * `warning` and not `error`, unlike `hreflang.missing`: a partial cluster still
  * consolidates the versions it does list, so the damage is bounded to the ones
