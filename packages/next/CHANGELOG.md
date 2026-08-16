@@ -2,6 +2,37 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.0](https://github.com/tancredesimonin/goflag/compare/next-v0.3.3...next-v0.4.0) (2026-08-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **next:** `routes.metadata({ image })` no longer emits `og:image:alt`
+derived from the page title. Pass `imageAlt` beside `image` to keep the tag;
+without it the tag is omitted, which is what `og.image.alt` is there to
+report. The title was never a valid value — the protocol asks for what is in
+the image and excludes a caption — and because it satisfied the presence
+check, no audit could ever say so.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+* **next:** the library declares only what it was told about an image
+
+### Features
+
+* **next:** the library declares only what it was told about an image ([d5eab4c](https://github.com/tancredesimonin/goflag/commit/d5eab4c2d297412b73eca2d700c7fd83a92c8762))
+
+
+### Bug Fixes
+
+* **next:** a title is a caption, so it is not an og:image:alt ([e237dc3](https://github.com/tancredesimonin/goflag/commit/e237dc3a74e54be4e6c782a12ef19c731b62b6f0))
+* **next:** the test reads the first image without indexing a union ([c565fac](https://github.com/tancredesimonin/goflag/commit/c565fac9eafcdd3bdbec91da303cdbb31c7c04e5))
+* **release:** a release is decided on the package that moved ([7cb9dac](https://github.com/tancredesimonin/goflag/commit/7cb9dac7c4e7d601b769670ccbdffb118efeff40))
+
+
+### Documentation
+
+* **next:** og:image:alt stopped defaulting, and nothing said so ([4f61483](https://github.com/tancredesimonin/goflag/commit/4f61483053708ba845f08c1f97dc0c9874b96467))
+
 ## [0.3.3](https://github.com/tancredesimonin/goflag/compare/next-v0.3.2...next-v0.3.3) (2026-08-15)
 
 
