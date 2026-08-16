@@ -590,7 +590,7 @@ texte sur une zone chargée sans voile.
 | **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                                                                                                                                   | catalogue |
 | **OG-1b** | ✅ **livrée** — les trois règles réseau sur la passe de sondage dédiée du §10.1. Classée ici « hors chemin critique », et c'était faux : elle a trouvé deux routes de metadata mortes depuis le jour de leur écriture (§10.3)                                                                                                                                                    | catalogue |
 | **OG-1c** | ✅ **livrée** — `icons.missing`, `icons.apple-touch.missing`, `icons.manifest-mismatch`, plus le contenu du manifeste dans l'extraction. `apps/website` les passe déjà toutes les trois : `icon.svg`, `apple-icon.tsx` et un manifeste qui ne se contredit pas                                                                                                                   | catalogue |
-| **OG-1d** | ✅ **livrée** — `icons.ico.missing` sur une sonde d'origine calquée sur `probeRobots`, avec son remède comme prévu : `scripts/generate-favicon.mjs` sert désormais le `.ico` que la règle réclamait au site de goflag                                                                                                                                                            | catalogue |
+| **OG-1d** | ✅ **livrée** — `icons.ico.missing` sur une sonde d'origine calquée sur `probeRobots`. Son remède, lui, ne l'était qu'à moitié : le `.ico` était généré et committé, et le conteneur **ne l'a jamais servi** — 404 en production jusqu'au 2026-08-16, §10.7                                                                                                                      | catalogue |
 | **OG-2**  | ✅ **livrée** — alt traduit via `generateImageMetadata`, `alternateLocale` dans `@goflag/next`, `OG_TOKENS` comparés au thème par un test, `fitTitle` + `lineClamp`, le catch-all derrière `ogCatchAllRoute`, et le `.ico` par script local (consommateur n°1 du §6.4)                                                                                                           | OG-1a     |
 | **OG-3**  | ✅ **livrée** — stereo-house a écrit sa carte à la main sur six routes : les 24 `og.image.missing` tombent, et les 24 `og.locale.alternates` du §10.4 avec, par un bump. 39 findings deviennent 15 sur un build production-shaped. Son `generate-favicons.mjs` à 7 sorties en fait le consommateur n°2 du `.ico` sans travail supplémentaire. Ce que l'écriture a révélé : §10.5 | OG-2      |
 | **OG-4**  | 🟡 **livrée côté goflag** — `packages/og` existe, `apps/website` est migrée (**299 lignes de moins**), `buildIco` / `writeIco` sont dans le cœur. Le critère de sortie n'est qu'à moitié rempli : stereo-house n'est pas migrée, et elle ne peut pas l'être avant `og-v0.1.0`. Ce que l'extraction a trouvé, et les deux points où elle s'écarte du plan : §10.6                 | OG-3      |
@@ -862,6 +862,36 @@ projet **avant** la première release, sinon le job `tag` pousse une ref que le
 remote refuse. Et `og-v0.1.0` sort à la main, pour la raison que le §publication
 donne déjà pour `@goflag/next` : npm ne peut pas attacher un trusted publisher à
 un paquet qui n'existe pas encore.
+
+### 10.7 Le remède d'OG-1d n'était pas servi, et l'audit ne pouvait pas le voir
+
+Trouvé le 2026-08-16, en regardant la production une fois `@goflag/og` publiée.
+`/favicon.ico` répondait **404 sur goflag.tech et sur develop.goflag.tech**, et
+depuis le jour où le Dockerfile a été écrit.
+
+La cause est banale : l'image copie `.next/standalone` et `.next/static`, et un
+build standalone trace les **imports du serveur**. Rien n'importe un fichier
+statique, donc `public/` n'y est pas — la documentation de Next dit de le copier
+à la main à côté de `.next/static`, et seule la seconde ligne existait.
+
+Personne ne l'a vu parce que `public/` contient exactement un fichier, et que
+tout ce qui a l'air d'y appartenir est une route : `icon.svg`, `apple-icon` et
+`manifest.webmanifest` sont des conventions de metadata que Next rend, et les
+trois répondaient 200. Un seul vrai fichier statique répondait 404 à côté d'eux.
+
+Ce fichier est précisément celui qu'`icons.ico.missing` existe pour réclamer.
+
+**Ce qui compte n'est pas le `COPY` manquant.** C'est que
+`pnpm --filter @goflag/website seo` lance `next start` sur le workspace, où
+`public/` est sur le disque à côté du serveur : la règle passait. L'audit est
+production-shaped par son environnement — `APP_ENV`, l'origine — et **pas par sa
+disposition de fichiers**, et l'écart entre les deux fait exactement la taille de
+ce défaut. C'est le §10.3 sous un autre angle : une famille de règles qui juge la
+déclaration a un angle mort de la taille du réseau, et un audit qui tourne à côté
+de l'artefact déployé a un angle mort de la taille du conteneur.
+
+Le combler pour de bon, c'est auditer la sortie standalone plutôt que le
+workspace. Plus gros que le `COPY`, et pas encore fait.
 
 ---
 
