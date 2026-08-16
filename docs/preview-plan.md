@@ -4,7 +4,9 @@
 > le coût réel du patron, §10.2 sur ce que l'écriture a démenti) · **Amendé**
 > 2026-08-16 (critère de sortie tenu : §10.3 — douze `og:image:alt` que la lib
 > écrivait faux et qu'aucune règle ne pouvait nommer) · **Amendé** 2026-08-16
-> (PV-3 et PV-4 livrées : §10.4, et le palier de `fitTitle` retiré de PV-3)
+> (PV-3 et PV-4 livrées : §10.4, et le palier de `fitTitle` retiré de PV-3) ·
+> **Amendé** 2026-08-16 (le second site : PV-5 tranchée par la négative et
+> `og.image.alt.caption` écrite — §10.5)
 > **Portée** — la commande `goflag preview <url>`, la section d'extraction qui
 > lui manque dans le rapport, et la frontière avec `@goflag/og`, qui **produit**
 > la carte quand celle-ci se contente de la **montrer**.
@@ -432,6 +434,56 @@ pas ici.
 **PV-5 a son premier chiffre et pas sa décision.** Zéro bloc JSON-LD sur 91
 pages. C'est un chiffre, pas deux consommateurs : la famille `jsonld.*` attend
 un second site, comme `@goflag/spec` attend le sien (I4).
+
+---
+
+### 10.5 Le second site — PV-5 tranchée, et une règle que la vue a méritée
+
+`stereo-house`, build production-shaped, 41 pages parcourues, 27 lues. C'est le
+second consommateur que le §10.3 attendait, et il répond à deux questions d'un
+coup.
+
+**PV-5 est un non, avec des chiffres.** Sur les deux sites réunis — 118 pages —
+trois portent du JSON-LD (`Article` + `Person`, les trois articles de la
+bibliothèque) et **aucune n'a d'erreur de parse**. La règle la moins discutable
+de la famille `jsonld.*`, celle qui refuse un bloc qui ne parse pas, aurait tiré
+**zéro fois**. L'écrire aurait été exactement le mode d'échec que ces plans
+citent depuis le début : un check qu'on n'a pas de raison de croire. Le panneau
+reste, la famille ne s'écrit pas. Elle se rouvre le jour où un site en émet
+assez pour que la question ait un sens.
+
+**Le défaut de l'alt se répète, donc la règle s'écrit.** Trois pages sur
+vingt-sept portent un `og:image:alt` identique à leur `og:title` :
+
+```
+/en/library/tr-808-legacy        alt = "The TR-808 Legacy"
+/en/library/tb-303-acid-canon    alt = "TB-303: The Acid Canon"
+/en/library/forro-accordion-soul alt = "Forró: Brazil's Accordion Soul"
+```
+
+Même forme que les douze du §10.3, sur un site indépendant qui ne partage avec
+le premier que la bibliothèque. **Deux consommateurs**, ce que le catalogue
+attend — I4 appliqué à un id de règle. `og.image.alt.caption` est donc écrite :
+`guideline`, sourcée ogp.me (« not a caption »), `info`, et un id à part parce
+que la règle de présence ne peut pas la voir — la balise est là, donc elle passe,
+et elle passera toujours.
+
+Calibrage vérifié dans les deux sens : **3 sur stereo-house, 0 sur
+`apps/website`**, qui porte le remède depuis le §10.3. Une règle qui tire sur le
+défaut et se tait sur le remède.
+
+**Et la bande de locales a trouvé son premier écart réel.** `/privacy` et
+`/terms` :
+
+| route      | en  | fr  | pt-br | es  | écart |
+| ---------- | --- | --- | ----- | --- | ----- |
+| `/privacy` | 14  | 28  | 23    | 22  | 100 % |
+| `/terms`   | 12  | 24  | 13    | 18  | 100 % |
+
+« Privacy Policy » contre « Politique de confidentialité ». Le double, sur la
+ligne que la carte dégresse. Aucune règle ne le dit et aucune ne devrait : ce
+n'est pas un défaut, c'est une contrainte de design que seul un œil tranche —
+et c'est le §1 de ce plan, mot pour mot.
 
 ---
 

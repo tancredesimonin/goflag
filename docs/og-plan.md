@@ -1056,6 +1056,14 @@ défaut** : absent, la balise est omise et `og.image.alt` tire. Une règle qui
 passe sur une valeur fausse est pire qu'une règle qui échoue, parce qu'elle ne
 tirera plus jamais.
 
+**Suite, le même jour : le second consommateur est arrivé et la règle existe.**
+stereo-house porte la même forme sur ses trois articles — `og:image:alt` égal à
+`og:title`. Deux sites indépendants, quinze occurrences : le catalogue gagne
+`og.image.alt.caption`, `guideline`, sourcée sur la phrase d'ogp.me qui exclut la
+caption. Elle a un id à part parce que `og.image.alt` ne peut pas la voir : la
+balise est présente, donc la présence passe. Vérifiée dans les deux sens — trois
+findings sur stereo-house, zéro sur `apps/website`, qui porte déjà le remède.
+
 ---
 
 ## 11. Ce que ce plan ne fait pas

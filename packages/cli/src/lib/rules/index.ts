@@ -595,6 +595,75 @@ const ogImageAlt: BooleanRule = {
   },
 };
 
+/**
+ * The sibling of `og.image.alt`, and a separate id for a separate defect.
+ *
+ * The presence rule cannot see this one: the tag is there, so it passes, and
+ * it will keep passing. Splitting it costs a catalogue entry and makes both
+ * verdicts readable — the same reasoning that split `og.image.dimensions` from
+ * `og.image.ratio`.
+ *
+ * Found by looking, not by auditing. `goflag preview` put the alt beside the
+ * card on two independent sites and both repeated the title: twelve pages of
+ * this project's own documentation, three articles on the second site. The
+ * catalogue waits for two consumers, and that was the second.
+ */
+const ogImageAltCaption: BooleanRule = {
+  id: "og.image.alt.caption",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "info",
+  title: "`og:image:alt` describes the image, it does not repeat the title",
+  why:
+    "The protocol asks for a description of what is in the image, and says in " +
+    "the same breath that it is not a caption. A copy of the title is the one " +
+    "value that is always available and never describes anything: a reader " +
+    "who cannot see the card is handed the same words twice and learns " +
+    "nothing about the picture. It also satisfies `og.image.alt` forever, " +
+    "which is why it needs an id of its own.",
+  rigor: "guideline",
+  sources: ["ogp"],
+  reads: ["openGraph.images", "openGraph.title", "document.title"],
+  expected: "an `og:image:alt` that says something the title does not",
+  relates: ["og.image.alt", "og.image.representative"],
+  fix: {
+    title: "Say what the card shows, not what the page is called",
+    snippet: [
+      "// The card is a title on a background. The alt says so — once, from a",
+      "// template, so every page gets one and none of them is the title alone.",
+      "const ogAlt = (title: string) => `The title \u201C${title}\u201D on a dark preview card.`;",
+    ].join("\n"),
+    language: "ts",
+  },
+  evaluate: (ex) => {
+    const described = ex.openGraph.images.filter((image) => image.alt?.value.trim());
+    if (described.length === 0) return { status: "na", observed: null };
+
+    // Compared against whichever title the card was built from: a page that
+    // sets `og:title` names its card there, and one that does not falls back
+    // to `<title>`, exactly as every consumer does.
+    const title = (ex.openGraph.title?.value ?? ex.document.title?.value ?? "").trim();
+    if (title === "") return { status: "na", observed: null };
+
+    const observed = described.map((image) => ({
+      url: image.url.value,
+      alt: image.alt?.value ?? "",
+    }));
+    const captions = observed.filter((image) => image.alt.trim() === title);
+    if (captions.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message:
+        captions.length === observed.length
+          ? "`og:image:alt` repeats the title instead of describing the image."
+          : `${captions.length} of ${observed.length} \`og:image:alt\` values repeat the title.`,
+      origin: { kind: "meta", property: "og:image:alt" },
+    };
+  },
+};
+
 const ogImageDimensions: BooleanRule = {
   id: "og.image.dimensions",
   kind: "boolean",
@@ -1246,6 +1315,7 @@ export const RULES: ReadonlyArray<Rule> = [
   ogDescriptionMissing,
   ogImageAbsolute,
   ogImageAlt,
+  ogImageAltCaption,
   ogImageDimensions,
   ogImageMissing,
   ogImageRatio,
