@@ -16,7 +16,7 @@
     "metadata"
   ],
   "license": "MIT",
-  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
@@ -57,7 +57,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "release": "commit-and-tag-version --path . --skip.tag"
+    "release": "commit-and-tag-version --path . --skip.tag --tag-prefix og-v"
   },
   "peerDependencies": {
     "next": ">=15",
