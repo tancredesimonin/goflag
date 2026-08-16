@@ -192,6 +192,53 @@ result page, a faceted variant, a print view, a markdown mirror. Not to bury a
 page: if the goal is to keep something out of an index, the instruments are
 `noindex` and `canonical`, and this flag is neither.
 
+## What a route says about its card
+
+`routes.metadata()` takes `title` and `description`, and two optional fields for
+the pages that name their own preview image.
+
+```ts
+routes.metadata({
+  path: docsHref(doc.slug),
+  title: doc.title,
+  description: doc.description,
+  image: { url: `/og/docs/${doc.slug}`, width: 1200, height: 630, type: "image/png" },
+  imageAlt: "The title “Install” on a dark goflag preview card.",
+});
+```
+
+**Leave both unset wherever `opengraph-image.tsx` applies.** Next renders one per
+segment at build time and injects the tag itself, so naming an image here
+overrides a file that is already correct — and Next's merge rule tests for the
+_presence_ of the key, not its value, which means setting it at all takes over.
+These fields exist for the routes that cannot use the convention: Next will not
+place a metadata image under a catch-all segment, so a `[...slug]` tree has to
+name its card.
+
+`image` accepts a bare path or a described one. **A bare path declares a URL and
+nothing else**, and that is deliberate. This used to attach `width: 1200,
+height: 630` to whatever it was handed, having never looked at the file. On a
+site whose cards really are that shape the numbers happened to be right; on one
+naming cover art they were not — 1024×1024 artwork and a 337-byte 1×1
+placeholder, both declared 1200×630 by this library.
+
+Worse than wrong: [`og.image.ratio`](/docs/rules/og.image.ratio) reads those two
+numbers and refuses to fetch, so an invented 1200×630 scored 1.9 and passed. The
+auditor was blinded by the library, which is the one direction that loop must
+never run. [`og.image.sizes-mismatch`](/docs/rules/og.image.sizes-mismatch) is
+what catches it when a wrong size is declared anyway.
+
+So the shape is yours to state, because you are the only one who knows it. Say
+nothing and [`og.image.dimensions`](/docs/rules/og.image.dimensions) asks you to
+measure, which is the honest verdict and a better one than a confident lie.
+
+`imageAlt` has no default for the same reason.
+[`og.image.alt`](/docs/rules/og.image.alt) checks presence, so falling back to
+the page title satisfied it while saying nothing about the picture — and ogp.me
+is explicit that the field is a description of what is in the image, not a
+caption. A library cannot describe a card it did not draw. Omit it and the rule
+fires, which is the rule doing its job.
+
 ## What the registry gives back
 
 | Call                                                        | Returns                                              |

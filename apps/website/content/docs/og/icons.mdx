@@ -1,0 +1,108 @@
+---
+title: The favicon no convention emits
+description: Next has no file convention that produces an .ico, so four sites wrote the same Buffer arithmetic. buildIco packs the container, and writeIcons keeps a generated-and-committed file from being dirtied by every commit.
+navTitle: Icons and the .ico
+group: library
+order: 5
+---
+
+`icon.tsx` and `icon.svg` go through the metadata pipeline and produce a
+`<link>`. `ImageResponse` produces PNG. **No Next convention emits an ICO** — it
+is a container format, an `ICONDIR` header with one entry per size and the
+encoded images concatenated, and nothing in the chain assembles one.
+
+So `favicon.ico` is generated and committed, which makes it the one build output
+that lives in git. Four sites had each written the same forty lines to produce
+it. This is those forty lines, once.
+
+```js
+import { buildIco, writeIcons } from "@goflag/og";
+
+// Imported here rather than at the top, so `--check` never loads it.
+const rasterise = async (svg) => (await import("sharp")).default(Buffer.from(svg)).png().toBuffer();
+
+const status = await writeIcons({
+  artefacts: [
+    {
+      path: "public/favicon.ico",
+      render: async () =>
+        buildIco(
+          await Promise.all(
+            [16, 32, 48].map(async (width) => ({ width, bytes: await rasterise(icon(width)) })),
+          ),
+        ),
+    },
+    { path: "public/apple-touch-icon.png", render: () => rasterise(icon(180)) },
+  ],
+  lock: ".favicon-fingerprint",
+  fingerprintOf: [16, 32, 48, 180].map(icon),
+  check: process.argv.includes("--check"),
+});
+```
+
+## It rasterises nothing, and that is the decision
+
+Packing already-encoded images is pure byte manipulation with no dependency. The
+moment this knew what `sharp` was, the package would carry a native binary for
+every consumer — and the friction that comes with one, in CI, in Docker, on
+Alpine.
+
+Your site rasterises instead, with the `sharp` it already has for Next's image
+optimisation. Same contract as the fonts the card does not embed: the package
+does not ship what your site already has.
+
+## Why a generated file needs a guard
+
+An artefact that is both generated **and** committed has a failure mode of its
+own, and it was observed on three of the four sites this came from.
+
+A pre-commit hook regenerates it every commit. `sharp` encodes the same pixels
+into slightly different bytes across versions. So the file is dirtied by every
+commit that touches anything, the noise gets committed, review learns to skip it
+— and a real change to the icon arrives invisible in the same diff.
+
+**So the fingerprint is over the inputs and never over the output's bytes.** A
+`sharp` upgrade that re-compresses the same picture is not a change to your icon,
+and `writeIcons` refuses to record it as one. Pass the drawings, or whatever else
+the files are a function of; a colour, a size or a geometry change invalidates it
+and a dependency bump does not.
+
+| Status      | What happened                                            |
+| ----------- | -------------------------------------------------------- |
+| `written`   | The inputs moved and the files were rewritten            |
+| `unchanged` | They match. Nothing was rendered and nothing was written |
+| `stale`     | `check` only: the files exist and no longer match        |
+| `absent`    | `check` only: at least one is not there at all           |
+
+It returns rather than exits, because a library that called `process.exit` would
+be deciding an exit code on behalf of a script that knows its own name and its
+own remediation message.
+
+## `--check` belongs in CI, not in a hook
+
+<Callout type="tip" title="A hook that rewrites a file cannot fail a build.">
+  A check that writes nothing can. That is the whole difference, and it is the reason the guard is
+  worth having at all.
+</Callout>
+
+Put `--check` in CI and in your pre-commit hook, and never the write path. A hook
+running the write path is worse than redundant: it writes **after** git has
+snapshotted the index and stages nothing, so editing a theme token and committing
+lands the new stylesheet with the old icons — and leaves the regenerated files
+loose for the next `git add -A` to sweep into a diff about something else.
+
+Because `render` is only called when something has to be rewritten, `--check`
+rasterises nothing. Import `sharp` lazily and the check needs no native binary at
+all, which is what lets it run on an Alpine image.
+
+## The rule that asks for this
+
+[`icons.ico.missing`](/docs/rules/icons.ico.missing) is a guideline rather than a
+spec: no specification requires `/favicon.ico`, and modern browsers follow the
+`<link>` a page declares. But feed readers, link unfurlers and older crawlers ask
+the root blind, take the 404, and show nothing.
+
+[`icons.sizes-mismatch`](/docs/rules/icons.sizes-mismatch) is the one that pays
+for itself. A `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a
+third of itself, and that half-true declaration is the common shape rather than
+the exotic one.

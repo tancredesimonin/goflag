@@ -13,14 +13,19 @@ export interface DocsNavGroup {
 }
 
 /**
- * `library` comes last on purpose. The CLI is what a reader arrives for, and
- * `@goflag/next` only makes sense once they know what it is producing for.
+ * `library` comes last on purpose. The CLI is what a reader arrives for, and the
+ * libraries only make sense once they know what they are producing for.
+ *
+ * Plural since `@goflag/og` joined `@goflag/next` in it: one declares a site's
+ * routes and derives its metadata, the other draws the picture those routes
+ * point at. Two packages, one group, because a reader deciding whether to adopt
+ * either is asking the same question about both.
  */
 const GROUP_TITLES: Record<DocsNavGroup["id"], string> = {
   start: "Getting started",
   use: "Using it",
   reference: "Reference",
-  library: "The Next.js library",
+  library: "The libraries",
 };
 
 /**

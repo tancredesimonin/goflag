@@ -55,10 +55,7 @@ const PACKAGES = [
     name: "@goflag/og",
     tagPrefix: "og-v",
     manifest: "packages/og/package.json",
-    // No `quotedAs`: the site documents the CLI and the library and quotes
-    // their versions in install snippets. It has no page for this one yet, so
-    // there is no literal to keep in step — and inventing a constant nothing
-    // renders would be a guard over nothing.
+    quotedAs: "CARDS",
     surface: [
       "packages/og/src",
       "packages/og/package.json",
