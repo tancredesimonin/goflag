@@ -8,7 +8,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -319,6 +319,19 @@ describe("goflag CLI — --baseline", () => {
     // the baseline the other was measured against.
     expect(readFileSync(report, "utf8")).toBe(readFileSync(baseline, "utf8"));
     expect(JSON.parse(readFileSync(report, "utf8")).summary).toBeDefined();
+  }, 60_000);
+
+  it("refuses --summary in baseline mode, before spending a crawl on it", async () => {
+    // It used to parse and then be ignored, which is the failure the refusal
+    // replaces: the diff is what baseline mode prints, and a rollup cannot say
+    // what changed.
+    const file = join(dir, "never-written.json");
+    const refused = await runCli([...auditArgs(), "--regressions-only", "--baseline", file, "-s"]);
+
+    expect(refused.status).toBe(2);
+    expect(refused.stderr).toContain("--summary cannot summarise a diff");
+    // Refused while parsing: no audit ran, and nothing was written.
+    expect(existsSync(file)).toBe(false);
   }, 60_000);
 
   it("exits 0 against its own baseline, however many findings there are", async () => {

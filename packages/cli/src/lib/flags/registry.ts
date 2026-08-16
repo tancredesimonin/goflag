@@ -106,6 +106,8 @@ export const FLAGS: readonly FlagSpec[] = [
     help: [
       "Roll findings up (dedup by link/rule/code). Pairs",
       "with --json for a compact, agent-friendly payload.",
+      "Not available with --baseline: there the diff is the",
+      "answer, and --report writes the full report.",
     ],
     takesValue: false,
     apply: ({ parsed }) => {

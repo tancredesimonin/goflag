@@ -62,7 +62,7 @@ export const FLAG_GROUP_META: ReadonlyArray<{ id: string; title: string; intro: 
 export const FLAG_EDITORIAL: Record<string, string> = {
   "--json": "Print the JSON report to stdout (nothing else).",
   "--summary":
-    "Roll findings up, deduplicated by link, rule or code. Pairs with --json for a compact, agent-friendly payload.",
+    "Roll findings up, deduplicated by link, rule or code. Pairs with --json for a compact, agent-friendly payload. Not available with --baseline, which is an error rather than a preference: baseline mode answers with the diff, a rollup has no way to express one, and accepting the flag would print an answer to the other question — the whole backlog, next to an exit code decided by findings it never named. --report writes the full report alongside the diff.",
   "--report": "Write the full JSON report to <file>.",
   "--conformance":
     "Report every rule's status on every page (pass, fail, warn, n/a), not just the violations. A violations list cannot tell a rule that passes everywhere apart from one that never applied; this can. The terminal shows per-rule totals, and the JSON carries the full rule by page grid.",
