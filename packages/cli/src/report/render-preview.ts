@@ -29,6 +29,7 @@
  * the network.
  */
 
+import { splitRoute } from "../lib/core/i18n";
 import type { TagOrigin } from "../lib/core/types";
 import type {
   Extraction,
@@ -609,7 +610,130 @@ function renderingNote(card: Card): string {
     : `read from the hydrated DOM — a crawler that runs no JavaScript may see less than this`;
 }
 
-function pageSection(extraction: Extraction, issues: HeadFinding[], index: number): string {
+/**
+ * Count what a reader counts, not what UTF-16 does.
+ *
+ * The number matters because it is what a card's own size ladder reads: a
+ * German title that gains 30% over its English source drops a step, and the
+ * step is chosen on graphemes. The ladder itself is the site's — `@goflag/og`
+ * refuses to ship default steps — so this reports the length and never the
+ * step it would land on.
+ */
+function graphemes(value: string): number {
+  if (typeof Intl?.Segmenter === "function") {
+    return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(value)].length;
+  }
+  return [...value].length;
+}
+
+/** One row of the translation strip. */
+interface Sibling {
+  index: number;
+  locale: string;
+  path: string;
+  ogLocale?: string;
+  title: string;
+  description: string;
+}
+
+/**
+ * The same route in its other languages.
+ *
+ * Nobody else previews this axis, and goflag is the tool that already knows
+ * it. What it shows is the text, not eight more pictures: the card is drawn
+ * from the words, so the words side by side are what a divergence looks like
+ * — a translation that outgrows its ladder, one locale still carrying the
+ * source language, a description that only got written once.
+ */
+function translationsPanel(current: Sibling, siblings: Sibling[]): string {
+  if (siblings.length < 2) return "";
+  const rows = siblings
+    .map((s) => {
+      const here = s.index === current.index;
+      return `<tr${here ? ' class="here"' : ""}>
+  <td class="loc">${here ? "▸ " : ""}${esc(s.locale)}</td>
+  <td class="og">${s.ogLocale ? esc(s.ogLocale) : `<span class="none">no og:locale</span>`}</td>
+  <td>${here ? esc(s.title) : `<a href="#page-${s.index}">${esc(s.title)}</a>`}</td>
+  <td class="num">${graphemes(s.title)}</td>
+  <td class="num">${s.description ? graphemes(s.description) : `<span class="none">—</span>`}</td>
+</tr>`;
+    })
+    .join("\n");
+  return `<section class="panel"><h3>This route in ${siblings.length} languages</h3>
+<div class="tw"><table class="locs">
+<thead><tr><th>path</th><th>og:locale</th><th>og:title</th><th class="num">gr.</th><th class="num">desc.</th></tr></thead>
+<tbody>${rows}</tbody>
+</table></div>
+<p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>`;
+}
+
+/** One `<meta>` or `<link>`, printed the way the page wrote it. */
+function tagLabel(tag: {
+  name?: string;
+  property?: string;
+  httpEquiv?: string;
+  rel?: string;
+  href?: string;
+  content?: string;
+}): string {
+  const key =
+    tag.property ?? tag.name ?? (tag.httpEquiv ? `http-equiv=${tag.httpEquiv}` : undefined);
+  if (key) return `${key}${tag.content ? ` = ${clip(tag.content, 120)}` : ""}`;
+  return `rel=${tag.rel ?? "?"}${tag.href ? ` → ${clip(tag.href, 120)}` : ""}`;
+}
+
+/**
+ * What the browser shows and the unfurl never will.
+ *
+ * Only the escalation path produces this, so absence is silence rather than a
+ * clean bill — the panel says which of the two it is instead of drawing an
+ * empty box that reads like a pass.
+ */
+function hydrationPanel(extraction: Extraction): string {
+  const delta = extraction.hydration;
+  if (!delta) {
+    const why =
+      extraction.rendering.mode === "static"
+        ? "this run never rendered the page, so there is no second reading to compare against"
+        : "this run rendered the page without keeping a static reading to compare against";
+    return `<section class="panel"><h3>Static vs hydrated</h3><p class="none">Not established — ${why}.</p></section>`;
+  }
+
+  const lines = [
+    ...delta.injectedMetas.map((m) => ({ sign: "+", text: tagLabel(m) })),
+    ...delta.injectedLinks.map((l) => ({ sign: "+", text: tagLabel(l) })),
+    ...delta.removedMetas.map((m) => ({ sign: "−", text: tagLabel(m) })),
+    ...delta.removedLinks.map((l) => ({ sign: "−", text: tagLabel(l) })),
+    ...(delta.titleChanged ? [{ sign: "+", text: "<title> — rewritten after hydration" }] : []),
+    ...(delta.htmlLangChanged
+      ? [{ sign: "+", text: "<html lang> — changed after hydration" }]
+      : []),
+    ...(delta.jsonLdBlocksAdded > 0
+      ? [{ sign: "+", text: `${delta.jsonLdBlocksAdded} JSON-LD block(s) added by script` }]
+      : []),
+  ];
+
+  if (lines.length === 0) {
+    return `<section class="panel"><h3>Static vs hydrated</h3><p class="none">Both readings agree: every tag above is in the HTML before any script runs.</p></section>`;
+  }
+
+  const rows = lines
+    .map(
+      (l) =>
+        `<li class="${l.sign === "+" ? "added" : "removed"}"><span class="sign">${l.sign}</span>${esc(l.text)}</li>`,
+    )
+    .join("\n");
+  return `<section class="panel"><h3>Static vs hydrated <span class="badge unjudged">no rule reads this</span></h3>
+<ul class="delta">${rows}</ul>
+<p class="foot">A <code>+</code> is a tag only the browser has. Unfurlers run no JavaScript, so the cards above are drawn from something a crawler may never receive — and every <code>og.*</code> rule judges the declaration it was handed, not which pass handed it over.</p></section>`;
+}
+
+function pageSection(
+  extraction: Extraction,
+  issues: HeadFinding[],
+  index: number,
+  siblings: Sibling[],
+): string {
   const card = cardOf(extraction);
   const surfaces = [
     openGraphSurface(card),
@@ -628,6 +752,11 @@ function pageSection(extraction: Extraction, issues: HeadFinding[], index: numbe
   </header>
   <div class="surfaces">${surfaces}</div>
   ${findingsPanel(issues)}
+  ${translationsPanel(
+    siblings.find((sib) => sib.index === index)!,
+    siblings,
+  )}
+  ${hydrationPanel(extraction)}
   ${jsonLdPanel(card.jsonLd)}
 </section>`;
 }
@@ -730,6 +859,20 @@ header.doc{padding:44px 0 24px;border-bottom:1px solid var(--line)}
 .find .rid{font-size:12.5px;font-weight:600}
 .find .msg{font-size:13.5px;color:var(--ink2)}
 .find .pin{grid-column:1/-1;font-size:11px;color:var(--ink3)}
+.tw{overflow-x:auto}
+table.locs{border-collapse:collapse;width:100%;font-size:13px}
+table.locs th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line)}
+table.locs td{padding:7px 12px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.locs tr:last-child td{border-bottom:0}
+table.locs .loc,table.locs .og{font-family:var(--mono);font-size:12px;white-space:nowrap}
+table.locs .num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.locs tr.here td{color:var(--ink);font-weight:600}
+table.locs tr.here .loc{color:var(--brand)}
+.delta{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+.delta li{display:flex;gap:9px;word-break:break-word}
+.delta .sign{flex:none;width:1ch;font-weight:700}
+.delta .added .sign,.delta li.added{color:var(--green)}
+.delta .removed .sign,.delta li.removed{color:var(--red)}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
 .chip{font-size:11px;padding:3px 8px;border:1px solid var(--line2);border-radius:3px;color:var(--ink2)}
 .chip.bad{color:var(--red);border-color:currentColor}
@@ -764,12 +907,37 @@ export function renderPreview(report: GoflagReport, options: RenderPreviewOption
       ? `This report carries no extractions, so there is nothing to draw. Pass <code>extractions: true</code> to <code>runAudit</code>, or use <code>goflag preview &lt;url&gt;</code>, which does.`
       : `The crawl reached no HTML page it could read, so there is nothing to draw. Every page was unreachable, not HTML, or a declared duplicate of another.`;
 
+  // Group by locale-free route, on the same derivation the cross-page rules
+  // use — comparing two artefacts is only meaningful if both are normalised
+  // identically, and this compares a page with its own translations.
+  const rows: Sibling[] = extractions.map((extraction, index) => {
+    const path = pathOf(extraction.http.finalUrl);
+    return {
+      index,
+      locale: splitRoute(path).locale,
+      path,
+      ogLocale: extraction.openGraph.locale?.value,
+      title: cardOf(extraction).ogTitle?.value ?? path,
+      description: cardOf(extraction).ogDescription?.value ?? "",
+    };
+  });
+  const byRoute = new Map<string, Sibling[]>();
+  extractions.forEach((extraction, index) => {
+    const route = splitRoute(pathOf(extraction.http.finalUrl)).route;
+    byRoute.set(route, [...(byRoute.get(route) ?? []), rows[index]!]);
+  });
+
   const body =
     extractions.length === 0
       ? `<section class="page"><p class="none">${empty}</p></section>`
       : extractions
           .map((extraction, index) =>
-            pageSection(extraction, issuesByPage.get(extraction.http.finalUrl) ?? [], index),
+            pageSection(
+              extraction,
+              issuesByPage.get(extraction.http.finalUrl) ?? [],
+              index,
+              byRoute.get(splitRoute(pathOf(extraction.http.finalUrl)).route) ?? [],
+            ),
           )
           .join("\n");
 

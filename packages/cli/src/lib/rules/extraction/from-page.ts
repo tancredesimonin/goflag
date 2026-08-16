@@ -4,7 +4,7 @@
  * The engine's `Page` already carries provenance (`Sourced<T>` is
  * structurally identical to `Fact<T>`), so most of this is a projection:
  * pick the documented fields, leave behind the engine internals (raw HTML
- * blobs, hydration deltas). The only real work is promoting the
+ * blobs). The only real work is promoting the
  * root-element attributes (`lang`, `dir`, `<base href>`), which `Page` keeps
  * raw-only, into `Fact`s with an origin.
  *
@@ -13,6 +13,11 @@
  * this page's `<head>` rather than about the site. Its payload arrives as
  * `unknown` from the network, so it is read defensively here — that is the
  * price of letting a rule stay a pure function of the extraction.
+ *
+ * The hydration delta crosses over too, renamed and trimmed. It was left
+ * behind here until `goflag preview` had a use for it: it is the one fact in
+ * `Page` that no rule can reach and no other section of the report carries —
+ * which tag the browser shows and the crawler does not.
  *
  * The output shares object references with the input — both are immutable
  * by convention — and is fully JSON-serializable (`Page.html` never leaks).
@@ -167,6 +172,19 @@ export function extractionFromPage(page: Page): Extraction {
       imageAlt: page.twitter.imageAlt,
     },
     links: linksFromPage(page),
+    ...(page.hydration
+      ? {
+          hydration: {
+            titleChanged: page.hydration.titleChanged,
+            htmlLangChanged: page.hydration.htmlLangChanged,
+            injectedMetas: page.hydration.clientInjectedMetas,
+            removedMetas: page.hydration.clientRemovedMetas,
+            injectedLinks: page.hydration.clientInjectedLinks,
+            removedLinks: page.hydration.clientRemovedLinks,
+            jsonLdBlocksAdded: page.hydration.jsonLdBlocksAdded,
+          },
+        }
+      : {}),
     jsonLd: page.jsonLd.map(({ index, types, data, parseError, raw }) => ({
       index,
       types,
