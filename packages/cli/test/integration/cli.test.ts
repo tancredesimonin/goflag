@@ -207,6 +207,35 @@ describe("goflag CLI (spawned process)", () => {
     expect(written.url).toContain("/good");
     expect(written.summary.verdict).toBe("green");
   }, 30_000);
+
+  it("delivers a --json report larger than a pipe buffer without truncating it", async () => {
+    // `process.exit` discards whatever is still queued, and a write to a pipe
+    // is asynchronous where a write to a TTY or a file is not. So the report
+    // was whole on a terminal, whole redirected to a file, and cut off at one
+    // 64 KB pipe buffer — mid-token, unparseable — the moment it was piped
+    // into anything: `| jq`, `| tee`, a CI step reading stdout.
+    //
+    // `runCli` spawns with stdout piped, which is exactly that case;
+    // --conformance and --advisories are here only to push the payload past
+    // the buffer, because size is what exposes this and the demo report is
+    // 14 KB without them. The size assertion guards the premise: if the
+    // payload ever shrinks below a buffer, this test says so rather than
+    // quietly stopping to test anything.
+    const r = await runCli([
+      `${server.url}/en`,
+      "--json",
+      "--conformance",
+      "--advisories",
+      "--static",
+      "--exclude",
+      "/x/**",
+    ]);
+    expect(Buffer.byteLength(r.stdout)).toBeGreaterThan(64 * 1024);
+
+    // Truncation shows up here, as a parse error on a report that ends mid-key.
+    const report = JSON.parse(r.stdout) as GoflagReport;
+    expect(report.conformance?.rules.length).toBeGreaterThan(0);
+  }, 30_000);
 });
 
 describe("goflag CLI — --baseline", () => {

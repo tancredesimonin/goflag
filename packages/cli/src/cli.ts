@@ -258,9 +258,54 @@ async function main(): Promise<number> {
   return exitCode(report, args.failOn);
 }
 
+/**
+ * Wait for what has been written to a stream to reach the other end of it.
+ *
+ * `process.exit` throws away whatever is still queued, and a write to a *pipe*
+ * is asynchronous where a write to a TTY or a file is not. So `goflag <url>
+ * --json` was whole on a terminal and whole redirected to a file, and cut off
+ * at one pipe buffer — 64 KB, mid-token — the moment it was piped into
+ * anything: `| jq`, `| tee`, a CI step reading stdout. The report is the
+ * product; truncating it silently is the worst way to lose it.
+ *
+ * Dropping `process.exit` and setting `process.exitCode` would fix it too, but
+ * it makes the exit conditional on every handle the run opened being closed —
+ * a browser, a `--start` child — and a CLI that hangs in CI is worse than one
+ * that truncates. Flushing first keeps the exit unconditional.
+ *
+ * A zero-length write queues behind the real ones, so its callback fires only
+ * once they have been handed to the OS.
+ */
+function flush(stream: NodeJS.WriteStream): Promise<void> {
+  return new Promise((resolve) => {
+    if (stream.writableEnded || stream.destroyed) return resolve();
+    stream.write("", () => resolve());
+  });
+}
+
+/** A write to stdout/stderr failed for a reason that is not a closed reader. */
+let undelivered = false;
+
+// A reader that stops reading — `goflag <url> --json | head` — fails the write
+// with EPIPE, and that is not a fault to report: it was invisible only because
+// the process exited before the error could land, and now that it waits, the
+// unhandled 'error' event would print a Node stack trace over output the caller
+// cut off on purpose. Any other error means the report did not arrive, and a
+// run that could not deliver its answer exits 2 rather than reporting a verdict
+// nobody received.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code !== "EPIPE") undelivered = true;
+  });
+}
+
 main()
-  .then((code) => process.exit(code))
-  .catch((err) => {
+  .then(async (code) => {
+    await Promise.all([flush(process.stdout), flush(process.stderr)]);
+    process.exit(undelivered ? 2 : code);
+  })
+  .catch(async (err) => {
     process.stderr.write(`goflag: unexpected error: ${(err as Error).stack ?? err}\n`);
+    await flush(process.stderr);
     process.exit(2);
   });
