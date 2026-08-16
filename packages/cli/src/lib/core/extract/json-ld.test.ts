@@ -66,6 +66,30 @@ describe("parseJsonLdScripts", () => {
     expect((blocks[0]?.data as { name: string }).name).toBe("Tom & Jerry");
   });
 
+  it("survives a block nested deeper than the walker can recurse", () => {
+    // 5000 levels is ~30 KB of page and parses cleanly — V8's JSON parser is
+    // iterative, so the type walker is the only thing that breaks. It threw
+    // out of the extraction pass, which cost the audit the entire page: the
+    // crawl filed it as an unreachable `[network error]`.
+    const depth = 5000;
+    const nested = `{ "@type": "Article", ${'"a": {'.repeat(depth)}"x": 1${"}".repeat(depth)} }`;
+    const blocks = parseJsonLdScripts([script(nested)]);
+    expect(blocks[0]?.parseError).toBeUndefined();
+    expect(blocks[0]?.types).toEqual(["Article"]);
+  });
+
+  it("stops collecting types past the depth cap", () => {
+    const nest = (levels: number, leaf: string) =>
+      `${'{ "a": '.repeat(levels)}${leaf}${" }".repeat(levels)}`;
+    expect(extractTypes(JSON.parse(nest(50, `{ "@type": "Reachable" }`)))).toEqual(["Reachable"]);
+    expect(extractTypes(JSON.parse(nest(5000, `{ "@type": "TooDeep" }`)))).toEqual([]);
+  });
+
+  it("survives deep nesting written as arrays rather than objects", () => {
+    const nested = `${"[".repeat(5000)}{ "@type": "Deep" }${"]".repeat(5000)}`;
+    expect(() => parseJsonLdScripts([script(nested)])).not.toThrow();
+  });
+
   it("preserves document order in the index field", () => {
     const blocks = parseJsonLdScripts([
       script(`{ "@type": "A" }`),
