@@ -2,8 +2,6 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
-## [0.3.4](https://github.com/tancredesimonin/goflag/compare/next-v0.3.3...next-v0.3.4) (2026-08-16)
-
 ## [0.3.3](https://github.com/tancredesimonin/goflag/compare/next-v0.3.2...next-v0.3.3) (2026-08-15)
 
 

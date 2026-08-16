@@ -158,11 +158,21 @@ function decide(pkg) {
   const tag = lastTag(pkg.tagPrefix);
   const range = tag ? `${tag}..HEAD` : "HEAD";
 
-  const subjects = git("log", "--format=%B", range);
+  // Scoped to this package's surface, and that scoping is the whole test.
+  //
+  // Unscoped, this read every commit in the repository and then asked
+  // separately whether the package's files had moved — so a `feat` anywhere,
+  // plus any edit touching a manifest, released that package. It happened on
+  // 2026-08-16: a chore adding `--tag-prefix` to all three `package.json`
+  // files, alongside a `refactor(og)!`, spent `@goflag/cli@0.2.12` and
+  // `@goflag/next@0.3.4` on nothing. Both changelog sections came out empty,
+  // which is the symptom worth remembering — a version whose entry has no
+  // bullet under it was decided by a commit that belongs to another package.
+  const subjects = git("log", "--format=%B", range, "--", ...pkg.surface);
   if (!RELEASABLE.test(subjects)) {
     return {
       release: false,
-      why: `no feat/fix/perf/breaking commit since ${tag ?? "the first commit"}`,
+      why: `no feat/fix/perf/breaking commit touching its surface since ${tag ?? "the first commit"}`,
     };
   }
 
