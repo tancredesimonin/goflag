@@ -40,6 +40,7 @@ import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
 import { extractionFromPage } from "../lib/rules/extraction/from-page";
 import { DEFAULT_PROFILE, rulesForProfile } from "../lib/rules/profiles";
 import { PROSE_RULES } from "../lib/rules/prose";
+import { collectSiteAdvisories } from "../lib/rules/site-prose";
 import { getSiteRule } from "../lib/rules/site-rules";
 import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
@@ -890,6 +891,18 @@ export async function runAudit(
       sources: draft.sources,
     };
   });
+
+  // Cross-page questions, on the same terms as the per-page ones: only when
+  // asked for, never in `siteIssues`, never in the summary counts, never in the
+  // exit code. A question that could redden a pipeline would be a verdict again.
+  if (options.advisories) {
+    for (const advisory of collectSiteAdvisories(siteContext)) {
+      advisories.push({
+        ...advisory,
+        id: fingerprint("advisory", advisory.ruleId, routeKey(advisory.pageUrl)),
+      });
+    }
+  }
 
   const brokenLinks: BrokenLink[] = [];
   for (const { pageUrl, broken } of linkReport.brokenByPage) {

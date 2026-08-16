@@ -27,9 +27,6 @@ import type { SiteContext } from "./site-types";
 import type { Rigor } from "./types";
 import { pageFromHtml } from "./test-utils";
 
-const MISMATCH = getSiteRule("hreflang.sitemap-mismatch");
-if (!MISMATCH) throw new Error("hreflang.sitemap-mismatch is not registered");
-
 const INCOMPLETE = getSiteRule("hreflang.cluster-incomplete");
 if (!INCOMPLETE) throw new Error("hreflang.cluster-incomplete is not registered");
 
@@ -85,19 +82,13 @@ function context(pages: ReturnType<typeof page>[], urls: SitemapUrlEntry[]): Sit
 }
 
 /**
- * The two halves of the same comparison, run one at a time.
+ * The sourced half of what was one rule until 2026-08-15.
  *
- * They were one rule until 2026-08-15. `warnings` is the direction with no
- * specification behind it — the `<head>` naming a locale the sitemap omits —
- * and `incomplete` is the one Google backs: a locale the site publishes and
- * then leaves out of its own cluster. Every case below says which it expects,
- * because "a finding appeared" stopped being a precise enough assertion the
- * moment there were two rules that could produce one.
+ * The other direction — a `<head>` naming a locale the sitemap omits — is no
+ * longer a rule at all: nothing supports it, so it asks its question through
+ * `./site-prose.ts` and is tested there. What is left here renders verdicts,
+ * and every one of them cites a document.
  */
-function warnings(ctx: SiteContext) {
-  return lintSite(ctx, [MISMATCH!]);
-}
-
 function incomplete(ctx: SiteContext) {
   return lintSite(ctx, [INCOMPLETE!]);
 }
@@ -110,37 +101,8 @@ const TRANSLATED_SLUGS: SitemapAlternate[] = [
   { hreflang: "x-default", href: `${O}/en/pricing` },
 ];
 
-const translatedPages = [
-  page(`${O}/en/pricing`, TRANSLATED_SLUGS),
-  page(`${O}/fr/tarifs`, TRANSLATED_SLUGS),
-];
-
-describe("hreflang.sitemap-mismatch on translated slugs", () => {
-  it("warns twice when nothing declares the cluster", () => {
-    // The behaviour being fixed, pinned first — so the next test is a
-    // difference and not a tautology. The sitemap lists both URLs but declares
-    // no `xhtml:link`, so there is no cluster to follow and each URL keeps its
-    // own route.
-    const found = warnings(
-      context(translatedPages, [{ loc: `${O}/en/pricing` }, { loc: `${O}/fr/tarifs` }]),
-    );
-
-    expect(found).toHaveLength(2);
-    expect(found.map((i) => i.pageUrl).sort()).toEqual([`${O}/en/pricing`, `${O}/fr/tarifs`]);
-  });
-
-  it("stays silent once the sitemap declares the pair as one cluster", () => {
-    const found = warnings(
-      context(translatedPages, [
-        { loc: `${O}/en/pricing`, alternates: TRANSLATED_SLUGS },
-        { loc: `${O}/fr/tarifs`, alternates: TRANSLATED_SLUGS },
-      ]),
-    );
-
-    expect(found).toEqual([]);
-  });
-
-  it("still fires when the disagreement is real inside a declared cluster", () => {
+describe("hreflang.cluster-incomplete on translated slugs", () => {
+  it("fires when the disagreement is real inside a declared cluster", () => {
     // The guard that matters more than the fix: following the declaration must
     // not amount to trusting it. Here the cluster is declared over three
     // locales, the sitemap lists all three, and the `<head>`s advertise two —
@@ -178,7 +140,7 @@ describe("hreflang.sitemap-mismatch on translated slugs", () => {
   });
 });
 
-describe("hreflang.sitemap-mismatch on shared slugs", () => {
+describe("hreflang.cluster-incomplete on shared slugs", () => {
   // The witness for "changes nothing where nothing was broken". A site whose
   // locales share a slug already grouped correctly by pathname, and must keep
   // producing byte-identical findings whether or not it declares clusters.
@@ -190,10 +152,10 @@ describe("hreflang.sitemap-mismatch on shared slugs", () => {
   const pages = [page(`${O}/en/about`, SHARED), page(`${O}/fr/about`, SHARED)];
 
   it("is silent with or without a declaration when the two agree", () => {
-    const undeclared = warnings(
+    const undeclared = incomplete(
       context(pages, [{ loc: `${O}/en/about` }, { loc: `${O}/fr/about` }]),
     );
-    const declared = warnings(
+    const declared = incomplete(
       context(pages, [
         { loc: `${O}/en/about`, alternates: SHARED },
         { loc: `${O}/fr/about`, alternates: SHARED },
@@ -265,12 +227,6 @@ describe("a path segment that only looks like a locale", () => {
     expect(incomplete(withDocSection())).toEqual([]);
   });
 
-  it("is not counted by the other half either", () => {
-    // Same rows feed both, so a fix that only silenced the sourced rule would
-    // leave the invented locale visible one rule over.
-    expect(warnings(withDocSection())).toEqual([]);
-  });
-
   it("still sees the locales the site does serve", () => {
     // The guard must not be a mute button: with `fr` genuinely absent from the
     // `<head>`, the finding is real and must survive.
@@ -324,20 +280,20 @@ describe("the two halves, on a route that disagrees in both directions", () => {
     expect(found[0]!.message).not.toContain("advertises de");
   });
 
-  it("blames the unlisted alternate on the unsourced one", () => {
-    const found = warnings(ctx());
-
-    expect(found).toHaveLength(1);
-    expect(found[0]!.message).toContain("advertises de but");
-    expect(found[0]!.message).not.toContain("the sitemap lists es");
-  });
-
-  it("keeps exactly one of the two sourceable", () => {
+  it("cites the document it claims", () => {
     expect(INCOMPLETE!.rigor).toBe("vendor-spec");
     expect(INCOMPLETE!.sources).toEqual(["google-hreflang"]);
-    // Not an oversight, and the rule's own comment carries the evidence: no
-    // document requires an hreflang-declared page to appear in a sitemap.
-    expect(MISMATCH!.rigor).toBeUndefined();
+  });
+
+  it("leaves nothing in this registry without a rigor", () => {
+    // The state reached on 2026-08-15: the last cross-page rule that could not
+    // cite a document stopped being a rule. A regression here is a rule
+    // shipping a verdict on no authority, which is the thing the whole axis
+    // exists to prevent.
+    for (const rule of SITE_RULES) {
+      expect(rule.rigor, rule.id).toBeDefined();
+      expect(rule.sources?.length, rule.id).toBeGreaterThan(0);
+    }
   });
 });
 

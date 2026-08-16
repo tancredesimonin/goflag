@@ -1,8 +1,8 @@
 {
   "counts": {
     "page": 23,
-    "site": 29,
-    "prose": 4
+    "site": 28,
+    "prose": 5
   },
   "sources": {
     "apple-web-apps": {
@@ -344,12 +344,14 @@
     },
     {
       "id": "hreflang.sitemap-mismatch",
-      "scope": "site",
-      "severity": "warning",
-      "kind": "boolean",
+      "scope": "prose",
+      "severity": null,
+      "kind": "prose",
       "summary": "`<head>` alternates advertise a locale the sitemap does not list",
+      "why": "The two are derived from one intent by different code paths, so a disagreement means one of them is wrong. No specification says which: the declaration methods are equivalent, and a page can legitimately be cross-linked and kept out of the sitemap.",
       "rigor": null,
-      "sources": []
+      "sources": [],
+      "prose": "Your `<head>` advertises a translation your sitemap does not list. Is the sitemap missing an entry, or is the alternate pointing at a page you did not mean to publish?"
     },
     {
       "id": "icons.apple-touch.missing",

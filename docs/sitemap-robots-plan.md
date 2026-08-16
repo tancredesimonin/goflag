@@ -261,8 +261,15 @@ These are the expensive ones, and they are all judgments nothing makes today.
 | `sitemap.entry.non-canonical`     | boolean | vendor-spec | warning  | A listed URL's canonical points at a different URL: the sitemap should list canonicals. Only evaluable for crawled pages.                                                                                         |
 | `sitemap.orphans`                 | boolean | guideline   | warning  | Crawled, indexable pages absent from the sitemap. One finding with a count + sample, not one per page (summary-shaped, like translation holes). Absorbs `orphanCount`.                                            |
 
-`hreflang.sitemap-mismatch` (exists today) stays in the i18n family but is
-re-expressed to read `SitemapExtraction` instead of `SiteDiscovery`.
+`hreflang.sitemap-mismatch` stayed in the i18n family and then left the rule
+registry altogether on 2026-08-15. Splitting it sourced one half —
+`hreflang.cluster-incomplete`, backed by Google's reciprocity requirement — and
+left the other with nothing behind it, since no document requires an
+hreflang-declared page to appear in a sitemap. Carrying `rigor: null` and
+`severity: warning` at once is a refusal to say how authoritative a claim is
+followed by the claim, so it is now a **cross-page question**
+(`packages/cli/src/lib/rules/site-prose.ts`): the same observation, handed over
+with its evidence and no verdict.
 
 ### 4.6 Deliberately not checked
 
