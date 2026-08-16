@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.12](https://github.com/tancredesimonin/goflag/compare/v0.2.11...v0.2.12) (2026-08-16)
+
 ## [0.2.11](https://github.com/tancredesimonin/goflag/compare/v0.2.10...v0.2.11) (2026-08-16)
 
 
