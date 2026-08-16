@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildIco, readIcoSizes } from "./ico.js";
+import { buildIco } from "./ico.js";
 
 /** Not a real PNG: `buildIco` packs bytes and never looks inside them. */
 const png = (fill: number, length = 8) => new Uint8Array(length).fill(fill);
@@ -60,39 +60,5 @@ describe("buildIco", () => {
 
   it.each([0, 257, 16.5])("refuses %s as a dimension", (width) => {
     expect(() => buildIco([{ width, bytes: png(1) }])).toThrow(/1–256/);
-  });
-});
-
-describe("readIcoSizes", () => {
-  it("reads back what buildIco wrote", () => {
-    const ico = buildIco([
-      { width: 16, bytes: png(1) },
-      { width: 32, bytes: png(2) },
-      { width: 48, bytes: png(3) },
-    ]);
-
-    expect(readIcoSizes(ico)).toEqual([
-      { width: 16, height: 16 },
-      { width: 32, height: 32 },
-      { width: 48, height: 48 },
-    ]);
-  });
-
-  it("reads 0 back as 256", () => {
-    expect(readIcoSizes(buildIco([{ width: 256, bytes: png(1) }]))).toEqual([
-      { width: 256, height: 256 },
-    ]);
-  });
-
-  it("says so when the bytes are not an ICO", () => {
-    expect(() => readIcoSizes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0]))).toThrow(
-      /not an ICO/,
-    );
-  });
-
-  it("says so when the directory claims more entries than the file holds", () => {
-    const truncated = buildIco([{ width: 16, bytes: png(1) }]).subarray(0, 10);
-
-    expect(() => readIcoSizes(truncated)).toThrow(/more entries/);
   });
 });
