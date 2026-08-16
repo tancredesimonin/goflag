@@ -1,15 +1,15 @@
-import { ogImage, ogImageMetadata } from "@/lib/seo/og";
+import { ogImage } from "@goflag/og/next";
 
-const CARD = {
-  title: "CLI reference",
+import { og, ogAlt } from "@/lib/seo/og";
+
+const TITLE = "CLI reference";
+
+const image = ogImage(og, () => ({
+  title: TITLE,
   subtitle: "Every flag, its default, and what it changes.",
   label: "docs",
-};
+  alt: ogAlt(TITLE),
+}));
 
-export function generateImageMetadata() {
-  return ogImageMetadata(CARD.title);
-}
-
-export default function Image() {
-  return ogImage(CARD);
-}
+export const generateImageMetadata = image.generateImageMetadata;
+export default image.render;
