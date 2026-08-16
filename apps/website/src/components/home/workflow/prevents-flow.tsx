@@ -18,8 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { ArrowBottom, ArrowRight } from "@/components/shadcn-studio/blocks/hero-section-40/arrows";
-import { WorkflowItem } from "@/components/shadcn-studio/blocks/hero-section-40/workflow-item";
+import { ArrowBottom, ArrowRight } from "@/components/home/workflow/arrows";
+import { WorkflowItem } from "@/components/home/workflow/workflow-item";
 import type { Step, StepIcon, Track } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 

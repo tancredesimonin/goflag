@@ -1,0 +1,48 @@
+name: Rule proposal
+description: Something goflag should check and does not.
+labels: ["rule"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every rule in the catalogue answers to a citable source. A rule with no source
+        does not get to state a verdict — it states the question instead, and goes to
+        `prose.ts` / `site-prose.ts` where it carries evidence and no judgement.
+
+        So the source field below is the one that decides. Without it the answer is not
+        "no": it is "this becomes a question goflag asks rather than an answer it gives."
+
+  - type: textarea
+    id: check
+    attributes:
+      label: What should be checked
+      description: One sentence, the way a finding would read.
+      placeholder: "A page declaring `og:image` without `og:image:width` renders without the image on its first share."
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Who requires this, and where do they say so
+      description: >-
+        A specification, a registry, or a search engine's own documentation — with the
+        link. "Every SEO blog says to" is the case for an advisory, not for a rule.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: A page that gets it wrong
+      description: A URL, or the HTML that reproduces it.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it when a site gets this wrong
+      options:
+        - The page silently leaves the index
+        - The page is indexed but presents itself wrongly
+        - Cosmetic, or a missed opportunity
+        - Not sure
