@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { describe, expect, it } from "vitest";
 
 import { collection } from "./routes";
@@ -28,6 +29,18 @@ const routes = site.routes({
 });
 
 const content = { title: "Install goflag", description: "Two ways in, and when to pick each." };
+
+/**
+ * The first `og:image`, whatever shape Next's type allows.
+ *
+ * `openGraph.images` is `OGImage | OGImage[]`, so indexing it directly is a
+ * type error rather than a narrowing.
+ */
+function firstImage(meta: Metadata) {
+  const images = meta.openGraph?.images;
+
+  return Array.isArray(images) ? images[0] : images;
+}
 
 describe("metadata — localized pages", () => {
   const meta = routes.metadata({ path: "", locale: "fr-FR", ...content });
@@ -125,11 +138,54 @@ describe("metadata — monolingual pages", () => {
     });
   });
 
-  it("resolves a named card against the origin", () => {
-    const expected = [{ url: "https://goflag.tech/og/docs/install", width: 1200, height: 630 }];
+  it("resolves a named card against the origin, and declares nothing else about it", () => {
+    // The dimensions used to be here, and they were invented: `1200 × 630`
+    // attached to whatever path the caller handed over, sight unseen. On
+    // stereo-house that field carries cover art — 1024×1024 artwork and a
+    // 337-byte 1×1 placeholder, both declared 1200×630, with `og.image.ratio`
+    // reading the lie and passing it. Same shape as the `alt` below: a value
+    // the library was never in a position to know.
+    const expected = [{ url: "https://goflag.tech/og/docs/install" }];
 
     expect(meta.openGraph).toMatchObject({ images: expected });
     expect(meta.twitter).toMatchObject({ images: expected });
+    expect(firstImage(meta)).not.toHaveProperty("width");
+    expect(firstImage(meta)).not.toHaveProperty("height");
+  });
+
+  it("declares the shape when the caller measured it", () => {
+    const measured = routes.metadata({
+      path: "/docs/install",
+      ...content,
+      image: { url: "/og/docs/install", width: 1200, height: 630, type: "image/png" },
+    });
+
+    expect(measured.openGraph).toMatchObject({
+      images: [
+        {
+          url: "https://goflag.tech/og/docs/install",
+          width: 1200,
+          height: 630,
+          type: "image/png",
+        },
+      ],
+    });
+  });
+
+  it("keeps the alt in one place, whichever form the image took", () => {
+    // `image` says where the file is and what shape it has; `imageAlt` says what
+    // is in it. Two different claims, and only one of them is measurable — so
+    // the described form carries no `alt` of its own to disagree with.
+    const measured = routes.metadata({
+      path: "/docs/install",
+      ...content,
+      image: { url: "/og/docs/install", width: 1200, height: 630 },
+      imageAlt: "The words “Install goflag” on a dark terminal card.",
+    });
+
+    expect(firstImage(measured)).toMatchObject({
+      alt: "The words \u201CInstall goflag\u201D on a dark terminal card.",
+    });
   });
 
   it("carries the alt the page wrote", () => {
