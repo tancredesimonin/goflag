@@ -3,7 +3,8 @@
 > **Rédigé** 2026-08-16 · **Amendé** 2026-08-16 (PV-1 et PV-2 livrées : §10.1 sur
 > le coût réel du patron, §10.2 sur ce que l'écriture a démenti) · **Amendé**
 > 2026-08-16 (critère de sortie tenu : §10.3 — douze `og:image:alt` que la lib
-> écrivait faux et qu'aucune règle ne pouvait nommer)
+> écrivait faux et qu'aucune règle ne pouvait nommer) · **Amendé** 2026-08-16
+> (PV-3 et PV-4 livrées : §10.4, et le palier de `fitTitle` retiré de PV-3)
 > **Portée** — la commande `goflag preview <url>`, la section d'extraction qui
 > lui manque dans le rapport, et la frontière avec `@goflag/og`, qui **produit**
 > la carte quand celle-ci se contente de la **montrer**.
@@ -391,6 +392,46 @@ n'émettent **aucun bloc JSON-LD**, et 84 des 90 `og:description` dépassent les
 80 caractères que la doc WhatsApp donne pour suffisants. Ni l'un ni l'autre
 n'est un défaut établi. Les deux sont désormais visibles, ce qui est la seule
 chose que ce plan promettait.
+
+---
+
+### 10.4 PV-3 et PV-4 — ce que la vue a gagné, et le mot qu'il a fallu retirer
+
+**PV-3 ne peut pas montrer le palier, et ce plan le promettait.** Le §10 disait
+« avec le palier de `fitTitle` que chacune atteint ». Le CLI ne peut pas le
+savoir : D9 du plan OG interdit à `@goflag/og` de livrer des paliers par défaut,
+donc la table appartient au site et n'est nulle part dans ce que l'audit lit. La
+vue rapporte donc la **longueur en graphèmes** — ce que la table compte — et
+jamais la marche. Un outil qui affiche une marche qu'il a devinée est pire
+qu'un outil qui affiche un nombre vrai.
+
+Ce que ça donne sur la home de `apps/website`, quatre locales :
+
+| locale | graphèmes du titre |
+| ------ | ------------------ |
+| en_US  | 53                 |
+| fr_FR  | 65                 |
+| es_ES  | 68                 |
+| pt_BR  | 68                 |
+
+Vingt-huit pour cent d'écart entre la plus courte et la plus longue, sur la ligne
+que le §4.2 du plan OG appelle « le vrai problème i18n ». Personne ne l'avait
+regardé de face ; il tient en une table de cinq lignes.
+
+**PV-4 a coûté ce que le §7 annonçait** — un champ optionnel et une projection —
+et le mot important est dans le champ : **absent ne veut pas dire « rien n'a
+bougé »**. Le delta n'existe que là où les deux lectures existent, c'est-à-dire
+sur le chemin d'escalade. Le panneau ne dessine donc pas une case vide qui se
+lirait comme un satisfecit : il dit laquelle des deux raisons s'applique — la
+passe n'a jamais rendu, ou elle a rendu sans garder de lecture statique.
+
+Sur `apps/website` en `--static`, les 91 pages disent « non établi », et c'est
+la bonne réponse. La valeur de ce panneau se mesurera sur un site qui hydrate,
+pas ici.
+
+**PV-5 a son premier chiffre et pas sa décision.** Zéro bloc JSON-LD sur 91
+pages. C'est un chiffre, pas deux consommateurs : la famille `jsonld.*` attend
+un second site, comme `@goflag/spec` attend le sien (I4).
 
 ---
 

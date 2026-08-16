@@ -535,6 +535,99 @@ describe("renderPreview — the JSON-LD panel", () => {
   });
 });
 
+describe("renderPreview — the locale axis", () => {
+  const sibling = (path: string, locale: string, title: string) =>
+    extraction({
+      http: {
+        requestedUrl: `https://example.com${path}`,
+        finalUrl: `https://example.com${path}`,
+        status: 200,
+        headers: {},
+        redirects: 0,
+      },
+      openGraph: {
+        ...extraction().openGraph,
+        title: meta(title, "og:title"),
+        locale: meta(locale, "og:locale"),
+      },
+    });
+
+  it("puts a route's translations side by side, with what a size ladder counts", () => {
+    const out = renderPreview(
+      report({
+        extractions: [
+          sibling("/fr/about", "fr_FR", "À propos de nous"),
+          sibling("/en/about", "en_US", "About us"),
+        ],
+      }),
+    );
+    expect(out).toContain("This route in 2 languages");
+    expect(out).toContain("fr_FR");
+    expect(out).toContain("À propos de nous");
+    // Graphemes, not UTF-16 units: "À propos de nous" is 16 either way, but
+    // the panel must count the emoji case the same way the ladder does.
+    expect(out).toContain(">16<");
+  });
+
+  it("counts a grapheme cluster once, the way a ladder reads a title", () => {
+    const out = renderPreview(
+      report({
+        extractions: [sibling("/fr/x", "fr_FR", "👩‍👩‍👧‍👦"), sibling("/en/x", "en_US", "family")],
+      }),
+    );
+    expect(out).toContain(">1<");
+  });
+
+  it("says nothing about a route that has one language", () => {
+    expect(renderPreview(report())).not.toContain("This route in");
+  });
+});
+
+describe("renderPreview — static vs hydrated", () => {
+  it("names absence as absence, not as agreement", () => {
+    const out = renderPreview(report());
+    expect(out).toContain("Not established");
+    expect(out).toContain("never rendered the page");
+  });
+
+  it("lists what only the browser has, and says unfurlers will not run it", () => {
+    const hydrated = extraction({
+      rendering: { mode: "headless", escalated: true, escalationReason: "empty head" },
+      hydration: {
+        titleChanged: true,
+        htmlLangChanged: false,
+        injectedMetas: [{ property: "og:image", content: "https://cdn.example.com/late.png" }],
+        removedMetas: [],
+        injectedLinks: [{ rel: "canonical", href: "https://example.com/fr" }],
+        removedLinks: [],
+        jsonLdBlocksAdded: 2,
+      },
+    });
+    const out = renderPreview(report({ extractions: [hydrated] }));
+    expect(out).toContain("og:image = https://cdn.example.com/late.png");
+    expect(out).toContain("rel=canonical");
+    expect(out).toContain("2 JSON-LD block(s) added by script");
+    expect(out).toContain("rewritten after hydration");
+    expect(out).toContain("Unfurlers run no JavaScript");
+  });
+
+  it("says the two readings agree when the delta is empty", () => {
+    const agreed = extraction({
+      rendering: { mode: "headless", escalated: true },
+      hydration: {
+        titleChanged: false,
+        htmlLangChanged: false,
+        injectedMetas: [],
+        removedMetas: [],
+        injectedLinks: [],
+        removedLinks: [],
+        jsonLdBlocksAdded: 0,
+      },
+    });
+    expect(renderPreview(report({ extractions: [agreed] }))).toContain("Both readings agree");
+  });
+});
+
 describe("renderPreview — how the page was read", () => {
   it("says a static read is what a non-JS crawler sees", () => {
     expect(renderPreview(report())).toContain("what a crawler that runs no JavaScript sees");
