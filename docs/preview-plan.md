@@ -1,7 +1,9 @@
 # goflag — Plan `preview` : regarder ce que le catalogue ne peut pas juger
 
 > **Rédigé** 2026-08-16 · **Amendé** 2026-08-16 (PV-1 et PV-2 livrées : §10.1 sur
-> le coût réel du patron, §10.2 sur ce que l'écriture a démenti)
+> le coût réel du patron, §10.2 sur ce que l'écriture a démenti) · **Amendé**
+> 2026-08-16 (critère de sortie tenu : §10.3 — douze `og:image:alt` que la lib
+> écrivait faux et qu'aucune règle ne pouvait nommer)
 > **Portée** — la commande `goflag preview <url>`, la section d'extraction qui
 > lui manque dans le rapport, et la frontière avec `@goflag/og`, qui **produit**
 > la carte quand celle-ci se contente de la **montrer**.
@@ -289,8 +291,8 @@ artefact, jamais committé — la seule sortie committée de tout le projet rest
 tomber au moins une des cinq règles de prose sur un site réel — c'est-à-dire
 qu'un défaut qu'aucune règle ne peut nommer doit être trouvé en la regardant. Si
 elle ne fait que réafficher joliment des findings que le terminal donnait déjà,
-elle ne vaut pas son code. **Non tenu à ce jour** : la commande tourne sur le
-site de démonstration, pas encore sur un site réel.
+elle ne vaut pas son code. **Tenu — §10.3**, et pas à la lettre : le défaut
+trouvé n'est aucune des cinq règles de prose. Il est mieux placé que ça.
 
 ### 10.1 Ce que le patron `conformance` coûte vraiment
 
@@ -343,6 +345,52 @@ l'option est programmatique et `preview` la pose. Un drapeau aurait coûté deux
 fixtures gelées de plus — `flags.json` comparé octet à octet et le bloc d'options
 du README — pour un appelant qui n'existe pas. `--report` sur la commande donne
 déjà la même donnée à qui la veut.
+
+---
+
+### 10.3 Ce que la première vue d'un vrai site a trouvé
+
+`apps/website`, build production-shaped, 90 pages, quatre locales. L'audit dit
+que le site est propre : **3 findings**, tous `title.length`, sur de la copy
+traduite antérieure. C'est le cas où la preview aurait dû être redondante.
+
+Elle ne l'a pas été. **Douze pages sur quatre-vingt-dix portaient un
+`og:image:alt` qui répétait le titre** au lieu de décrire l'image — les pages
+`/docs`, celles qui ne peuvent pas utiliser la convention de fichier. Toutes les
+autres portent la phrase traduite du gabarit : « Le titre « X » sur une carte de
+partage goflag sombre. » Les douze portaient « Running goflag in CI ».
+
+ogp.me est explicite : _a description of what is in the image (**not a
+caption**)_. Une répétition du titre est exactement la caption que la spec
+exclut. Et **aucune règle ne pouvait le dire** : `og.image.alt` juge la
+présence, et la valeur était présente. Le finding count avant et après le
+remède est identique — 3, puis 3. Rien n'a bougé dans le rapport, parce que rien
+dans le rapport ne regardait là.
+
+**Ce n'est pas un défaut de site : c'est la lib qui le produisait.**
+`packages/next/src/metadata.ts` écrivait `alt: content.title` dès qu'une page
+nommait une image. C'est la deuxième fois que la boucle du §1 du plan OG se
+referme dans ce sens — après `alternateLocale` — et la première fois qu'elle se
+referme sur un défaut qu'aucune règle n'aurait jamais nommé.
+
+Le remède tient la même ligne : `imageAlt` est un champ à part, et **il n'a pas
+de défaut**. Quand il manque, la balise est omise et `og.image.alt` tire, ce qui
+est la règle qui fait son travail. Substituer le titre la faisait passer sur un
+défaut — une règle qui passe sur une valeur fausse est pire qu'une règle qui
+échoue, parce qu'elle ne tirera plus jamais.
+
+**La règle candidate, pas écrite.** `og.image.alt` pourrait juger `alt ≠ title`.
+La source existe (ogp.me, « not a caption »), le rendement est mesuré (12 sur un
+site), et l'ordre de D5 est respecté à l'envers assumé : ici l'outil a précédé
+la règle parce que la règle ne pouvait pas exister avant que quelqu'un regarde.
+À écrire le jour où un deuxième site le déclenche — I4, appliqué à un id de
+catalogue.
+
+**Ce que la vue a aussi montré, et que personne ne juge** : les 90 pages du site
+n'émettent **aucun bloc JSON-LD**, et 84 des 90 `og:description` dépassent les
+80 caractères que la doc WhatsApp donne pour suffisants. Ni l'un ni l'autre
+n'est un défaut établi. Les deux sont désormais visibles, ce qui est la seule
+chose que ce plan promettait.
 
 ---
 

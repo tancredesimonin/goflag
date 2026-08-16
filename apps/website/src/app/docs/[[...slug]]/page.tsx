@@ -34,19 +34,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: doc.description,
     // Measured, not assumed: `OG_SIZE` and `OG_CONTENT_TYPE` are the same two
     // constants `ogCatchAllRoute` renders this card with, so the declaration
-    // and the picture cannot disagree. The library stopped inventing them —
-    // `@goflag/next` used to attach 1200×630 to any path it was handed.
-    //
-    // The `alt` too: the catch-all carries none of its own, so without this the
-    // docs shipped the page's title where every other card ships a sentence
-    // describing the picture.
+    // and the picture cannot disagree. The library stopped inventing them — it
+    // used to attach 1200×630 to any path it was handed.
     image: {
       url: `/og/docs/${doc.slug}`,
       width: OG_SIZE.width,
       height: OG_SIZE.height,
       type: OG_CONTENT_TYPE,
-      alt: ogAlt(doc.title),
     },
+    // The same sentence every other card on this site carries. These pages
+    // cannot use the file convention — Next will not place a metadata image
+    // under a catch-all segment — so the alt travels here instead of through
+    // `generateImageMetadata`, and it has to say what the picture shows rather
+    // than repeat the title.
+    imageAlt: ogAlt(doc.title),
     og: { modifiedTime: doc.updated },
   });
 }

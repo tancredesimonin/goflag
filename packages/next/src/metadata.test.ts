@@ -34,7 +34,7 @@ const content = { title: "Install goflag", description: "Two ways in, and when t
  * The first `og:image`, whatever shape Next's type allows.
  *
  * `openGraph.images` is `OGImage | OGImage[]`, so indexing it directly is a
- * type error — and the assertions below are about a single image's fields.
+ * type error rather than a narrowing.
  */
 function firstImage(meta: Metadata) {
   const images = meta.openGraph?.images;
@@ -140,11 +140,12 @@ describe("metadata — monolingual pages", () => {
 
   it("resolves a named card against the origin, and declares nothing else about it", () => {
     // The dimensions used to be here, and they were invented: `1200 × 630`
-    // attached to whatever path the caller handed over, sight unseen. On a site
-    // naming cover art they were false — 1024×1024 artwork and a 337-byte 1×1
-    // placeholder, both declared 1200×630 by this library, with
-    // `og.image.ratio` reading the lie and passing it.
-    const expected = [{ url: "https://goflag.tech/og/docs/install", alt: "Install goflag" }];
+    // attached to whatever path the caller handed over, sight unseen. On
+    // stereo-house that field carries cover art — 1024×1024 artwork and a
+    // 337-byte 1×1 placeholder, both declared 1200×630, with `og.image.ratio`
+    // reading the lie and passing it. Same shape as the `alt` below: a value
+    // the library was never in a position to know.
+    const expected = [{ url: "https://goflag.tech/og/docs/install" }];
 
     expect(meta.openGraph).toMatchObject({ images: expected });
     expect(meta.twitter).toMatchObject({ images: expected });
@@ -166,25 +167,48 @@ describe("metadata — monolingual pages", () => {
           width: 1200,
           height: 630,
           type: "image/png",
-          alt: "Install goflag",
         },
       ],
     });
   });
 
-  it("takes a sentence for the picture over the title of the page", () => {
-    // `alt` describes the image. The page title describes the page, and is the
-    // fallback rather than the answer — the drift `og:image:alt` exists to
-    // close, arriving from the library's side.
-    const described = routes.metadata({
+  it("keeps the alt in one place, whichever form the image took", () => {
+    // `image` says where the file is and what shape it has; `imageAlt` says what
+    // is in it. Two different claims, and only one of them is measurable — so
+    // the described form carries no `alt` of its own to disagree with.
+    const measured = routes.metadata({
       path: "/docs/install",
       ...content,
-      image: { url: "/og/docs/install", alt: "The title “Install” on a dark goflag card." },
+      image: { url: "/og/docs/install", width: 1200, height: 630 },
+      imageAlt: "The words “Install goflag” on a dark terminal card.",
     });
 
-    expect(firstImage(described)).toMatchObject({
-      alt: "The title “Install” on a dark goflag card.",
+    expect(firstImage(measured)).toMatchObject({
+      alt: "The words \u201CInstall goflag\u201D on a dark terminal card.",
     });
+  });
+
+  it("carries the alt the page wrote", () => {
+    const described = routes.metadata({
+      path: "/docs/install",
+      image: "/og/docs/install",
+      imageAlt: "The words “Install goflag” on a dark terminal card.",
+      ...content,
+    });
+
+    expect(described.openGraph).toMatchObject({
+      images: [{ alt: "The words \u201CInstall goflag\u201D on a dark terminal card." }],
+    });
+  });
+
+  it("omits og:image:alt rather than passing the title off as one", () => {
+    // The title is a caption, and ogp.me asks for "a description of what is in
+    // the image (not a caption)". Substituting it satisfied `og.image.alt` —
+    // which checks presence — on twelve pages of this project's own site,
+    // where nothing could then name the defect. Absent, the rule fires and
+    // says what to write; present and wrong, it never fires again.
+    const images = (meta.openGraph as { images?: Array<Record<string, unknown>> }).images;
+    expect(images?.[0]).not.toHaveProperty("alt");
   });
 
   it("ignores a locale it is handed — the route has only one", () => {

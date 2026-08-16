@@ -25,20 +25,38 @@ export interface RouteContent {
    *
    * **A bare string declares no dimensions, and that is the change.** This used
    * to attach `width: 1200, height: 630` to whatever path it was handed, having
-   * never looked at the file. On a site whose cards really are that shape the
-   * numbers happened to be right; on one naming cover art they were not —
-   * 1024×1024 artwork and a 337-byte 1×1 placeholder, both declared 1200×630 by
-   * this library.
+   * never looked at the file. On this site the cards really are that shape, so
+   * the numbers happened to be right; on stereo-house the same field carries
+   * cover art, and they were not — 1024×1024 artwork and a 337-byte 1×1
+   * placeholder, both declared 1200×630 by this library.
    *
    * Worse than wrong: `og.image.ratio` reads those two numbers and refuses to
    * fetch, so an invented 1200×630 scored 1.9 and passed. goflag was blinded by
-   * `@goflag/next`, which is the one direction that loop must never run.
+   * `@goflag/next`, which is the one direction that loop must never run. It is
+   * the same shape as `imageAlt` below — a value the library was never in a
+   * position to know, supplied anyway, and plausible enough to silence the rule
+   * that would have asked.
    *
    * So the shape is the caller's to state, because the caller is the only one
    * that knows it. Say nothing and `og.image.dimensions` asks you to measure —
    * the honest verdict, and a better one than a confident lie.
    */
   image?: string | RouteImage;
+  /**
+   * What is *in* that image, for `og:image:alt`.
+   *
+   * Required alongside `image`, and deliberately not defaulted: this used to
+   * fall back to the page title, which satisfies `og.image.alt` — the rule
+   * checks presence — while saying nothing about the picture. ogp.me is
+   * explicit that the field is "a description of what is in the image (not a
+   * caption)", so the title is the one value that is always available and
+   * always wrong.
+   *
+   * A library cannot describe a card it did not draw. Omitting the tag makes
+   * `og.image.alt` fire, which is the rule doing its job; substituting the
+   * title made it pass on a defect nothing could then name.
+   */
+  imageAlt?: string;
   og?: {
     title?: string;
     description?: string;
@@ -58,20 +76,20 @@ export interface RouteContent {
  * hand-written version of this drifted.
  */
 /**
- * An `og:image` the site has actually looked at.
+ * Where a card is and what shape it has — never what is in it.
  *
- * Every field but `url` is optional and none is invented: what is absent here is
- * absent from the HTML, and goflag says so. `type` is `og:image:type`, which
- * lets a crawler skip a format it cannot render; `alt` overrides the page title,
- * which describes the page rather than the picture.
+ * `imageAlt` stays the one place that answers the last question, because a
+ * description of the picture and a description of the file are two different
+ * claims and only one of them is measurable. Every field here is optional and
+ * none is invented: what is absent is absent from the HTML, and goflag says so.
  */
 export interface RouteImage {
   /** Site-absolute path, as a bare string would be. */
   readonly url: string;
   readonly width?: number;
   readonly height?: number;
+  /** `og:image:type`, which lets a crawler skip a format it cannot render. */
   readonly type?: string;
-  readonly alt?: string;
 }
 
 function describeImage(baseUrl: string, content: RouteContent) {
@@ -86,10 +104,7 @@ function describeImage(baseUrl: string, content: RouteContent) {
       ...(image.width !== undefined ? { width: image.width } : {}),
       ...(image.height !== undefined ? { height: image.height } : {}),
       ...(image.type !== undefined ? { type: image.type } : {}),
-      // The page's title describes the page, not the picture. It is the
-      // fallback rather than the answer, and a site with a sentence for the
-      // card should pass one.
-      alt: image.alt ?? content.title,
+      ...(content.imageAlt ? { alt: content.imageAlt } : {}),
     },
   ];
 }
