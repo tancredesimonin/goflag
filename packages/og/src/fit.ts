@@ -21,8 +21,6 @@ export interface Fit {
   readonly steps: readonly FitStep[];
   /** The floor a title longer than every step lands on. */
   readonly smallest: number;
-  /** How many lines the title area holds before the footer is pushed off. */
-  readonly lines?: number;
 }
 
 export interface FittedTitle {
@@ -31,11 +29,14 @@ export interface FittedTitle {
 }
 
 /**
- * Both sites landed on three independently, and it is a property of the
- * template's geometry rather than of anyone's copy — which is why this one has
- * a default and the steps below do not.
+ * How many lines the title area holds before it pushes the footer off.
+ *
+ * A constant and not an option: it is a property of the template's geometry,
+ * both sites arrived at three independently, and neither ever wanted a fourth.
+ * An optional field with a default and no caller is the surface I4 exists to
+ * refuse — the same argument that kept `background`, `font` and `fallback` out.
  */
-const DEFAULT_LINES = 3;
+const TITLE_LINES = 3;
 
 /**
  * **This package ships no default steps, and that is the point.**
@@ -59,7 +60,7 @@ export function fitTitle(title: string, fit: Fit): FittedTitle {
   const graphemes = countGraphemes(title.trim());
   const step = steps.find((candidate) => graphemes <= candidate.upTo);
 
-  return { fontSize: step?.fontSize ?? fit.smallest, lineClamp: fit.lines ?? DEFAULT_LINES };
+  return { fontSize: step?.fontSize ?? fit.smallest, lineClamp: TITLE_LINES };
 }
 
 /**

@@ -34,8 +34,17 @@ const SUBTITLE = 30;
 const FOOTER = 24;
 const DOT = 14;
 
-/** Longest subtitle the footer leaves room for before it has to be cut. */
+/**
+ * Longest subtitle the footer leaves room for before it has to be cut.
+ *
+ * A constant, like `TITLE_LINES`: it belongs to this geometry, both sites
+ * arrived at it independently, and an option nobody sets is the surface I4
+ * refuses.
+ */
 const SUBTITLE_MAX = 160;
+
+/** The mark's side beside the wordmark, when `mark` is a function. */
+const MARK_SIZE = 40;
 
 export interface OgDefinition {
   readonly tokens: OgTokens;
@@ -55,8 +64,6 @@ export interface OgDefinition {
    * `#e8eaed`, neither of which is a colour the card uses.
    */
   readonly mark?: ReactNode | ((side: number) => ReactNode);
-  /** The mark's side beside the wordmark, when `mark` is a function. */
-  readonly markSize?: number;
   /** Bottom left. The host, on both sites this came from. */
   readonly footer?: string;
   /**
@@ -68,7 +75,6 @@ export interface OgDefinition {
   readonly dots?: readonly string[];
   /** Required, and supplied by no default. See `fit.ts`. */
   readonly fit: Fit;
-  readonly subtitleMax?: number;
 }
 
 export interface OgCardContent {
@@ -160,10 +166,8 @@ function markOf(definition: OgDefinition, side: number): ReactNode {
   return typeof definition.mark === "function" ? definition.mark(side) : definition.mark;
 }
 
-const DEFAULT_MARK_SIZE = 40;
-
 function render(definition: OgDefinition, content: OgCardContent): ReactElement {
-  const { tokens, fit, subtitleMax = SUBTITLE_MAX } = definition;
+  const { tokens, fit } = definition;
   const { fontSize, lineClamp } = fitTitle(content.title, fit);
   const subtitleColour = tokens.subtitle ?? tokens.dim;
 
@@ -180,7 +184,7 @@ function render(definition: OgDefinition, content: OgCardContent): ReactElement 
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        {markOf(definition, definition.markSize ?? DEFAULT_MARK_SIZE)}
+        {markOf(definition, MARK_SIZE)}
         <span style={{ fontSize: WORDMARK, fontWeight: 600 }}>{definition.name}</span>
         {content.label ? (
           <span
@@ -225,7 +229,7 @@ function render(definition: OgDefinition, content: OgCardContent): ReactElement 
         </div>
         {content.subtitle ? (
           <div style={{ fontSize: SUBTITLE, color: subtitleColour, lineHeight: 1.4 }}>
-            {truncateGraphemes(content.subtitle, subtitleMax)}
+            {truncateGraphemes(content.subtitle, SUBTITLE_MAX)}
           </div>
         ) : null}
       </div>

@@ -83,8 +83,42 @@ describe("oklchPalette", () => {
     expect(oklchPalette(SHEET, { scope: ".dark" }).background).not.toBe("#000000");
   });
 
-  it("reads percentages the way CSS does", () => {
+  it("reads a lightness percentage the way CSS does", () => {
     expect(oklchPalette(SHEET, { scope: ".dark" }).foreground).toBe("#dfcab2");
+  });
+
+  it("scales a chroma percentage against 0.4, not against 1", () => {
+    // CSS Color 4 fixes a different reference range per coordinate: 100% is 1
+    // for lightness and 0.4 for chroma. Dividing both by 100 does not produce a
+    // rounded colour, it produces a different one — and silently, which is the
+    // failure this whole file exists to make impossible.
+    expect(oklchPalette("--a: oklch(50% 50% 180);").a).toBe(oklchToHex([0.5, 0.2, 180]));
+  });
+
+  it("refuses a percentage on the hue, which has no reference range to scale by", () => {
+    expect(oklchPalette("--a: oklch(0.5 0.2 50%);")).toEqual({});
+  });
+
+  it("does not read a declaration that is commented out", () => {
+    // A theme keeps the value it replaced commented above its replacement, and
+    // "first declaration wins" would hand the caller the dead one — while the
+    // drift guard built on top of this passed, against a colour the site no
+    // longer applies.
+    const sheet = `:root {
+      /* --terminal: oklch(1 0 0); the light surface, before the redesign */
+      --terminal: oklch(0.19 0.005 250);
+    }`;
+
+    expect(oklchPalette(sheet, { scope: ":root" }).terminal).toBe("#121416");
+  });
+
+  it("is not truncated by a brace inside a comment", () => {
+    const sheet = `:root {
+      /* the terminal is dark in both themes } even here */
+      --terminal: oklch(0.19 0.005 250);
+    }`;
+
+    expect(oklchPalette(sheet, { scope: ":root" }).terminal).toBe("#121416");
   });
 
   it("drops alpha rather than mistaking it for a fourth coordinate", () => {

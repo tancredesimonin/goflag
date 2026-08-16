@@ -81,7 +81,8 @@ export interface PaletteOptions {
  * offered it.
  */
 export function oklchPalette(css: string, options: PaletteOptions = {}): Record<string, string> {
-  const source = options.scope === undefined ? css : blockOf(css, options.scope);
+  const stripped = withoutComments(css);
+  const source = options.scope === undefined ? stripped : blockOf(stripped, options.scope);
   const palette: Record<string, string> = {};
 
   for (const match of source.matchAll(/--([\w-]+):\s*oklch\(\s*([^)]+?)\s*\)/g)) {
@@ -106,18 +107,54 @@ export function readOklch(css: string, property: string, options: PaletteOptions
   return hex;
 }
 
+/**
+ * A percentage means a different number on each coordinate, and CSS Color 4
+ * says which.
+ *
+ * `100%` is `1` for lightness and **`0.4`** for chroma — the reference range the
+ * specification fixes for `oklch()`. Scaling both by the same factor is not a
+ * rounding difference: `oklch(50% 50% 180)` resolves to `#008368` in a browser
+ * and would come out `#00a06e` here, a colour the stylesheet does not contain.
+ * The whole point of this file is that such a value cannot appear silently.
+ *
+ * Hue is an angle and takes no percentage at all; a unit on it is rejected
+ * further down, along with everything else this reader does not recognise.
+ */
+const REFERENCE = [1, 0.4] as const;
+
 function triple(values: string): Oklch | null {
   // `L C H / A` — the alpha is read so it cannot be mistaken for a fourth
   // coordinate, then dropped.
-  const numbers = values.split("/")[0]!.trim().split(/\s+/).map(percentAware);
-  if (numbers.length < 3 || numbers.slice(0, 3).some(Number.isNaN)) return null;
+  const parts = values.split("/")[0]!.trim().split(/\s+/);
+  if (parts.length < 3) return null;
+
+  const numbers = parts.slice(0, 3).map((part, index) => scaled(part, REFERENCE[index]));
+  if (numbers.some(Number.isNaN)) return null;
 
   return [numbers[0]!, numbers[1]!, numbers[2]!];
 }
 
-/** `62%` is `0.62` for L and C; a bare number is itself. Degrees never carry one. */
-function percentAware(value: string): number {
-  return value.endsWith("%") ? Number(value.slice(0, -1)) / 100 : Number(value);
+function scaled(value: string, reference: number | undefined): number {
+  if (!value.endsWith("%")) return Number(value);
+  // A percentage where the coordinate has no reference range — the hue — is not
+  // a value to guess at.
+  if (reference === undefined) return Number.NaN;
+
+  return (Number(value.slice(0, -1)) / 100) * reference;
+}
+
+/**
+ * Comments removed before anything else looks at the sheet.
+ *
+ * A theme keeps the value it replaced commented above the one it replaced it
+ * with, and `--bg` declared twice means the first one wins — so the dead
+ * declaration would beat the live one, and the guard built on top of this would
+ * pass against a colour the site no longer applies. Stripping first also keeps
+ * a stray brace inside a comment from truncating the block the counter below is
+ * walking.
+ */
+function withoutComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 /**

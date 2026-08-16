@@ -157,7 +157,6 @@ describe("icon", () => {
   const marked = defineOg({
     ...DEFINITION,
     mark: (side) => <svg width={side} height={side} />,
-    markSize: 40,
   });
 
   it("puts the mark on the card's own surface, square", () => {

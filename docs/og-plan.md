@@ -388,8 +388,16 @@ L'empaquetage est de la manipulation de `Buffer` pure — une trentaine de ligne
 et rend un buffer :
 
 ```ts
-buildIco(entries: { width: number; buffer: Buffer }[]) → Buffer
+buildIco(entries: { width: number; height?: number; bytes: Uint8Array }[]) → Uint8Array
 ```
+
+**`Uint8Array` et pas `Buffer`, corrigé en OG-4.** `Buffer` est une globale
+qu'apporte `@types/node` : un `.d.ts` qui la nomme ne compile pas chez un
+consommateur dont le tsconfig ne tire pas ces types — une erreur **dans
+`node_modules`, dans un fichier qu'il ne peut pas éditer**. Un `Buffer` étant un
+`Uint8Array`, un appelant qui en a un le passe sans rien changer. C'est aussi ce
+qui rend vraie la phrase du paragraphe suivant : aucune dépendance, pas même de
+types.
 
 Il appartient donc au **cœur**, à côté de `fitTitle`, et non à `@goflag/og/next` :
 il ne connaît ni React, ni satori, ni Next. C'est même la partie la plus pure du
@@ -425,8 +433,26 @@ défaut à chaque site adoptant. L'empaquetage est livré **idempotent par
 construction** :
 
 ```ts
-writeIco(path, entries, { fingerprintOf: sources }) → "written" | "unchanged"
+writeIco(path, entries, { lock, fingerprintOf, check }) → ArtefactStatus
+writeIcons({ artefacts, lock, fingerprintOf, check }) → ArtefactStatus
+//   ArtefactStatus = "written" | "unchanged" | "stale" | "absent"
 ```
+
+Trois écarts par rapport à la signature esquissée ici, tous payés par les quatre
+scripts réels :
+
+- **`lock` est obligatoire**, sans défaut dérivé du dossier de l'artefact. Sur un
+  site Next ce dossier est `public/`, tout ce qui s'y trouve est servi, et la
+  comptabilité de build n'est pas quelque chose que le site donne à un visiteur.
+- **Quatre états, pas deux.** `check` doit distinguer « périmé » de « absent » :
+  ce ne sont pas les mêmes deux phrases à écrire dans le message d'erreur, et la
+  fonction ne les écrit pas — elle rend, et le script décide de son code de
+  sortie, parce qu'une bibliothèque qui appelle `process.exit` décide à la place
+  d'un script qui connaît son propre nom.
+- **`writeIcons` au pluriel**, parce que trois des quatre scripts mettent sous
+  garde plus que le `.ico` : sept sorties sur stereo-house, quatre sur
+  `tancrede`. Les entrées sont paresseuses — sous `check`, et sur un commit où
+  rien n'a bougé, rien n'est rasterisé du tout.
 
 L'empreinte porte sur les **entrées** (le SVG source, les tailles demandées),
 jamais sur les octets produits — sinon un bump de `sharp` compte comme un
@@ -567,7 +593,7 @@ texte sur une zone chargée sans voile.
 | **OG-1d** | ✅ **livrée** — `icons.ico.missing` sur une sonde d'origine calquée sur `probeRobots`, avec son remède comme prévu : `scripts/generate-favicon.mjs` sert désormais le `.ico` que la règle réclamait au site de goflag                                                                                                                                                            | catalogue |
 | **OG-2**  | ✅ **livrée** — alt traduit via `generateImageMetadata`, `alternateLocale` dans `@goflag/next`, `OG_TOKENS` comparés au thème par un test, `fitTitle` + `lineClamp`, le catch-all derrière `ogCatchAllRoute`, et le `.ico` par script local (consommateur n°1 du §6.4)                                                                                                           | OG-1a     |
 | **OG-3**  | ✅ **livrée** — stereo-house a écrit sa carte à la main sur six routes : les 24 `og.image.missing` tombent, et les 24 `og.locale.alternates` du §10.4 avec, par un bump. 39 findings deviennent 15 sur un build production-shaped. Son `generate-favicons.mjs` à 7 sorties en fait le consommateur n°2 du `.ico` sans travail supplémentaire. Ce que l'écriture a révélé : §10.5 | OG-2      |
-| **OG-4**  | 🟡 **livrée côté goflag** — `packages/og` existe, `apps/website` est migrée (**239 lignes de moins**), `buildIco` / `writeIco` sont dans le cœur. Le critère de sortie n'est qu'à moitié rempli : stereo-house n'est pas migrée, et elle ne peut pas l'être avant `og-v0.1.0`. Ce que l'extraction a trouvé, et les deux points où elle s'écarte du plan : §10.6                 | OG-3      |
+| **OG-4**  | 🟡 **livrée côté goflag** — `packages/og` existe, `apps/website` est migrée (**299 lignes de moins**), `buildIco` / `writeIco` sont dans le cœur. Le critère de sortie n'est qu'à moitié rempli : stereo-house n'est pas migrée, et elle ne peut pas l'être avant `og-v0.1.0`. Ce que l'extraction a trouvé, et les deux points où elle s'écarte du plan : §10.6                 | OG-3      |
 | **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                                                                                                                                                  | OG-4, N-2 |
 | hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                                                                                                                                                 | —         |
 | hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                                                                                                                                         | OG-4      |
@@ -751,11 +777,21 @@ normal — à ne pas mettre au centre de l'API.
 
 ### 10.6 Ce que l'extraction a fait, et les deux endroits où elle s'écarte du plan
 
-Le paquet est écrit et `apps/website` est migrée : **239 lignes de moins** sur le
+Le paquet est écrit et `apps/website` est migrée : **299 lignes de moins** sur le
 site, catalogue et audit inchangés — les six cartes, les trois familles de règles
 `og.*` et `icons.*` passent toujours, vérifiées par `pnpm --filter
 @goflag/website seo` sur un build production-shaped. Le cœur ne rend rien et se
-teste sans Next : 71 tests, 99 % de couverture, aucun build de framework.
+teste sans Next : 81 tests, 99 % de couverture, aucun build de framework.
+
+**Le chiffre a d'abord été écrit à 239, et c'était `git diff --numstat` qui se
+taisait.** Il rend `-` pour `generate-favicon.mjs`, qui passe de 154 lignes à 94,
+parce que la version sur `develop` contient un **octet NUL littéral** — le
+séparateur du `createHash`, écrit comme un caractère brut plutôt que comme
+l'échappement `"\0"`. Git classe le fichier comme binaire, donc pas de diff en
+revue, invisible à `git grep`, et les 60 lignes supprimées manquent au total. Le
+paquet reproduisait le même octet dans `write.ts` : corrigé, digest identique.
+C'est le §1 qui s'applique à ce plan lui-même — un plan qui cite un chiffre doit
+citer le bon.
 
 **Le premier écart : le traducteur sans requête n'entre pas dans le paquet.** Le
 §10.5 le mettait dans `@goflag/og/next` « sans discussion ». La discussion est
@@ -791,6 +827,26 @@ famille trouvé en écrivant le remède du deuxième.
 optionnel — l'image de fond du motif Canva du §8. Aucun des deux consommateurs ne
 s'en sert. L'écrire aurait été la quatrième occurrence du mode d'échec du §4 du
 plan principal, dans le fichier qui le cite.
+
+La première version du paquet en avait quand même trois de ce genre —
+`markSize`, `subtitleMax` et `fit.lines`, chacun optionnel, chacun avec sa
+constante par défaut, chacun réglé par personne. Trois champs indiscernables de
+`font` et `fallback`, dans le paquet qui venait de les refuser. Ce sont des
+constantes maintenant : les deux sites sont arrivés séparément à 160 caractères
+et à trois lignes, ce sont des propriétés de cette géométrie et pas des goûts. Si
+stereo-house veut sa marque à 48 plutôt qu'à 40 en migrant, c'est le second
+consommateur qui demandera le champ — ce qui est exactement le processus qu'I4
+décrit, et pas un coût.
+
+**Deux défauts de `oklchPalette` que ses propres tests ne voyaient pas**, trouvés
+en relisant. Un pourcentage de chroma était divisé par 100 comme la clarté, alors
+que CSS Color 4 fixe `100%` à **0,4** pour la chroma : `oklch(50% 50% 180)`
+rendait `#00a06e` au lieu de `#008368`. Et les commentaires n'étaient pas
+retirés, donc une déclaration commentée au-dessus de celle qui l'a remplacée
+gagnait — le thème garde souvent l'ancienne valeur juste au-dessus, et la garde
+anti-dérive du site serait passée contre une couleur que le site n'applique plus.
+Les deux produisaient une valeur fausse en silence, ce qui est précisément ce que
+ce fichier existe pour rendre impossible.
 
 **Ce qui reste d'OG-4.** Le critère de sortie du §10.3 en demande deux :
 `apps/website` **et** stereo-house doivent perdre du code net. La première est

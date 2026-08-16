@@ -11,6 +11,13 @@
  * moment this file knew what `sharp` was, the package would carry a native
  * binary for every consumer. The site rasterises with the `sharp` it already
  * has for Next's image optimisation, exactly as it supplies its own fonts.
+ *
+ * `Uint8Array` and `DataView` rather than `Buffer`, so that claim holds all the
+ * way into the type declarations: `Buffer` is a global `@types/node`
+ * contributes, and a `.d.ts` naming it fails to compile for any consumer whose
+ * tsconfig does not pull those types in — an error inside `node_modules`, in a
+ * file they cannot edit. A `Buffer` is a `Uint8Array`, so callers who have one
+ * pass it unchanged.
  */
 
 /** One image inside the container. `bytes` is an already-encoded PNG. */
@@ -32,7 +39,7 @@ const ENTRY_BYTES = 16;
  * image data. A dimension of 256 is written as `0`, which is how a
  * single-byte field says 256.
  */
-export function buildIco(entries: readonly IcoEntry[]): Buffer {
+export function buildIco(entries: readonly IcoEntry[]): Uint8Array {
   if (entries.length === 0) {
     throw new Error("buildIco: an ICO with no image in it is not a file any shell will read.");
   }
@@ -45,26 +52,31 @@ export function buildIco(entries: readonly IcoEntry[]): Buffer {
     }
   }
 
-  const directory = Buffer.alloc(HEADER_BYTES + ENTRY_BYTES * entries.length);
-  directory.writeUInt16LE(0, 0); // reserved
-  directory.writeUInt16LE(1, 2); // 1 = icon, 2 = cursor
-  directory.writeUInt16LE(entries.length, 4);
+  const directoryBytes = HEADER_BYTES + ENTRY_BYTES * entries.length;
+  const total = entries.reduce((sum, entry) => sum + entry.bytes.length, directoryBytes);
+  const ico = new Uint8Array(total);
+  const view = new DataView(ico.buffer);
 
-  let offset = directory.length;
+  view.setUint16(0, 0, true); // reserved
+  view.setUint16(2, 1, true); // 1 = icon, 2 = cursor
+  view.setUint16(4, entries.length, true);
+
+  let offset = directoryBytes;
   entries.forEach(({ width, height = width, bytes }, index) => {
     const at = HEADER_BYTES + ENTRY_BYTES * index;
-    directory.writeUInt8(width >= 256 ? 0 : width, at);
-    directory.writeUInt8(height >= 256 ? 0 : height, at + 1);
-    directory.writeUInt8(0, at + 2); // palette entries: 0 for true colour
-    directory.writeUInt8(0, at + 3); // reserved
-    directory.writeUInt16LE(1, at + 4); // colour planes
-    directory.writeUInt16LE(32, at + 6); // bits per pixel
-    directory.writeUInt32LE(bytes.length, at + 8);
-    directory.writeUInt32LE(offset, at + 12);
+    view.setUint8(at, width >= 256 ? 0 : width);
+    view.setUint8(at + 1, height >= 256 ? 0 : height);
+    view.setUint8(at + 2, 0); // palette entries: 0 for true colour
+    view.setUint8(at + 3, 0); // reserved
+    view.setUint16(at + 4, 1, true); // colour planes
+    view.setUint16(at + 6, 32, true); // bits per pixel
+    view.setUint32(at + 8, bytes.length, true);
+    view.setUint32(at + 12, offset, true);
+    ico.set(bytes, offset);
     offset += bytes.length;
   });
 
-  return Buffer.concat([directory, ...entries.map((entry) => Buffer.from(entry.bytes))]);
+  return ico;
 }
 
 /**
@@ -76,19 +88,22 @@ export function buildIco(entries: readonly IcoEntry[]): Buffer {
  * is the same defect `icons.sizes-mismatch` reports from the outside.
  */
 export function readIcoSizes(bytes: Uint8Array): { width: number; height: number }[] {
-  const view = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (view.length < HEADER_BYTES || view.readUInt16LE(2) !== 1) {
+  // Through the view's own window, not the whole ArrayBuffer: a `subarray` of a
+  // larger buffer carries a byte offset, and reading past it would report the
+  // neighbouring bytes as a directory.
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.byteLength < HEADER_BYTES || view.getUint16(2, true) !== 1) {
     throw new Error("readIcoSizes: not an ICO container.");
   }
 
-  const count = view.readUInt16LE(4);
-  if (view.length < HEADER_BYTES + ENTRY_BYTES * count) {
+  const count = view.getUint16(4, true);
+  if (view.byteLength < HEADER_BYTES + ENTRY_BYTES * count) {
     throw new Error("readIcoSizes: the directory claims more entries than the file holds.");
   }
 
   return Array.from({ length: count }, (_unused, index) => {
     const at = HEADER_BYTES + ENTRY_BYTES * index;
     // 0 means 256 in a byte-wide field, in both directions.
-    return { width: view.readUInt8(at) || 256, height: view.readUInt8(at + 1) || 256 };
+    return { width: view.getUint8(at) || 256, height: view.getUint8(at + 1) || 256 };
   });
 }

@@ -133,9 +133,12 @@ segment takes `opengraph-image.tsx` directly.
 
 No Next convention emits an ICO. `favicon.ico` is a static file; `icon.tsx` goes
 through `ImageResponse`, which produces PNG. So `buildIco` packs the container —
-pure byte arithmetic, no dependency — out of PNGs **your** site rasterised, with
-the `sharp` it already has for image optimisation. This package installs no
-rasteriser, for the same reason it embeds no font.
+pure byte arithmetic, no dependency, `Uint8Array` in and out — from PNGs **your**
+site rasterised, with the `sharp` it already has for image optimisation. This
+package installs no rasteriser, for the same reason it embeds no font. (A
+`Buffer` is a `Uint8Array`, so `sharp`'s output goes straight in; nothing here
+names the type, which is what keeps the declarations compiling for a consumer
+without `@types/node`.)
 
 ```js
 import { writeIco } from "@goflag/og";

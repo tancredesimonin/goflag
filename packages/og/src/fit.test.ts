@@ -41,10 +41,6 @@ describe("fitTitle", () => {
     expect(fitTitle("x".repeat(200), FIT).lineClamp).toBe(3);
   });
 
-  it("takes the caller's line count when it has one", () => {
-    expect(fitTitle("Changelog", { ...FIT, lines: 2 }).lineClamp).toBe(2);
-  });
-
   it("counts glyphs, not code units", () => {
     // Twenty family emoji are twenty glyphs wide and several hundred code units
     // long. Measured in code units this would drop three steps for a width the
