@@ -126,17 +126,33 @@ describe("metadata — monolingual pages", () => {
   });
 
   it("resolves a named card against the origin", () => {
-    const expected = [
-      {
-        url: "https://goflag.tech/og/docs/install",
-        width: 1200,
-        height: 630,
-        alt: "Install goflag",
-      },
-    ];
+    const expected = [{ url: "https://goflag.tech/og/docs/install", width: 1200, height: 630 }];
 
     expect(meta.openGraph).toMatchObject({ images: expected });
     expect(meta.twitter).toMatchObject({ images: expected });
+  });
+
+  it("carries the alt the page wrote", () => {
+    const described = routes.metadata({
+      path: "/docs/install",
+      image: "/og/docs/install",
+      imageAlt: "The words “Install goflag” on a dark terminal card.",
+      ...content,
+    });
+
+    expect(described.openGraph).toMatchObject({
+      images: [{ alt: "The words \u201CInstall goflag\u201D on a dark terminal card." }],
+    });
+  });
+
+  it("omits og:image:alt rather than passing the title off as one", () => {
+    // The title is a caption, and ogp.me asks for "a description of what is in
+    // the image (not a caption)". Substituting it satisfied `og.image.alt` —
+    // which checks presence — on twelve pages of this project's own site,
+    // where nothing could then name the defect. Absent, the rule fires and
+    // says what to write; present and wrong, it never fires again.
+    const images = (meta.openGraph as { images?: Array<Record<string, unknown>> }).images;
+    expect(images?.[0]).not.toHaveProperty("alt");
   });
 
   it("ignores a locale it is handed — the route has only one", () => {
