@@ -127,6 +127,11 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     why: "An icon that 404s is worse than one never declared: the client asks, gets nothing, and has already skipped the `/favicon.ico` it would otherwise have fallen back to. Declaring it is what took the fallback away.",
     message: "Declared icon does not serve an image: `icon` → `/icon-32.png` (HTTP 404).",
   },
+  "og.image.sizes-mismatch": {
+    why: "The declared size is what a crawler lays the card out with before it has the file — which is the whole reason to declare it. A wrong one is therefore worse than none: the crawler reserves a shape the image does not have, and the first share, the one that matters most, renders letterboxed or cropped. It is also the declaration that blinds the rest of the catalogue: `og.image.ratio` reads these two numbers and deliberately refuses to fetch, so an invented 1200×630 scores 1.9 and passes over an image that is square. Found on a site whose cover art is 1024×1024, declared 1200×630 by a library that had never looked at it.",
+    message:
+      "The declared size is not the image's: `/covers/tr-808-legacy.png` declares 1200x630 and is 1024x1024.",
+  },
   "icons.sizes-mismatch": {
     why: "`sizes` exists so a client can pick one icon out of several without fetching them all. A wrong value costs exactly what the attribute was there to save. The usual shape is not a lie but a half-truth: a `.ico` carrying 16, 32 and 48 declared as `48x48` advertises a third of itself.",
     message:
