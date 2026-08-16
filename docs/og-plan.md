@@ -7,7 +7,9 @@
 > 2026-08-15 (OG-1b, OG-1c, OG-1d et OG-2 livrées et marquées comme telles ; les
 > chiffres stereo-house remplacés par ceux du premier audit réel) · **Amendé**
 > 2026-08-16 (OG-4 livrée côté goflag : le paquet existe, `apps/website` est
-> migrée, §10.6 dit ce que l'extraction a trouvé et ce qu'elle n'a pas fait)
+> migrée, §10.6 dit ce que l’extraction a trouvé et ce qu’elle n’a pas fait) ·
+> **Amendé** 2026-08-16 (stereo-house migrée, §10.8 ; le remède d’OG-1d n’était
+> pas servi en production, §10.7)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -584,20 +586,20 @@ texte sur une zone chargée sans voile.
 
 ## 10. Phasage
 
-| Étape     | Contenu                                                                                                                                                                                                                                                                                                                                                                          | Dépend de |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                                                                                                                                                  | —         |
-| **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                                                                                                                                   | catalogue |
-| **OG-1b** | ✅ **livrée** — les trois règles réseau sur la passe de sondage dédiée du §10.1. Classée ici « hors chemin critique », et c'était faux : elle a trouvé deux routes de metadata mortes depuis le jour de leur écriture (§10.3)                                                                                                                                                    | catalogue |
-| **OG-1c** | ✅ **livrée** — `icons.missing`, `icons.apple-touch.missing`, `icons.manifest-mismatch`, plus le contenu du manifeste dans l'extraction. `apps/website` les passe déjà toutes les trois : `icon.svg`, `apple-icon.tsx` et un manifeste qui ne se contredit pas                                                                                                                   | catalogue |
-| **OG-1d** | ✅ **livrée** — `icons.ico.missing` sur une sonde d'origine calquée sur `probeRobots`. Son remède, lui, ne l'était qu'à moitié : le `.ico` était généré et committé, et le conteneur **ne l'a jamais servi** — 404 en production jusqu'au 2026-08-16, §10.7                                                                                                                      | catalogue |
-| **OG-2**  | ✅ **livrée** — alt traduit via `generateImageMetadata`, `alternateLocale` dans `@goflag/next`, `OG_TOKENS` comparés au thème par un test, `fitTitle` + `lineClamp`, le catch-all derrière `ogCatchAllRoute`, et le `.ico` par script local (consommateur n°1 du §6.4)                                                                                                           | OG-1a     |
-| **OG-3**  | ✅ **livrée** — stereo-house a écrit sa carte à la main sur six routes : les 24 `og.image.missing` tombent, et les 24 `og.locale.alternates` du §10.4 avec, par un bump. 39 findings deviennent 15 sur un build production-shaped. Son `generate-favicons.mjs` à 7 sorties en fait le consommateur n°2 du `.ico` sans travail supplémentaire. Ce que l'écriture a révélé : §10.5 | OG-2      |
-| **OG-4**  | 🟡 **livrée côté goflag** — `packages/og` existe, `apps/website` est migrée (**299 lignes de moins**), `buildIco` / `writeIco` sont dans le cœur. Le critère de sortie n'est qu'à moitié rempli : stereo-house n'est pas migrée, et elle ne peut pas l'être avant `og-v0.1.0`. Ce que l'extraction a trouvé, et les deux points où elle s'écarte du plan : §10.6                 | OG-3      |
-| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                                                                                                                                                  | OG-4, N-2 |
-| hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                                                                                                                                                 | —         |
-| hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                                                                                                                                         | OG-4      |
-| hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                                                                                                                                           | —         |
+| Étape     | Contenu                                                                                                                                                                                                                                                                                                                                                                                                     | Dépend de |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **OG-0**  | ✅ **livré** — gabarit écrit à la main dans `apps/website` (§5)                                                                                                                                                                                                                                                                                                                                             | —         |
+| **OG-1a** | ✅ **livrée** — les 6 règles locales du §7 dans le catalogue sourcé. Sur `apps/website` : **46 `og.image.alt` et 20 `og.locale.alternates`**, et rien d'autre — les quatre autres passent déjà                                                                                                                                                                                                              | catalogue |
+| **OG-1b** | ✅ **livrée** — les trois règles réseau sur la passe de sondage dédiée du §10.1. Classée ici « hors chemin critique », et c'était faux : elle a trouvé deux routes de metadata mortes depuis le jour de leur écriture (§10.3)                                                                                                                                                                               | catalogue |
+| **OG-1c** | ✅ **livrée** — `icons.missing`, `icons.apple-touch.missing`, `icons.manifest-mismatch`, plus le contenu du manifeste dans l'extraction. `apps/website` les passe déjà toutes les trois : `icon.svg`, `apple-icon.tsx` et un manifeste qui ne se contredit pas                                                                                                                                              | catalogue |
+| **OG-1d** | ✅ **livrée** — `icons.ico.missing` sur une sonde d'origine calquée sur `probeRobots`. Son remède, lui, ne l'était qu'à moitié : le `.ico` était généré et committé, et le conteneur **ne l'a jamais servi** — 404 en production jusqu'au 2026-08-16, §10.7                                                                                                                                                 | catalogue |
+| **OG-2**  | ✅ **livrée** — alt traduit via `generateImageMetadata`, `alternateLocale` dans `@goflag/next`, `OG_TOKENS` comparés au thème par un test, `fitTitle` + `lineClamp`, le catch-all derrière `ogCatchAllRoute`, et le `.ico` par script local (consommateur n°1 du §6.4)                                                                                                                                      | OG-1a     |
+| **OG-3**  | ✅ **livrée** — stereo-house a écrit sa carte à la main sur six routes : les 24 `og.image.missing` tombent, et les 24 `og.locale.alternates` du §10.4 avec, par un bump. 39 findings deviennent 15 sur un build production-shaped. Son `generate-favicons.mjs` à 7 sorties en fait le consommateur n°2 du `.ico` sans travail supplémentaire. Ce que l'écriture a révélé : §10.5                            | OG-2      |
+| **OG-4**  | ✅ **livrée** — `packages/og` publiée en `og-v0.1.0`, `apps/website` migrée (**−299 lignes**) et stereo-house avec elle (**−256**, §10.8) : le critère de sortie du §10.3 est rempli des deux côtés. `buildIco` / `writeIco` sont dans le cœur. Ce que l'extraction a trouvé et les deux points où elle s'écarte du plan : §10.6. Reste, hors chemin critique, les trois `generate-favicon*.mjs` non migrés | OG-3      |
+| **OG-5**  | `@goflag/next` câble l'URL de l'image dans la metadata via `defineSite({ og })`                                                                                                                                                                                                                                                                                                                             | OG-4, N-2 |
+| hors      | `@goflag/og/render` (satori direct) — le jour où un consommateur non-Next existe                                                                                                                                                                                                                                                                                                                            | —         |
+| hors      | Un helper qui rasterise le `.ico` avec `sharp` en peer optionnel — seulement si fournir les buffers s'avère pénible sur les quatre sites                                                                                                                                                                                                                                                                    | OG-4      |
+| hors      | Pipeline d'illustrations (Playwright) et vidéo (Remotion), dépôt privé                                                                                                                                                                                                                                                                                                                                      | —         |
 
 **OG-1 avant tout le reste.** D5 : la règle avant l'outil. Quand ce paragraphe a
 été écrit, le site de goflag ne déclarait aucun `og:image:alt` et rien ne le lui
@@ -838,6 +840,13 @@ stereo-house veut sa marque à 48 plutôt qu'à 40 en migrant, c'est le second
 consommateur qui demandera le champ — ce qui est exactement le processus qu'I4
 décrit, et pas un coût.
 
+**Il ne l'a pas demandé** (§10.8), et une quatrième de la même famille est sortie
+après coup : `readIcoSizes`, le conteneur lu à l'envers. Écrite « pour la
+déclaration à moitié vraie de `tancrede` » — un site non migré, dans un autre
+dépôt. Zéro appelant dans les cinq dépôts, et exportée dans `og-v0.1.0`, donc
+devenue une promesse d'API. Retirée. Le jour où `tancrede` migre et la réclame,
+c'est le second consommateur qui parle.
+
 **Deux défauts de `oklchPalette` que ses propres tests ne voyaient pas**, trouvés
 en relisant. Un pourcentage de chroma était divisé par 100 comme la clarté, alors
 que CSS Color 4 fixe `100%` à **0,4** pour la chroma : `oklch(50% 50% 180)`
@@ -892,6 +901,36 @@ de l'artefact déployé a un angle mort de la taille du conteneur.
 
 Le combler pour de bon, c'est auditer la sortie standalone plutôt que le
 workspace. Plus gros que le `COPY`, et pas encore fait.
+
+### 10.8 stereo-house migrée — le critère de sortie est rempli
+
+Le 2026-08-16, une fois `og-v0.1.0` sur npm. **256 lignes de moins**, contre 299
+sur `apps/website` : le §10.3 demandait que les deux perdent du code net, et les
+deux en perdent.
+
+Les trois choses que le paquet reprend étaient chacune une copie de quelque chose
+que le dépôt avait déjà en double — la conversion OKLCH (écrite deux fois, plus
+deux triples transcrits en littéraux), `buildIco`, et la garde d'idempotence, qui
+**n'existait pas** : les sept icônes étaient rerasterisées à chaque run.
+
+**La migration supprime aussi un test.** Le script transcrivait
+`.dark --background` et `--foreground` en littéraux et un test vérifiait qu'ils
+correspondaient encore à la feuille. Le script lit `globals.css` maintenant :
+plus de littéraux, donc plus rien à surveiller. Preuve que les deux chemins
+donnent la même chose — les sept icônes se régénèrent **octet pour octet**.
+
+**Ce que le second consommateur n'a pas demandé.** Ni `markSize` — sa marque rend
+à 40 et non à 48 —, ni `subtitleMax`, ni `fit.lines`, ni `ogCatchAllRoute`, dont
+il n'a aucun usage : ses pages légales sont sous `[slug]`, segment dynamique
+ordinaire. C'était le pari du paragraphe ci-dessus, et il tient.
+
+**Ce que la revue a trouvé après coup, et qui est une faute contre ce plan.** Le
+`--check` a été câblé en CI en citant le §10.3 — et le hook de pre-commit qui
+réécrivait a été laissé en place, ce que la même phrase interdit mot pour mot.
+Pire que redondant : le hook écrit **après** que git a figé l'index et ne stage
+rien, donc un changement de thème committe la nouvelle feuille avec les anciennes
+icônes, et la CI échouait ensuite en pointant une commande devenue sans effet.
+Corrigé. `tancrede` faisait déjà `favicon:check` dans son hook.
 
 ---
 

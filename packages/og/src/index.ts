@@ -24,7 +24,7 @@ export {
   type OgIcon,
 } from "./card.js";
 export { countGraphemes, fitTitle, type Fit, type FitStep, type FittedTitle } from "./fit.js";
-export { buildIco, readIcoSizes, type IcoEntry } from "./ico.js";
+export { buildIco, type IcoEntry } from "./ico.js";
 export {
   oklchPalette,
   oklchToHex,
