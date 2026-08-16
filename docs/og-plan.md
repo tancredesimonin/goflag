@@ -10,7 +10,9 @@
 > migrée, §10.6 dit ce que l’extraction a trouvé et ce qu’elle n’a pas fait) ·
 > **Amendé** 2026-08-16 (stereo-house migrée, §10.8 ; le remède d’OG-1d n’était
 > pas servi en production, §10.7) · **Amendé** 2026-08-16 (OG-5 vérifiée avant
-> d’être écrite : sa prémisse était fausse, elle est redéfinie — §10.9, §6.1)
+> d’être écrite : sa prémisse était fausse, elle est redéfinie — §10.9, §6.1) · **Amendé**
+> 2026-08-16 (§10.10 : `og:image:alt` présent et faux sur douze pages, trouvé
+> par `goflag preview`)
 > **Portée** — le paquet `@goflag/og`, les règles OG du catalogue, et la
 > frontière avec le pipeline d'illustrations, qui reste **hors goflag**.
 > **Lié** — `docs/next-plan.md` (le paquet frère), `docs/spec-and-lib-plan.md`
@@ -1015,6 +1017,29 @@ une clé `openGraph`, il coupe l'héritage de la convention par segment : une ro
 passant par `routes.metadata()` dont le plus proche `opengraph-image.tsx` est sur
 un segment ancêtre n'aurait aucune image. Zéro occurrence aujourd'hui sur les deux
 sites. Écrire le `fallback` du §6.1 pour ça serait le mode d'échec, encore.
+
+### 10.10 `og:image:alt` était présent partout, et faux sur douze pages
+
+Trouvé le 2026-08-16 par `goflag preview`, la première fois qu'elle a tourné sur
+un vrai site — `docs/preview-plan.md` §10.3 raconte la mécanique.
+
+OG-2 a réglé l'`alt` pour les cartes qui passent par `generateImageMetadata`.
+Les pages `/docs` n'y passent pas : le contournement du catch-all du §6.3 leur
+fait nommer leur image dans `routes.metadata({ image })`, et là `metadata.ts`
+écrivait `alt: content.title`. Douze pages annonçaient donc « Running goflag in
+CI » comme description d'une image, quand ogp.me demande _a description of what
+is in the image (**not a caption**)_.
+
+**`og.image.alt` juge la présence, et la valeur était présente** : la règle
+passait, sur les douze, depuis OG-2. Le compte de findings avant et après le
+remède est identique. C'est la troisième fois que la lib produit elle-même le
+défaut — après `alternateLocale` et après les couleurs du §10.2 — et la première
+où aucune règle du catalogue ne pouvait le nommer.
+
+`imageAlt` est donc un champ à part de `RouteContent`, **sans valeur par
+défaut** : absent, la balise est omise et `og.image.alt` tire. Une règle qui
+passe sur une valeur fausse est pire qu'une règle qui échoue, parce qu'elle ne
+tirera plus jamais.
 
 ---
 

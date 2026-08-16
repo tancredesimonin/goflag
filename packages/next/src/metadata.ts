@@ -24,6 +24,21 @@ export interface RouteContent {
    * catch-all segment — which then have to name their card.
    */
   image?: string;
+  /**
+   * What is *in* that image, for `og:image:alt`.
+   *
+   * Required alongside `image`, and deliberately not defaulted: this used to
+   * fall back to the page title, which satisfies `og.image.alt` — the rule
+   * checks presence — while saying nothing about the picture. ogp.me is
+   * explicit that the field is "a description of what is in the image (not a
+   * caption)", so the title is the one value that is always available and
+   * always wrong.
+   *
+   * A library cannot describe a card it did not draw. Omitting the tag makes
+   * `og.image.alt` fire, which is the rule doing its job; substituting the
+   * title made it pass on a defect nothing could then name.
+   */
+  imageAlt?: string;
   og?: {
     title?: string;
     description?: string;
@@ -60,7 +75,14 @@ export function buildMetadata<L extends string>(
   const ogType = content.og?.type ?? route.ogType;
 
   const images = content.image
-    ? [{ url: `${site.baseUrl}${content.image}`, width: 1200, height: 630, alt: content.title }]
+    ? [
+        {
+          url: `${site.baseUrl}${content.image}`,
+          width: 1200,
+          height: 630,
+          ...(content.imageAlt ? { alt: content.imageAlt } : {}),
+        },
+      ]
     : undefined;
 
   // The same cluster `alternates.languages` declares, said in the other
