@@ -78,32 +78,3 @@ export function buildIco(entries: readonly IcoEntry[]): Uint8Array {
 
   return ico;
 }
-
-/**
- * The dimensions a container actually holds — `buildIco` read backwards.
- *
- * Written for the declaration that is half true: `tancrede` declares
- * `{ url: "/favicon.ico", sizes: "48x48" }` while the file carries 16, 32 **and**
- * 48. A site that reads its own container cannot make that claim by hand, which
- * is the same defect `icons.sizes-mismatch` reports from the outside.
- */
-export function readIcoSizes(bytes: Uint8Array): { width: number; height: number }[] {
-  // Through the view's own window, not the whole ArrayBuffer: a `subarray` of a
-  // larger buffer carries a byte offset, and reading past it would report the
-  // neighbouring bytes as a directory.
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (view.byteLength < HEADER_BYTES || view.getUint16(2, true) !== 1) {
-    throw new Error("readIcoSizes: not an ICO container.");
-  }
-
-  const count = view.getUint16(4, true);
-  if (view.byteLength < HEADER_BYTES + ENTRY_BYTES * count) {
-    throw new Error("readIcoSizes: the directory claims more entries than the file holds.");
-  }
-
-  return Array.from({ length: count }, (_unused, index) => {
-    const at = HEADER_BYTES + ENTRY_BYTES * index;
-    // 0 means 256 in a byte-wide field, in both directions.
-    return { width: view.getUint8(at) || 256, height: view.getUint8(at + 1) || 256 };
-  });
-}
