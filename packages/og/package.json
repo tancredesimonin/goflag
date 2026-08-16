@@ -1,0 +1,82 @@
+{
+  "name": "@goflag/og",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Share cards and favicons for a multilingual site: a token-driven card template with no renderer in it, and the ICO container Next has no convention for.",
+  "keywords": [
+    "opengraph",
+    "og-image",
+    "favicon",
+    "ico",
+    "satori",
+    "nextjs",
+    "app-router",
+    "seo",
+    "i18n",
+    "metadata"
+  ],
+  "license": "MIT",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "homepage": "https://github.com/tancredesimonin/goflag#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tancredesimonin/goflag.git",
+    "directory": "packages/og"
+  },
+  "bugs": {
+    "url": "https://github.com/tancredesimonin/goflag/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf dist coverage",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "release": "commit-and-tag-version --path . --skip.tag"
+  },
+  "peerDependencies": {
+    "next": ">=15",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.14",
+    "@vitest/coverage-v8": "^2.1.8",
+    "commit-and-tag-version": "^12.5.0",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
