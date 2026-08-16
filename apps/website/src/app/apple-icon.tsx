@@ -1,26 +1,18 @@
-import { ImageResponse } from "next/og";
+import { ogIcon } from "@goflag/og/next";
 
-export const size = { width: 180, height: 180 };
-export const contentType = "image/png";
+import { og } from "@/lib/seo/og";
 
-/** Rendered rather than committed, so the mark has exactly one definition. */
-export default function AppleIcon() {
-  return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#12151a",
-      }}
-    >
-      <svg width="120" height="120" viewBox="0 0 24 24">
-        <path d="M5.25 2.5v19" stroke="#e8eaed" strokeWidth="1.75" strokeLinecap="square" />
-        <path d="M5.25 4h13l-2.6 4.25 2.6 4.25h-13z" fill="#00d492" />
-      </svg>
-    </div>,
-    size,
-  );
-}
+/**
+ * Rendered rather than committed, so the mark has exactly one definition — and
+ * now one palette too.
+ *
+ * This file used to redraw the flag itself, on `#12151a` in `#e8eaed`. Neither
+ * is a colour `globals.css` declares and neither is a colour the share card
+ * uses: three copies of one mark, agreeing with each other nowhere.
+ * `docs/og-plan.md` §6.3 is the fix — one token set, one drawing, every size.
+ */
+const icon = ogIcon(og, 180);
+
+export const size = icon.size;
+export const contentType = icon.contentType;
+export default icon.render;

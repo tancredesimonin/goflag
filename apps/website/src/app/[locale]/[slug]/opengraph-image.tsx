@@ -1,35 +1,23 @@
+import { ogImage } from "@goflag/og/next";
 import { allLegals } from "content-collections";
 
-import { ogImage, ogImageMetadata } from "@/lib/seo/og";
+import { og, ogAlt } from "@/lib/seo/og";
 
-/** The card's copy, read once and used by both exports below. */
-async function card(params: Promise<{ locale: string; slug: string }>) {
-  const { locale, slug } = await params;
-  const doc = allLegals.find((entry) => entry.locale === locale && entry.slug === slug);
+const image = ogImage(
+  og,
+  async ({ params }: { params: Promise<{ locale: string; slug: string }> }) => {
+    const { locale, slug } = await params;
+    const doc = allLegals.find((entry) => entry.locale === locale && entry.slug === slug);
+    const title = doc?.seo?.title ?? doc?.title ?? "Legal";
 
-  return {
-    locale,
-    title: doc?.seo?.title ?? doc?.title ?? "Legal",
-    subtitle: doc?.seo?.description,
-  };
-}
+    return {
+      title,
+      subtitle: doc?.seo?.description,
+      label: "legal",
+      alt: ogAlt(title, locale),
+    };
+  },
+);
 
-export async function generateImageMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}) {
-  const { locale, title } = await card(params);
-
-  return ogImageMetadata(title, locale);
-}
-
-export default async function Image({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}) {
-  const { title, subtitle } = await card(params);
-
-  return ogImage({ title, subtitle, label: "legal" });
-}
+export const generateImageMetadata = image.generateImageMetadata;
+export default image.render;
