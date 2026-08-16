@@ -44,6 +44,25 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/website/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/website/.next/static ./apps/website/.next/static
 
+# `public/` too, and it was missing from the day this file was written.
+#
+# A standalone build traces the server's imports; it does not walk `public/`,
+# because nothing imports a static file. Next's own documentation says to copy
+# it by hand alongside `.next/static`, and this file copied only the second.
+#
+# It went unnoticed because `public/` holds exactly one file, and everything
+# that looks like it belongs there is a route instead: `icon.svg`,
+# `apple-icon` and `manifest.webmanifest` are all metadata conventions Next
+# renders, so they answered 200 while the one real static file answered 404.
+#
+# That file is `favicon.ico` — the artefact `icons.ico.missing` was written to
+# demand, generated for exactly that reason in OG-2, committed, and then never
+# shipped. `pnpm --filter @goflag/website seo` could not see it: it runs
+# `next start` against the workspace, where `public/` is on disk beside the
+# server. The audit is production-shaped in its environment and not in its file
+# layout, which is the one gap between it and the container.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/website/public ./apps/website/public
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
