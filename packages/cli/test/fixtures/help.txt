@@ -8,6 +8,10 @@ Usage:
   goflag flags              Print this flag reference as JSON and exit. The same
                             table this help is rendered from, so the two cannot
                             disagree.
+  goflag preview <url>      Write .goflag/preview.html — the page's share cards
+                            as Google, Open Graph, X, LinkedIn, Slack, Discord
+                            and WhatsApp make them, each with the rigor of its
+                            source. Never gates: exits 0 unless the run failed.
 
 Options:
   --json                 Print the JSON report to stdout (nothing else).

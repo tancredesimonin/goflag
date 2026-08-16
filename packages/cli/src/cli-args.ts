@@ -21,14 +21,24 @@ export const HELP = renderHelp();
 
 const COMMAND_NAMES = COMMANDS.map((c) => c.name);
 
+/** The subcommands, as the parser knows them. */
+export type Command = "rules" | "flags" | "preview";
+
+function isCommand(arg: string): arg is Command {
+  return COMMAND_NAMES.includes(arg);
+}
+
 export interface ParsedArgs extends FlagTarget {
   /**
-   * A subcommand instead of an audit. Absent for the usual `goflag <url>`.
+   * A subcommand instead of a plain audit. Absent for the usual
+   * `goflag <url>`.
    *
-   * Both print a catalogue and exit without touching the network — the two
-   * things goflag can answer about itself rather than about a site.
+   * `rules` and `flags` print a catalogue and exit without touching the
+   * network — the two things goflag can answer about itself rather than about
+   * a site. `preview` is the first one that takes a URL and runs the audit:
+   * it renders what the crawl saw instead of judging it.
    */
-  command?: "rules" | "flags";
+  command?: Command;
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -69,7 +79,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
     // A command word is a command rather than a URL, and only in first
     // position: `goflag https://x.test rules` is a typo, and treating it as a
     // command would audit nothing while looking like it worked.
-    if (arg && COMMAND_NAMES.includes(arg) && i === 0) parsed.command = arg as "rules" | "flags";
+    //
+    // A command that takes an argument needed no change here: the command
+    // branch is gated on `i === 0`, so the next positional already falls
+    // through to the URL branch. `goflag preview https://x.test` parses on the
+    // table entry alone.
+    if (arg && isCommand(arg) && i === 0) parsed.command = arg;
     else if (arg && !parsed.url) parsed.url = arg;
     else if (arg) throw new Error(`unexpected argument: ${arg}`);
   }
@@ -103,6 +118,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
     throw new Error(
       "--summary cannot summarise a diff, and --baseline prints the diff: drop --summary, " +
         "or use --report <file> to keep the full report",
+    );
+  }
+  // `preview` owns stdout: it prints the path it wrote, so `open "$(…)"` works.
+  // A flag that asks for a different view of the report would be accepted and
+  // then ignored, and a flag that does nothing is worse than one that refuses.
+  if (parsed.command === "preview" && (parsed.json || parsed.summary)) {
+    throw new Error(
+      "preview writes HTML, so --json and --summary have nothing to change: " +
+        "drop them, or ask for the JSON with --report <file>",
     );
   }
 

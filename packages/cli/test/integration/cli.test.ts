@@ -19,6 +19,8 @@ import { startDemoServer, type DemoServer } from "../demo-server";
 
 const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
 const cliPath = join(repoRoot, "src", "cli.ts");
+/** Where `goflag preview` lands, given the child's cwd. `.goflag/` is ignored. */
+const previewPath = join(repoRoot, ".goflag", "preview.html");
 
 interface RunResult {
   status: number;
@@ -35,6 +37,9 @@ interface RunResult {
 function runCli(args: string[]): Promise<RunResult> {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, ["--import", "tsx", cliPath, ...args], {
+      // Not a temp directory: `--import tsx` resolves against the child's cwd,
+      // so a child started outside the workspace cannot load the loader that
+      // runs the CLI from source.
       cwd: repoRoot,
       // NO_COLOR keeps assertions on plain text.
       env: { ...process.env, NO_COLOR: "1" },
@@ -60,6 +65,7 @@ describe("goflag CLI (spawned process)", () => {
   afterAll(async () => {
     await server.stop();
     rmSync(tmp, { recursive: true, force: true });
+    rmSync(previewPath, { force: true });
   });
 
   it("prints help and exits 0", async () => {
@@ -236,6 +242,46 @@ describe("goflag CLI (spawned process)", () => {
     const report = JSON.parse(r.stdout) as GoflagReport;
     expect(report.conformance?.rules.length).toBeGreaterThan(0);
   }, 30_000);
+  it("preview writes a standalone HTML file and prints its path", async () => {
+    const r = await runCli([
+      "preview",
+      `${server.url}/good`,
+      "--depth",
+      "0",
+      "--static",
+      "--quiet",
+    ]);
+    expect(r.status).toBe(0);
+    // The path alone on stdout, so `open "$(goflag preview <url>)"` works.
+    expect(r.stdout.trim()).toBe(".goflag/preview.html");
+    expect(r.stderr).toContain("preview written to");
+
+    const html = readFileSync(previewPath, "utf8");
+    expect(html.startsWith("<!doctype html>")).toBe(true);
+    expect(html).toContain("Open Graph — the source card");
+    expect(html).toContain("Goflag Demo — Good Page");
+  }, 30_000);
+
+  it("preview exits 0 on a page full of findings — looking is not gating", async () => {
+    // `/bad-seo` is the fixture that fails eight rules, and a normal run exits
+    // 1 on it. The whole point of this command is that it does not.
+    const gated = await runCli([`${server.url}/bad-seo`, "--depth", "0", "--static", "--quiet"]);
+    expect(gated.status).toBe(1);
+
+    const r = await runCli([
+      "preview",
+      `${server.url}/bad-seo`,
+      "--depth",
+      "0",
+      "--static",
+      "--quiet",
+    ]);
+    expect(r.status).toBe(0);
+
+    const html = readFileSync(previewPath, "utf8");
+    expect(html).toContain("title.missing");
+    expect(html).toContain("no <code>og:image</code>");
+  }, 60_000);
 });
 
 describe("goflag CLI — --baseline", () => {

@@ -10,6 +10,7 @@ import type { Rigor, Severity } from "../lib/core/types";
 import type { LinkVerdict } from "../lib/core/links/types";
 import type { ReciprocityIssue } from "../lib/core/i18n";
 import type { AdvisoryFinding } from "../lib/rules/types";
+import type { Extraction } from "../lib/rules/extraction/types";
 import type { ConformanceView } from "./conformance";
 import type { ReportDiff } from "./diff";
 
@@ -201,6 +202,26 @@ export interface GoflagReport {
    * touch the summary counts, the verdict, or the exit code.
    */
   advisories?: ReportAdvisory[];
+  /**
+   * What each page declared in its `<head>`, as the rules saw it. Present
+   * only when asked for (`AuditOptions.extractions`, which `goflag preview`
+   * sets).
+   *
+   * Every other section of this report is a *judgment*: a rule fired, or it
+   * did not. This one is the observation the judgments were made from, and it
+   * is here because a share card cannot be drawn from a violations list — a
+   * page that passes every `og.*` rule still has a title, an image and a
+   * description that somebody wants to look at, and none of them appear
+   * anywhere else in this file.
+   *
+   * Keyed by nothing: each entry carries its own `http.finalUrl`, which is the
+   * same string `ReportPage.url` and `SeoIssue.pageUrl` use.
+   *
+   * Covers fewer pages than `pages`, for the same reason `conformance` does:
+   * only healthy HTML documents reach the rule layer, so an unreachable page,
+   * a non-HTML resource and a canonical-declared duplicate have no entry here.
+   */
+  extractions?: Extraction[];
   /** Comparison against a stored baseline, when `--baseline` was given. */
   diff?: ReportDiff;
   diagnostics: {

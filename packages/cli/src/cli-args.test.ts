@@ -154,3 +154,53 @@ describe("parseArgs", () => {
     for (const name of PROFILE_NAMES) expect(HELP).toContain(name);
   });
 });
+
+describe("parseArgs — subcommands", () => {
+  it("reads a command word in first position", () => {
+    expect(parseArgs(["rules"]).command).toBe("rules");
+    expect(parseArgs(["flags"]).command).toBe("flags");
+    expect(parseArgs(["preview"]).command).toBe("preview");
+  });
+
+  it("takes the positional after a command as its argument", () => {
+    const a = parseArgs(["preview", "https://example.com"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://example.com");
+  });
+
+  it("keeps flags working around a command and its URL", () => {
+    const a = parseArgs(["preview", "https://example.com", "--static", "--locales", "fr,en"]);
+    expect(a.command).toBe("preview");
+    expect(a.url).toBe("https://example.com");
+    expect(a.options.static).toBe(true);
+    expect(a.options.locales).toEqual(["fr", "en"]);
+  });
+
+  it("rejects a command word that trails the URL instead of silently ignoring it", () => {
+    // The existing first-position rule, now that a command can take an
+    // argument: `goflag https://x.test preview` is a typo, and it fails loudly
+    // rather than auditing while looking like it previewed.
+    expect(() => parseArgs(["https://x.test", "preview"])).toThrow(/unexpected argument: preview/);
+    expect(() => parseArgs(["preview", "https://x.test", "https://y.test"])).toThrow(
+      /unexpected argument/,
+    );
+  });
+
+  it("does not read a command word that follows a flag", () => {
+    expect(parseArgs(["--json", "preview"]).command).toBeUndefined();
+    expect(parseArgs(["--json", "preview"]).url).toBe("preview");
+  });
+
+  it("refuses a view flag on preview rather than accepting and ignoring it", () => {
+    expect(() => parseArgs(["preview", "https://x.test", "--json"])).toThrow(
+      /--json and --summary/,
+    );
+    expect(() => parseArgs(["preview", "https://x.test", "-s"])).toThrow(/--json and --summary/);
+    // A file is not a view: the JSON is still available beside the HTML.
+    expect(() => parseArgs(["preview", "https://x.test", "--report", "out.json"])).not.toThrow();
+  });
+
+  it("HELP shows preview with its argument, not as a bare word", () => {
+    expect(HELP).toContain("goflag preview <url>");
+  });
+});

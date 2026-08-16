@@ -19,6 +19,7 @@ import { renderDiffTerminal } from "./report/render-diff";
 import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
 import { renderSummaryTerminal } from "./report/render-summary";
+import { renderPreview } from "./report/render-preview";
 import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
@@ -48,13 +49,20 @@ async function readVersion(): Promise<string> {
  * already run at that point, so the failure also threw away several minutes of
  * crawling.
  */
-async function writeJson(path: string, value: unknown): Promise<void> {
+async function writeText(path: string, contents: string): Promise<void> {
   const { mkdirSync, writeFileSync } = await import("node:fs");
   const { dirname } = await import("node:path");
 
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  writeFileSync(path, contents, "utf8");
 }
+
+async function writeJson(path: string, value: unknown): Promise<void> {
+  await writeText(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/** Where `goflag preview` writes, beside the baseline the gate already keeps. */
+const PREVIEW_PATH = ".goflag/preview.html";
 
 async function main(): Promise<number> {
   let args: ParsedArgs;
@@ -121,7 +129,14 @@ async function main(): Promise<number> {
       });
     }
     logger.note(`goflag: auditing ${args.url} …`);
-    report = await runAudit(args.url, { ...args.options, onProgress: logger.onProgress });
+    report = await runAudit(args.url, {
+      ...args.options,
+      // The preview is drawn from what the pages declared, and only this
+      // section carries that. Nothing else asks for it, so nothing else pays
+      // for it.
+      ...(args.command === "preview" ? { extractions: true } : {}),
+      onProgress: logger.onProgress,
+    });
     logger.stop();
   } catch (err) {
     logger.stop();
@@ -148,6 +163,33 @@ async function main(): Promise<number> {
         `goflag: retry, or pass --no-sitemap to audit by crawling on purpose.\n`,
     );
     return 2;
+  }
+
+  // Rendering what the crawl saw, before any of the gate machinery below.
+  //
+  // It returns 0 on a run that produced findings, unlike every other path
+  // here: looking at your own cards is not a check, and a command whose whole
+  // job is "show me" has nothing to fail. A run that could not happen still
+  // exits 2 — that is the block above, and it has already returned.
+  //
+  // It also lands before the baseline, so the extraction section can never be
+  // written into a baseline file, which stores the report verbatim.
+  if (args.command === "preview") {
+    // `--report` still means "write the JSON too": it is a file, not a view,
+    // and the report it writes is the only place the extraction section is
+    // readable as data.
+    if (args.report) {
+      await writeJson(args.report, report);
+      process.stderr.write(`goflag: report written to ${args.report}\n`);
+    }
+    await writeText(PREVIEW_PATH, renderPreview(report));
+    const pages = report.extractions?.length ?? 0;
+    process.stderr.write(
+      `goflag: preview written to ${PREVIEW_PATH} — ${pages} page${pages === 1 ? "" : "s"}\n`,
+    );
+    // The path on stdout, alone, so `open "$(goflag preview <url>)"` works.
+    process.stdout.write(`${PREVIEW_PATH}\n`);
+    return 0;
   }
 
   // A baseline changes the question from "is this site clean?" to "did this

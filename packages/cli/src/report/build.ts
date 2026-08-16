@@ -38,6 +38,7 @@ import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
 import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
 import { extractionFromPage } from "../lib/rules/extraction/from-page";
+import type { Extraction } from "../lib/rules/extraction/types";
 import { DEFAULT_PROFILE, rulesForProfile } from "../lib/rules/profiles";
 import { PROSE_RULES } from "../lib/rules/prose";
 import { collectSiteAdvisories } from "../lib/rules/site-prose";
@@ -173,6 +174,20 @@ export interface AuditOptions {
    * carry no verdict and never affect the gate.
    */
   advisories?: boolean;
+  /**
+   * Emit each page's extraction — what its `<head>` declared, as the rules
+   * read it. Off by default: it is the observation, not a finding, and on a
+   * large crawl it is the biggest section of the report.
+   *
+   * `goflag preview` sets it, because a share card is drawn from the
+   * declarations and not from the verdicts about them.
+   *
+   * Unlike `conformance` and `advisories`, this section stops at the report:
+   * `summarize()` does not carry it — a summary of an observation is the
+   * observation with the useful parts removed — and no terminal renderer
+   * prints it. Its one reader is `renderPreview`.
+   */
+  extractions?: boolean;
 }
 
 /** Infer a locale from the leading path segment, or null when unprefixed. */
@@ -661,6 +676,7 @@ export async function runAudit(
   const seoIssues: SeoIssue[] = [];
   const conformanceRows: ConformanceRow[] = [];
   const advisories: ReportAdvisory[] = [];
+  const extractions: Extraction[] = [];
   // Resolved from the *effective* rules, not the global registry: one issue
   // must not read its severity from one rule set and its `why` from another.
   const ruleById = new Map(rules.map((rule) => [rule.id, rule]));
@@ -668,6 +684,9 @@ export async function runAudit(
     const pageUrl = page.fetch.finalUrl;
     const extraction = extractionFromPage(page);
     const evaluation = evaluateRules(extraction, rules);
+    if (options.extractions) {
+      extractions.push(extraction);
+    }
     if (options.conformance) {
       conformanceRows.push({ pageUrl, findings: evaluation.findings });
     }
@@ -1000,6 +1019,7 @@ export async function runAudit(
     // made.
     ...(options.conformance ? { conformance: buildConformance(rules, conformanceRows) } : {}),
     ...(options.advisories ? { advisories } : {}),
+    ...(options.extractions ? { extractions } : {}),
     diagnostics: {
       pagesCrawled: pages.length,
       pagesScanned: linkReport.pagesScanned,
