@@ -1,6 +1,6 @@
 {
   "name": "@goflag/og",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Share cards and favicons for a multilingual site: a token-driven card template with no renderer in it, and the ICO container Next has no convention for.",
   "keywords": [
@@ -16,7 +16,7 @@
     "metadata"
   ],
   "license": "MIT",
-  "author": "Tancr\u00e8de Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
   "homepage": "https://github.com/tancredesimonin/goflag#readme",
   "repository": {
     "type": "git",
