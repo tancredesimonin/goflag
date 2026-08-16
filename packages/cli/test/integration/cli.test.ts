@@ -295,6 +295,32 @@ describe("goflag CLI — --baseline", () => {
     expect(orphan.stderr).toContain("needs a --baseline");
   }, 60_000);
 
+  it("writes --report on the run that captures the baseline", async () => {
+    // The two flags are asked for together on the run that turns the gate on —
+    // capture the backlog, keep the report of the run that captured it — and
+    // --update-baseline returns as soon as it has written the baseline. The
+    // report was never written: exit 0, "baseline captured" on stdout, and
+    // nothing anywhere saying the file the caller named does not exist.
+    const baseline = join(dir, "captured-with-report.json");
+    const report = join(dir, "alongside.json");
+    const captured = await runCli([
+      ...auditArgs(),
+      "--baseline",
+      baseline,
+      "--update-baseline",
+      "--report",
+      report,
+    ]);
+
+    expect(captured.status).toBe(0);
+    expect(captured.stdout).toContain("baseline captured");
+    expect(captured.stderr).toContain(`report written to ${report}`);
+    // Both files are the same full report — that is what makes one usable as
+    // the baseline the other was measured against.
+    expect(readFileSync(report, "utf8")).toBe(readFileSync(baseline, "utf8"));
+    expect(JSON.parse(readFileSync(report, "utf8")).summary).toBeDefined();
+  }, 60_000);
+
   it("exits 0 against its own baseline, however many findings there are", async () => {
     // The whole reason the flag exists: a known backlog must not block a merge
     // that does not add to it. A plain run of this same site exits 1.

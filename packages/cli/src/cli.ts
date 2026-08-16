@@ -170,6 +170,23 @@ async function main(): Promise<number> {
     }
   }
 
+  // Above `--update-baseline`, because that block returns. The two flags are
+  // asked for together on the run that turns the gate on — capture the
+  // baseline, keep the report of the run that captured it — and
+  // `--baseline b.json --update-baseline --report r.json` wrote b.json, said
+  // "baseline captured", and exited 0 having never written r.json, with
+  // nothing on stderr to say so. A file the caller named is written on every
+  // path that got as far as having a report to write.
+  //
+  // Below the baseline read above, so the file still carries `report.diff`
+  // when there was a baseline to compare against.
+  if (args.report) {
+    // The report file is always the full report — the source of truth a
+    // baseline/diff can rely on, regardless of the --summary view choice.
+    await writeJson(args.report, report);
+    process.stderr.write(`goflag: report written to ${args.report}\n`);
+  }
+
   // Writing the baseline is accepting everything in it. The one thing this
   // must not do is accept it quietly: a counter that drops without explanation
   // reads as "the problem went away".
@@ -194,13 +211,6 @@ async function main(): Promise<number> {
       `goflag: set --max-debt ${total} to stop that number growing, and lower it as you fix.\n`,
     );
     return 0;
-  }
-
-  if (args.report) {
-    // The report file is always the full report — the source of truth a
-    // baseline/diff can rely on, regardless of the --summary view choice.
-    await writeJson(args.report, report);
-    process.stderr.write(`goflag: report written to ${args.report}\n`);
   }
 
   // In baseline mode the diff *is* the answer. Printing the full report first
