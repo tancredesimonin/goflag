@@ -176,6 +176,97 @@ describe("renderPreview — the document", () => {
   });
 });
 
+describe("renderPreview — the route tree", () => {
+  const at = (path: string) =>
+    extraction({
+      http: {
+        requestedUrl: `https://example.com${path}`,
+        finalUrl: `https://example.com${path}`,
+        status: 200,
+        headers: {},
+        redirects: 0,
+      },
+    });
+  /** The nav alone: the sections below carry paths too, and would match. */
+  const tree = (paths: string[]) => {
+    const out = renderPreview(report({ extractions: paths.map(at) }));
+    return out.slice(out.indexOf('<nav class="nav"'), out.indexOf("</nav>"));
+  };
+
+  it("branches on path segments rather than listing every route flat", () => {
+    const out = tree(["/fr", "/fr/blog", "/fr/blog/psd2", "/en", "/en/blog"]);
+    expect(out).toContain("<details");
+    expect(out).toContain("<summary>");
+    expect(out).toContain(">/fr<");
+    expect(out).toContain(">/blog<");
+    // The deepest route is a leaf, and it carries only its own segment.
+    expect(out).toContain('href="#page-2">/psd2</a>');
+  });
+
+  it("counts the pages under a folder, its own page included", () => {
+    const out = tree(["/fr", "/fr/blog", "/fr/blog/psd2", "/en"]);
+    expect(out).toContain('<span class="seg">/fr</span><span class="n">3</span>');
+  });
+
+  it("folds a chain that offers no choice into one row", () => {
+    // Nothing was crawled at /fr/stet, and /fr/stet holds only 1.6.3 — two rows
+    // to reach one decision is a level of indentation nobody chose.
+    const out = tree(["/fr/stet/1.6.3", "/fr/stet/1.6.3/changelog", "/fr/contact"]);
+    expect(out).toContain(">/stet/1.6.3<");
+    expect(out).not.toContain(">/stet<");
+  });
+
+  it("keeps a folder that is a page of its own on its own row", () => {
+    // Folding /fr into /fr/blog would fold away the only link to /fr.
+    const out = tree(["/fr", "/fr/blog", "/fr/blog/psd2"]);
+    expect(out).toContain('<span class="seg">/fr</span>');
+    expect(out).not.toContain(">/fr/blog<");
+  });
+
+  it("gives a folder that is also a page a link beside the fold, not on it", () => {
+    // The label toggles; the ↗ navigates. A summary whose whole label was a
+    // link would fold nothing when clicked.
+    const out = tree(["/fr", "/fr/blog", "/fr/blog/psd2"]);
+    expect(out).toContain('<a class="go" href="#page-0"');
+    expect(out).not.toContain("<summary><a");
+  });
+
+  it("opens a small tree and collapses a large one", () => {
+    const few = tree(["/fr", "/fr/blog", "/en", "/en/blog"]);
+    expect(few).toContain("<details open>");
+
+    const many = tree(Array.from({ length: 24 }, (_, i) => `/fr/p${i}/leaf`));
+    expect(many).toContain("<details>");
+    expect(many).not.toContain("<details open>");
+  });
+
+  it("branches on the path, never on the query string", () => {
+    const out = tree(["/search?q=a", "/search?q=b"]);
+    expect(out).toContain("/search?q=a");
+    expect(out).toContain("/search?q=b");
+    // One row each, not a `?q=a` folder hanging off a `/search` that was
+    // never crawled.
+    expect(out).not.toContain(">/search<");
+  });
+
+  it("points a duplicated path at the first page that claimed it", () => {
+    const out = tree(["/fr/x", "/fr/x", "/fr/y"]);
+    expect(out).toContain('href="#page-0">/x</a>');
+    expect(out).not.toContain('href="#page-1"');
+  });
+
+  it("escapes a row, since a final URL `new URL` cannot parse is printed verbatim", () => {
+    // `pathOf` normalises through `new URL`, which percent-encodes markup out of
+    // existence — but it hands back anything it fails to parse untouched, and
+    // `finalUrl` is a string the crawl carried, not a parsed value.
+    const hostile = extraction();
+    hostile.http.finalUrl = "<script>alert(1)</script>";
+    const out = renderPreview(report({ extractions: [hostile, at("/fr/ok")] }));
+    expect(out).not.toContain("<script>alert(1)</script>");
+    expect(out).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+  });
+});
+
 describe("renderPreview — what the page declared", () => {
   it("names the tag each value came from, so a fallback reads as a fallback", () => {
     const out = renderPreview(report());

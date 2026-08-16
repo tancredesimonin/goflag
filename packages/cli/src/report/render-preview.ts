@@ -667,6 +667,133 @@ function translationsPanel(current: Sibling, siblings: Sibling[]): string {
 <p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>`;
 }
 
+// --- the route tree -------------------------------------------------------
+
+/**
+ * One node of the route tree — a path segment, and what hangs off it.
+ *
+ * `segments` is a list rather than a string because a chain with nothing to
+ * choose between its links is one row: a `/stet` that holds only `/1.6.3`
+ * reads as `/stet/1.6.3`, and keeping them apart costs a level of indentation
+ * and buys no decision.
+ */
+interface RouteNode {
+  segments: string[];
+  /** The page that lives exactly here, when the crawl read one. */
+  index?: number;
+  /** Insertion-ordered on purpose — see `buildRouteTree`. */
+  children: Map<string, RouteNode>;
+  /** Pages in this subtree, this node's own page included. */
+  count: number;
+}
+
+/**
+ * Split a path into the segments the tree branches on.
+ *
+ * A query string rides on the last segment rather than becoming one: `?` is not
+ * a path separator, and two pages that differ only by their query must still
+ * land on two different rows.
+ */
+function pathSegments(path: string): string[] {
+  const cut = path.indexOf("?");
+  const pathname = cut === -1 ? path : path.slice(0, cut);
+  const search = cut === -1 ? "" : path.slice(cut);
+  const segments = pathname.split("/").filter(Boolean);
+  if (search === "") return segments;
+  return segments.length === 0
+    ? [search]
+    : [...segments.slice(0, -1), `${segments.at(-1)}${search}`];
+}
+
+/**
+ * The crawled paths as a tree, single-child chains already folded away.
+ *
+ * Insertion order is kept rather than sorted: the rows carry `#page-N` anchors
+ * into the sections below, and those sections are in crawl order. A tree that
+ * sorted its own rows would read in one order and link into another.
+ */
+function buildRouteTree(paths: string[]): RouteNode {
+  const root: RouteNode = { segments: [], children: new Map(), count: 0 };
+  paths.forEach((path, index) => {
+    let node = root;
+    node.count++;
+    for (const segment of pathSegments(path)) {
+      const child: RouteNode = node.children.get(segment) ?? {
+        segments: [segment],
+        children: new Map(),
+        count: 0,
+      };
+      node.children.set(segment, child);
+      child.count++;
+      node = child;
+    }
+    // Two extractions on one path — a redirect that landed twice — keep the
+    // first: the second has a section of its own, reachable from nothing here,
+    // and that is better than a row that silently means one of two pages.
+    node.index ??= index;
+  });
+  return { ...root, children: foldChildren(root.children) };
+}
+
+/** Fold every chain that offers no choice, recursively. */
+function foldChildren(children: Map<string, RouteNode>): Map<string, RouteNode> {
+  return new Map([...children].map(([key, node]) => [key, foldChain(node)]));
+}
+
+function foldChain(node: RouteNode): RouteNode {
+  let current = node;
+  // A node that is itself a page keeps its own row — folding it away would
+  // fold away the only link to it.
+  while (current.index === undefined && current.children.size === 1) {
+    const only = [...current.children.values()][0]!;
+    current = { ...only, segments: [...current.segments, ...only.segments] };
+  }
+  return { ...current, children: foldChildren(current.children) };
+}
+
+/**
+ * The tree, as nested `<details>`.
+ *
+ * Folding is the whole point at 300 pages, and this document ships a CSP that
+ * allows images and nothing else — there is no script here to fold anything.
+ * `<details>` is the one disclosure the browser implements on its own, which is
+ * why the tree is built out of it rather than out of a control that would need
+ * one line of JavaScript and cost the policy above.
+ *
+ * A folder's label toggles it; the `↗` beside it opens the page at that exact
+ * path, because most folders here are pages too — `/fr/blog` is a route and a
+ * parent at once. The link takes the click (it is the innermost activatable
+ * element, so the disclosure never sees it) and the two actions stay separate.
+ */
+function routeList(node: RouteNode, open: boolean, className = ""): string {
+  const items = [...node.children.values()].map((child) => {
+    const label = esc(child.segments.map((segment) => `/${segment}`).join(""));
+    if (child.children.size === 0) {
+      return child.index === undefined
+        ? `<li class="leaf"><span>${label}</span></li>`
+        : `<li class="leaf"><a href="#page-${child.index}">${label}</a></li>`;
+    }
+    // A folder the crawl never read as a page of its own — `/endpoints` under a
+    // docs tree — still holds the slot open, or the counts down the column stop
+    // lining up wherever one is missing.
+    const self =
+      child.index === undefined
+        ? `<span class="go"></span>`
+        : `<a class="go" href="#page-${child.index}" title="the page at this path">↗</a>`;
+    return `<li><details${open ? " open" : ""}><summary><span class="seg">${label}</span><span class="n">${child.count}</span>${self}</summary>
+${routeList(child, open)}</details></li>`;
+  });
+  return `<ul${className ? ` class="${className}"` : ""}>${items.join("\n")}</ul>`;
+}
+
+/**
+ * Pages small enough to read at once are shown at once.
+ *
+ * A dozen routes folded into four collapsed rows is worse than the flat list
+ * this replaced; three hundred is the case that needed a tree at all.
+ */
+const TREE_OPEN_MAX = 20;
+
 /** One `<meta>` or `<link>`, printed the way the page wrote it. */
 function tagLabel(tag: {
   name?: string;
@@ -775,9 +902,21 @@ h1,h2,h3,.badge,.chip,.rid,.src,.from,.mono,code,pre,dt,.pin,.nav{font-family:va
 h1{font-size:22px;letter-spacing:-.02em;margin:0 0 6px}
 .lede{color:var(--ink2);margin:0;max-width:70ch}
 header.doc{padding:44px 0 24px;border-bottom:1px solid var(--line)}
-.nav{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0;padding:0;list-style:none;font-size:12px}
-.nav a{display:inline-block;padding:4px 9px;border:1px solid var(--line2);border-radius:3px;color:var(--ink2);text-decoration:none}
-.nav a:hover,.nav a:focus-visible{border-color:var(--brand);color:var(--brand)}
+.nav{margin:22px 0 0;max-width:620px}
+.navnote{margin:0 0 8px;font-family:var(--ui);font-size:12px;color:var(--ink3)}
+.tree,.tree ul{list-style:none;margin:0;padding:0;font-size:12px}
+.tree ul{margin-left:6px;padding-left:12px;border-left:1px solid var(--line)}
+.tree summary{display:flex;align-items:center;gap:10px;padding:3px 7px;border-radius:3px;color:var(--ink2);cursor:pointer;list-style:none}
+.tree summary::-webkit-details-marker{display:none}
+.tree summary::before{content:"▸";flex:none;width:1ch;font-size:9px;color:var(--ink3)}
+.tree details[open]>summary::before{content:"▾"}
+.tree summary:hover,.tree summary:focus-visible{background:var(--wash);color:var(--ink)}
+.tree .seg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .n{margin-left:auto;flex:none;font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.tree .go{flex:none;width:1.2em;text-align:right;font-size:11px;text-decoration:none;opacity:.55}
+.tree .go:hover,.tree .go:focus-visible{opacity:1}
+.tree .leaf a,.tree .leaf span{display:block;padding:3px 7px 3px 24px;color:var(--ink2);text-decoration:none;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .leaf a:hover,.tree .leaf a:focus-visible{background:var(--wash);color:var(--brand)}
 .page{padding-top:52px}
 .pagehead h2{font-size:16px;margin:0 0 4px}
 .pagehead .url{margin:0;font-size:13px;color:var(--ink2);word-break:break-all}
@@ -943,12 +1082,14 @@ export function renderPreview(report: GoflagReport, options: RenderPreviewOption
 
   const nav =
     extractions.length > 1
-      ? `<ul class="nav">${extractions
-          .map(
-            (extraction, index) =>
-              `<li><a href="#page-${index}">${esc(pathOf(extraction.http.finalUrl))}</a></li>`,
-          )
-          .join("")}</ul>`
+      ? `<nav class="nav">
+  <p class="navnote">${extractions.length} pages, by path. A folder folds; the ↗ beside one opens the page at that path itself.</p>
+  ${routeList(
+    buildRouteTree(extractions.map((extraction) => pathOf(extraction.http.finalUrl))),
+    extractions.length <= TREE_OPEN_MAX,
+    "tree",
+  )}
+</nav>`
       : "";
 
   return `<!doctype html>
