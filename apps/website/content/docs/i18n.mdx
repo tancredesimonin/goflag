@@ -62,11 +62,12 @@ cluster is not merged either: pointing every page's `x-default` at your home pag
 is a common mistake, and merging on it would collapse your whole site into one
 route. Those refusals are counted under `declaredClusters.refused`.
 
-[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) reads the
-same declarations, so a declared cluster produces neither a hole nor a mismatch:
-the rule groups both the sitemap's entries and the crawled pages by cluster
-before comparing them, which is what stops `/en/pricing` and `/fr/tarifs` from
-looking like two half-covered routes.
+[`hreflang.cluster-incomplete`](/docs/rules/hreflang.cluster-incomplete) and
+[`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) read the same
+declarations, so a declared cluster produces neither a hole nor a complaint: both
+group the sitemap's entries and the crawled pages by cluster before comparing
+them, which is what stops `/en/pricing` and `/fr/tarifs` from looking like two
+half-covered routes.
 
 Without any declaration there is nothing to pair on, and everything falls back to
 the pathname. On a slug-translating site that declares neither way, the hole
@@ -122,7 +123,8 @@ depends on it, so it is decided explicitly, in this order:
 3. **Nothing.** If there is no sitemap and no `--locales`, goflag **does not
    guess**. It reports the prefixes it saw during the crawl, with the evidence for
    each, and turns off every check that depends on the axis: translation holes,
-   [`hreflang.missing`](/docs/rules/hreflang.missing) and
+   [`hreflang.missing`](/docs/rules/hreflang.missing),
+   [`hreflang.cluster-incomplete`](/docs/rules/hreflang.cluster-incomplete) and
    [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch). The
    reciprocity checks below do not depend on the axis and keep running, so a run
    with no axis can still report `missingTranslations.reciprocity` entries and
@@ -162,16 +164,31 @@ The glob matches the **locale-free route**, not the URL: `/legal/**` covers
 suppressed count is still reported under `diagnostics.ignoredHoles`, so a
 suppression cannot hide how much it is hiding.
 
-## The two site-wide rules
+## The hreflang rules, and the question
 
-Beyond the matrix, two rules judge the site as a whole:
+Beyond the matrix, three checks read the locale axis. Two of them render a
+verdict; the third deliberately does not.
 
-- [`hreflang.missing`](/docs/rules/hreflang.missing): the site serves several
-  locales and a page declares no alternates at all. Without them, an engine cannot
-  tell four translations from four competing pages.
-- [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch): the
-  `<head>` and the sitemap disagree about which locales a route has. They are two
-  declarations of one intent, produced by different code paths, so they drift.
+- [`hreflang.missing`](/docs/rules/hreflang.missing) — **error.** The site serves
+  several locales and a page declares no alternates at all. Google ignores a
+  cluster whose pages do not all point at each other, so a page with none is not
+  weakly grouped, it is ungrouped: four translations compete as four pages.
+- [`hreflang.cluster-incomplete`](/docs/rules/hreflang.cluster-incomplete) —
+  **warning.** Your sitemap publishes a locale your `<head>` never names. Listing
+  a URL is you saying that version exists and should be indexed, so leaving it out
+  of the cluster puts it outside the group it belongs to.
+- [`hreflang.sitemap-mismatch`](/docs/rules/hreflang.sitemap-mismatch) — **a
+  question, not a finding.** The other direction: your `<head>` advertises a
+  translation the sitemap does not list. Nothing requires an hreflang-declared
+  page to be in a sitemap — Google calls the two declaration methods equivalent —
+  so a page correctly cross-linked and deliberately kept out of it is doing
+  nothing wrong. goflag hands you both lists and asks which of your two
+  generators is right. It appears under [`--advisories`](/docs/report#advisories--asked-for-with---advisories),
+  never in the counts, and never fails a build.
+
+These were two rules until 2026-08-15, when the pair was split: one half is
+backed by Google's reciprocity requirement and one half is backed by nothing, and
+a single rule could not honestly carry both.
 
 ## The bug that started this
 
