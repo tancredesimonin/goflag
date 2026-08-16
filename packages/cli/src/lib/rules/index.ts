@@ -982,6 +982,80 @@ const ogImageReachable: BooleanRule = {
   },
 };
 
+const ogImageSizesMismatch: BooleanRule = {
+  id: "og.image.sizes-mismatch",
+  kind: "boolean",
+  category: "opengraph",
+  severity: "warning",
+  title: "`og:image:width` and `og:image:height` must be the image's real size",
+  why:
+    "The declared size is what a crawler lays the card out with before it has " +
+    "the file, which is the whole reason `og.image.dimensions` asks for it. A " +
+    "wrong one is therefore worse than none: the crawler reserves a shape the " +
+    "image does not have, and the card is letterboxed or cropped on the first " +
+    "share — the one that matters most.\n\n" +
+    "It is also the declaration that blinds every other check. `og.image.ratio` " +
+    "reads these two numbers and refuses to fetch, so an invented 1200×630 " +
+    "scores 1.9 and passes over an image that is square. Found on a site whose " +
+    "cover art is 1024×1024 and one of whose covers is a 337-byte 1×1 " +
+    "placeholder, all three declared 1200×630 by a library that had never " +
+    "looked at them.",
+  rigor: "guideline",
+  sources: ["ogp", "meta-og-sharing"],
+  reads: ["openGraph.images", "assets"],
+  expected: "declared dimensions equal to the file's own",
+  relates: ["og.image.dimensions", "og.image.ratio", "og.image.reachable"],
+  fix: {
+    title: "Measure the image, or let the file convention do it",
+    snippet: [
+      "// app/…/opengraph-image.tsx — `size` is the truth and the declaration at once",
+      "export const size = { width: 1200, height: 630 };",
+      "",
+      "// Naming a file instead? Then the numbers are that file's, not a default.",
+      "openGraph: { images: [{ url: cover.url, width: cover.width, height: cover.height }] }",
+    ].join("\n"),
+    language: "tsx",
+  },
+  evaluate: (ex) => {
+    // No probe pass ran. Comparing a declaration against nothing would be
+    // inventing the half of the finding goflag did not measure.
+    if (!ex.assets) return { status: "na", observed: null };
+
+    const comparable = ex.openGraph.images
+      .map((image) => ({ image, probe: ex.assets?.[image.url.value.trim()] }))
+      .filter(
+        (pair) =>
+          // Both sides have to have said something. A format goflag does not
+          // decode leaves `sizes` absent, and absent means unknown — which is
+          // not a mismatch.
+          Boolean(pair.probe?.ok && pair.probe.sizes?.length) &&
+          pair.image.width?.value !== undefined &&
+          pair.image.height?.value !== undefined,
+      );
+    if (comparable.length === 0) return { status: "na", observed: null };
+
+    const observed = comparable.map(({ image, probe }) => ({
+      url: image.url.value,
+      declared: `${image.width!.value}x${image.height!.value}`,
+      // The first frame. An `og:image` is one picture; a container carrying
+      // several is an icon, and `icons.sizes-mismatch` is the rule for those.
+      actual: `${probe!.sizes![0]!.width}x${probe!.sizes![0]!.height}`,
+    }));
+
+    const wrong = observed.filter((entry) => entry.declared !== entry.actual);
+    if (wrong.length === 0) return { status: "pass", observed };
+
+    return {
+      status: "fail",
+      observed,
+      message: `The declared size is not the image's: ${wrong
+        .map((entry) => `\`${entry.url}\` declares ${entry.declared} and is ${entry.actual}`)
+        .join("; ")}.`,
+      origin: { kind: "meta", property: "og:image:width" },
+    };
+  },
+};
+
 const iconsUnreachable: BooleanRule = {
   id: "icons.unreachable",
   kind: "boolean",
@@ -1176,6 +1250,7 @@ export const RULES: ReadonlyArray<Rule> = [
   ogImageMissing,
   ogImageRatio,
   ogImageReachable,
+  ogImageSizesMismatch,
   ogLocaleAlternates,
   ogLocaleMissing,
   ogTitleMissing,

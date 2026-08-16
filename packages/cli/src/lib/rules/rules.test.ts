@@ -78,7 +78,7 @@ describe("rule registry", () => {
       expect(seen.has(rule.id)).toBe(false);
       seen.add(rule.id);
     }
-    expect(RULES.length).toBe(23);
+    expect(RULES.length).toBe(24);
   });
 
   it("cites ≥1 source per rule, and every cited source exists in the catalog", () => {
