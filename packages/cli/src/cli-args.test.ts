@@ -110,6 +110,22 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["u", "--nope"])).toThrow(/unknown option: --nope/);
   });
 
+  it("refuses --summary in baseline mode rather than accepting and ignoring it", () => {
+    // Both name what the run prints, and the diff wins: the CLI rendered it and
+    // returned, so --summary parsed and then vanished. Under --json it was
+    // worse than ignored — a rollup of the whole site, with no diff in it, next
+    // to an exit code decided by the findings it did not name.
+    const gated = ["u", "--baseline", "b.json", "--regressions-only", "--summary"];
+    expect(() => parseArgs(gated)).toThrow(/--summary cannot summarise a diff/);
+    // Capturing a baseline swallows it just as silently, and for the same
+    // reason: that path writes the file and returns before any view is chosen.
+    const capture = ["u", "--baseline", "b.json", "--update-baseline", "-s"];
+    expect(() => parseArgs(capture)).toThrow(/--summary cannot summarise a diff/);
+    // Outside baseline mode the flag is untouched, and --report is the way to
+    // keep the full report either way.
+    expect(parseArgs(["u", "--summary", "--report", "r.json"]).summary).toBe(true);
+  });
+
   it("throws on a second positional argument", () => {
     expect(() => parseArgs(["one", "two"])).toThrow(/unexpected argument: two/);
   });

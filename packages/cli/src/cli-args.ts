@@ -89,6 +89,22 @@ export function parseArgs(argv: string[]): ParsedArgs {
   if (parsed.regressionsOnly && !parsed.baseline) {
     throw new Error("--regressions-only needs a --baseline <file> to compare against");
   }
+  // Both name what the run prints, and in baseline mode the diff has already
+  // won: the CLI renders it and returns, so --summary was accepted and then
+  // swallowed. Under --json it is worse than ignored — `summarize()` has no
+  // `diff` field, so the payload rolls up the whole site while the exit code is
+  // still decided by the diff that payload does not mention.
+  //
+  // Rolling up a diff is a view nobody has designed, and picking one of the two
+  // silently is how a caller ends up reading an answer to the other question.
+  // So this refuses, like --baseline itself refuses to weaken a gate that did
+  // not ask: --report still writes the full report next to the diff.
+  if (parsed.summary && parsed.baseline) {
+    throw new Error(
+      "--summary cannot summarise a diff, and --baseline prints the diff: drop --summary, " +
+        "or use --report <file> to keep the full report",
+    );
+  }
 
   return parsed;
 }

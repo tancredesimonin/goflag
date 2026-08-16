@@ -170,7 +170,8 @@ documentation site came to quote a message the engine had stopped printing.
 --json                 Print the JSON report to stdout (nothing else).
 --summary, -s          Roll findings up (dedup by link/rule/code). Pairs with
                        --json for a compact payload; --report always writes
-                       the full report regardless.
+                       the full report regardless. Not available with
+                       --baseline: there the diff is the answer.
 --report <file>        Write the JSON report to <file>.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0

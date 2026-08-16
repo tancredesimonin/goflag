@@ -241,7 +241,7 @@
       "default": null,
       "requires": null,
       "group": "output",
-      "description": "Roll findings up (dedup by link/rule/code). Pairs with --json for a compact, agent-friendly payload."
+      "description": "Roll findings up (dedup by link/rule/code). Pairs with --json for a compact, agent-friendly payload. Not available with --baseline: there the diff is the answer, and --report writes the full report."
     },
     {
       "name": "--timeout",

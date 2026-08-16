@@ -8,7 +8,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -207,6 +207,35 @@ describe("goflag CLI (spawned process)", () => {
     expect(written.url).toContain("/good");
     expect(written.summary.verdict).toBe("green");
   }, 30_000);
+
+  it("delivers a --json report larger than a pipe buffer without truncating it", async () => {
+    // `process.exit` discards whatever is still queued, and a write to a pipe
+    // is asynchronous where a write to a TTY or a file is not. So the report
+    // was whole on a terminal, whole redirected to a file, and cut off at one
+    // 64 KB pipe buffer — mid-token, unparseable — the moment it was piped
+    // into anything: `| jq`, `| tee`, a CI step reading stdout.
+    //
+    // `runCli` spawns with stdout piped, which is exactly that case;
+    // --conformance and --advisories are here only to push the payload past
+    // the buffer, because size is what exposes this and the demo report is
+    // 14 KB without them. The size assertion guards the premise: if the
+    // payload ever shrinks below a buffer, this test says so rather than
+    // quietly stopping to test anything.
+    const r = await runCli([
+      `${server.url}/en`,
+      "--json",
+      "--conformance",
+      "--advisories",
+      "--static",
+      "--exclude",
+      "/x/**",
+    ]);
+    expect(Buffer.byteLength(r.stdout)).toBeGreaterThan(64 * 1024);
+
+    // Truncation shows up here, as a parse error on a report that ends mid-key.
+    const report = JSON.parse(r.stdout) as GoflagReport;
+    expect(report.conformance?.rules.length).toBeGreaterThan(0);
+  }, 30_000);
 });
 
 describe("goflag CLI — --baseline", () => {
@@ -293,6 +322,45 @@ describe("goflag CLI — --baseline", () => {
     const orphan = await runCli([...auditArgs(), "--update-baseline"]);
     expect(orphan.status).toBe(2);
     expect(orphan.stderr).toContain("needs a --baseline");
+  }, 60_000);
+
+  it("writes --report on the run that captures the baseline", async () => {
+    // The two flags are asked for together on the run that turns the gate on —
+    // capture the backlog, keep the report of the run that captured it — and
+    // --update-baseline returns as soon as it has written the baseline. The
+    // report was never written: exit 0, "baseline captured" on stdout, and
+    // nothing anywhere saying the file the caller named does not exist.
+    const baseline = join(dir, "captured-with-report.json");
+    const report = join(dir, "alongside.json");
+    const captured = await runCli([
+      ...auditArgs(),
+      "--baseline",
+      baseline,
+      "--update-baseline",
+      "--report",
+      report,
+    ]);
+
+    expect(captured.status).toBe(0);
+    expect(captured.stdout).toContain("baseline captured");
+    expect(captured.stderr).toContain(`report written to ${report}`);
+    // Both files are the same full report — that is what makes one usable as
+    // the baseline the other was measured against.
+    expect(readFileSync(report, "utf8")).toBe(readFileSync(baseline, "utf8"));
+    expect(JSON.parse(readFileSync(report, "utf8")).summary).toBeDefined();
+  }, 60_000);
+
+  it("refuses --summary in baseline mode, before spending a crawl on it", async () => {
+    // It used to parse and then be ignored, which is the failure the refusal
+    // replaces: the diff is what baseline mode prints, and a rollup cannot say
+    // what changed.
+    const file = join(dir, "never-written.json");
+    const refused = await runCli([...auditArgs(), "--regressions-only", "--baseline", file, "-s"]);
+
+    expect(refused.status).toBe(2);
+    expect(refused.stderr).toContain("--summary cannot summarise a diff");
+    // Refused while parsing: no audit ran, and nothing was written.
+    expect(existsSync(file)).toBe(false);
   }, 60_000);
 
   it("exits 0 against its own baseline, however many findings there are", async () => {
