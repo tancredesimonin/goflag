@@ -44,6 +44,20 @@ default:
   interruptible: true
   image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
 
+  # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
+  # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
+  # projected for August, against 10 000 included — so this one line is what
+  # takes the namespace back under quota and the overage bill to zero.
+  #
+  # In `default:` so it reaches the three security templates from the
+  # cross-project includes as well. None of them needs Docker, so none of them
+  # needs opting back out.
+  #
+  # Reverting is deleting this line: the runner is `untagged = false`, so it
+  # takes nothing it has not been asked for, and GitLab's own runners stay
+  # enabled on this project as the fallback they always were.
+  tags: [selfhosted]
+
 # No `install` stage. There used to be a job by that name whose whole purpose was
 # to publish `node_modules` as an artifact so the jobs after it would not have to
 # install — the standard shape, and it never worked here, because the `.pnpm`
@@ -418,6 +432,22 @@ test:package:og:
 # the other sites. Nothing new is provisioned: the Beszel agent already reports
 # every container on that host, and Gatus watches the three hostnames.
 .kamal_deploy_template:
+  # Opts back out of the self-hosted runner, and this is not a preference.
+  # These jobs run `docker:dind`, which needs `privileged = true`, and the
+  # runner's config.toml sets it to false on purpose: a privileged container
+  # shares the host kernel with nothing worth calling a barrier, and any job
+  # could then reach the runner's own credentials and every other job's build
+  # directory.
+  #
+  # An empty list means untagged, so `deploy`, `deploy-develop` and
+  # `kamal-proxy-reboot` keep going to GitLab's runners. They are the only jobs
+  # in this file that need Docker, and together they are a small enough share of
+  # the minutes that the included quota covers them several times over.
+  #
+  # If a job here ever fails with "Cannot connect to the Docker daemon", it
+  # belongs in this list. Never fix it by turning `privileged` on.
+  tags: []
+
   # Never interrupted. Once a job touching the running site starts, GitLab stops
   # auto-cancelling the pipeline at all — cancel during the checks, never once a
   # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
