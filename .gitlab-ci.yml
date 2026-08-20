@@ -506,14 +506,26 @@ deploy-develop:
   # `changes:` because 21 of the 58 pushes to `develop` between 1 and 13 August
   # could not have altered the image, and rebuilt and redeployed a byte-identical
   # site anyway. The Dockerfile installs and builds with
-  # `--filter "@goflag/website..."`, so `packages/cli` source never reaches the
-  # output and a change to it cannot show on the site.
+  # `--filter "@goflag/website..."`, so `packages/cli`'s *source* never reaches
+  # the output and a change to it cannot show on the site.
   #
-  # `packages/cli/CHANGELOG.md` is the exception and has to be listed by name:
-  # `apps/website/src/lib/changelog.ts:184` reads it by relative path out of the
-  # standalone tree at build time, which is also why the Dockerfile copies the
-  # workspace root rather than the app alone. `packages/next/CHANGELOG.md` is
-  # read the same way and is already covered by the glob above it.
+  # Four files under `packages/**` are the exception: `apps/website` reads them
+  # by relative path out of the standalone tree at build time, which is also why
+  # the Dockerfile copies the workspace root rather than the app alone. Every one
+  # of them has to be reachable from this list, or `develop` serves the previous
+  # copy while the repository says otherwise.
+  #
+  #   packages/next/CHANGELOG.md   the glob above it already covers this one
+  #   packages/cli/CHANGELOG.md    src/lib/changelog.ts:190  → /changelog
+  #   packages/cli/rules.json      src/lib/rules-catalog.ts:109 → /docs/rules
+  #   packages/cli/flags.json      src/lib/cli-reference.ts:76  → /docs/cli
+  #
+  # The last two were missing until 2026-08-20, and the paragraph above them used
+  # to claim no `packages/cli` file reached the site at all — true when it was
+  # written, false from the commit that made `/docs/rules` read the generated
+  # catalogue. Both files are generated from the registries under
+  # `packages/cli/src/` (AGENTS.md I6), so adding a rule or a flag rewrites two
+  # published pages, and until this list named them it did not deploy either.
   #
   # The manual rule below is untouched: anything this list gets wrong is one
   # click away from being deployed by hand.
@@ -524,6 +536,8 @@ deploy-develop:
         - packages/next/**/*
         - packages/og/**/*
         - packages/cli/CHANGELOG.md
+        - packages/cli/flags.json
+        - packages/cli/rules.json
         - Dockerfile
         - config/deploy*.yml
         - package.json
