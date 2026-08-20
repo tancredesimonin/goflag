@@ -7,6 +7,7 @@ import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { TerminalTranscript } from "@/components/docs/terminal-transcript";
 import { ChromiumTree } from "@/components/figures/chromium-tree";
 import { FingerprintCard } from "@/components/figures/fingerprint-card";
+import { ForbiddenLoop } from "@/components/figures/forbidden-loop";
 import { LocaleMatrix } from "@/components/figures/locale-matrix";
 import { PhantomLocale } from "@/components/figures/phantom-locale";
 import { SITE } from "@/lib/constants";
@@ -86,6 +87,7 @@ const components = {
   // none: a component nothing renders is what `HERO_REPORT` was.
   ChromiumTree,
   FingerprintCard,
+  ForbiddenLoop,
   LocaleMatrix,
   PhantomLocale,
   a: Anchor,
