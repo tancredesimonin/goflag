@@ -1,0 +1,42 @@
+
+[1mgoflag[0m [2mhttps://example.com/[0m [2m(summary)[0m
+[31mRED FLAG[0m  [2m128 pages crawled, 128 scanned[0m
+
+[1m[33m1 broken link[0m[0m   [1m[33m2 missing translations[0m[0m   [1m[33m4 SEO issues[0m[0m   [1m[33m1 site issue[0m[0m   [2m0 unreachable pages[0m
+
+[1mBroken links[0m
+  [33m[blocked 403 forbidden][0m https://api.partner.example/status [2m×1[0m
+    [2mon https://example.com/blog/hreflang-basics[0m
+  [31m[404][0m https://example.com/guides/canonical-tags [2m×1[0m
+    [2mon https://example.com/blog/hreflang-basics[0m
+
+[1mMissing translations[0m
+  [36m/blog/hreflang-basics[0m — missing [33mde[0m[2m (have en, fr)[0m
+  [33mmissing-back-link[0m [2m×1[0m
+    /fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.
+    [2mon https://example.com/fr/blog/hreflang-basics[0m
+
+[1mSEO issues[0m
+  [31merror[0m [36mrobots.conflict[0m[2m [vendor-spec][0m [2m×1[0m
+    [2mTwo directives that disagree leave indexing to the crawler's tie-break[0m
+    [2mon https://example.com/pricing[0m
+  [33mwarn [0m [36mcanonical.missing[0m[2m [vendor-spec][0m [2m×1[0m
+    [2mDeclare a <link rel="canonical"> so search engines pick the right URL[0m
+    [2mon https://example.com/blog/hreflang-basics[0m
+  [33mwarn [0m [36mdescription.length[0m[2m [heuristic][0m [2m×1[0m
+    [2mA description outside the window is rewritten or truncated[0m
+    [2mon https://example.com/blog/hreflang-basics[0m
+  [33mwarn [0m [36mog.image.missing[0m[2m [guideline][0m [2m×1[0m
+    [2mProvide at least one og:image so links unfurl with a preview[0m
+    [2mfix:[0m // app/…/page.tsx
+         [2mexport const metadata = {[0m
+         [2m  openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },[0m
+         [2m};[0m
+    [2mon https://example.com/pricing[0m
+
+[1mSite-wide issues[0m
+  [31merror[0m [36mhreflang.missing[0m[2m [vendor-spec][0m [2m×1[0m
+    [2mPages on a multilingual site must advertise their locale alternates[0m
+    [2mon https://example.com/[0m
+
+[2mnote: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.[0m

@@ -1,0 +1,32 @@
+
+goflag https://example.com/
+RED FLAG  128 pages crawled, 128 scanned
+COVERAGE  128 of 412 pages audited · 2 families sampled, largest 3/117 /{locale}/blog/{2}
+          Template rules are conclusive. Copy rules — title.length, description.length — are sampled.
+
+1 broken link   2 missing translations   4 SEO issues   1 site issue   0 unreachable pages
+
+Broken links
+  https://example.com/blog/hreflang-basics
+    [404] https://example.com/guides/canonical-tags
+    [blocked 403 forbidden] https://api.partner.example/status
+
+Missing translations
+  /blog/hreflang-basics — missing de (have en, fr)
+  missing-back-link https://example.com/fr/blog/hreflang-basics
+    /fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.
+
+SEO issues
+  https://example.com/blog/hreflang-basics
+    warn  canonical.missing  Page is missing <link rel="canonical">.
+    warn  description.length  Description is 31 characters — short of the recommended 50–160 window.
+  https://example.com/pricing
+    error robots.conflict  Conflicting robots directives: meta robots say noindex, meta googlebot say index.
+    warn  og.image.missing  Page has no og:image.
+
+Site-wide issues
+  locales: en, fr, de (via sitemap)
+  https://example.com/
+    error hreflang.missing  Site serves 3 locales but declares no hreflang alternates.
+
+note: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.

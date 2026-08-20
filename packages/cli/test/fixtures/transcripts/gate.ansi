@@ -1,0 +1,10 @@
+
+[1mgoflag[0m [2m--regressions-only[0m
+[31mREGRESSION[0m  1 new · [1m13 known findings NOT gating this build[0m[2m · 1 resolved[0m
+[2mbaseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)[0m
+
+[1mNew findings[0m
+  [31m+[0m [31merror[0m [2mseo[0m  canonical.absolute on https://example.com/pricing
+
+[1mResolved[0m
+  [32m-[0m [33mwarn [0m [2mseo[0m  og.image.missing on https://example.com/about

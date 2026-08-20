@@ -1,0 +1,14 @@
+[
+  {
+    "id": "full",
+    "command": "npx @goflag/cli https://example.com"
+  },
+  {
+    "id": "summary",
+    "command": "npx @goflag/cli https://example.com --summary"
+  },
+  {
+    "id": "gate",
+    "command": "npx @goflag/cli https://example.com --baseline .goflag/baseline.json --regressions-only --max-debt 14"
+  }
+]
