@@ -5,6 +5,12 @@ A CLI that audits a site for broken links, missing translation pages, a robots.t
 [![node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](https://github.com/tancredesimonin/goflag/blob/main/package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
+[![A goflag run against a site with findings: a red verdict over the crawl counts, a COVERAGE line saying how many pages of the sitemap were audited, the tally of broken links, missing translations and SEO issues, then the broken links listed under the page that references them.](https://goflag.tech/assets/hero.png)](https://goflag.tech/docs/report)
+
+<sub>The first eleven lines of a real run. Rendered from the same transcript the
+documentation site paints, which is compared to the renderers byte for byte —
+so this picture cannot drift from what the command prints.</sub>
+
 Goflag crawls a site once and judges what it found. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
 
 It is built for the mistakes that are invisible while browsing and expensive in
