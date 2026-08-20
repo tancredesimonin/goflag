@@ -23,6 +23,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { renderPreviewFixture } from "./preview-fixture";
 import { TRANSCRIPTS } from "./transcripts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,14 @@ for (const spec of TRANSCRIPTS) {
   writeFileSync(join(outDir, `${spec.id}.txt`), spec.render(false), "utf8");
 }
 
+// The preview lands in the same folder, and that is not laziness: the
+// `changes:` glob of `deploy-develop` and the `git add` of the pre-commit hook
+// both already name `packages/cli/test/fixtures/transcripts`, and
+// `**/fixtures/**` is prettier-ignored so the HTML is not reformatted. A new
+// folder would cost two more edits and a paragraph in `.gitlab-ci.yml` to buy
+// a more accurate directory name.
+writeFileSync(join(outDir, "preview.html"), renderPreviewFixture(), "utf8");
+
 // The manifest is what the site iterates: it carries the order the tabs appear
 // in and the command printed above each panel, so neither is retyped there.
 const manifest = TRANSCRIPTS.map((spec) => ({ id: spec.id, command: spec.command }));
@@ -45,3 +54,9 @@ for (const spec of TRANSCRIPTS) {
   const widest = Math.max(...lines.map((line) => line.length));
   process.stdout.write(`${spec.id}: ${lines.length} lines, ${widest} columns\n`);
 }
+
+const preview = renderPreviewFixture();
+process.stdout.write(
+  `preview.html: ${Buffer.byteLength(preview, "utf8")} bytes, ` +
+    `${(preview.match(/<img/g) ?? []).length} images\n`,
+);

@@ -469,6 +469,11 @@ same confidence would be six unearned claims, so the file says which is which.
 It never gates — it exits 0 unless the run itself failed — and it prints the
 path it wrote, so `open "$(goflag preview http://localhost:3000)"` opens it.
 
+An example of what it writes — a real audit, frozen, so its footer names the date it was
+taken — is served at <https://goflag.tech/assets/example-preview.html>. The URL is absolute
+because `prepack` copies this file into the package and npm renders it, where a relative link
+is dead.
+
 ### Multilingual sites
 
 Discovery is seeded from the sitemap, not just from links. That matters because
