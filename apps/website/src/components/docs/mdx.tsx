@@ -5,6 +5,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { TerminalTranscript } from "@/components/docs/terminal-transcript";
+import { ChromiumTree } from "@/components/figures/chromium-tree";
 import { LocaleMatrix } from "@/components/figures/locale-matrix";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,7 @@ const components = {
   // Registered now that there is a figure to show. A generic `Figure`
   // wrapper was deliberately not added a commit earlier, when there was
   // none: a component nothing renders is what `HERO_REPORT` was.
+  ChromiumTree,
   LocaleMatrix,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
