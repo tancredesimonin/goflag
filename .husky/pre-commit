@@ -61,8 +61,14 @@ fi
 # Not the guarantee either. `test/unit/transcripts.test.ts` re-renders and
 # compares byte for byte in the suite CI runs, which `--no-verify` cannot skip,
 # and it checks the frozen reports still add up the way `build.ts` counts.
+# `src/lib/rules/` is in this list and not only in the `rules.json` stanza
+# above, and that is not a copy-paste slip: the findings pinned on the cards of
+# `preview.html` are *derived* by the rule registry, so changing a rule's
+# message or severity rewrites that file too — the same relation `rules.json`
+# already has with that folder. A commit touching a rule therefore regenerates
+# twice, the catalogue and the transcripts. Both are correct.
 if git diff --cached --name-only |
-  grep -qE '^packages/cli/(src/report/|scripts/transcripts\.ts)'; then
+  grep -qE '^packages/cli/(src/report/|src/lib/rules/|scripts/(transcripts|preview-fixture)\.ts)'; then
   pnpm --filter @goflag/cli generate:transcripts >/dev/null
   git add packages/cli/test/fixtures/transcripts
 fi

@@ -99,12 +99,27 @@ et du JSX brut collé dans le MDX détruit cette surface.
 **Fini quand** : les sept blocs `plaintext` déjà collés (`quickstart.mdx`, `ci/baseline.mdx` ×3,
 `profiles.mdx` ×2) sont des panneaux colorisés, sans une ligne de contenu réécrite.
 
-### V-3 — `preview.html` servi · 1 h
+### V-3 — `preview.html` servi · 6 à 8 h (estimé 1 h à tort)
 
 **Quoi** : `src/app/assets/example-preview.html/route.ts` (`force-static`, lecture relative,
 calqué sur `/raw/[...path]`), lié depuis `/docs/preview` et le README.
-**Prérequis non négociable** : le rapport gelé doit déclarer des `og:image` qui _résolvent_,
-sinon les sept cartes sont sept icônes cassées.
+**Ce que la ligne « prérequis non négociable » cachait.** C'était tout le chantier, pas une
+condition. `renderPreview` dessine depuis `report.extractions`, que `DEMO_REPORT` n'a pas — sans
+elles il écrit 11 819 octets disant « nothing to draw », **sans jeter**, et ce fichier se
+déploie, se sert et se lie parfaitement. D'où une assertion qui refuse cette phrase par son nom.
+
+**Et une `Extraction` ne s'écrit pas à la main** : un `<head>` réaliste s'y projette en 302
+lignes de JSON, chaque `Fact` portant un `TagOrigin` d'une union à sept variantes. La partie
+écrite à la main recule donc d'un cran, jusqu'au seul artefact qu'une personne rédige vraiment —
+**le `<head>`**. `pageFromHtml` puis `extractionFromPage` sont purs (cheerio, ni serveur ni
+navigateur) et c'est le chemin de `build.ts:679`, donc les findings épinglés sur les cartes sont
+_dérivés_ par le vrai registre de règles au lieu d'être affirmés.
+
+**Conséquence à assumer** : le corpus audite `openfinanceguide.com`, un site réel, donc chaque
+ligne du `<head>` gelé devient une affirmation publiée à son sujet — et doit être vraie. Le
+premier jet omettait les cinq `<link rel="icon">` que le site déclare et dérivait
+`icons.missing` sur les quatre pages : un finding faux à propos d'un vrai site, attrapé en
+vérifiant le markup servi.
 **Fini quand** : la page qui promet un regard en offre un, et aucun navigateur n'a été piloté
 pour ça.
 
