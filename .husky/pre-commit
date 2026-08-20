@@ -70,5 +70,9 @@ fi
 if git diff --cached --name-only |
   grep -qE '^packages/cli/(src/report/|src/lib/rules/|scripts/(transcripts|preview-fixture)\.ts)'; then
   pnpm --filter @goflag/cli generate:transcripts >/dev/null
-  git add packages/cli/test/fixtures/transcripts
+  # `README.md` too: the generator rewrites the marked regions in it, and this
+  # file *is* the npm page for `@goflag/cli` — `prepack` copies it. Staging only
+  # the fixtures would leave the rewritten README as an unstaged change that the
+  # commit does not carry, so the package listing keeps the old block.
+  git add packages/cli/test/fixtures/transcripts README.md
 fi

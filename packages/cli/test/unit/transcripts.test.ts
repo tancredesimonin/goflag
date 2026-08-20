@@ -59,6 +59,41 @@ describe("the committed transcripts", () => {
   });
 });
 
+describe("the README's generated regions", () => {
+  const readme = readFileSync(join(here, "..", "..", "..", "..", "README.md"), "utf8");
+  const regions = [
+    ...readme.matchAll(
+      /<!-- goflag:transcript ([a-z-]+) -->\n\n```plaintext\n([\s\S]*?)\n```\n\n<!-- \/goflag:transcript -->/g,
+    ),
+  ].map((m) => ({ id: m[1]!, body: m[2]! }));
+
+  it("has regions at all, so the rest of this block is not vacuous", () => {
+    // The generator only rewrites a region whose markers already exist. If a
+    // marker pair were deleted or misspelled, generation would keep reporting
+    // success and every assertion below would pass over an empty list.
+    expect(regions.length).toBeGreaterThan(0);
+  });
+
+  it.each(regions.map((r) => [r.id, r] as const))("quotes the renderer: %s", (_id, region) => {
+    // The root README is the npm page for this package — `prepack` copies it —
+    // so a block that drifts here is a wrong sample on a package listing, which
+    // is the same defect as a wrong sample on the documentation site.
+    const spec = TRANSCRIPTS.find((s) => s.id === region.id);
+    expect(spec).toBeDefined();
+    expect(region.body).toBe(trimEdges(spec!.render(false)));
+  });
+
+  it("quotes nothing too wide for the narrower of the two renderings", () => {
+    // GitHub gives a README about 830px and npm about 700 — roughly 90
+    // monospace characters. A wider block does not wrap, it scrolls sideways
+    // or clips, which is why the full report (108 columns) is not in here.
+    for (const region of regions) {
+      const widest = Math.max(...region.body.split("\n").map((line) => line.length));
+      expect(widest).toBeLessThanOrEqual(90);
+    }
+  });
+});
+
 describe("the frozen report", () => {
   it("counts its findings the way `build.ts` does", () => {
     // Hand-written, so nothing derives these for us. `renderTerminal` lists
@@ -136,4 +171,12 @@ describe("the gate transcript's clock", () => {
 /** `build.ts:981`, restated so the expectation reads as the rule it checks. */
 function summaryIsRed(brokenLinks: number, errorFindings: number): boolean {
   return brokenLinks > 0 || errorFindings > 0;
+}
+
+/** The renderers breathe with a blank line at each end; a fence does not. */
+function trimEdges(text: string): string {
+  const lines = text.split("\n");
+  while (lines.length && lines[0]!.trim() === "") lines.shift();
+  while (lines.length && lines[lines.length - 1]!.trim() === "") lines.pop();
+  return lines.join("\n");
 }
