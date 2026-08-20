@@ -46,3 +46,23 @@ if git diff --cached --name-only | grep -q '^packages/cli/src/lib/flags/'; then
   pnpm --filter @goflag/cli generate:flags >/dev/null
   git add packages/cli/flags.json
 fi
+
+# `packages/cli/test/fixtures/transcripts/` is the same arrangement once more,
+# for the terminal output the site paints and the README quotes. It exists
+# because the hand-written version failed in exactly the way the two above were
+# built to prevent: `[rigor]` shipped, the transcription on the site did not
+# grow it, and the caption beside it went on claiming "Real output" for four
+# days — the sample-presented-as-truth the README names by name.
+#
+# Watches the renderers and the frozen reports, not the whole package: the
+# transcripts are a pure function of those two, so anything else staged cannot
+# change them.
+#
+# Not the guarantee either. `test/unit/transcripts.test.ts` re-renders and
+# compares byte for byte in the suite CI runs, which `--no-verify` cannot skip,
+# and it checks the frozen reports still add up the way `build.ts` counts.
+if git diff --cached --name-only |
+  grep -qE '^packages/cli/(src/report/|scripts/transcripts\.ts)'; then
+  pnpm --filter @goflag/cli generate:transcripts >/dev/null
+  git add packages/cli/test/fixtures/transcripts
+fi

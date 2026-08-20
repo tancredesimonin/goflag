@@ -1,0 +1,10 @@
+
+goflag --regressions-only
+REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
+baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
+
+New findings
+  + error seo  canonical.absolute on https://example.com/pricing
+
+Resolved
+  - warn  seo  og.image.missing on https://example.com/about

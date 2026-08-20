@@ -519,6 +519,8 @@ deploy-develop:
   #   packages/cli/CHANGELOG.md    src/lib/changelog.ts:190  → /changelog
   #   packages/cli/rules.json      src/lib/rules-catalog.ts:109 → /docs/rules
   #   packages/cli/flags.json      src/lib/cli-reference.ts:76  → /docs/cli
+  #   packages/cli/test/fixtures/transcripts/**
+  #                                src/lib/transcripts.ts:101  → the home page
   #
   # The last two were missing until 2026-08-20, and the paragraph above them used
   # to claim no `packages/cli` file reached the site at all — true when it was
@@ -538,6 +540,7 @@ deploy-develop:
         - packages/cli/CHANGELOG.md
         - packages/cli/flags.json
         - packages/cli/rules.json
+        - packages/cli/test/fixtures/transcripts/**/*
         - Dockerfile
         - config/deploy*.yml
         - package.json

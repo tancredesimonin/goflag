@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Terminal } from "@/components/site/terminal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FULL_REPORT, GATE_REPORT, SUMMARY_REPORT } from "@/lib/terminal-samples";
+import { FULL_REPORT, GATE_REPORT, SUMMARY_REPORT } from "@/lib/transcripts";
 
 export async function Output() {
   const t = await getTranslations("home.terminal");
