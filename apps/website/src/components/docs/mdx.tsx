@@ -6,6 +6,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { TerminalTranscript } from "@/components/docs/terminal-transcript";
 import { ChromiumTree } from "@/components/figures/chromium-tree";
+import { FingerprintCard } from "@/components/figures/fingerprint-card";
 import { LocaleMatrix } from "@/components/figures/locale-matrix";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,7 @@ const components = {
   // wrapper was deliberately not added a commit earlier, when there was
   // none: a component nothing renders is what `HERO_REPORT` was.
   ChromiumTree,
+  FingerprintCard,
   LocaleMatrix,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
