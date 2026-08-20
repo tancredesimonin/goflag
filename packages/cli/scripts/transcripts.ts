@@ -236,6 +236,23 @@ export const DEMO_DIFF: ReportDiff = {
 };
 
 /**
+ * The other gate state, and the one a working repository sees most: nothing
+ * new, the debt unchanged, the build passing. It is a separate transcript
+ * rather than a crop of the one above because the headline word changes —
+ * `REGRESSION` becomes `REGRESSION GATE` — and that is the distinction
+ * `ci/baseline.mdx` spends a paragraph on.
+ *
+ * Still never green. `renderDiffTerminal` refuses the word `CLEAN` while
+ * `unchanged` is above zero, which is the point of the mode.
+ */
+export const DEMO_DIFF_HOLDING: ReportDiff = {
+  baseline: { url: `${SITE}/`, finishedAt: BASELINE_TAKEN, profile: "default" },
+  added: [],
+  resolved: [],
+  unchanged: 13,
+};
+
+/**
  * One entry per published transcript. The generator writes what `render`
  * returns and the test re-runs the same list, so neither can render something
  * the other does not.
@@ -266,5 +283,10 @@ export const TRANSCRIPTS: readonly TranscriptSpec[] = [
     id: "gate",
     command: `npx @goflag/cli ${SITE} --baseline .goflag/baseline.json --regressions-only --max-debt 14`,
     render: (color) => renderDiffTerminal(DEMO_DIFF, { color, now: FROZEN_NOW }),
+  },
+  {
+    id: "gate-holding",
+    command: `npx @goflag/cli ${SITE} --baseline .goflag/baseline.json --regressions-only --max-debt 13`,
+    render: (color) => renderDiffTerminal(DEMO_DIFF_HOLDING, { color, now: FROZEN_NOW }),
   },
 ] as const;

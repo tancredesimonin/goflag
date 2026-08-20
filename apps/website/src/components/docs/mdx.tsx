@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { PackageManagerCode } from "@/components/docs/package-manager-code";
+import { TerminalTranscript } from "@/components/docs/terminal-transcript";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,11 @@ const components = {
   Callout,
   SiteEmail,
   PackageManagerCode,
+  // Named `Terminal` in the MDX rather than `TerminalTranscript`, because
+  // what a page author writes is the thing they mean. It takes an `id` and
+  // paints the generated transcript; the fence written inside it is the
+  // copy `/raw` serves, pinned to the same file by `docs-transcripts.test.ts`.
+  Terminal: TerminalTranscript,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">

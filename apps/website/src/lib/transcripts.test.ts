@@ -27,8 +27,15 @@ const text = (span: Span) => (typeof span === "string" ? span : span.t);
 const flatten = (spans: readonly Span[]) => spans.map(text).join("");
 
 describe("the transcripts the panel paints", () => {
-  it("carries the three views, in the order the generator wrote them", () => {
-    expect(SAMPLES.map((s) => s.id)).toEqual(["full", "summary", "gate"]);
+  it("carries every generated view, in the order the generator wrote them", () => {
+    // Against the manifest rather than a list spelled out here: a fourth
+    // transcript is a normal thing to add, and a test that has to be edited
+    // for it teaches people to edit tests.
+    const manifest = JSON.parse(readFileSync(join(dir, "index.json"), "utf8")) as Array<{
+      id: string;
+    }>;
+    expect(SAMPLES.map((s) => s.id)).toEqual(manifest.map((entry) => entry.id));
+    expect(SAMPLES.length).toBeGreaterThanOrEqual(3);
     expect(FULL_REPORT.command).toContain("npx @goflag/cli");
     expect(GATE_REPORT.command).toContain("--regressions-only");
   });
