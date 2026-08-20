@@ -46,6 +46,19 @@ The pnpm version is written once, in `packageManager`. Never add a
   `packages/cli/flags.json` come from the registries under `src/lib/rules/` and
   `src/lib/flags/`, and `catalog.test.ts` in each compares the committed file byte for byte.
   The pre-commit hook regenerates them; `--no-verify` skips the hook, never the test.
+  `packages/cli/test/fixtures/transcripts/` joins them: the terminal output the site paints,
+  the `preview.html` it serves, the fingerprint pairs it quotes, and the block injected between
+  markers in `README.md` all come out of `generate-transcripts.ts` and are compared the same way.
+- **I7** — a published visual is **derived or drawn, never transcribed**. Text the CLI prints is
+  generated and compared byte for byte (I6). An image is a route prerendered at build
+  (`/assets/[id]`, `/og/docs/[...slug]`) — an artefact that is not in git cannot go stale, which
+  is why it needs no fingerprint and no `--check`. A diagram is a component, so its source _is_
+  the artefact; where it asserts something the engine decides, a test reads that decision out of
+  `packages/cli` by relative path and fails when the two disagree.
+  Two exceptions, both with their reason written beside them: `public/favicon.ico`, because no
+  Next convention emits an `.ico`; and the two OFL JetBrains Mono faces under
+  `apps/website/src/lib/seo/fonts/`, because satori accepts neither a system face nor WOFF2 and
+  `next/font` emits only WOFF2. Nothing else is committed as a binary — `.gitattributes` says so.
 
 ## Pitfalls
 
@@ -53,6 +66,13 @@ The pnpm version is written once, in `packageManager`. Never add a
   `CHANGELOG.md` by relative path at build time — it cannot import them (I3). That is why the
   Dockerfile copies the workspace root, and why `packages/cli/CHANGELOG.md` is listed by name
   in `deploy-develop`'s `changes:` rules.
+- `renderDiffTerminal` reads a clock — `options.now ?? Date.now()` — and prints the baseline's
+  age in whole days. Anything that renders it into a committed fixture must inject `now`, or the
+  text changes at midnight UTC and the byte-for-byte test reddens on a tree nobody touched.
+- The root `README.md` **is** the npm page for `@goflag/cli`: `prepack` stages it into the
+  package. A relative link resolves against the repository on GitHub and against nothing on npm,
+  so every link in it is absolute — `catalog.test.ts` fails on any that is not. Same reason the
+  images it shows are absolute URLs on `goflag.tech` rather than repository paths.
 - Never hand-edit the version pins in `README.md` or `apps/website/src/lib/constants.ts`:
   `pnpm release` rewrites both, and `constants.test.ts` fails until it has.
 - `packages/cli/README.md` and `packages/cli/LICENSE` are copied from the repository root by
