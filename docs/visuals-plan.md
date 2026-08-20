@@ -6,6 +6,8 @@
 > **Portée** — les assets visuels des trois surfaces publiées (landing, `/docs`, README/npm),
 > et la chaîne qui les produit. **Hors portée** : le contenu rédactionnel lui-même, et le job
 > CI qui auditerait goflag.tech (§5).
+> **Livré** 2026-08-20, V-0 à V-6, en douze merge requests (!194 à !204 et celle-ci).
+> §6 enregistre les trois écarts pris en chemin.
 > **Lié** — `docs/preview-plan.md` (D2, le fichier autonome), `docs/og-plan.md` (§6.4, le
 > `.ico` et l'empreinte des entrées), `docs/rules-catalog-plan.md` (le catalogue dont les
 > figures dérivent), `AGENTS.md` (I1, I3, I4, I6).
@@ -14,15 +16,15 @@
 
 ## 0. Ce que ce plan tranche
 
-| #      | Décision                                                                                                                                                               |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **V1** | Un asset publié est **dérivé** d'une source committée, ou **dessiné** et épinglé par un test — jamais transcrit à la main                                              |
-| **V2** | Une **image** publiée n'est pas un fichier du dépôt mais une route Next prérendue au build                                                                             |
-| **V3** | Un **diagramme** est un composant, SVG inline : la source _est_ l'artefact, il n'y a pas d'intermédiaire à périmer                                                     |
-| **V4** | `favicon.ico` reste le **seul** artefact binaire committé à empreinte — aucune convention Next n'émet un `.ico`, et cette précondition n'est vraie nulle part ailleurs |
-| **V5** | `preview.html` est **servi et lié**, pas photographié : c'est un fichier à déposer, pas un sujet à capturer                                                            |
-| **V6** | Sortie **étroite** (verdict, compteurs, en-têtes de gate) → image ; sortie **large** (207 colonnes) → panneau HTML scrollable, jamais une capture                      |
-| **V7** | Aucun nouvel outil, aucun binaire, aucune ligne de plus dans le job `check:`                                                                                           |
+| #      | Décision                                                                                                                                                                                        |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **V1** | Un asset publié est **dérivé** d'une source committée, ou **dessiné** et épinglé par un test — jamais transcrit à la main                                                                       |
+| **V2** | Une **image** publiée n'est pas un fichier du dépôt mais une route Next prérendue au build                                                                                                      |
+| **V3** | Un **diagramme** est un composant : la source _est_ l'artefact, il n'y a pas d'intermédiaire à périmer. La géométrie qui **mesure** va en SVG, celle qui **relie** va dans la mise en page (§6) |
+| **V4** | `favicon.ico` reste le **seul** artefact binaire committé à empreinte — aucune convention Next n'émet un `.ico`, et cette précondition n'est vraie nulle part ailleurs                          |
+| **V5** | `preview.html` est **servi et lié**, pas photographié : c'est un fichier à déposer, pas un sujet à capturer                                                                                     |
+| **V6** | Sortie **étroite** (verdict, compteurs, en-têtes de gate) → image ; sortie **large** (207 colonnes) → panneau HTML scrollable, jamais une capture                                               |
+| **V7** | Aucun nouvel outil, aucun binaire, aucune ligne de plus dans le job `check:`                                                                                                                    |
 
 ---
 
@@ -191,3 +193,46 @@ qui cassent déjà sur npm. AGENTS.md — l'invariant de V1/V2 et le pitfall de 
   (`git ls-remote https://github.com/tancredesimonin/goflag.git` → `31e8015`) et les trois
   manifestes publiés y pointent : vérifier `bugs`, et si tout résout, l'item est à déplacer
   dans §Shipped.
+
+---
+
+## 6. Ce que la mise en œuvre a corrigé de ce plan
+
+Trois écarts, pris en chemin et écrits ici plutôt que dispersés dans des messages de commit.
+
+### La règle SVG était trop large
+
+V3 disait « SVG inline ». Cinq figures plus tard, **une seule** en avait besoin. La matrice
+route × locale et la locale fantôme sont des grilles de cellules étiquetées, donc des `<table>` —
+en SVG elles perdraient les en-têtes qu'un lecteur d'écran utilise pour naviguer, cesseraient de
+se réagencer sur mobile et auraient besoin de leur propre dimensionnement de texte. L'arbre
+Chromium et la carte du fingerprint ne font que relier des boîtes, et le dépôt avait déjà tranché
+ce cas : `components/home/workflow/connector.tsx` dessine ses connecteurs en CSS pour qu'ils
+survivent à un reflow et à la taille de texte du lecteur.
+
+La règle réelle : **la géométrie qui mesure va en SVG, celle qui relie va dans la mise en page.**
+La boucle interdite mesure — un pixel de 1×1 et un carré de 1024×1024 dessinés à l'échelle dans le
+cadre 1200×630 qu'ils prétendaient tous deux remplir — et c'est la seule qui a mérité un `<svg>`.
+
+Corollaire appris en la dessinant : **un SVG ne renvoie pas le texte à la ligne et ne se plaint
+pas.** Deux libellés sortaient du `viewBox` sans que ça ressemble à une erreur sur une capture.
+Vérifier en parcourant les `getBBox` contre le `viewBox`, pas à l'œil.
+
+### V-3 coûtait six à huit heures, pas une
+
+Ce que la ligne « prérequis non négociable » cachait est écrit au §3. En résumé : `renderPreview`
+ne jette pas sur un rapport sans `extractions`, il écrit une page qui dit « nothing to draw » —
+et ce fichier se déploie, se sert et se lie parfaitement. V-3 pouvait être livrée entièrement
+verte en ayant publié une page vide.
+
+### Le partage se juge au vocabulaire, pas à la ressemblance
+
+Le plan demandait d'extraire la matrice de la landing pour la réutiliser dans `/docs`. Refusé :
+elle a deux états de cellule parce qu'elle fait **un** point dans un switcher, la doc en enseigne
+quatre. La généraliser aurait obligé un argumentaire commercial à porter une distinction qu'il
+n'emploie jamais.
+
+Le partage qui a eu lieu est l'autre : `MatrixTable` et `MatrixLegend` sont partagées entre les
+**deux figures de la même page**, qui parlent le même vocabulaire à quatre états parce qu'elles
+enseignent le même mécanisme au même lecteur. Deux figures se partagent quand elles disent la
+même chose, pas quand elles se ressemblent.

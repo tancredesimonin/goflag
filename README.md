@@ -713,7 +713,7 @@ finding unrepresentable. Full documentation at
 Two of this catalogue's rules had no remedy to point at. `og.image.missing`
 fired 24 times on one site and `og.image.alt` 46 times on another, and the fix
 for both is "either an asset or a route you have to write" — which is how a rule
-becomes permanent debt. [`@goflag/og`](packages/og) is that route, written once.
+becomes permanent debt. [`@goflag/og`](https://github.com/tancredesimonin/goflag/tree/main/packages/og) is that route, written once.
 
 ```tsx
 // app/[locale]/opengraph-image.tsx
@@ -731,7 +731,7 @@ embeds satori — turns into a PNG at build time, so nothing installs a second
 renderer and a card can be unit-tested with no framework build. It also packs
 the `favicon.ico` **no Next convention emits**, guarded so that a generated file
 living in git is not dirtied by every commit. API reference in
-[`packages/og/README.md`](packages/og/README.md).
+[`packages/og/README.md`](https://github.com/tancredesimonin/goflag/blob/main/packages/og/README.md).
 
 ## Develop locally
 
