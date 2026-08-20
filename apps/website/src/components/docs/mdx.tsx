@@ -5,6 +5,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { TerminalTranscript } from "@/components/docs/terminal-transcript";
+import { LocaleMatrix } from "@/components/figures/locale-matrix";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,10 @@ const components = {
   // paints the generated transcript; the fence written inside it is the
   // copy `/raw` serves, pinned to the same file by `docs-transcripts.test.ts`.
   Terminal: TerminalTranscript,
+  // Registered now that there is a figure to show. A generic `Figure`
+  // wrapper was deliberately not added a commit earlier, when there was
+  // none: a component nothing renders is what `HERO_REPORT` was.
+  LocaleMatrix,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">
