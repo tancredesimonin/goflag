@@ -214,6 +214,8 @@ that **does** have a declared axis a page at `/cv` still becomes a **locale**:
 `/cv` is read as route `/` in locale `cv`, and every other route then reports a
 hole in a language the site does not serve.
 
+<PhantomLocale />
+
 `--ignore-holes` cannot suppress those. It globs the **route**, and the phantom
 gaps land on every route _except_ the one the `/cv` page occupies — there is no
 route named `/cv` to match. `--exclude` does not help either when your sitemap

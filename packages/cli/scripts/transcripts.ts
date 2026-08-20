@@ -48,7 +48,10 @@ const seo = (
   message: string,
   extra: { rigor?: GoflagReport["seoIssues"][number]["rigor"]; why?: string; fix?: string } = {},
 ) => ({
-  id: fingerprint("seo", ruleId, routeKey(`${SITE}${path}`)),
+  // `String(0)` is the occurrence counter `build.ts:710` passes: a rule that
+  // fires twice on one page needs two ids, and the counter is what keeps them
+  // apart without depending on the message. Every finding here fires once.
+  id: fingerprint("seo", ruleId, routeKey(`${SITE}${path}`), String(0)),
   pageUrl: `${SITE}${path}`,
   ruleId,
   severity,
@@ -121,7 +124,9 @@ export const DEMO_REPORT: GoflagReport = {
   missingTranslations: {
     holes: [
       {
-        id: fingerprint("hole", "/blog/hreflang-basics", "de"),
+        // `build.ts:271`. A hole is keyed by its route alone, which is why a
+        // gap widening from one missing locale to three is the same finding.
+        id: fingerprint("i18n", "hole", "/blog/hreflang-basics"),
         route: "/blog/hreflang-basics",
         presentLocales: ["en", "fr"],
         missingLocales: ["de"],
@@ -129,7 +134,14 @@ export const DEMO_REPORT: GoflagReport = {
     ],
     reciprocity: [
       {
-        id: fingerprint("recip", "missing-back-link", routeKey(`${SITE}/fr/blog/hreflang-basics`)),
+        // `build.ts:816`: the code, the route, the peer route, the locale.
+        id: fingerprint(
+          "i18n",
+          "missing-back-link",
+          routeKey(`${SITE}/fr/blog/hreflang-basics`),
+          routeKey(`${SITE}/de/blog/hreflang-basics`),
+          "de",
+        ),
         code: "missing-back-link",
         url: `${SITE}/fr/blog/hreflang-basics`,
         locale: "de",
@@ -180,7 +192,8 @@ export const DEMO_REPORT: GoflagReport = {
   ],
   siteIssues: [
     {
-      id: fingerprint("site", "hreflang.missing", routeKey(`${SITE}/`)),
+      // `build.ts:902`, occurrence counter included, same as the page rules.
+      id: fingerprint("site", "hreflang.missing", routeKey(`${SITE}/`), String(0)),
       pageUrl: `${SITE}/`,
       ruleId: "hreflang.missing",
       severity: "error",

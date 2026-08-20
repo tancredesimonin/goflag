@@ -23,6 +23,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { buildFingerprintFixture } from "./fingerprint-fixture";
 import { renderPreviewFixture } from "./preview-fixture";
 import { TRANSCRIPTS } from "./transcripts";
 
@@ -35,6 +36,15 @@ for (const spec of TRANSCRIPTS) {
   writeFileSync(join(outDir, `${spec.id}.ansi`), spec.render(true), "utf8");
   writeFileSync(join(outDir, `${spec.id}.txt`), spec.render(false), "utf8");
 }
+
+// The fingerprint comparisons, computed by the engine's own functions. The
+// documentation makes a claim about identity that a reader cannot check, and an
+// id written by hand is a number they would be right not to believe.
+writeFileSync(
+  join(outDir, "fingerprints.json"),
+  `${JSON.stringify(buildFingerprintFixture(), null, 2)}\n`,
+  "utf8",
+);
 
 // The preview lands in the same folder, and that is not laziness: the
 // `changes:` glob of `deploy-develop` and the `git add` of the pre-commit hook
