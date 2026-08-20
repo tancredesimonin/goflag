@@ -626,6 +626,25 @@ Audit external links on a schedule instead, where nobody is waiting.
 
 ### Reading a red build
 
+A red build says what moved, not what is wrong. The diff lists rule ids and
+absolute page URLs; the messages and the fixes are in the report:
+
+<!-- goflag:transcript gate -->
+
+```plaintext
+goflag --regressions-only
+REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
+baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
+
+New findings
+  + error seo  canonical.absolute on https://example.com/pricing
+
+Resolved
+  - warn  seo  og.image.missing on https://example.com/about
+```
+
+<!-- /goflag:transcript -->
+
 The report artefact is the thing to open. It is the same JSON as `--json`, and
 it is kept whether the job passed or failed, because it is most wanted when it
 is red.

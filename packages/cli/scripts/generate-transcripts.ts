@@ -19,7 +19,7 @@
  * hook runs it for you when `src/report/` is staged; `test/unit/transcripts.test.ts`
  * is the guarantee that `--no-verify` cannot skip.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,6 +49,33 @@ writeFileSync(join(outDir, "preview.html"), renderPreviewFixture(), "utf8");
 const manifest = TRANSCRIPTS.map((spec) => ({ id: spec.id, command: spec.command }));
 writeFileSync(join(outDir, "index.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
+// --- The README ---------------------------------------------------------
+//
+// The root README *is* the npm page for `@goflag/cli` — `prepack` copies it —
+// and it quotes the CLI's output in blocks that were typed by hand, the same
+// arrangement that rotted `terminal-samples.ts` one surface over. A marker pair
+// turns such a block into a generated region: everything between the two
+// comments is rewritten from the same `.txt` the fixtures carry, and
+// `readme.test.ts` fails when the file and the renderer disagree.
+//
+// Plain text, deliberately. GitHub renders a fence and so does npm, whereas npm
+// strips `<video>` outright and a coloured image would need a font vendored
+// into a repository that holds no binaries. A block only appears here when its
+// markers are already in the file: this rewrites regions, it never invents one.
+const readmePath = join(here, "..", "..", "..", "README.md");
+let readme = readFileSync(readmePath, "utf8");
+let injected = 0;
+for (const spec of TRANSCRIPTS) {
+  const region = new RegExp(
+    `(<!-- goflag:transcript ${spec.id} -->\\n)[\\s\\S]*?(<!-- /goflag:transcript -->)`,
+  );
+  if (!region.test(readme)) continue;
+  readme = readme.replace(region, `$1\n\`\`\`plaintext\n${trim(spec.render(false))}\n\`\`\`\n\n$2`);
+  injected += 1;
+}
+writeFileSync(readmePath, readme, "utf8");
+process.stdout.write(`README.md: ${injected} transcript region(s) rewritten\n`);
+
 for (const spec of TRANSCRIPTS) {
   const lines = spec.render(false).split("\n");
   const widest = Math.max(...lines.map((line) => line.length));
@@ -60,3 +87,11 @@ process.stdout.write(
   `preview.html: ${Buffer.byteLength(preview, "utf8")} bytes, ` +
     `${(preview.match(/<img/g) ?? []).length} images\n`,
 );
+
+/** The renderers breathe with a blank line at each end; a fence does not. */
+function trim(text: string): string {
+  const lines = text.split("\n");
+  while (lines.length && lines[0]!.trim() === "") lines.shift();
+  while (lines.length && lines[lines.length - 1]!.trim() === "") lines.pop();
+  return lines.join("\n");
+}
