@@ -8,6 +8,7 @@ import { TerminalTranscript } from "@/components/docs/terminal-transcript";
 import { ChromiumTree } from "@/components/figures/chromium-tree";
 import { FingerprintCard } from "@/components/figures/fingerprint-card";
 import { LocaleMatrix } from "@/components/figures/locale-matrix";
+import { PhantomLocale } from "@/components/figures/phantom-locale";
 import { SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +87,7 @@ const components = {
   ChromiumTree,
   FingerprintCard,
   LocaleMatrix,
+  PhantomLocale,
   a: Anchor,
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">
