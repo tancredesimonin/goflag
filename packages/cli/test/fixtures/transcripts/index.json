@@ -10,5 +10,9 @@
   {
     "id": "gate",
     "command": "npx @goflag/cli https://example.com --baseline .goflag/baseline.json --regressions-only --max-debt 14"
+  },
+  {
+    "id": "gate-holding",
+    "command": "npx @goflag/cli https://example.com --baseline .goflag/baseline.json --regressions-only --max-debt 13"
   }
 ]

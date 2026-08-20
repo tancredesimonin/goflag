@@ -76,6 +76,8 @@ findings, which is correct: nobody reviewed the metadata at the new URL.
 
 ## Reading the gate
 
+<Terminal id="gate">
+
 ```plaintext
 goflag --regressions-only
 REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
@@ -87,6 +89,8 @@ New findings
 Resolved
   - warn  seo  og.image.missing on https://example.com/about
 ```
+
+</Terminal>
 
 The diff lists rule ids and absolute page URLs, not messages: it is a list of
 what moved, not a report. Run without `--regressions-only`, or read the
