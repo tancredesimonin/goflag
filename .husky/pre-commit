@@ -1,3 +1,8 @@
+# Refuse a credential before anything slow runs. --redact is not optional:
+# a hook that echoes the secret it found has put it in the scrollback, the
+# shell history and every transcript of the session.
+betterleaks git . --pre-commit --staged --redact --verbose
+
 # Formatting only, and only on what is staged — plus one generated file.
 #
 # `format-check` is the single most frequent CI failure in this repository —
