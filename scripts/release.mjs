@@ -158,6 +158,42 @@ function lastTag(prefix) {
   return tags.find((tag) => tag.startsWith(prefix)) ?? null;
 }
 
+/**
+ * Whether the only thing that moved in a manifest is its `devDependencies`.
+ *
+ * A package's manifest belongs in its published surface and has to: `exports`,
+ * `files`, `dependencies` and `peerDependencies` all live there, and every one
+ * of them changes what a consumer installs. `devDependencies` does not. It is
+ * not installed by anybody who installs the package, and it is not even read.
+ *
+ * Without this, `fix(deps): update dependencies` released `@goflag/next` and
+ * `@goflag/og` on a diff that was one line each:
+ *
+ *   -    "next": "16.3.0",
+ *   +    "next": "16.3.1",
+ *
+ * Two version numbers, two changelog sections with no bullet under them, and a
+ * Renovate merge request on each of the six sites in this group for a change
+ * none of them can observe. The comment above already named the symptom — a
+ * version whose entry has no bullet was decided by something that belongs to
+ * another package — and this is the second way to produce it: not the wrong
+ * package, the wrong half of the right file.
+ *
+ * Key order is compared along with the values, so a manifest whose keys were
+ * merely reshuffled reads as changed and goes out. That is the safe direction
+ * to be wrong in: this function can only ever *withhold* a release, so it errs
+ * towards spending a number rather than towards skipping one.
+ */
+function onlyDevDependenciesMoved(manifest, tag) {
+  const before = JSON.parse(git("show", `${tag}:${manifest}`));
+  const after = JSON.parse(readFileSync(manifest, "utf8"));
+
+  delete before.devDependencies;
+  delete after.devDependencies;
+
+  return JSON.stringify(before) === JSON.stringify(after);
+}
+
 function decide(pkg) {
   const tag = lastTag(pkg.tagPrefix);
   const range = tag ? `${tag}..HEAD` : "HEAD";
@@ -194,6 +230,17 @@ function decide(pkg) {
 
   if (moved.length === 0) {
     return { release: false, why: `nothing under the published surface changed since ${tag}` };
+  }
+
+  if (
+    moved.length === 1 &&
+    moved[0] === pkg.manifest &&
+    onlyDevDependenciesMoved(pkg.manifest, tag)
+  ) {
+    return {
+      release: false,
+      why: `only its devDependencies moved since ${tag}, which nobody installs`,
+    };
   }
 
   return { release: true, why: `published surface changed since ${tag}`, moved };
