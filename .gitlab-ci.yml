@@ -679,6 +679,112 @@ publish:og:
       fi
     - cd packages/og && npm publish --access public
 
+# The bump and the changelog, authored by the pipeline instead of by hand.
+#
+# `main` and `develop` both refuse a push from everyone — the protection says
+# `push: No one`, and no token changes that, whatever its role. So the version
+# commit has to arrive by merge request like any other commit, and until now the
+# only way to write it was a checkout, a clean tree and `pnpm release` on a
+# workstation. That is a chore, and a chore is a step that gets skipped: 0.2.11
+# sat written and unmerged for a day, and the site's quoted literal sat at 0.1.4
+# while 0.2.0 was on npm.
+#
+# This job does exactly what a person did, on a branch nobody protects: cut it,
+# run the same `scripts/release.mjs`, push it with the merge request options so
+# GitLab opens the merge request itself and merges it when its pipeline passes.
+# Nothing here decides anything the script did not already decide — the
+# judgement about whether a version is earned stays in one file, and this job
+# only stops asking a human to type the command.
+#
+# Manual on purpose. Cutting a release is a decision, and the button is where it
+# is made; a job that fired on every push to develop would open a release merge
+# request against work that is not finished being merged.
+#
+# `allow_failure: true` for the same reason the `tag` retry carries it: a manual
+# job that reddens the develop pipeline when it declines to release — "Nothing
+# to release", which is a correct answer — teaches people to stop reading it.
+release:prepare:
+  # It writes a branch and opens a merge request. Not interruptible.
+  interruptible: false
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: manual
+      allow_failure: true
+  variables:
+    # `scripts/release.mjs` reads the tag list to find each package's previous
+    # version, and `commit-and-tag-version` calls `git describe` underneath.
+    # Both need the history, and a shallow checkout has neither.
+    GIT_DEPTH: 0
+  script:
+    # Needs RELEASE_TOKEN, the same project access token the `tag` job uses —
+    # `write_repository` is enough here, since the merge request is created by
+    # push options rather than by an API call, and this branch namespace is not
+    # protected. The variable is protected, and `develop` is a protected branch,
+    # which is what makes it readable from this job and from no merge request.
+    - git config user.name "goflag release"
+    - git config user.email "39413504+tancredesimonin@users.noreply.github.com"
+    - git remote set-url origin "https://oauth2:${RELEASE_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git"
+    - git fetch origin --tags --quiet
+
+    # The shared `before_script` runs `pnpm config set store-dir`, which can
+    # leave an `.npmrc` in the working directory. `scripts/release.mjs` refuses
+    # a dirty tree — rightly, since `commit-and-tag-version` commits straight
+    # after the bump and a stray file next to package.json is one `git add` from
+    # shipping — and this one is the runner's, not ours. Anything else left dirty
+    # is a real surprise, and the script is what says so.
+    - rm -f .npmrc
+    - git status --porcelain
+
+    # The script refuses to run on `develop` by name, so the branch comes first
+    # and gets its real name once the versions are known.
+    - git switch -c "release-in-progress-$CI_PIPELINE_IID"
+    - pnpm release
+
+    - |
+      if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/develop)" ]; then
+        echo "No version was earned — nothing to open a merge request for."
+        exit 0
+      fi
+
+    # A manifest only moves in a release commit, so "this file changed" and
+    # "this package was released" are the same question. Asked here rather than
+    # parsed out of the script's output: the output is for a person to read.
+    - |
+      SLUG=""; TITLE=""
+      for ENTRY in "cli:packages/cli/package.json:@goflag/cli" \
+                   "next:packages/next/package.json:@goflag/next" \
+                   "og:packages/og/package.json:@goflag/og"; do
+        SHORT="${ENTRY%%:*}"; REST="${ENTRY#*:}"
+        MANIFEST="${REST%%:*}"; NAME="${REST#*:}"
+        if git diff --quiet "origin/develop..HEAD" -- "$MANIFEST"; then continue; fi
+        VERSION="$(node -p "require('./$MANIFEST').version")"
+        SLUG="${SLUG:+$SLUG-}$SHORT-$VERSION"
+        TITLE="${TITLE:+$TITLE, }$NAME $VERSION"
+      done
+      BRANCH="chore/release-$SLUG"
+      echo "releasing: $TITLE  ->  $BRANCH"
+      git branch -m "$BRANCH"
+
+    # `merge_request.create` and its siblings are why this needs no API scope:
+    # GitLab reads them off the push itself, so `write_repository` is the whole
+    # permission. `merge_request.auto_merge` leaves the merge to the branch's own
+    # pipeline, so a release that fails to build is a release that does not land.
+    #
+    # `auto_merge` and not `merge_when_pipeline_succeeds`: that one was deprecated
+    # in 17.11 when the strategy was renamed, and gitlab.com is on 19.4.
+    - |
+      DESCRIPTION="Written by \`release:prepare\` on $CI_PIPELINE_URL, from \`scripts/release.mjs\` — the same script and the same judgement as a release cut by hand. Merging this into \`develop\` puts the version and the changelog there; merging \`develop\` into \`main\` after that is what tags and publishes."
+      git push \
+        -o merge_request.create \
+        -o merge_request.target=develop \
+        -o merge_request.title="chore(release): $TITLE" \
+        -o merge_request.description="$DESCRIPTION" \
+        -o merge_request.auto_merge \
+        -o merge_request.remove_source_branch \
+        origin "$BRANCH"
+
 # Merging develop into main is the decision to publish. This job is the only
 # thing the pipeline ever writes back to the repository, and it writes exactly
 # one kind of ref: a tag, on a commit that is already on main.
