@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "build:local-origin": "APP_ENV=production NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 next build",
     "serve:standalone": "node scripts/serve-standalone.mjs",
-    "seo": "pnpm build:local-origin && pnpm --filter @goflag/cli dev http://localhost:3004 --start \"APP_ENV=production PORT=3004 NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 pnpm --filter @goflag/website serve:standalone\" --static --no-external --depth 3 --locales en,fr,es,pt --ignore-holes /docs --ignore-holes \"/docs/**\""
+    "seo": "pnpm build:local-origin && pnpm --filter @goflag/cli dev http://localhost:3004 --start \"APP_ENV=production PORT=3004 NEXT_PUBLIC_WEBSITE_FRONTEND_URL=http://localhost:3004 pnpm --filter @goflag/website serve:standalone\" --static --no-external --exclude \"/assets/**\" --depth 3 --locales en,fr,es,pt --ignore-holes /docs --ignore-holes \"/docs/**\""
   },
   "dependencies": {
     "@goflag/next": "workspace:*",
@@ -26,7 +26,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "motion": "^12.43.0",
-    "next": "16.3.0",
+    "next": "16.3.1",
     "next-intl": "^4.9.0",
     "next-plausible": "^4.0.0",
     "next-themes": "^0.4.5",
@@ -47,7 +47,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.1",
     "postcss": "^8.5.6",
     "rehype-pretty-code": "^0.14.3",
     "rehype-slug": "^6.0.0",

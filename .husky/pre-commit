@@ -1,3 +1,8 @@
+# Refuse a credential before anything slow runs. --redact is not optional:
+# a hook that echoes the secret it found has put it in the scrollback, the
+# shell history and every transcript of the session.
+betterleaks git . --pre-commit --staged --redact --verbose
+
 # Formatting only, and only on what is staged — plus one generated file.
 #
 # `format-check` is the single most frequent CI failure in this repository —
@@ -45,4 +50,34 @@ fi
 if git diff --cached --name-only | grep -q '^packages/cli/src/lib/flags/'; then
   pnpm --filter @goflag/cli generate:flags >/dev/null
   git add packages/cli/flags.json
+fi
+
+# `packages/cli/test/fixtures/transcripts/` is the same arrangement once more,
+# for the terminal output the site paints and the README quotes. It exists
+# because the hand-written version failed in exactly the way the two above were
+# built to prevent: `[rigor]` shipped, the transcription on the site did not
+# grow it, and the caption beside it went on claiming "Real output" for four
+# days — the sample-presented-as-truth the README names by name.
+#
+# Watches the renderers and the frozen reports, not the whole package: the
+# transcripts are a pure function of those two, so anything else staged cannot
+# change them.
+#
+# Not the guarantee either. `test/unit/transcripts.test.ts` re-renders and
+# compares byte for byte in the suite CI runs, which `--no-verify` cannot skip,
+# and it checks the frozen reports still add up the way `build.ts` counts.
+# `src/lib/rules/` is in this list and not only in the `rules.json` stanza
+# above, and that is not a copy-paste slip: the findings pinned on the cards of
+# `preview.html` are *derived* by the rule registry, so changing a rule's
+# message or severity rewrites that file too — the same relation `rules.json`
+# already has with that folder. A commit touching a rule therefore regenerates
+# twice, the catalogue and the transcripts. Both are correct.
+if git diff --cached --name-only |
+  grep -qE '^packages/cli/(src/report/|src/lib/rules/|scripts/(transcripts|preview-fixture)\.ts)'; then
+  pnpm --filter @goflag/cli generate:transcripts >/dev/null
+  # `README.md` too: the generator rewrites the marked regions in it, and this
+  # file *is* the npm page for `@goflag/cli` — `prepack` copies it. Staging only
+  # the fixtures would leave the rewritten README as an unstaged change that the
+  # commit does not carry, so the package listing keeps the old block.
+  git add packages/cli/test/fixtures/transcripts README.md
 fi

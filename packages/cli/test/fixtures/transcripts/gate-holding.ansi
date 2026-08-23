@@ -1,0 +1,6 @@
+
+[1mgoflag[0m [2m--regressions-only[0m
+[33mREGRESSION GATE[0m  0 new · [1m13 known findings NOT gating this build[0m
+[2mbaseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)[0m
+
+[2mNothing moved since the baseline — 13 findings still open. Run without --regressions-only to see them.[0m

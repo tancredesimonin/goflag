@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'">
+<title>Open Finance Guide — goflag preview</title>
+<style>
+:root{--paper:#fff;--paper2:#f7f8f7;--ink:#09090b;--ink2:#4c534f;--ink3:#6d7671;--line:#e5e6e5;--line2:#d3d6d4;--brand:#009966;--green:#007a55;--amber:#bb4d00;--red:#e7000b;--wash:#f2f6f4;
+--g-title:#1a0dab;--g-text:#4d5156;--x-bg:#000;--x-fg:#e7e9ea;--x-line:#2f3336;--li-strip:#f3f2ef;--sl-link:#1264a3;--sl-rail:#ddd;--dc-bg:#313338;--dc-embed:#2b2d31;--dc-fg:#dbdee1;--dc-dim:#b5bac1;--dc-link:#00a8fc;--wa-bg:#efeae2;--wa-bubble:#d9fdd3;--wa-quote:#d1f4cb;--wa-fg:#111b21;--wa-dim:#667781;
+--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;--ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media (prefers-color-scheme:dark){:root{--paper:#0a0a0c;--paper2:#121316;--ink:#fafafa;--ink2:#b6bcb9;--ink3:#878e8a;--line:#23252a;--line2:#32353b;--brand:#00d492;--green:#00d492;--amber:#ffb900;--red:#ff6467;--wash:#101614}}
+*{box-sizing:border-box}
+body{margin:0;padding:0 20px 100px;background:var(--paper);color:var(--ink);font:15px/1.6 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin-inline:auto}
+h1,h2,h3,.badge,.chip,.rid,.src,.from,.mono,code,pre,dt,.pin,.nav{font-family:var(--mono)}
+h1{font-size:22px;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--ink2);margin:0;max-width:70ch}
+header.doc{padding:44px 0 24px;border-bottom:1px solid var(--line)}
+.nav{margin:22px 0 0;max-width:620px}
+.navnote{margin:0 0 8px;font-family:var(--ui);font-size:12px;color:var(--ink3)}
+.tree,.tree ul{list-style:none;margin:0;padding:0;font-size:12px}
+.tree ul{margin-left:6px;padding-left:12px;border-left:1px solid var(--line)}
+.tree summary{display:flex;align-items:center;gap:10px;padding:3px 7px;border-radius:3px;color:var(--ink2);cursor:pointer;list-style:none}
+.tree summary::-webkit-details-marker{display:none}
+.tree summary::before{content:"▸";flex:none;width:1ch;font-size:9px;color:var(--ink3)}
+.tree details[open]>summary::before{content:"▾"}
+.tree summary:hover,.tree summary:focus-visible{background:var(--wash);color:var(--ink)}
+.tree .seg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .n{margin-left:auto;flex:none;font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.tree .go{flex:none;width:1.2em;text-align:right;font-size:11px;text-decoration:none;opacity:.55}
+.tree .go:hover,.tree .go:focus-visible{opacity:1}
+.tree .leaf a,.tree .leaf span{display:block;padding:3px 7px 3px 24px;color:var(--ink2);text-decoration:none;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .leaf a:hover,.tree .leaf a:focus-visible{background:var(--wash);color:var(--brand)}
+.page{padding-top:52px}
+.pagehead h2{font-size:16px;margin:0 0 4px}
+.pagehead .url{margin:0;font-size:13px;color:var(--ink2);word-break:break-all}
+.pagehead .meta{margin:6px 0 0;font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.surfaces{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:22px;margin-top:22px}
+.frame{border:1px solid var(--line);border-radius:8px;background:var(--paper2);display:flex;flex-direction:column;overflow:hidden}
+.frame>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid var(--line);background:var(--paper)}
+.frame>header .name{font-size:12px;font-weight:600}
+.frame .stage{padding:16px;display:flex;justify-content:center}
+.frame footer{margin-top:auto;border-top:1px solid var(--line);padding:11px 13px;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+.frame footer p{margin:0 0 6px}
+.src{display:block;font-size:10.5px;color:var(--ink3);word-break:break-all}
+.badge{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:3px;border:1px solid var(--line2);color:var(--ink3);white-space:nowrap}
+.badge.vendorspec{color:var(--green);border-color:currentColor}
+.badge.guideline,.badge.heuristic{color:var(--amber);border-color:currentColor}
+.badge.unsourced{color:var(--red);border-color:currentColor}
+.badge.unjudged{color:var(--ink3);text-transform:none;letter-spacing:0}
+.trap{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--red);font-size:12px}
+.trap b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--red)}
+.shot{width:100%;overflow:hidden;background:#0d0e10}
+.shot img{display:block;width:100%;height:auto}
+.shot.empty,.shot.broken{aspect-ratio:1.91/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--wash);color:var(--ink3);font-size:12.5px;text-align:center;padding:12px;border:1px dashed var(--line2)}
+.shot.broken{border-color:var(--red);color:var(--red)}
+.shot em{font-family:var(--mono);font-size:11px;font-style:normal;opacity:.85;word-break:break-all}
+.ogwrap{width:100%;display:flex;flex-direction:column;gap:14px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:12.5px}
+.facts dt{color:var(--ink3);font-size:11px}
+.facts dd{margin:0;word-break:break-word}
+.from{font-family:var(--mono);font-size:10.5px;color:var(--brand)}
+.none{color:var(--ink3);font-style:italic}
+.mono{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.serp{width:100%;max-width:600px;font-family:Arial,var(--ui)}
+.serp .site{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.fav{width:26px;height:26px;border-radius:50%;flex:none;object-fit:contain;background:var(--wash)}
+.fav.placeholder{display:grid;place-items:center;font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.serp .who b{display:block;font-size:14px;font-weight:400}
+.serp .who span{font-size:12px;color:var(--ink3)}
+.serp h4{font-size:19px;line-height:1.3;font-weight:400;color:var(--g-title);margin:4px 0 3px}
+.serp p{font-size:13.5px;line-height:1.56;margin:0;color:var(--g-text)}
+@media (prefers-color-scheme:dark){.serp h4{color:#8ab4f8}.serp p{color:var(--ink2)}}
+.xc{width:100%;max-width:440px}
+.xshot{position:relative;border:1px solid var(--x-line);border-radius:14px;overflow:hidden;background:var(--x-bg)}
+.overlay{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.overlay .lab{background:#000000bf;color:var(--x-fg);font-size:12px;line-height:1.25;padding:3px 7px;border-radius:4px;max-width:100%}
+.overlay .dom{font-size:11px;color:#fffc;text-shadow:0 1px 2px #000}
+.lic{width:100%;max-width:440px;border:1px solid var(--line2);border-radius:2px;overflow:hidden}
+.lic .meta{padding:10px 12px;background:var(--li-strip);color:#000}
+.lic .meta b{display:block;font-size:14px;line-height:1.35}
+.lic .meta span{font-size:12px;color:#00000099}
+.slc{width:100%;max-width:440px;padding:2px 0 2px 12px;border-left:4px solid var(--sl-rail)}
+.slc .who{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;margin-bottom:3px}
+.slc .who .fav{width:16px;height:16px;border-radius:3px}
+.slc .t{display:block;font-size:14px;font-weight:700;color:var(--sl-link);margin-bottom:3px}
+.slc p{font-size:13px;line-height:1.45;margin:0 0 8px}
+.slc .shot{max-width:360px;border-radius:8px}
+.dcw{width:100%;max-width:440px;background:var(--dc-bg);padding:11px;border-radius:8px}
+.dcc{background:var(--dc-embed);border-left:4px solid var(--brand);border-radius:4px;padding:11px 13px 13px}
+.dcc .site{font-size:11.5px;color:var(--dc-fg)}
+.dcc .t{display:block;font-size:15px;font-weight:600;color:var(--dc-link);line-height:1.3;margin:5px 0}
+.dcc p{font-size:13px;line-height:1.42;color:var(--dc-dim);margin:0 0 9px}
+.dcc .shot{border-radius:4px}
+.wac{width:100%;max-width:330px;background:var(--wa-bg);padding:12px;border-radius:8px}
+.wab{background:var(--wa-bubble);border-radius:8px;padding:4px}
+.wab .q{background:var(--wa-quote);border-radius:6px;overflow:hidden}
+.wab .txt{padding:8px 10px;color:var(--wa-fg)}
+.wab .txt b{display:block;font-size:12.5px;line-height:1.3}
+.wab .txt p{font-size:12px;color:var(--wa-dim);margin:2px 0 0;line-height:1.35}
+.wab .txt span{font-size:11px;color:var(--wa-dim)}
+.wab .msg{padding:5px 9px 3px;font-size:13px;color:var(--wa-fg);word-break:break-all}
+.panel{margin-top:22px;border:1px solid var(--line);border-radius:8px;padding:16px 18px;background:var(--paper2)}
+.panel h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.panel .foot{margin:12px 0 0;font-size:12.5px;color:var(--ink3)}
+.finds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.find{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;padding:9px 0 9px 12px;border-left:3px solid var(--ink3);border-bottom:1px solid var(--line)}
+.find:last-child{border-bottom:0}
+.find.error{border-left-color:var(--red)}
+.find.warning{border-left-color:var(--amber)}
+.find .rid{font-size:12.5px;font-weight:600}
+.find .msg{font-size:13.5px;color:var(--ink2)}
+.find .pin{grid-column:1/-1;font-size:11px;color:var(--ink3)}
+.tw{overflow-x:auto}
+table.locs{border-collapse:collapse;width:100%;font-size:13px}
+table.locs th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--line)}
+table.locs td{padding:7px 12px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.locs tr:last-child td{border-bottom:0}
+table.locs .loc,table.locs .og{font-family:var(--mono);font-size:12px;white-space:nowrap}
+table.locs .num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.locs tr.here td{color:var(--ink);font-weight:600}
+table.locs tr.here .loc{color:var(--brand)}
+.delta{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+.delta li{display:flex;gap:9px;word-break:break-word}
+.delta .sign{flex:none;width:1ch;font-weight:700}
+.delta .added .sign,.delta li.added{color:var(--green)}
+.delta .removed .sign,.delta li.removed{color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{font-size:11px;padding:3px 8px;border:1px solid var(--line2);border-radius:3px;color:var(--ink2)}
+.chip.bad{color:var(--red);border-color:currentColor}
+pre{margin:0;padding:13px 15px;background:#121416;color:#d8dbde;border-radius:6px;font-size:11.5px;line-height:1.55;overflow-x:auto}
+code{font-size:.9em;background:var(--wash);border:1px solid var(--line);border-radius:3px;padding:.05em .3em}
+footer.doc{margin-top:70px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+a{color:var(--brand)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc">
+  <h1>Open Finance Guide — goflag preview</h1>
+  <p class="lede">What each surface makes of https://openfinanceguide.com/, drawn from what the pages declared. Each surface carries the rigor of the geometry it is drawn from — three of the seven publish one, two publish nothing at all, and Google is not a card.</p>
+  <nav class="nav">
+  <p class="navnote">4 pages, by path. A folder folds; the ↗ beside one opens the page at that path itself.</p>
+  <ul class="tree"><li><details open><summary><span class="seg">/en</span><span class="n">2</span><a class="go" href="#page-0" title="the page at this path">↗</a></summary>
+<ul><li class="leaf"><a href="#page-2">/glossary</a></li></ul></details></li>
+<li><details open><summary><span class="seg">/fr</span><span class="n">2</span><a class="go" href="#page-1" title="the page at this path">↗</a></summary>
+<ul><li class="leaf"><a href="#page-3">/glossary</a></li></ul></details></li></ul>
+</nav>
+</header>
+<section class="page" id="page-0">
+  <header class="pagehead">
+    <h2>/en</h2>
+    <p class="url">https://openfinanceguide.com/en</p>
+    <p class="meta">200 · read from the static HTML — what a crawler that runs no JavaScript sees · en_US</p>
+  </header>
+  <div class="surfaces"><article class="frame">
+  <header><span class="name">Open Graph — the source card</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="ogwrap">
+  <div class="og shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+  <dl class="facts">
+    <dt>title</dt><dd>Open Finance Guide <span class="from">og:title</span></dd>
+    <dt>description</dt><dd>Open banking specifications, glossary and references — independent and neutral. <span class="from">og:description</span></dd>
+    <dt>image</dt><dd><span class="mono">https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference</span> <span class="from">og:image</span></dd>
+    <dt>size</dt><dd>1.90:1 declared — inside the 1.91:1 band every card is laid out for</dd>
+    <dt>fetched</dt><dd>not probed on this run</dd>
+    <dt>alt</dt><dd>Open Finance Guide — Open banking &amp; PSD2 reference</dd>
+    <dt>locale</dt><dd>en_US</dd>
+  </dl>
+</div></div>
+  <footer><p>The one fully specified surface: 1200×630 recommended, 600×315 floor, 200×200 absolute minimum, 8MB, 1.91:1. Every surface below consumes this image, each in its own way.</p><span class="src">developers.facebook.com/docs/sharing/webmasters/images · ogp.me</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Google — search result</span><span class="badge heuristic">heuristic</span></header>
+  <div class="stage"><div class="serp">
+  <div class="site"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy"><span class="who"><b>Open Finance Guide</b><span>openfinanceguide.com › en</span></span></div>
+  <h4>Open Finance Guide — Open banking &amp; PSD2 reference</h4>
+  <p class="clamp2">An independent, open reference for open banking: a navigable STET PSD2 specification, a clear glossary and references for technical teams.</p>
+</div></div>
+  <footer><p>Not a card: no image, no ratio. <code>og:title</code> is one of the documented sources for the title link; <code>og:description</code> is not documented as a snippet source anywhere — the snippet comes from the page or from <code>meta description</code>.</p><p class="trap"><b>Not drawn here</b>Google publishes no character or pixel limit — only truncation “to fit the device width”. The two-line snippet above is the observed desktop shape, not a specification, and the 600px / 155-character figures in circulation are third-party measurements that disagree with each other.</p><span class="src">developers.google.com/search/docs/appearance/title-link · /snippet</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">X — link card</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="xc">
+  <div class="xshot">
+    <div class="x shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+    <div class="overlay"><span class="lab">Open Finance Guide</span><span class="dom">openfinanceguide.com</span></div>
+  </div>
+</div></div>
+  <footer><p>Image, headline over the image, domain. Nothing else. This page declares <code>twitter:card</code> as <code>summary_large_image</code>.</p><p class="trap"><b>The old card is a lie</b>X removed both headline and description on 4 October 2023. The headline came back in January 2024 as small text over the image; the description never did. Headline-below-image exists only for ads since May 2025. Any tool still drawing three stacked rows is drawing a card that has not existed for years.</p><span class="src">X card documentation is not publicly reachable — dated behaviour, not a spec</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">LinkedIn — post unfurl</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="lic">
+  <div class="li shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="meta"><b>Open Finance Guide</b><span>openfinanceguide.com</span></div>
+</div></div>
+  <footer><p>Four tags required — <code>og:title</code>, <code>og:image</code>, <code>og:description</code>, <code>og:url</code> — and a published geometry: 1200×627 minimum, 1.91:1, 5MB. Under 401px wide the card falls back to a thumbnail, which is the only documented layout switch of any surface here.</p><span class="src">linkedin.com/help/linkedin/answer/a521928</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Slack — unfurl</span><span class="badge guideline">guideline</span></header>
+  <div class="stage"><div class="slc">
+  <span class="who"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy">Open Finance Guide</span>
+  <span class="t">Open Finance Guide</span>
+  <p>Open banking specifications, glossary and references — independent and neutral.</p>
+  <div class="sl shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div>
+  <footer><p>Slack documents what it reads — Open Graph and X Card metadata — and calls the result “some micro-approximation of the content”. No geometry, no image minimum, no character limit is published. The one hard number: past five links in a message, nothing expands.</p><span class="src">docs.slack.dev/messaging/unfurling-links-in-messages</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Discord — embed</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="dcw"><div class="dcc">
+  <span class="site">Open Finance Guide</span>
+  <span class="t">Open Finance Guide</span>
+  <p>Open banking specifications, glossary and references — independent and neutral.</p>
+  <div class="dc shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div></div>
+  <footer><p>Discord publishes nothing about link unfurls: no tag table, no geometry. The accent bar is drawn from a default, since this page declares no <code>theme-color</code>, which is community-reported behaviour and not documented.</p><p class="trap"><b>Wrong numbers, right document</b>Discord&#39;s documented 256 / 4096 / 6000 character limits are real, and they govern embeds a bot sends through the API. Using them as unfurl truncation would be a sourcing error of exactly the kind the rigor scale exists to prevent.</p><span class="src">no Discord source exists for link previews</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">WhatsApp — link preview</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="wac"><div class="wab"><div class="q">
+  <div class="wa shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=Open+banking+%26+PSD2+reference" alt="Open Finance Guide — Open banking &amp; PSD2 reference" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="txt"><b class="clamp2">Open Finance Guide</b><p class="clamp2">Open banking specifications, glossary and references — independent and neutral.</p><span>openfinanceguide.com</span></div>
+</div><div class="msg">https://openfinanceguide.com/en</div></div></div></div>
+  <footer><p>The one messenger with a real spec from Meta: image under 600KB, at least 300px wide, aspect ratio 4:1 or less, title in at most two lines, description in one or two — “80 characters will suffice”. It is also the only surface where a 1200×630 card is more often too heavy than too small.</p><span class="src">developers.facebook.com/documentation/business-messaging/whatsapp/link-previews</span></footer>
+</article></div>
+  <section class="panel"><h3>Findings on the head</h3><ul class="finds"><li class="find warning">
+  <span class="rid">og.locale.alternates</span>
+  <span class="msg">Open Graph and hreflang disagree about this page&#39;s translations: no <code>og:locale:alternate</code> for fr, pt-br, es.</span>
+  <span class="pin">warning · vendor-spec · expected one <code>og:locale:alternate</code> per hreflang locale other than this page&#39;s own</span>
+</li></ul></section>
+  <section class="panel"><h3>This route in 2 languages</h3>
+<div class="tw"><table class="locs">
+<thead><tr><th>path</th><th>og:locale</th><th>og:title</th><th class="num">gr.</th><th class="num">desc.</th></tr></thead>
+<tbody><tr class="here">
+  <td class="loc">▸ en</td>
+  <td class="og">en_US</td>
+  <td>Open Finance Guide</td>
+  <td class="num">18</td>
+  <td class="num">79</td>
+</tr>
+<tr>
+  <td class="loc">fr</td>
+  <td class="og">fr_FR</td>
+  <td><a href="#page-1">Open Finance Guide</a></td>
+  <td class="num">18</td>
+  <td class="num">79</td>
+</tr></tbody>
+</table></div>
+<p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>
+  <section class="panel"><h3>Static vs hydrated</h3><p class="none">Not established — this run never rendered the page, so there is no second reading to compare against.</p></section>
+  <section class="panel"><h3>JSON-LD <span class="badge unjudged">extracted, unjudged</span></h3><p class="none">No <code>application/ld+json</code> block on this page — and no rule can hold that against it.</p><p class="foot">Shown, never judged: no rule in the catalogue reads <code>jsonLd</code>, and that refusal is deliberate — nothing says which schema a page <em>should</em> carry.</p></section>
+</section>
+<section class="page" id="page-1">
+  <header class="pagehead">
+    <h2>/fr</h2>
+    <p class="url">https://openfinanceguide.com/fr</p>
+    <p class="meta">200 · read from the static HTML — what a crawler that runs no JavaScript sees · fr_FR</p>
+  </header>
+  <div class="surfaces"><article class="frame">
+  <header><span class="name">Open Graph — the source card</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="ogwrap">
+  <div class="og shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+  <dl class="facts">
+    <dt>title</dt><dd>Open Finance Guide <span class="from">og:title</span></dd>
+    <dt>description</dt><dd>Spécifications, glossaire et références open banking — indépendants et neutres. <span class="from">og:description</span></dd>
+    <dt>image</dt><dd><span class="mono">https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2</span> <span class="from">og:image</span></dd>
+    <dt>size</dt><dd>1.90:1 declared — inside the 1.91:1 band every card is laid out for</dd>
+    <dt>fetched</dt><dd>not probed on this run</dd>
+    <dt>alt</dt><dd>Open Finance Guide — Référence open banking &amp; DSP2</dd>
+    <dt>locale</dt><dd>fr_FR</dd>
+  </dl>
+</div></div>
+  <footer><p>The one fully specified surface: 1200×630 recommended, 600×315 floor, 200×200 absolute minimum, 8MB, 1.91:1. Every surface below consumes this image, each in its own way.</p><span class="src">developers.facebook.com/docs/sharing/webmasters/images · ogp.me</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Google — search result</span><span class="badge heuristic">heuristic</span></header>
+  <div class="stage"><div class="serp">
+  <div class="site"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy"><span class="who"><b>Open Finance Guide</b><span>openfinanceguide.com › fr</span></span></div>
+  <h4>Open Finance Guide — Référence open banking &amp; DSP2</h4>
+  <p class="clamp2">Référence indépendante et ouverte sur l’open banking : spécification STET PSD2 explorable, glossaire clair et références pour les équipes techniques.</p>
+</div></div>
+  <footer><p>Not a card: no image, no ratio. <code>og:title</code> is one of the documented sources for the title link; <code>og:description</code> is not documented as a snippet source anywhere — the snippet comes from the page or from <code>meta description</code>.</p><p class="trap"><b>Not drawn here</b>Google publishes no character or pixel limit — only truncation “to fit the device width”. The two-line snippet above is the observed desktop shape, not a specification, and the 600px / 155-character figures in circulation are third-party measurements that disagree with each other.</p><span class="src">developers.google.com/search/docs/appearance/title-link · /snippet</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">X — link card</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="xc">
+  <div class="xshot">
+    <div class="x shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+    <div class="overlay"><span class="lab">Open Finance Guide</span><span class="dom">openfinanceguide.com</span></div>
+  </div>
+</div></div>
+  <footer><p>Image, headline over the image, domain. Nothing else. This page declares <code>twitter:card</code> as <code>summary_large_image</code>.</p><p class="trap"><b>The old card is a lie</b>X removed both headline and description on 4 October 2023. The headline came back in January 2024 as small text over the image; the description never did. Headline-below-image exists only for ads since May 2025. Any tool still drawing three stacked rows is drawing a card that has not existed for years.</p><span class="src">X card documentation is not publicly reachable — dated behaviour, not a spec</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">LinkedIn — post unfurl</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="lic">
+  <div class="li shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="meta"><b>Open Finance Guide</b><span>openfinanceguide.com</span></div>
+</div></div>
+  <footer><p>Four tags required — <code>og:title</code>, <code>og:image</code>, <code>og:description</code>, <code>og:url</code> — and a published geometry: 1200×627 minimum, 1.91:1, 5MB. Under 401px wide the card falls back to a thumbnail, which is the only documented layout switch of any surface here.</p><span class="src">linkedin.com/help/linkedin/answer/a521928</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Slack — unfurl</span><span class="badge guideline">guideline</span></header>
+  <div class="stage"><div class="slc">
+  <span class="who"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy">Open Finance Guide</span>
+  <span class="t">Open Finance Guide</span>
+  <p>Spécifications, glossaire et références open banking — indépendants et neutres.</p>
+  <div class="sl shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div>
+  <footer><p>Slack documents what it reads — Open Graph and X Card metadata — and calls the result “some micro-approximation of the content”. No geometry, no image minimum, no character limit is published. The one hard number: past five links in a message, nothing expands.</p><span class="src">docs.slack.dev/messaging/unfurling-links-in-messages</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Discord — embed</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="dcw"><div class="dcc">
+  <span class="site">Open Finance Guide</span>
+  <span class="t">Open Finance Guide</span>
+  <p>Spécifications, glossaire et références open banking — indépendants et neutres.</p>
+  <div class="dc shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div></div>
+  <footer><p>Discord publishes nothing about link unfurls: no tag table, no geometry. The accent bar is drawn from a default, since this page declares no <code>theme-color</code>, which is community-reported behaviour and not documented.</p><p class="trap"><b>Wrong numbers, right document</b>Discord&#39;s documented 256 / 4096 / 6000 character limits are real, and they govern embeds a bot sends through the API. Using them as unfurl truncation would be a sourcing error of exactly the kind the rigor scale exists to prevent.</p><span class="src">no Discord source exists for link previews</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">WhatsApp — link preview</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="wac"><div class="wab"><div class="q">
+  <div class="wa shot"><img src="https://openfinanceguide.com/og?title=Open+Finance+Guide&amp;description=R%C3%A9f%C3%A9rence+open+banking+%26+DSP2" alt="Open Finance Guide — Référence open banking &amp; DSP2" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="txt"><b class="clamp2">Open Finance Guide</b><p class="clamp2">Spécifications, glossaire et références open banking — indépendants et neutres.</p><span>openfinanceguide.com</span></div>
+</div><div class="msg">https://openfinanceguide.com/fr</div></div></div></div>
+  <footer><p>The one messenger with a real spec from Meta: image under 600KB, at least 300px wide, aspect ratio 4:1 or less, title in at most two lines, description in one or two — “80 characters will suffice”. It is also the only surface where a 1200×630 card is more often too heavy than too small.</p><span class="src">developers.facebook.com/documentation/business-messaging/whatsapp/link-previews</span></footer>
+</article></div>
+  <section class="panel"><h3>Findings on the head</h3><ul class="finds"><li class="find warning">
+  <span class="rid">og.locale.alternates</span>
+  <span class="msg">Open Graph and hreflang disagree about this page&#39;s translations: no <code>og:locale:alternate</code> for en, pt-br, es.</span>
+  <span class="pin">warning · vendor-spec · expected one <code>og:locale:alternate</code> per hreflang locale other than this page&#39;s own</span>
+</li></ul></section>
+  <section class="panel"><h3>This route in 2 languages</h3>
+<div class="tw"><table class="locs">
+<thead><tr><th>path</th><th>og:locale</th><th>og:title</th><th class="num">gr.</th><th class="num">desc.</th></tr></thead>
+<tbody><tr>
+  <td class="loc">en</td>
+  <td class="og">en_US</td>
+  <td><a href="#page-0">Open Finance Guide</a></td>
+  <td class="num">18</td>
+  <td class="num">79</td>
+</tr>
+<tr class="here">
+  <td class="loc">▸ fr</td>
+  <td class="og">fr_FR</td>
+  <td>Open Finance Guide</td>
+  <td class="num">18</td>
+  <td class="num">79</td>
+</tr></tbody>
+</table></div>
+<p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>
+  <section class="panel"><h3>Static vs hydrated</h3><p class="none">Not established — this run never rendered the page, so there is no second reading to compare against.</p></section>
+  <section class="panel"><h3>JSON-LD <span class="badge unjudged">extracted, unjudged</span></h3><p class="none">No <code>application/ld+json</code> block on this page — and no rule can hold that against it.</p><p class="foot">Shown, never judged: no rule in the catalogue reads <code>jsonLd</code>, and that refusal is deliberate — nothing says which schema a page <em>should</em> carry.</p></section>
+</section>
+<section class="page" id="page-2">
+  <header class="pagehead">
+    <h2>/en/glossary</h2>
+    <p class="url">https://openfinanceguide.com/en/glossary</p>
+    <p class="meta">200 · read from the static HTML — what a crawler that runs no JavaScript sees · en_US</p>
+  </header>
+  <div class="surfaces"><article class="frame">
+  <header><span class="name">Open Graph — the source card</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="ogwrap">
+  <div class="og shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <dl class="facts">
+    <dt>title</dt><dd>Open Banking &amp; PSD2 glossary — Open Finance Guide <span class="from">og:title</span></dd>
+    <dt>description</dt><dd>Definitions of PSD2, STET, eIDAS and Open Banking acronyms and concepts. <span class="from">og:description</span></dd>
+    <dt>image</dt><dd><span class="mono">https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts.</span> <span class="from">og:image</span></dd>
+    <dt>size</dt><dd>1.90:1 declared — inside the 1.91:1 band every card is laid out for</dd>
+    <dt>fetched</dt><dd>not probed on this run</dd>
+    <dt>alt</dt><dd>Open Banking &amp; PSD2 glossary — Open Finance Guide</dd>
+    <dt>locale</dt><dd>en_US</dd>
+  </dl>
+</div></div>
+  <footer><p>The one fully specified surface: 1200×630 recommended, 600×315 floor, 200×200 absolute minimum, 8MB, 1.91:1. Every surface below consumes this image, each in its own way.</p><span class="src">developers.facebook.com/docs/sharing/webmasters/images · ogp.me</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Google — search result</span><span class="badge heuristic">heuristic</span></header>
+  <div class="stage"><div class="serp">
+  <div class="site"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy"><span class="who"><b>Open Finance Guide</b><span>openfinanceguide.com › en › glossary</span></span></div>
+  <h4>Open Banking &amp; PSD2 glossary — Open Finance Guide</h4>
+  <p class="clamp2">Definitions of PSD2, STET, eIDAS and Open Banking acronyms and concepts.</p>
+</div></div>
+  <footer><p>Not a card: no image, no ratio. <code>og:title</code> is one of the documented sources for the title link; <code>og:description</code> is not documented as a snippet source anywhere — the snippet comes from the page or from <code>meta description</code>.</p><p class="trap"><b>Not drawn here</b>Google publishes no character or pixel limit — only truncation “to fit the device width”. The two-line snippet above is the observed desktop shape, not a specification, and the 600px / 155-character figures in circulation are third-party measurements that disagree with each other.</p><span class="src">developers.google.com/search/docs/appearance/title-link · /snippet</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">X — link card</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="xc">
+  <div class="xshot">
+    <div class="x shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+    <div class="overlay"><span class="lab">Open Banking &amp; PSD2 glossary — Open Finance Guide</span><span class="dom">openfinanceguide.com</span></div>
+  </div>
+</div></div>
+  <footer><p>Image, headline over the image, domain. Nothing else. This page declares <code>twitter:card</code> as <code>summary_large_image</code>.</p><p class="trap"><b>The old card is a lie</b>X removed both headline and description on 4 October 2023. The headline came back in January 2024 as small text over the image; the description never did. Headline-below-image exists only for ads since May 2025. Any tool still drawing three stacked rows is drawing a card that has not existed for years.</p><span class="src">X card documentation is not publicly reachable — dated behaviour, not a spec</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">LinkedIn — post unfurl</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="lic">
+  <div class="li shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="meta"><b>Open Banking &amp; PSD2 glossary — Open Finance Guide</b><span>openfinanceguide.com</span></div>
+</div></div>
+  <footer><p>Four tags required — <code>og:title</code>, <code>og:image</code>, <code>og:description</code>, <code>og:url</code> — and a published geometry: 1200×627 minimum, 1.91:1, 5MB. Under 401px wide the card falls back to a thumbnail, which is the only documented layout switch of any surface here.</p><span class="src">linkedin.com/help/linkedin/answer/a521928</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Slack — unfurl</span><span class="badge guideline">guideline</span></header>
+  <div class="stage"><div class="slc">
+  <span class="who"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy">Open Finance Guide</span>
+  <span class="t">Open Banking &amp; PSD2 glossary — Open Finance Guide</span>
+  <p>Definitions of PSD2, STET, eIDAS and Open Banking acronyms and concepts.</p>
+  <div class="sl shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div>
+  <footer><p>Slack documents what it reads — Open Graph and X Card metadata — and calls the result “some micro-approximation of the content”. No geometry, no image minimum, no character limit is published. The one hard number: past five links in a message, nothing expands.</p><span class="src">docs.slack.dev/messaging/unfurling-links-in-messages</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Discord — embed</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="dcw"><div class="dcc">
+  <span class="site">Open Finance Guide</span>
+  <span class="t">Open Banking &amp; PSD2 glossary — Open Finance Guide</span>
+  <p>Definitions of PSD2, STET, eIDAS and Open Banking acronyms and concepts.</p>
+  <div class="dc shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div></div>
+  <footer><p>Discord publishes nothing about link unfurls: no tag table, no geometry. The accent bar is drawn from a default, since this page declares no <code>theme-color</code>, which is community-reported behaviour and not documented.</p><p class="trap"><b>Wrong numbers, right document</b>Discord&#39;s documented 256 / 4096 / 6000 character limits are real, and they govern embeds a bot sends through the API. Using them as unfurl truncation would be a sourcing error of exactly the kind the rigor scale exists to prevent.</p><span class="src">no Discord source exists for link previews</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">WhatsApp — link preview</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="wac"><div class="wab"><div class="q">
+  <div class="wa shot"><img src="https://openfinanceguide.com/og?title=Glossary&amp;description=Definitions+of+PSD2%2C+STET%2C+eIDAS+and+Open+Banking+acronyms+and+concepts." alt="Open Banking &amp; PSD2 glossary — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="txt"><b class="clamp2">Open Banking &amp; PSD2 glossary — Open Finance Guide</b><p class="clamp2">Definitions of PSD2, STET, eIDAS and Open Banking acronyms and concepts.</p><span>openfinanceguide.com</span></div>
+</div><div class="msg">https://openfinanceguide.com/en/glossary</div></div></div></div>
+  <footer><p>The one messenger with a real spec from Meta: image under 600KB, at least 300px wide, aspect ratio 4:1 or less, title in at most two lines, description in one or two — “80 characters will suffice”. It is also the only surface where a 1200×630 card is more often too heavy than too small.</p><span class="src">developers.facebook.com/documentation/business-messaging/whatsapp/link-previews</span></footer>
+</article></div>
+  <section class="panel"><h3>Findings on the head</h3><ul class="finds"><li class="find warning">
+  <span class="rid">og.locale.alternates</span>
+  <span class="msg">Open Graph and hreflang disagree about this page&#39;s translations: no <code>og:locale:alternate</code> for fr, pt-br, es.</span>
+  <span class="pin">warning · vendor-spec · expected one <code>og:locale:alternate</code> per hreflang locale other than this page&#39;s own</span>
+</li>
+<li class="find info">
+  <span class="rid">og.image.alt.caption</span>
+  <span class="msg"><code>og:image:alt</code> repeats the title instead of describing the image.</span>
+  <span class="pin">info · guideline · expected an <code>og:image:alt</code> that says something the title does not</span>
+</li></ul></section>
+  <section class="panel"><h3>This route in 2 languages</h3>
+<div class="tw"><table class="locs">
+<thead><tr><th>path</th><th>og:locale</th><th>og:title</th><th class="num">gr.</th><th class="num">desc.</th></tr></thead>
+<tbody><tr class="here">
+  <td class="loc">▸ en</td>
+  <td class="og">en_US</td>
+  <td>Open Banking &amp; PSD2 glossary — Open Finance Guide</td>
+  <td class="num">49</td>
+  <td class="num">72</td>
+</tr>
+<tr>
+  <td class="loc">fr</td>
+  <td class="og">fr_FR</td>
+  <td><a href="#page-3">Glossaire Open Banking &amp; DSP2 — Open Finance Guide</a></td>
+  <td class="num">50</td>
+  <td class="num">72</td>
+</tr></tbody>
+</table></div>
+<p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>
+  <section class="panel"><h3>Static vs hydrated</h3><p class="none">Not established — this run never rendered the page, so there is no second reading to compare against.</p></section>
+  <section class="panel"><h3>JSON-LD <span class="badge unjudged">extracted, unjudged</span></h3><p class="none">No <code>application/ld+json</code> block on this page — and no rule can hold that against it.</p><p class="foot">Shown, never judged: no rule in the catalogue reads <code>jsonLd</code>, and that refusal is deliberate — nothing says which schema a page <em>should</em> carry.</p></section>
+</section>
+<section class="page" id="page-3">
+  <header class="pagehead">
+    <h2>/fr/glossary</h2>
+    <p class="url">https://openfinanceguide.com/fr/glossary</p>
+    <p class="meta">200 · read from the static HTML — what a crawler that runs no JavaScript sees · fr_FR</p>
+  </header>
+  <div class="surfaces"><article class="frame">
+  <header><span class="name">Open Graph — the source card</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="ogwrap">
+  <div class="og shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <dl class="facts">
+    <dt>title</dt><dd>Glossaire Open Banking &amp; DSP2 — Open Finance Guide <span class="from">og:title</span></dd>
+    <dt>description</dt><dd>Définitions des acronymes et concepts PSD2, STET, eIDAS et Open Banking. <span class="from">og:description</span></dd>
+    <dt>image</dt><dd><span class="mono">https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking.</span> <span class="from">og:image</span></dd>
+    <dt>size</dt><dd>1.90:1 declared — inside the 1.91:1 band every card is laid out for</dd>
+    <dt>fetched</dt><dd>not probed on this run</dd>
+    <dt>alt</dt><dd>Glossaire Open Banking &amp; DSP2 — Open Finance Guide</dd>
+    <dt>locale</dt><dd>fr_FR</dd>
+  </dl>
+</div></div>
+  <footer><p>The one fully specified surface: 1200×630 recommended, 600×315 floor, 200×200 absolute minimum, 8MB, 1.91:1. Every surface below consumes this image, each in its own way.</p><span class="src">developers.facebook.com/docs/sharing/webmasters/images · ogp.me</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Google — search result</span><span class="badge heuristic">heuristic</span></header>
+  <div class="stage"><div class="serp">
+  <div class="site"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy"><span class="who"><b>Open Finance Guide</b><span>openfinanceguide.com › fr › glossary</span></span></div>
+  <h4>Glossaire Open Banking &amp; DSP2 — Open Finance Guide</h4>
+  <p class="clamp2">Définitions des acronymes et concepts PSD2, STET, eIDAS et Open Banking.</p>
+</div></div>
+  <footer><p>Not a card: no image, no ratio. <code>og:title</code> is one of the documented sources for the title link; <code>og:description</code> is not documented as a snippet source anywhere — the snippet comes from the page or from <code>meta description</code>.</p><p class="trap"><b>Not drawn here</b>Google publishes no character or pixel limit — only truncation “to fit the device width”. The two-line snippet above is the observed desktop shape, not a specification, and the 600px / 155-character figures in circulation are third-party measurements that disagree with each other.</p><span class="src">developers.google.com/search/docs/appearance/title-link · /snippet</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">X — link card</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="xc">
+  <div class="xshot">
+    <div class="x shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+    <div class="overlay"><span class="lab">Glossaire Open Banking &amp; DSP2 — Open Finance Guide</span><span class="dom">openfinanceguide.com</span></div>
+  </div>
+</div></div>
+  <footer><p>Image, headline over the image, domain. Nothing else. This page declares <code>twitter:card</code> as <code>summary_large_image</code>.</p><p class="trap"><b>The old card is a lie</b>X removed both headline and description on 4 October 2023. The headline came back in January 2024 as small text over the image; the description never did. Headline-below-image exists only for ads since May 2025. Any tool still drawing three stacked rows is drawing a card that has not existed for years.</p><span class="src">X card documentation is not publicly reachable — dated behaviour, not a spec</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">LinkedIn — post unfurl</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="lic">
+  <div class="li shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="meta"><b>Glossaire Open Banking &amp; DSP2 — Open Finance Guide</b><span>openfinanceguide.com</span></div>
+</div></div>
+  <footer><p>Four tags required — <code>og:title</code>, <code>og:image</code>, <code>og:description</code>, <code>og:url</code> — and a published geometry: 1200×627 minimum, 1.91:1, 5MB. Under 401px wide the card falls back to a thumbnail, which is the only documented layout switch of any surface here.</p><span class="src">linkedin.com/help/linkedin/answer/a521928</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Slack — unfurl</span><span class="badge guideline">guideline</span></header>
+  <div class="stage"><div class="slc">
+  <span class="who"><img class="fav" src="https://openfinanceguide.com/favicon.ico" alt="" loading="lazy">Open Finance Guide</span>
+  <span class="t">Glossaire Open Banking &amp; DSP2 — Open Finance Guide</span>
+  <p>Définitions des acronymes et concepts PSD2, STET, eIDAS et Open Banking.</p>
+  <div class="sl shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div>
+  <footer><p>Slack documents what it reads — Open Graph and X Card metadata — and calls the result “some micro-approximation of the content”. No geometry, no image minimum, no character limit is published. The one hard number: past five links in a message, nothing expands.</p><span class="src">docs.slack.dev/messaging/unfurling-links-in-messages</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">Discord — embed</span><span class="badge unsourced">unsourced</span></header>
+  <div class="stage"><div class="dcw"><div class="dcc">
+  <span class="site">Open Finance Guide</span>
+  <span class="t">Glossaire Open Banking &amp; DSP2 — Open Finance Guide</span>
+  <p>Définitions des acronymes et concepts PSD2, STET, eIDAS et Open Banking.</p>
+  <div class="dc shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+</div></div></div>
+  <footer><p>Discord publishes nothing about link unfurls: no tag table, no geometry. The accent bar is drawn from a default, since this page declares no <code>theme-color</code>, which is community-reported behaviour and not documented.</p><p class="trap"><b>Wrong numbers, right document</b>Discord&#39;s documented 256 / 4096 / 6000 character limits are real, and they govern embeds a bot sends through the API. Using them as unfurl truncation would be a sourcing error of exactly the kind the rigor scale exists to prevent.</p><span class="src">no Discord source exists for link previews</span></footer>
+</article>
+<article class="frame">
+  <header><span class="name">WhatsApp — link preview</span><span class="badge vendorspec">vendor-spec</span></header>
+  <div class="stage"><div class="wac"><div class="wab"><div class="q">
+  <div class="wa shot"><img src="https://openfinanceguide.com/og?title=Glossaire&amp;description=D%C3%A9finitions+des+acronymes+et+concepts+PSD2%2C+STET%2C+eIDAS+et+Open+Banking." alt="Glossaire Open Banking &amp; DSP2 — Open Finance Guide" loading="lazy" referrerpolicy="no-referrer"></div>
+  <div class="txt"><b class="clamp2">Glossaire Open Banking &amp; DSP2 — Open Finance Guide</b><p class="clamp2">Définitions des acronymes et concepts PSD2, STET, eIDAS et Open Banking.</p><span>openfinanceguide.com</span></div>
+</div><div class="msg">https://openfinanceguide.com/fr/glossary</div></div></div></div>
+  <footer><p>The one messenger with a real spec from Meta: image under 600KB, at least 300px wide, aspect ratio 4:1 or less, title in at most two lines, description in one or two — “80 characters will suffice”. It is also the only surface where a 1200×630 card is more often too heavy than too small.</p><span class="src">developers.facebook.com/documentation/business-messaging/whatsapp/link-previews</span></footer>
+</article></div>
+  <section class="panel"><h3>Findings on the head</h3><ul class="finds"><li class="find warning">
+  <span class="rid">og.locale.alternates</span>
+  <span class="msg">Open Graph and hreflang disagree about this page&#39;s translations: no <code>og:locale:alternate</code> for en, pt-br, es.</span>
+  <span class="pin">warning · vendor-spec · expected one <code>og:locale:alternate</code> per hreflang locale other than this page&#39;s own</span>
+</li>
+<li class="find info">
+  <span class="rid">og.image.alt.caption</span>
+  <span class="msg"><code>og:image:alt</code> repeats the title instead of describing the image.</span>
+  <span class="pin">info · guideline · expected an <code>og:image:alt</code> that says something the title does not</span>
+</li></ul></section>
+  <section class="panel"><h3>This route in 2 languages</h3>
+<div class="tw"><table class="locs">
+<thead><tr><th>path</th><th>og:locale</th><th>og:title</th><th class="num">gr.</th><th class="num">desc.</th></tr></thead>
+<tbody><tr>
+  <td class="loc">en</td>
+  <td class="og">en_US</td>
+  <td><a href="#page-2">Open Banking &amp; PSD2 glossary — Open Finance Guide</a></td>
+  <td class="num">49</td>
+  <td class="num">72</td>
+</tr>
+<tr class="here">
+  <td class="loc">▸ fr</td>
+  <td class="og">fr_FR</td>
+  <td>Glossaire Open Banking &amp; DSP2 — Open Finance Guide</td>
+  <td class="num">50</td>
+  <td class="num">72</td>
+</tr></tbody>
+</table></div>
+<p class="foot">Lengths are graphemes, which is what a card's size ladder counts. The ladder is the site's own — <code>@goflag/og</code> ships none — so this reports the length and not the step.</p></section>
+  <section class="panel"><h3>Static vs hydrated</h3><p class="none">Not established — this run never rendered the page, so there is no second reading to compare against.</p></section>
+  <section class="panel"><h3>JSON-LD <span class="badge unjudged">extracted, unjudged</span></h3><p class="none">No <code>application/ld+json</code> block on this page — and no rule can hold that against it.</p><p class="foot">Shown, never judged: no rule in the catalogue reads <code>jsonLd</code>, and that refusal is deliberate — nothing says which schema a page <em>should</em> carry.</p></section>
+</section>
+<footer class="doc">4 pages · audited 2026-08-20T09:00:00.000Z · profile default · goflag</footer>
+</div>
+</body>
+</html>

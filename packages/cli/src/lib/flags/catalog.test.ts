@@ -138,6 +138,21 @@ describe("flags.json", () => {
     expect([...documented].sort()).toEqual([...shipped].sort());
   });
 
+  it("links out absolutely, because npm renders this file outside the repository", () => {
+    // `prepack` stages the repository README into this package, so it *is* the
+    // npm page. A relative link resolves against the repository on GitHub and
+    // against nothing at all on npm — two of them sat in this file for months,
+    // pointing at `packages/og`, dead on the page most readers arrive at.
+    //
+    // Anchors and mailto: are fine; they mean the same thing on both renderers.
+    const readme = readFileSync(repoFile(join("..", "..", "README.md")), "utf8");
+    const relative = [...readme.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)]
+      .map((m) => m[1]!.trim())
+      .filter((href) => !/^(https?:\/\/|#|mailto:)/.test(href));
+
+    expect(relative).toEqual([]);
+  });
+
   it("ships in the published tarball", () => {
     // The site reads it out of `node_modules`, so leaving it out of `files`
     // would make the reference page empty in exactly the place nobody tests.

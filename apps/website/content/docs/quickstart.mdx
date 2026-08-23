@@ -97,10 +97,17 @@ from. [Baseline gating](/docs/ci/baseline) explains the rest.
 The output never goes green while findings are outstanding; it says how many are
 being let through and how old the baseline is:
 
+<Terminal id="gate-holding">
+
 ```plaintext
+goflag --regressions-only
 REGRESSION GATE  0 new · 13 known findings NOT gating this build
 baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
+
+Nothing moved since the baseline — 13 findings still open. Run without --regressions-only to see them.
 ```
+
+</Terminal>
 
 ## 5. Lower the ratchet
 

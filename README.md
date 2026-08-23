@@ -5,6 +5,12 @@ A CLI that audits a site for broken links, missing translation pages, a robots.t
 [![node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=nodedotjs&logoColor=white)](https://github.com/tancredesimonin/goflag/blob/main/package.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
+[![A goflag run against a site with findings: a red verdict over the crawl counts, a COVERAGE line saying how many pages of the sitemap were audited, the tally of broken links, missing translations and SEO issues, then the broken links listed under the page that references them.](https://goflag.tech/assets/hero.png)](https://goflag.tech/docs/report)
+
+<sub>The first eleven lines of a real run. Rendered from the same transcript the
+documentation site paints, which is compared to the renderers byte for byte —
+so this picture cannot drift from what the command prints.</sub>
+
 Goflag crawls a site once and judges what it found. It is deliberately small: no dashboard, no config system, no social-preview gallery. Just the findings, as a machine-readable report you can pipe, diff, or gate CI on.
 
 It is built for the mistakes that are invisible while browsing and expensive in
@@ -469,6 +475,11 @@ same confidence would be six unearned claims, so the file says which is which.
 It never gates — it exits 0 unless the run itself failed — and it prints the
 path it wrote, so `open "$(goflag preview http://localhost:3000)"` opens it.
 
+An example of what it writes — a real audit, frozen, so its footer names the date it was
+taken — is served at <https://goflag.tech/assets/example-preview.html>. The URL is absolute
+because `prepack` copies this file into the package and npm renders it, where a relative link
+is dead.
+
 ### Multilingual sites
 
 Discovery is seeded from the sitemap, not just from links. That matters because
@@ -621,6 +632,25 @@ Audit external links on a schedule instead, where nobody is waiting.
 
 ### Reading a red build
 
+A red build says what moved, not what is wrong. The diff lists rule ids and
+absolute page URLs; the messages and the fixes are in the report:
+
+<!-- goflag:transcript gate -->
+
+```plaintext
+goflag --regressions-only
+REGRESSION  1 new · 13 known findings NOT gating this build · 1 resolved
+baseline https://example.com/ — taken 2026-07-21T09:14:02.881Z (14 days ago)
+
+New findings
+  + error seo  canonical.absolute on https://example.com/pricing
+
+Resolved
+  - warn  seo  og.image.missing on https://example.com/about
+```
+
+<!-- /goflag:transcript -->
+
 The report artefact is the thing to open. It is the same JSON as `--json`, and
 it is kept whether the job passed or failed, because it is most wanted when it
 is red.
@@ -683,7 +713,7 @@ finding unrepresentable. Full documentation at
 Two of this catalogue's rules had no remedy to point at. `og.image.missing`
 fired 24 times on one site and `og.image.alt` 46 times on another, and the fix
 for both is "either an asset or a route you have to write" — which is how a rule
-becomes permanent debt. [`@goflag/og`](packages/og) is that route, written once.
+becomes permanent debt. [`@goflag/og`](https://github.com/tancredesimonin/goflag/tree/main/packages/og) is that route, written once.
 
 ```tsx
 // app/[locale]/opengraph-image.tsx
@@ -701,7 +731,7 @@ embeds satori — turns into a PNG at build time, so nothing installs a second
 renderer and a card can be unit-tested with no framework build. It also packs
 the `favicon.ico` **no Next convention emits**, guarded so that a generated file
 living in git is not dirtied by every commit. API reference in
-[`packages/og/README.md`](packages/og/README.md).
+[`packages/og/README.md`](https://github.com/tancredesimonin/goflag/blob/main/packages/og/README.md).
 
 ## Develop locally
 

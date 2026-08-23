@@ -1,0 +1,32 @@
+
+[1mgoflag[0m [2mhttps://example.com/[0m
+[31mRED FLAG[0m  [2m128 pages crawled, 128 scanned[0m
+[2mCOVERAGE  128 of 412 pages audited · 2 families sampled, largest 3/117 /{locale}/blog/{2}[0m
+[2m          Template rules are conclusive. Copy rules — title.length, description.length — are sampled.[0m
+
+[1m[33m1 broken link[0m[0m   [1m[33m2 missing translations[0m[0m   [1m[33m4 SEO issues[0m[0m   [1m[33m1 site issue[0m[0m   [2m0 unreachable pages[0m
+
+[1mBroken links[0m
+  [36mhttps://example.com/blog/hreflang-basics[0m
+    [31m[404][0m https://example.com/guides/canonical-tags
+    [33m[blocked 403 forbidden][0m https://api.partner.example/status
+
+[1mMissing translations[0m
+  [36m/blog/hreflang-basics[0m — missing [33mde[0m[2m (have en, fr)[0m
+  [33mmissing-back-link[0m [2mhttps://example.com/fr/blog/hreflang-basics[0m
+    /fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.
+
+[1mSEO issues[0m
+  [36mhttps://example.com/blog/hreflang-basics[0m
+    [33mwarn [0m [2mcanonical.missing[0m  Page is missing <link rel="canonical">.
+    [33mwarn [0m [2mdescription.length[0m  Description is 31 characters — short of the recommended 50–160 window.
+  [36mhttps://example.com/pricing[0m
+    [31merror[0m [2mrobots.conflict[0m  Conflicting robots directives: meta robots say noindex, meta googlebot say index.
+    [33mwarn [0m [2mog.image.missing[0m  Page has no og:image.
+
+[1mSite-wide issues[0m
+  [2mlocales: en, fr, de (via sitemap)[0m
+  [36mhttps://example.com/[0m
+    [31merror[0m [2mhreflang.missing[0m  Site serves 3 locales but declares no hreflang alternates.
+
+[2mnote: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.[0m

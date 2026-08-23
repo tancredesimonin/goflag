@@ -1,0 +1,42 @@
+
+goflag https://example.com/ (summary)
+RED FLAG  128 pages crawled, 128 scanned
+
+1 broken link   2 missing translations   4 SEO issues   1 site issue   0 unreachable pages
+
+Broken links
+  [blocked 403 forbidden] https://api.partner.example/status ×1
+    on https://example.com/blog/hreflang-basics
+  [404] https://example.com/guides/canonical-tags ×1
+    on https://example.com/blog/hreflang-basics
+
+Missing translations
+  /blog/hreflang-basics — missing de (have en, fr)
+  missing-back-link ×1
+    /fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.
+    on https://example.com/fr/blog/hreflang-basics
+
+SEO issues
+  error robots.conflict [vendor-spec] ×1
+    Two directives that disagree leave indexing to the crawler's tie-break
+    on https://example.com/pricing
+  warn  canonical.missing [vendor-spec] ×1
+    Declare a <link rel="canonical"> so search engines pick the right URL
+    on https://example.com/blog/hreflang-basics
+  warn  description.length [heuristic] ×1
+    A description outside the window is rewritten or truncated
+    on https://example.com/blog/hreflang-basics
+  warn  og.image.missing [guideline] ×1
+    Provide at least one og:image so links unfurl with a preview
+    fix: // app/…/page.tsx
+         export const metadata = {
+           openGraph: { images: [{ url: "/og.png", width: 1200, height: 630 }] },
+         };
+    on https://example.com/pricing
+
+Site-wide issues
+  error hreflang.missing [vendor-spec] ×1
+    Pages on a multilingual site must advertise their locale alternates
+    on https://example.com/
+
+note: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.

@@ -1,0 +1,39 @@
+{
+  "origins": [
+    "https://example.com",
+    "http://localhost:3000"
+  ],
+  "page": "/about",
+  "target": "/team",
+  "cases": [
+    {
+      "finding": "title.missing on /about",
+      "parts": [
+        "seo",
+        "title.missing",
+        "routeKey(page)",
+        "occurrence"
+      ],
+      "ids": {
+        "https://example.com": "seo-42d6ff5567",
+        "http://localhost:3000": "seo-42d6ff5567"
+      },
+      "stable": true,
+      "why": "routeKey drops the origin, so the same defect on the same route is one finding wherever it is audited."
+    },
+    {
+      "finding": "a dead internal link on /about",
+      "parts": [
+        "link",
+        "routeKey(page)",
+        "targetKey(target)"
+      ],
+      "ids": {
+        "https://example.com": "link-4bb9a3831f",
+        "http://localhost:3000": "link-49fe870d09"
+      },
+      "stable": false,
+      "why": "targetKey keeps the origin, because two hosts are two different targets — so a baseline taken on production re-proposes every internal link when it is compared against a localhost run."
+    }
+  ]
+}

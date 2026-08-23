@@ -256,9 +256,21 @@ Deux conséquences de packaging, qui vont dans le même sens :
   packaging et la forme visée disent la même chose : un seul fichier, autonome,
   qui survit à un artefact de CI et à une pièce jointe.
 
-Le fichier sort en `.goflag/preview.html`, à côté de la baseline. C'est un
-artefact, jamais committé — la seule sortie committée de tout le projet reste le
-`.ico` de D7 du plan OG.
+Le fichier sort en `.goflag/preview.html`, à côté de la baseline. Pour l'usager
+c'est un artefact, jamais committé.
+
+> **Amendé 2026-08-20.** Ce paragraphe disait « la seule sortie committée de tout
+> le projet reste le `.ico` de D7 ». Ce n'est plus vrai : `docs/visuals-plan.md`
+> V-3 committe **un** `preview.html` gelé sous
+> `packages/cli/test/fixtures/transcripts/`, que `apps/website` sert à
+> `/assets/example-preview.html`. La raison est I3 — le site ne peut pas appeler
+> `renderPreview`, donc la seule façon de montrer la sortie de cette commande
+> sur la page qui la documente est de déposer le fichier. Il reste distinct du
+> `.ico` sur le point qui comptait : le `.ico` est un artefact **de build** que
+> rien ne régénère à la demande, celui-ci est une **fixture de test** comparée
+> octet pour octet au renderer par `preview-fixture.test.ts`, au même titre que
+> `rules.json` et les transcriptions terminal. Aucune sortie utilisateur n'est
+> committée ; c'est un exemple, et il est daté.
 
 ---
 

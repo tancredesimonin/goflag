@@ -1,0 +1,12 @@
+# The first binaries in this repository, and the file that says so.
+#
+# `apps/website/src/lib/seo/fonts/` holds two JetBrains Mono faces under the
+# OFL, vendored because satori — which `next/og` renders through — accepts
+# neither a system face nor WOFF2, and `next/font` emits only WOFF2. The site
+# already loads the same family for the page; these are for the images.
+#
+# Git's own heuristic would classify them correctly. Saying it here is for the
+# reader: a repository that held no binary now holds two, on purpose, and the
+# line below is where that fact is written down rather than inferred.
+*.ttf binary
+*.ico binary

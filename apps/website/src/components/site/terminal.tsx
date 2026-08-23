@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Span, TerminalLine } from "@/lib/terminal-samples";
+import type { Span, TerminalLine, Tone } from "@/lib/transcripts";
 
 /**
  * The terminal keeps its own palette, deliberately. These are the colours goflag
@@ -8,14 +8,26 @@ import type { Span, TerminalLine } from "@/lib/terminal-samples";
  * the theme, because the panel behind them does not: the page-level `--flag-*`
  * are shades chosen for a white background.
  */
-const TONE_CLASS = {
+const TONE_CLASS: Record<Tone, string> = {
   dim: "text-terminal-dim",
-  bold: "text-terminal-foreground font-semibold",
   red: "text-terminal-red",
   yellow: "text-terminal-yellow",
   green: "text-terminal-green",
   cyan: "text-terminal-cyan",
-} as const;
+};
+
+/**
+ * Bold is an attribute, not a colour: the counts line is bold *and* yellow, and
+ * a span that only had one slot rendered it as one or the other. The plain
+ * foreground applies when bold arrives without a colour, which is how the
+ * renderers write a section heading.
+ */
+function spanClass(span: Exclude<Span, string>): string {
+  return cn(
+    span.bold && "font-semibold",
+    span.tone ? TONE_CLASS[span.tone] : span.bold && "text-terminal-foreground",
+  );
+}
 
 function Line({ spans }: { spans: TerminalLine }) {
   if (spans.length === 0) return <span>{"\n"}</span>;
@@ -26,7 +38,7 @@ function Line({ spans }: { spans: TerminalLine }) {
         typeof span === "string" ? (
           <span key={index}>{span}</span>
         ) : (
-          <span key={index} className={TONE_CLASS[span.tone]}>
+          <span key={index} className={spanClass(span)}>
             {span.t}
           </span>
         ),
