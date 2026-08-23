@@ -16,6 +16,13 @@
  *
  * Then open a merge request into develop, and merge develop into main when the
  * release is the decision you mean to make.
+ *
+ * Running it by hand is no longer the normal path: `release:prepare` in
+ * .gitlab-ci.yml is a manual job on the develop pipeline that cuts the branch,
+ * runs this file, and pushes with the merge request options so GitLab opens the
+ * merge request itself. It calls this script rather than reimplementing it —
+ * every judgement about whether a version is warranted still lives here, and
+ * `--dry-run` on a workstation is still how you look before pressing it.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";

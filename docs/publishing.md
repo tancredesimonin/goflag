@@ -195,10 +195,15 @@ C'est ce qui permet à la CI de taguer `main` sans jamais pouvoir y pousser.
 
 ## 4. Étapes ③ et ④ — fusionner
 
-1. **`pnpm release` sur une branche coupée de `develop`.** Le script décide, pour
-   chaque paquet, si sa surface publiée a bougé depuis son dernier tag ; si oui
-   il bumpe, écrit le changelog et commite. Il ne tague pas.
-2. **MR → `develop`.** Le commit de release est relu comme les autres. Rien ne se
+1. **Le job manuel `release:prepare`, sur la pipeline de `develop`.** Il coupe la
+   branche, exécute `scripts/release.mjs` et pousse avec les push options de MR :
+   GitLab ouvre la merge request et la fusionne quand sa propre pipeline passe.
+   Le script décide, pour chaque paquet, si sa surface publiée a bougé depuis son
+   dernier tag ; si oui il bumpe, écrit le changelog et commite. Il ne tague pas.
+   `pnpm release --dry-run` en local dit ce qu'il ferait, sans rien écrire.
+2. **MR → `develop`.** Le commit de release est relu comme les autres — c'est le
+   seul chemin possible : `develop` et `main` refusent le push de tout le monde,
+   CI comprise (`push: No one`), et aucun token n'y change rien. Rien ne se
    publie.
 3. **`develop` → `main`.** C'est la décision de publier, comme pour le CLI.
 

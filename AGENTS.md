@@ -9,15 +9,15 @@ it.
 
 ## Commands
 
-| Goal                       | Command                                                                          |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| Install                    | `corepack enable && pnpm install`                                                |
-| Develop                    | `pnpm dev <url> [flags]` (CLI from source, tsx) · `pnpm dev:website` (port 3004) |
-| Test                       | `pnpm test:unit` · `pnpm test:integration`                                       |
-| Lint / typecheck           | `pnpm lint` · `pnpm typecheck` · `pnpm format:check`                             |
-| Build                      | `pnpm build`                                                                     |
-| Release                    | `pnpm release` / `pnpm release --dry-run`, on a branch cut off `develop`         |
-| Audit the site with itself | `pnpm --filter @goflag/website seo`                                              |
+| Goal                       | Command                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Install                    | `corepack enable && pnpm install`                                                                            |
+| Develop                    | `pnpm dev <url> [flags]` (CLI from source, tsx) · `pnpm dev:website` (port 3004)                             |
+| Test                       | `pnpm test:unit` · `pnpm test:integration`                                                                   |
+| Lint / typecheck           | `pnpm lint` · `pnpm typecheck` · `pnpm format:check`                                                         |
+| Build                      | `pnpm build`                                                                                                 |
+| Release                    | the manual `release:prepare` job, on the `develop` pipeline (`pnpm release --dry-run` locally to look first) |
+| Audit the site with itself | `pnpm --filter @goflag/website seo`                                                                          |
 
 `format` and `format:check` run once at the root over the whole repository; `build`,
 `typecheck`, `test*` and `clean` fan out with `pnpm -r`; `lint` does both — root ESLint
