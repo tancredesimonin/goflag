@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.13](https://github.com/tancredesimonin/goflag/compare/v0.2.12...v0.2.13) (2026-08-23)
+
+
+### Features
+
+* **cli:** the preview folds its routes into a tree ([eae780f](https://github.com/tancredesimonin/goflag/commit/eae780fdabae7049f2ca93a5e679c05ee3cb44d5))
+* **cli:** the README quotes the renderer instead of a typist ([d384293](https://github.com/tancredesimonin/goflag/commit/d384293702df4554076a0c345004b65027893012))
+* **website:** the docs can show a terminal, and two pages do ([ca89ca2](https://github.com/tancredesimonin/goflag/commit/ca89ca2e31f7f9975db1b00f80cc3a08d047bdfb))
+* **website:** the fingerprint has a card, with the ids computed ([bae4baa](https://github.com/tancredesimonin/goflag/commit/bae4baa5a8fe7c727931885fe24622beb3a98922))
+* **website:** the preview page has a preview ([847dc4e](https://github.com/tancredesimonin/goflag/commit/847dc4ec951f039f82de4a2f103c2fcad7670bef))
+* **website:** the terminal panels render generated transcripts ([1dab1a0](https://github.com/tancredesimonin/goflag/commit/1dab1a03221f88e501d01b2a63addac9eb372301))
+
+
+### Documentation
+
+* the surfaces say what is true, and the plan says what happened ([0833c9f](https://github.com/tancredesimonin/goflag/commit/0833c9f2c1286326d0b402b2094ac4074f7c0791))
+
 ## [0.2.12](https://github.com/tancredesimonin/goflag/compare/v0.2.11...v0.2.12) (2026-08-16)
 
 
