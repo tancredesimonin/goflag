@@ -67,7 +67,7 @@ fine one.
 
 ## Where it runs
 
-Two packages ship to npm from a tag, published by GitLab CI over OIDC with no stored credential: `@goflag/cli` (`v*`) and `@goflag/next` (`next-v*`). The documentation site `apps/website` runs at [goflag.tech](https://goflag.tech), with `develop.goflag.tech` alongside it, both deployed with Kamal onto the shared OVH host described in the `infrastructure` repository.
+Three packages ship to npm from a tag, published by GitLab CI over OIDC with no stored credential: `@goflag/cli` (`v*`), `@goflag/next` (`next-v*`) and `@goflag/og` (`og-v*`). The documentation site `apps/website` runs at [goflag.tech](https://goflag.tech), with `develop.goflag.tech` alongside it, both deployed with Kamal onto the shared OVH host described in the `infrastructure` repository.
 
 ## Your first audit
 

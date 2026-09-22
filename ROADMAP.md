@@ -1,53 +1,80 @@
 ---
-updated: 2026-08-16
+updated: 2026-09-22
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-08-16: latest tag `v0.2.10` (2026-08-15) for `@goflag/cli`,
-> `next-v0.3.3` (2026-08-15) for `@goflag/next`. Integration on `develop`, production on
-> `main`; `git describe` answers `v0.2.10-18-gcc15fe0` and `origin/main` is 18 commits behind
-> `origin/develop`.
-> In production: `@goflag/cli` and `@goflag/next` are on npm, goflag.tech and
-> develop.goflag.tech run under Kamal. The pace is several releases a week.
+> State observed on 2026-09-22: latest tags `v0.2.12`, `next-v0.4.0` and `og-v0.2.0`, all of
+> 2026-08-16 — the three versions npm serves. Integration on `develop`, production on `main`;
+> `origin/main` is 14 commits behind `origin/develop`, among them the release commit of
+> `@goflag/cli` 0.2.13.
+> In production: `@goflag/cli`, `@goflag/next` and `@goflag/og` on npm; goflag.tech still
+> serves the build of 2026-08-16, because the deployment of `main` on 2026-08-23 failed;
+> develop.goflag.tech is current. No merge request is open.
 
 ## Now
 
-### Publish 0.2.11
+### Merge `develop` into `main`: production back, and 0.2.13 published
 
 **Why**: goals 1 and 3 of [STRATEGY.md](STRATEGY.md) — a version that is not published
-protects no site.
-**Done when**: the tag `v0.2.11` exists and `npm view @goflag/cli@0.2.11` answers.
-**State**: `packages/cli/package.json` declares `0.2.11` and the changelog is written
-(`chore(release): 0.2.11`, e7d1bdb, dated 2026-08-16), on `develop`. All that is missing is the
-`develop` → `main` merge: it triggers the `tag` job, which puts the tag on the develop side of
-the merge, then `publish:npm` over OIDC.
+protects no site — and goflag.tech is the product's first proof.
+**Done when**: the `main` pipeline is green, deployment included; the tag `v0.2.13` exists and
+`npm view @goflag/cli@0.2.13` answers; `https://goflag.tech/assets/hero.png` answers 200.
+**State**: the deployment of `main` failed on 2026-08-23 (`1569521`, !208): the new container
+never became healthy — `MODULE_NOT_FOUND` on `@swc/helpers` inside the standalone output of
+`next` 16.3.1 — and Kamal kept the container of 2026-08-16. `main` still pins `next` 16.3.1;
+`develop` is on 16.3.5, and `deploy-develop` passed on 2026-08-29, 09-05, 09-12 and 09-19.
+Two visible consequences: the README that the GitHub mirror shows from `main` displays
+`https://goflag.tech/assets/hero.png`, which production answers with a 404; and the README on
+`develop` already pins 0.2.13 in its CI snippets, a version npm does not have yet. The 0.2.13
+release commit has been on `develop` since 2026-08-30 (!210); the rest of the 14 commits are
+the `release:prepare` job (!209), the Playwright image pin, and dependency updates.
 
 ### 3.5 — translation holes move into the rule registry
 
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: further along than `docs/spec-and-lib-plan.md` says (dated 2026-08-13, where 3.5 is
-still marked ⬜ not started). The catalogue exposes 56 rules — 23 page, 28 site, 5 prose —
-among them `hreflang.missing` and `hreflang.cluster-incomplete`, `rigor: vendor-spec` with
-their sources. Only one rule out of the 56 is still at `rigor: null` —
-`hreflang.sitemap-mismatch` — and its entry says why no specification can settle it.
+**State**: half done. The second half holds: the catalogue exposes 58 rules — 25 page,
+28 site, 5 prose — and the only one at `rigor: null` is the prose rule
+`hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
+`hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
+with their sources. The first half does not: the report's `missingTranslations` is still
+computed outside the catalogue — holes in `packages/cli/src/report/build.ts`, reciprocity in
+`packages/cli/src/lib/core/i18n.ts` — and `packages/cli/src/lib/rules/index.ts` states that
+reciprocity is intentionally not a rule there.
+
+### Move to pnpm 12
+
+**Why**: pnpm 12 is the current major, and Renovate proposes no major version
+(`major.enabled: false` in the shared preset, `infrastructure/renovate-base.json`): it only
+arrives through a merge request made by hand.
+**Done when**: `packageManager` pins `pnpm@12`, the lockfile is regenerated with it, and the
+merge request pipeline passes. CI and the `Dockerfile` both install pnpm through corepack, so
+the pin is the only switch.
+**State**: to redo. A first pass on 2026-09-17 — pin `pnpm@12.4.1`, lockfile regenerated,
+merge request pipeline replayed with `gitlab-ci-local`, production image built with
+`docker buildx` — was never committed, and its base predates !215 (2026-09-19), which moved
+`develop` to pnpm 11.27.0. pnpm 12.5.1 has been out since 2026-09-18.
 
 ## Next
 
-- Public GitHub mirror + an "issues → GitLab" banner (done when: the `homepage`, `repository`
-  and `bugs` the two npm manifests already publish actually resolve).
-- `@goflag/og` — extract the hand-written card template in `apps/website`, now at two
-  consumers, so I4 is satisfied (done when: `packages/og` exists, published, and both sites
-  import it instead of copying it).
-- `defineSite({ og })` wires the image URL into the metadata (done when: a site no longer
-  writes the `og:image` of its own routes).
+- The documentation audit of goflag.tech from 2026-08-16, never merged:
+  `origin/docs/the-site-explains-the-cards` carries one commit (`339e997`, 19 files) pushed
+  after its merge request was merged. Its fixes are still missing on `develop`: the landing's
+  proof figures say 11 page rules, 3 site rules and 686 tests (`constants.ts`), and
+  `/changelog` reads `PACKAGES = ["cli", "next"]`, without `@goflag/og` (done when: rebased and
+  merged, or its fixes redone, and `constants.test.ts` holds the rule counts against
+  `rules.json`).
 - The `.goflag/routes.json` manifest emitted by the library at build time, then consumed by
   the CLI (done when: removing every `hreflang` from the render of a site with a manifest
-  produces an **error**, not silence).
+  produces an **error**, not silence) — `docs/coverage-plan.md` V-4.
 - `/raw/[locale]/[slug].md` and multilingual `llms.txt` / `llms-full.txt` derived from the
   registry (done when: the site serves them from the registry, not from hand-written files).
+  goflag.tech serves `/raw/docs/*.md`, built from its MDX sources, and a `llms.txt` generated
+  from its navigation and the rule catalogue — neither from the `@goflag/next` registry.
+- The advisory `sitemap.unlisted-indexable` in the catalogue — the mechanism exists (done when:
+  the rule is in `rules.json`) — `docs/sitemap-scope-plan.md` X-4.
 
 ## Someday
 
@@ -62,12 +89,32 @@ their sources. Only one rule out of the 56 is still at `rigor: null` —
 
 ## Shipped
 
-Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md) and
-[packages/next/CHANGELOG.md](packages/next/CHANGELOG.md).
+Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
+[packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
+[packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **0.2.11** (changelog 2026-08-16, on `develop`) — the sitemap's document tree is kept and
-  judged; a site can be questioned (`--advisories`) and not only judged; `/doc/` is no longer
-  read as a locale.
+- **Show the output instead of describing it** (2026-08-20, !194 to !205) — terminal panels
+  rendered from generated transcripts, a preview page that shows a preview, the matrix, the
+  fingerprint, the Chromium decision, the phantom locale and the forbidden loop drawn, the
+  README quoting the renderer and showing the verdict in colour — `docs/visuals-plan.md`,
+  V-0 to V-6. Deployed on develop.goflag.tech only (see Now).
+- **The pipeline prepares the release** (2026-08-23, !209) — a manual `release:prepare` job on
+  `develop` writes the release branch and opens its merge request (`90e3126`); a devDependency
+  bump no longer counts as a published surface change (`e9e06c7`).
+- **CI and hooks** — every job but the Kamal ones runs on the group's self-hosted runner
+  (`4fe8f28`, !193, 2026-08-18); a commit carrying a credential is refused by `betterleaks` (`98d50f2`, !207,
+  2026-08-22); the Playwright image moves with the dependency (`97602a8`, !214, 2026-09-12).
+- **Public mirror** — `github.com/tancredesimonin/goflag` is public, push-mirrored by GitLab
+  from the protected branches. Issues are read on GitHub, with two issue templates; code goes
+  through a merge request on GitLab (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+  `.github/ISSUE_TEMPLATE/`, !167, 2026-08-16).
+- **0.2.12, next-v0.4.0, og-v0.1.0 and og-v0.2.0** (tags 2026-08-16) — `@goflag/og` extracted
+  from the site and published, both consumers migrated (OG-4); the library declares only what
+  it was told about an image, and `og.image.sizes-mismatch` sets the declared size against the
+  real one (OG-5); the preview shows what the catalogue cannot judge, with the locale axis
+  (`docs/preview-plan.md`).
+- **0.2.11** (tag 2026-08-16) — the sitemap's document tree is kept and judged; a site can be
+  questioned (`--advisories`) and not only judged; `/doc/` is no longer read as a locale.
 - **0.2.10** (tag 2026-08-15) — `robots.txt` read as an RFC 9309 artefact rather than scanned,
   the sitemap rule catalogue, sitemap entries set against the crawl, and every finding
   carrying its `rigor`.
@@ -81,6 +128,15 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md) and
 
 ## Dropped
 
+- `defineSite({ og })` wiring the image URL into the metadata: it had no caller, there was
+  nowhere to write it (Next replaces `openGraph` whole, per segment), and writing it would have
+  switched off the image of the file convention — `docs/og-plan.md` §10.9 (!180). OG-5 took its
+  place.
+- The "issues → GitLab" banner on the public mirror: the GitLab project is private, so issues
+  are read on GitHub instead — `CONTRIBUTING.md` (!167).
+- Pinning `next` 16.3.2 against the standalone crash of 16.3.1: overtaken by Renovate, which
+  brought 16.3.3 to `develop` on 2026-08-29 — merging the pin would have downgraded it (!211,
+  closed on 2026-08-30).
 - The CI `install` job, which published `node_modules` as an artefact: every following job
   reinstalled over it. 1.77 min of setup for zero seconds of work.
 - Replaying the verification jobs after a merge: 1431 minutes between 1 and 13 August
