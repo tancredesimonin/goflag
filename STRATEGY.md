@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-16
+updated: 2026-09-22
 ---
 
 # Strategy — goflag
@@ -47,15 +47,17 @@ is treating the symptom.
 
 ## How we would know it works
 
-- **What is measured today**: 709 unit tests on `@goflag/cli` and 116 on `@goflag/next`
-  (`pnpm --filter … test:unit`), plus the integration suites; the published catalogue
+- **What is measured today**: 819 unit tests on `@goflag/cli`, 120 on `@goflag/next` and 77
+  on `@goflag/og` (`pnpm --filter … test:unit`, counted on 2026-09-22), plus the integration
+  suites; the published catalogue
   (`rules.json`, `flags.json`) is compared byte for byte against what the engine runs, so the
   documentation can no longer describe a rule that is gone.
 - **The closest product signal**: goflag.tech audits itself with the CLI it documents. A
   documentation site that does not pass its own tool is the only rebuttal that counts.
-- **What is not measured**: no usage measurement in place. No npm downloads, no count of
-  third-party repositories, no adoption by sites outside this group. Writing a number here
-  would be inventing it.
+- **What is not measured**: usage. npm counts downloads — 207 for `@goflag/cli` between
+  2026-08-21 and 2026-09-19 — but every `seo` and `seo:mr` job of the author's own sites runs
+  `npx @goflag/cli@<pin>`, and nothing separates those pulls from anyone else's: the figure is
+  not adoption. No count of third-party repositories, no adoption by sites outside this group.
 
 ## Business model
 
@@ -79,9 +81,6 @@ unstable.
 
 - Extract the spec into `@goflag/spec`, or leave it in the CLI: settled when the library's
   tests import it.
-- The public GitHub mirror does not exist; `homepage`, `repository` and `bugs` in both npm
-  manifests already point at `github.com/tancredesimonin/goflag`, while the repository lives
-  on GitLab.
 - The shape of a multilingual `llms.txt` is not settled anywhere public, and the space is
   moving (native support under discussion at Next.js).
 - The `.goflag/routes.json` manifest — comparing the intention the library declares against

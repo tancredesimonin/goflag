@@ -1,6 +1,7 @@
 # goflag — Plan de développement
 
-> **Rédigé** 2026-07-29 · **Mis à jour** 2026-08-13
+> **Rédigé** 2026-07-29 · **Mis à jour** 2026-08-13 · **Mis à jour** 2026-09-22 (§0
+> revérifié contre le code, npm et les quatre sites)
 > **Portée** — `goflag` (le produit), `@goflag/next` (un second outil sous la
 > même marque), et les 4 sites qui servent de terrain : `openfinanceguide`,
 > `stereo-house`, `tancrede`, `tancredo`.
@@ -10,24 +11,29 @@
 
 ## 0. Où on en est
 
-| Phase                                     | État                                                                    |
-| ----------------------------------------- | ----------------------------------------------------------------------- |
-| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                                         |
-| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)                                   |
-| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6)                        |
-| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                                         |
-| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                                                 |
-| **Distribution**                          | ✅ livrée — `@goflag/cli` et `@goflag/next` sur npm, en OIDC            |
-| **3** — Durcir la spec                    | ⏳ `rigor`, `Source` et l'export livrés ; **reste 3.5**                 |
-| **4** — Le cœur de la lib                 | ✅ livrée — `@goflag/next@0.3.0`, `apps/website` et stereo-house dessus |
-| **5** — Autres consommateurs + manifeste  | ⏳ le manifeste (5.2/5.3) reste ; 3 sites non migrés (§6)               |
-| **6** — Contenu / AI                      | ⏳ `/raw/` et `llms.txt` servis par le site ; pas dérivés du registre   |
-| **7** — Public                            | ⏳ npm et le scope faits ; miroir et README refaits                     |
+| Phase                                     | État                                                                                                |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **0** — Nettoyer openbankinglab           | ✅ livrée (`openbankinglab!45`)                                                                     |
+| **1** — Rendre goflag utilisable          | ✅ livrée (`goflag!30` → `!37`, 5 MR)                                                               |
+| **2** — Corriger les bugs mesurés         | ⏳ 2 sites sur 4 ; les 2 autres parkés (voir §6)                                                    |
+| **2 bis** — Outil utilisable au quotidien | ✅ livrée (`goflag!34` → `!37`)                                                                     |
+| **2 ter** — Monorepo                      | ✅ livrée (`goflag!39`)                                                                             |
+| **Distribution**                          | ✅ livrée — `@goflag/cli`, `@goflag/next` et `@goflag/og` sur npm, en OIDC                          |
+| **3** — Durcir la spec                    | ⏳ `rigor`, `Source` et l'export livrés ; **reste 3.5**, à moitié faite                             |
+| **4** — Le cœur de la lib                 | ✅ livrée — `@goflag/next` 0.4.0 aujourd'hui, `apps/website` dessus                                 |
+| **5** — Autres consommateurs + manifeste  | ⏳ 5.1 faite — les quatre sites sur `@goflag/next` 0.4.0 (`develop`) ; le manifeste (5.2/5.3) reste |
+| **6** — Contenu / AI                      | ⏳ `/raw/` et `llms.txt` servis par le site ; pas dérivés du registre                               |
+| **7** — Public                            | ⏳ 7.1 à 7.3 faits (miroir GitHub public) ; 7.4 reste à juger                                       |
 
 **Chiffres au 2026-08-13** : 651 tests, **11 règles par page** + 3 règles site +
 4 règles prose, `@goflag/cli@0.2.5` publié (`0.2.6` fusionnée dans `develop`,
 pas encore sur `main`), `@goflag/next@0.3.0`. Release et publication
 automatisées, sans aucune credential npm en CI — voir §2, « Distribution ».
+
+**Chiffres au 2026-09-22** : 819 tests unitaires sur `@goflag/cli`, 120 sur
+`@goflag/next`, 77 sur `@goflag/og` ; 58 règles — 25 page, 28 site, 5 prose ;
+publiés : `@goflag/cli@0.2.12`, `@goflag/next@0.4.0`, `@goflag/og@0.2.0`, tous du
+2026-08-16 (`0.2.13` est prête sur `develop`, pas sur `main`).
 
 > Ces chiffres sont datés parce qu'ils rotent. `516 tests, 12 règles par page`
 > est resté ici pendant quatre versions, et c'est exactement le genre d'écart
@@ -37,14 +43,14 @@ automatisées, sans aucune credential npm en CI — voir §2, « Distribution »
 
 ### Ce qu'il reste à faire, dans l'ordre
 
-| #   | Quoi                                                                                  | État                                                   |
-| --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 1   | `GOFLAG_VERSION` de stereo-house — la CI y épinglait `0.1.0`, dont le `bin` est cassé | ❔ hors de ce dépôt, à vérifier là-bas                 |
-| 2   | Capturer la baseline de stereo-house et la committer                                  | ❔ hors de ce dépôt, à vérifier là-bas                 |
-| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                      | ✅ `scripts/release.mjs`, liste `surface` par paquet   |
-| 4   | Étendre le gate aux 3 autres sites                                                    | ❔ hors de ce dépôt                                    |
-| 5   | **3.3** — l'export du catalogue                                                       | ✅ `goflag rules`, `rules.json` généré, le site le lit |
-| 6   | **3.5** — absorber `missingTranslations` (trous + réciprocité) dans le registre       | ⬜ **le travail suivant**, dette de la phase 1         |
+| #   | Quoi                                                                                  | État                                                                                                                                                                                                                                        |
+| --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `GOFLAG_VERSION` de stereo-house — la CI y épinglait `0.1.0`, dont le `bin` est cassé | ✅ épinglée à `0.2.12` (constaté le 2026-09-22)                                                                                                                                                                                             |
+| 2   | Capturer la baseline de stereo-house et la committer                                  | ✅ `.goflag/baseline.json` committée, `--max-debt 2`                                                                                                                                                                                        |
+| 3   | Resserrer le garde de release sur « `packages/cli/src` a bougé »                      | ✅ `scripts/release.mjs`, liste `surface` par paquet                                                                                                                                                                                        |
+| 4   | Étendre le gate aux 3 autres sites                                                    | ✅ les quatre sites incluent `seo-goflag.yml` sur `develop`, chacun avec sa baseline                                                                                                                                                        |
+| 5   | **3.3** — l'export du catalogue                                                       | ✅ `goflag rules`, `rules.json` généré, le site le lit                                                                                                                                                                                      |
+| 6   | **3.5** — absorber `missingTranslations` (trous + réciprocité) dans le registre       | 🟡 **le travail suivant**, à moitié : `hreflang.missing` et `hreflang.cluster-incomplete` sont au catalogue, `missingTranslations` est encore calculé hors catalogue — les trous dans `report/build.ts`, la réciprocité dans `core/i18n.ts` |
 
 **3.3 est livré, et il a été fait pour une raison que le plan n'avait pas
 prévue.** `apps/website` portait deux miroirs écrits à la main — le catalogue de
@@ -53,8 +59,9 @@ d'importer `packages/**`. L'audit de documentation du 2026-08-13 a trouvé 89
 écarts entre la doc et le code, dont six dans ces deux fichiers : un message de
 règle faux depuis quatre versions, un code de finding annoncé et impossible à
 émettre, un flag entier jamais documenté. Le catalogue est désormais généré,
-committé et lu ; **la référence des flags reste un miroir à la main**, et c'est
-la prochaine du même genre.
+committé et lu ; **la référence des flags restait un miroir à la main**, et c'était
+la prochaine du même genre — générée depuis, dans `packages/cli/flags.json`
+(invariant I6 d'`AGENTS.md`).
 
 C'est aussi ce qu'attend l'invariant B.4 de `docs/locale-model-plan.md` — « tout
 tag que la lib émet doit passer le validateur du CLI » — aujourd'hui écrit et
@@ -501,14 +508,14 @@ lib est tirée.
 
 ---
 
-## Phase 5 — Les autres consommateurs + le manifeste ⬜
+## Phase 5 — Les autres consommateurs + le manifeste ⏳
 
-| #   | Livrable                                                                          |
-| --- | --------------------------------------------------------------------------------- |
-| 5.1 | `tancrede`, `tancredo`, `openfinanceguide` migrés                                 |
-| 5.2 | La lib émet `.goflag/routes.json` au build — l'**intention déclarée**             |
-| 5.3 | goflag consomme ce manifeste : compare intention et observation                   |
-| 5.4 | Sous-module `og` : template `ImageResponse` piloté par tokens, partagé au favicon |
+| #   | Livrable                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------- |
+| 5.1 | ✅ `tancrede`, `tancredo`, `openfinanceguide` migrés — sur `@goflag/next` 0.4.0 (`develop`, 2026-09-22) |
+| 5.2 | La lib émet `.goflag/routes.json` au build — l'**intention déclarée**                                   |
+| 5.3 | goflag consomme ce manifeste : compare intention et observation                                         |
+| 5.4 | Sous-module `og` : template `ImageResponse` piloté par tokens, partagé au favicon                       |
 
 **Critère de sortie** — sur un site avec manifeste, retirer _tous_ les hreflang
 du rendu doit produire une **erreur**. C'est ce qui ferme définitivement la
@@ -533,14 +540,14 @@ entrant ne le traite. Si Vercel rend le markdown natif, cette phase se réduit �
 
 ---
 
-## Phase 7 — Public ⬜
+## Phase 7 — Public ⏳
 
-| #   | Livrable                                                             |
-| --- | -------------------------------------------------------------------- |
-| 7.1 | Miroir GitHub public + bannière « issues → GitLab »                  |
-| 7.2 | ✅ `@goflag/cli` publié sur npm, release et publication automatisées |
-| 7.3 | ✅ Scope `@goflag` revendiqué, nom nu tenu en panneau indicateur     |
-| 7.4 | README qui met la spec en avant autant que le code                   |
+| #   | Livrable                                                                                                                                      |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7.1 | ✅ Miroir GitHub public — la bannière « issues → GitLab » remplacée par l'inverse : les issues se lisent sur GitHub (`CONTRIBUTING.md`, !167) |
+| 7.2 | ✅ `@goflag/cli` publié sur npm, release et publication automatisées                                                                          |
+| 7.3 | ✅ Scope `@goflag` revendiqué, nom nu tenu en panneau indicateur                                                                              |
+| 7.4 | README qui met la spec en avant autant que le code                                                                                            |
 
 **Critère de sortie** — un lecteur externe peut, en 10 minutes : lire la spec,
 lancer goflag sur son propre site, voir ses findings.

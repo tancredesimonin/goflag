@@ -6,8 +6,9 @@
 > échoué — pas sur npm, sur `git push` : la chaîne poussait un commit sur `main`,
 > qui n'accepte de push de personne. Elle a été refaite en « la CI ne pousse
 > qu'un tag » (§4), et l'étape ②bis ci-dessous en est le corollaire.
-> Le document reste écrit au présent parce que `@goflag/og` devra refaire
-> exactement les mêmes étapes.
+> `@goflag/og` a refait ce chemin le 2026-08-16 : `0.1.0` puis `0.2.0` dans la
+> journée (tags `og-v0.1.0` et `og-v0.2.0`). Le document reste écrit au présent
+> pour le prochain paquet.
 > **Portée** — la première publication de `@goflag/next` sur npm, la
 > configuration du trusted publisher OIDC, et l'ordre des opérations autour de
 > la fusion. Tout ce qui suit est **manuel** : le reste est déjà automatisé.
