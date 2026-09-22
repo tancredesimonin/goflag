@@ -67,7 +67,7 @@ fine one.
 
 ## Where it runs
 
-Two packages ship to npm from a tag, published by GitLab CI over OIDC with no stored credential: `@goflag/cli` (`v*`) and `@goflag/next` (`next-v*`). The documentation site `apps/website` runs at [goflag.tech](https://goflag.tech), with `develop.goflag.tech` alongside it, both deployed with Kamal onto the shared OVH host described in the `infrastructure` repository.
+Three packages ship to npm from a tag, published by GitLab CI over OIDC with no stored credential: `@goflag/cli` (`v*`), `@goflag/next` (`next-v*`) and `@goflag/og` (`og-v*`). The documentation site `apps/website` runs at [goflag.tech](https://goflag.tech), with `develop.goflag.tech` alongside it, both deployed with Kamal onto the shared OVH host described in the `infrastructure` repository.
 
 ## Your first audit
 
@@ -558,7 +558,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.12"
+  GOFLAG_VERSION: "0.2.13"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -610,7 +610,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.12 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.13 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

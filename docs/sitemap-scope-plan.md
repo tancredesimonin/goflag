@@ -223,13 +223,18 @@ fonctionnalité crée le cas, donc elle arrive avec la question.
 | **X-0** | `sitemap?: boolean` sur une route simple, `boolean \| (entry) => boolean` sur `collection`  | ✅   |
 | **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs         | ✅   |
 | **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2               | ✅   |
-| **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)               | ⬜   |
+| **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)               | ✅   |
 | **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue — **le mécanisme existe** (§ ci-dessous) | ⬜   |
 
 X-3 n'est pas une migration mécanique : la question du §2 se pose avant le code.
 Si la réponse est « on liste tout », la fonctionnalité n'est pas ce qui débloque
 ce site — elle reste due pour `/raw/` et les facettes, et le handbook entre au
 sitemap sans elle.
+
+> **Au 2026-09-22** — X-3 tranchée par « on liste tout » : `openfinanceguide` est
+> passé au registre entier, le manuel STET au sitemap pour chaque édition et chaque
+> locale (`7d989ac` dans ce dépôt-là, publié en `v1.3.1`). X-4 reste à faire : la
+> règle n'est pas dans `rules.json`.
 
 ### Critères de sortie
 

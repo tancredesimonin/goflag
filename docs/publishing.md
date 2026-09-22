@@ -6,8 +6,9 @@
 > échoué — pas sur npm, sur `git push` : la chaîne poussait un commit sur `main`,
 > qui n'accepte de push de personne. Elle a été refaite en « la CI ne pousse
 > qu'un tag » (§4), et l'étape ②bis ci-dessous en est le corollaire.
-> Le document reste écrit au présent parce que `@goflag/og` devra refaire
-> exactement les mêmes étapes.
+> `@goflag/og` a refait ce chemin le 2026-08-16 : `0.1.0` puis `0.2.0` dans la
+> journée (tags `og-v0.1.0` et `og-v0.2.0`). Le document reste écrit au présent
+> pour le prochain paquet.
 > **Portée** — la première publication de `@goflag/next` sur npm, la
 > configuration du trusted publisher OIDC, et l'ordre des opérations autour de
 > la fusion. Tout ce qui suit est **manuel** : le reste est déjà automatisé.
@@ -195,10 +196,15 @@ C'est ce qui permet à la CI de taguer `main` sans jamais pouvoir y pousser.
 
 ## 4. Étapes ③ et ④ — fusionner
 
-1. **`pnpm release` sur une branche coupée de `develop`.** Le script décide, pour
-   chaque paquet, si sa surface publiée a bougé depuis son dernier tag ; si oui
-   il bumpe, écrit le changelog et commite. Il ne tague pas.
-2. **MR → `develop`.** Le commit de release est relu comme les autres. Rien ne se
+1. **Le job manuel `release:prepare`, sur la pipeline de `develop`.** Il coupe la
+   branche, exécute `scripts/release.mjs` et pousse avec les push options de MR :
+   GitLab ouvre la merge request et la fusionne quand sa propre pipeline passe.
+   Le script décide, pour chaque paquet, si sa surface publiée a bougé depuis son
+   dernier tag ; si oui il bumpe, écrit le changelog et commite. Il ne tague pas.
+   `pnpm release --dry-run` en local dit ce qu'il ferait, sans rien écrire.
+2. **MR → `develop`.** Le commit de release est relu comme les autres — c'est le
+   seul chemin possible : `develop` et `main` refusent le push de tout le monde,
+   CI comprise (`push: No one`), et aucun token n'y change rien. Rien ne se
    publie.
 3. **`develop` → `main`.** C'est la décision de publier, comme pour le CLI.
 
