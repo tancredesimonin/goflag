@@ -1,34 +1,16 @@
 ---
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-09-22: latest tags `v0.2.12`, `next-v0.4.0` and `og-v0.2.0`, all of
-> 2026-08-16 — the three versions npm serves. Integration on `develop`, production on `main`;
-> `origin/main` is 14 commits behind `origin/develop`, among them the release commit of
-> `@goflag/cli` 0.2.13.
-> In production: `@goflag/cli`, `@goflag/next` and `@goflag/og` on npm; goflag.tech still
-> serves the build of 2026-08-16, because the deployment of `main` on 2026-08-23 failed;
-> develop.goflag.tech is current. No merge request is open.
+> State observed on 2026-09-23: latest tags `v0.2.13` (2026-09-22), `next-v0.4.0` and
+> `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
+> production on `main`; `develop` is one commit ahead, the move to pnpm 12 (!218).
+> In production: the three packages on npm, and goflag.tech, redeployed from `main` on
+> 2026-09-22. No merge request is open.
 
 ## Now
-
-### Merge `develop` into `main`: production back, and 0.2.13 published
-
-**Why**: goals 1 and 3 of [STRATEGY.md](STRATEGY.md) — a version that is not published
-protects no site — and goflag.tech is the product's first proof.
-**Done when**: the `main` pipeline is green, deployment included; the tag `v0.2.13` exists and
-`npm view @goflag/cli@0.2.13` answers; `https://goflag.tech/assets/hero.png` answers 200.
-**State**: the deployment of `main` failed on 2026-08-23 (`1569521`, !208): the new container
-never became healthy — `MODULE_NOT_FOUND` on `@swc/helpers` inside the standalone output of
-`next` 16.3.1 — and Kamal kept the container of 2026-08-16. `main` still pins `next` 16.3.1;
-`develop` is on 16.3.5, and `deploy-develop` passed on 2026-08-29, 09-05, 09-12 and 09-19.
-Two visible consequences: the README that the GitHub mirror shows from `main` displays
-`https://goflag.tech/assets/hero.png`, which production answers with a 404; and the README on
-`develop` already pins 0.2.13 in its CI snippets, a version npm does not have yet. The 0.2.13
-release commit has been on `develop` since 2026-08-30 (!210); the rest of the 14 commits are
-the `release:prepare` job (!209), the Playwright image pin, and dependency updates.
 
 ### 3.5 — translation holes move into the rule registry
 
@@ -43,19 +25,6 @@ with their sources. The first half does not: the report's `missingTranslations` 
 computed outside the catalogue — holes in `packages/cli/src/report/build.ts`, reciprocity in
 `packages/cli/src/lib/core/i18n.ts` — and `packages/cli/src/lib/rules/index.ts` states that
 reciprocity is intentionally not a rule there.
-
-### Move to pnpm 12
-
-**Why**: pnpm 12 is the current major, and Renovate proposes no major version
-(`major.enabled: false` in the shared preset, `infrastructure/renovate-base.json`): it only
-arrives through a merge request made by hand.
-**Done when**: `packageManager` pins `pnpm@12`, the lockfile is regenerated with it, and the
-merge request pipeline passes. CI and the `Dockerfile` both install pnpm through corepack, so
-the pin is the only switch.
-**State**: to redo. A first pass on 2026-09-17 — pin `pnpm@12.4.1`, lockfile regenerated,
-merge request pipeline replayed with `gitlab-ci-local`, production image built with
-`docker buildx` — was never committed, and its base predates !215 (2026-09-19), which moved
-`develop` to pnpm 11.27.0. pnpm 12.5.1 has been out since 2026-09-18.
 
 ## Next
 
@@ -93,11 +62,16 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **0.2.13, and production back** (2026-09-22, !210 then !217) — `main` takes `next` 16.3.5, and
+  goflag.tech, stuck on its build of 2026-08-16 since the deployment of 2026-08-23 failed on
+  `@swc/helpers`, serves the docs of 2026-08-20; `@goflag/cli` 0.2.13 is on npm. The four sites
+  took it the same day (openfinanceguide !53, tancredo !106, stereo-house !99, tancrede !176).
+- **pnpm 12.5.1** (2026-09-23, !218) — the `packageManager` pin, and the lockfile pnpm 12 writes.
 - **Show the output instead of describing it** (2026-08-20, !194 to !205) — terminal panels
   rendered from generated transcripts, a preview page that shows a preview, the matrix, the
   fingerprint, the Chromium decision, the phantom locale and the forbidden loop drawn, the
   README quoting the renderer and showing the verdict in colour — `docs/visuals-plan.md`,
-  V-0 to V-6. Deployed on develop.goflag.tech only (see Now).
+  V-0 to V-6. In production since 2026-09-22.
 - **The pipeline prepares the release** (2026-08-23, !209) — a manual `release:prepare` job on
   `develop` writes the release branch and opens its merge request (`90e3126`); a devDependency
   bump no longer counts as a published surface change (`e9e06c7`).
