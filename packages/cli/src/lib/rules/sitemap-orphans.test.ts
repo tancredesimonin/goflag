@@ -527,6 +527,26 @@ describe("what counts as asking not to be indexed", () => {
       header: "googlebot: max-snippet: 0",
       noindex: false,
     },
+    {
+      says: "header max-image-preview: none, which is about images",
+      header: "max-image-preview: none",
+      noindex: false,
+    },
+    {
+      says: "header max-image-preview: none, addressed to googlebot",
+      header: "googlebot: max-image-preview: none",
+      noindex: false,
+    },
+    {
+      says: "meta robots max-image-preview:none",
+      head: `<meta name="robots" content="max-image-preview:none">`,
+      noindex: false,
+    },
+    {
+      says: "header noindex beside max-image-preview: none",
+      header: "noindex, max-image-preview: none",
+      noindex: true,
+    },
     { says: "nothing at all", noindex: false },
   ];
 

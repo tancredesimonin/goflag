@@ -1126,17 +1126,34 @@ function pagesByUrl(site: SiteContext): Map<string, Page> {
 /** `none` is Google's own shorthand for `noindex, nofollow`. */
 const NOINDEX = new Set(["noindex", "none"]);
 
+/** The directives that take a value after a colon, so that colon names no crawler. */
+const VALUED_DIRECTIVES = new Set([
+  "max-snippet",
+  "max-image-preview",
+  "max-video-preview",
+  "unavailable_after",
+]);
+
 /**
- * The last word of each `X-Robots-Tag` token, which is where a `noindex` would
- * be: `googlebot: noindex` addresses one crawler and is a `noindex` all the
- * same. Two headers arrive joined by a comma, so tokens are read one by one. A
- * directive that carries a value (`max-snippet: 20`, `unavailable_after: …`)
- * yields that value, which can never read as `noindex` — so this needs no list
- * of them, and is good for nothing but the question it is asked.
+ * The name of the directive each `X-Robots-Tag` token carries. A token may
+ * address one crawler (`googlebot: noindex`) and a directive may carry a value
+ * (`max-image-preview: none`), and the two look alike: what comes before the
+ * colon is a directive when it is one of those that take a value, and the
+ * crawler the rest is addressed to otherwise. Reading the last word instead
+ * takes that `none` — no image preview — for `noindex, nofollow`, which is the
+ * mistake this list exists to prevent. Two headers arrive joined by a comma, so
+ * tokens are read one by one.
  */
-function headerLastWords(value: string | undefined): string[] {
+function headerDirectiveNames(value: string | undefined): string[] {
   if (!value) return [];
-  return value.split(",").map((token) => token.split(":").pop()!);
+  return value.split(",").map((token) => {
+    let directive = token.trim().toLowerCase();
+    const colon = directive.indexOf(":");
+    if (colon !== -1 && !VALUED_DIRECTIVES.has(directive.slice(0, colon).trim())) {
+      directive = directive.slice(colon + 1);
+    }
+    return directive.split(":")[0]!.trim();
+  });
 }
 
 /**
@@ -1150,7 +1167,7 @@ function headerLastWords(value: string | undefined): string[] {
 function saysNoindex(page: Page): boolean {
   const metas = [page.meta.robots?.value, page.meta.googlebot?.value];
   if (metas.some((content) => (content ?? "").split(",").some(isNoindex))) return true;
-  return headerLastWords(page.fetch.headers["x-robots-tag"]).some(isNoindex);
+  return headerDirectiveNames(page.fetch.headers["x-robots-tag"]).some(isNoindex);
 }
 
 function isNoindex(directive: string): boolean {
