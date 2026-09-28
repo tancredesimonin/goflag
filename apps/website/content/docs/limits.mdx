@@ -29,7 +29,7 @@ crawl reaches by following links.
 the sitemap selection, which is seeded straight into the crawl, so on the default
 path they cannot make a run smaller.
 
-### A report can cover part of your site in four ways
+### A report can cover part of your site in five ways
 
 `diagnostics.truncated` is `true` only when a page or link cap actually cut the
 crawl or the link audit short; the terminal then prints
@@ -44,7 +44,11 @@ less than the whole site:
 - a sitemap over 5,000 URLs, or an index with over 50 child sitemaps, is cut
   during discovery — silently, with no warning and `truncated` still `false`.
   `sitemap.orphans` then renders no verdict: past the cut, a listed page and an
-  unlisted one look the same.
+  unlisted one look the same;
+- only the first sitemap `robots.txt` declares is read, where a search engine
+  reads every `Sitemap:` line — silently too. `sitemap.orphans` renders no
+  verdict while another declared sitemap goes unread, since the page it would
+  name may be listed there.
 
 **A run that truncated, sampled, or missed selected pages is a report about part
 of your site**, and a green verdict on one means very little. Read

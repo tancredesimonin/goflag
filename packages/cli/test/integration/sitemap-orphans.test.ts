@@ -80,7 +80,7 @@ function oneSitemap() {
     app.get("/robots.txt", (c) =>
       c.text(`User-agent: *\nAllow: /\nSitemap: ${origin()}/sitemap.xml\n`),
     );
-    app.get("/sitemap.xml", () => urlset(origin(), ["/", "/listed", "/moved"]));
+    app.get("/sitemap.xml", () => urlset(origin(), ["/", "/listed", "/moved", "/copied"]));
     app.get("/", () =>
       page("home", "", links(["/listed", "/forgotten", "/hidden", "/syndicated", "/landed"])),
     );
@@ -89,6 +89,9 @@ function oneSitemap() {
     app.get("/hidden", () => page("hidden", `<meta name="robots" content="noindex">`));
     app.get("/syndicated", () =>
       page("syndicated", `<link rel="canonical" href="https://publisher.example/original">`),
+    );
+    app.get("/copied", () =>
+      page("copied", `<link rel="canonical" href="https://publisher.example/copied">`),
     );
     app.get("/moved", (c) => c.redirect("/landed", 301));
     app.get("/landed", () => page("landed"));
@@ -117,6 +120,59 @@ function brokenChild() {
   });
 }
 
+/** `robots.txt` declares two sitemaps, and discovery reads the first that parses. */
+function twoDeclared() {
+  return start((app, origin) => {
+    app.get("/robots.txt", (c) =>
+      c.text(
+        `User-agent: *\nAllow: /\nSitemap: ${origin()}/pages.xml\nSitemap: ${origin()}/posts.xml\n`,
+      ),
+    );
+    app.get("/pages.xml", () => urlset(origin(), ["/", "/about"]));
+    app.get("/posts.xml", () => urlset(origin(), ["/posts/hello"]));
+    app.get("/", () => page("home", "", links(["/about", "/posts/hello", "/forgotten"])));
+    app.get("/about", () => page("about"));
+    app.get("/posts/hello", () => page("hello"));
+    app.get("/forgotten", () => page("forgotten"));
+  });
+}
+
+/** The one declared sitemap is gone, and discovery falls back to the well-known path. */
+function declaredGone() {
+  return start((app, origin) => {
+    app.get("/robots.txt", (c) =>
+      c.text(`User-agent: *\nAllow: /\nSitemap: ${origin()}/gone.xml\n`),
+    );
+    app.get("/gone.xml", (c) => c.text("not found", 404));
+    app.get("/sitemap.xml", () => urlset(origin(), ["/", "/about"]));
+    app.get("/", () => page("home", "", links(["/about", "/forgotten"])));
+    app.get("/about", () => page("about"));
+    app.get("/forgotten", () => page("forgotten"));
+  });
+}
+
+/** An index and one of its children, both declared: redundant, not partial. */
+function indexAndChildDeclared() {
+  return start((app, origin) => {
+    app.get("/robots.txt", (c) =>
+      c.text(
+        `User-agent: *\nAllow: /\nSitemap: ${origin()}/sitemap_index.xml\nSitemap: ${origin()}/pages.xml\n`,
+      ),
+    );
+    app.get("/sitemap_index.xml", () =>
+      xml(
+        `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+          `<sitemap><loc>${origin()}/pages.xml</loc></sitemap>` +
+          `</sitemapindex>`,
+      ),
+    );
+    app.get("/pages.xml", () => urlset(origin(), ["/", "/about"]));
+    app.get("/", () => page("home", "", links(["/about", "/forgotten"])));
+    app.get("/about", () => page("about"));
+    app.get("/forgotten", () => page("forgotten"));
+  });
+}
+
 const AUDIT = { depth: 2, static: true, checkExternal: false, coverage: "all" } as const;
 
 function issuesFor(report: GoflagReport, ruleId: string) {
@@ -138,7 +194,15 @@ describe("sitemap.orphans on a sitemap goflag read in full", () => {
 
   it("crawls every page the fixture links, so a silence below is a decision", () => {
     const paths = report.pages.map((p) => new URL(p.url).pathname).sort();
-    expect(paths).toEqual(["/", "/forgotten", "/hidden", "/landed", "/listed", "/syndicated"]);
+    expect(paths).toEqual([
+      "/",
+      "/copied",
+      "/forgotten",
+      "/hidden",
+      "/landed",
+      "/listed",
+      "/syndicated",
+    ]);
   });
 
   it("counts the page that is linked, indexable and listed nowhere — and only that one", () => {
@@ -159,6 +223,14 @@ describe("sitemap.orphans on a sitemap goflag read in full", () => {
     const redirects = issuesFor(report, "sitemap.entry.redirects");
     expect(redirects).toHaveLength(1);
     expect(redirects[0]!.message).toContain(`${site.url}/moved → ${site.url}/landed`);
+  });
+
+  it("flags the listed page whose canonical names another origin, and only that one", () => {
+    const found = issuesFor(report, "sitemap.entry.non-canonical");
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain(`${site.url}/copied → https://publisher.example/copied`);
+    expect(issuesFor(report, "sitemap.orphans")[0]!.message).not.toContain("/copied");
   });
 
   it("still leaves out the page that asks for noindex", () => {
@@ -192,5 +264,75 @@ describe("sitemap.orphans when a child sitemap could not be read", () => {
 
     expect(found).toHaveLength(1);
     expect(found[0]!.message).toContain("1 of 2");
+  });
+});
+
+describe("sitemap.orphans when robots.txt declares two sitemaps", () => {
+  let site: Fixture;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    site = await twoDeclared();
+    report = await runAudit(site.url, AUDIT);
+  }, 60_000);
+
+  afterAll(async () => {
+    await site.stop();
+  });
+
+  it("reads only the first — the gap the rule has to stand back from", () => {
+    expect(report.diagnostics.sitemap?.sitemapUrl).toBe(`${site.url}/pages.xml`);
+  });
+
+  it("crawls the page only the second one lists", () => {
+    expect(report.pages.some((p) => p.url === `${site.url}/posts/hello`)).toBe(true);
+  });
+
+  it("renders no verdict, rather than call that page absent", () => {
+    expect(issuesFor(report, "sitemap.orphans")).toEqual([]);
+  });
+});
+
+describe("sitemap.orphans when the declared sitemap is gone", () => {
+  let site: Fixture;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    site = await declaredGone();
+    report = await runAudit(site.url, AUDIT);
+  }, 60_000);
+
+  afterAll(async () => {
+    await site.stop();
+  });
+
+  it("falls back to the well-known sitemap", () => {
+    expect(report.diagnostics.sitemap?.sitemapUrl).toBe(`${site.url}/sitemap.xml`);
+  });
+
+  it("renders no verdict: the declared one may be where the page is listed", () => {
+    expect(issuesFor(report, "sitemap.orphans")).toEqual([]);
+  });
+});
+
+describe("sitemap.orphans when an index and its child are both declared", () => {
+  let site: Fixture;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    site = await indexAndChildDeclared();
+    report = await runAudit(site.url, AUDIT);
+  }, 60_000);
+
+  afterAll(async () => {
+    await site.stop();
+  });
+
+  it("still judges, since discovery read every declared file, and counts the forgotten page", () => {
+    const found = issuesFor(report, "sitemap.orphans");
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("1 crawled page asks to be indexed");
+    expect(found[0]!.message).toContain(`${site.url}/forgotten`);
   });
 });

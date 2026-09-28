@@ -22,6 +22,7 @@ import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
 import type { SiteContext, SiteRule } from "./site-types";
+import { sitemapReadInFull } from "./sitemap-inventory";
 
 /** A site is only subject to hreflang policy when it serves 2+ locales. */
 function isMultilingual(site: SiteContext): boolean {
@@ -1218,15 +1219,11 @@ const sitemapEntryNonCanonical: SiteRule = {
     for (const entry of site.discovery!.urls) {
       const key = sameUrlKey(entry.loc);
       const page = key ? byUrl.get(key) : undefined;
-      const canonical = page?.links.canonical;
-      if (!page || !canonical) continue;
-
-      const canonicalKey = sameUrlKey(canonical);
-      // Only when the page names a *different* page. A canonical that differs
-      // by a trailing slash is the same page said twice, which `sameUrlKey`
-      // already folds together.
-      if (canonicalKey && canonicalKey !== key) {
-        wrong.push(`${entry.loc} → ${canonical}`);
+      // The same test `sitemap.orphans` uses to leave a page out, and it has to
+      // be: a page this rule says must not be listed is one that rule must not
+      // ask to be listed. Two copies of the comparison could drift apart.
+      if (page && canonicalElsewhere(page)) {
+        wrong.push(`${entry.loc} → ${page.links.canonical}`);
       }
     }
 
@@ -1249,27 +1246,14 @@ const sitemapOrphans: SiteRule = {
   // translation holes take, and for the same reason: forty repeats of one
   // omission is noise, and the omission is a property of the sitemap.
   //
-  // Judged only against an inventory goflag read in full. A sitemap cut at a
-  // cap (`truncated`), or an index with a child that yielded no urlset, hides
-  // entries, and a page listed where goflag could not read would be reported
-  // as absent. The unreadable child is `sitemap.index.child-error`'s finding;
-  // this one waits until the list it compares against is whole.
-  appliesTo: (site) =>
-    site.discovery?.diagnostics.found === true &&
-    site.discovery.urls.length > 0 &&
-    !site.discovery.truncated &&
-    site.discovery.diagnostics.childSitemapErrors === 0,
+  // Judged only against an inventory goflag read in full — every sitemap the
+  // site declares, none of them cut short (`./sitemap-inventory.ts`). A page
+  // listed where goflag could not read looks exactly like one the site forgot.
+  // What stopped the read is its own finding where one exists
+  // (`sitemap.index.child-error`); this one waits until the list is whole.
+  appliesTo: (site) => sitemapReadInFull(site) && site.discovery!.urls.length > 0,
   check: ({ site, issue }) => {
-    const listed = new Set(
-      site.discovery!.urls.map((entry) => sameUrlKey(entry.loc)).filter(Boolean),
-    );
-    // An entry that redirects still names the page it lands on. The defect is
-    // the redirect, which `sitemap.entry.redirects` reports; counting the
-    // landing page here as well would report one mistake twice.
-    for (const probe of entryProbes(site)) {
-      const landing = probe.redirected ? sameUrlKey(probe.finalUrl) : undefined;
-      if (landing) listed.add(landing);
-    }
+    const { listed, unfollowed } = sitemapReach(site);
 
     const orphans = site.pages
       // A page whose canonical names another URL asks for that one to be
@@ -1285,11 +1269,66 @@ const sitemapOrphans: SiteRule = {
     if (orphans.length === 0) return [];
     return issue({
       pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
-      message: `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}. A consumer that reads the sitemap rather than following links will never see ${orphans.length === 1 ? "it" : "them"}.`,
+      message: `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}. A consumer that reads the sitemap rather than following links will never see ${orphans.length === 1 ? "it" : "them"}.${ceilingNote(unfollowed)}`,
       origin: { kind: "computed" },
     });
   },
 };
+
+/**
+ * Every URL the sitemap names, as `sameUrlKey`s — directly, or through an entry
+ * that redirects — and how many entries nothing followed.
+ *
+ * An entry that redirects still names the page it lands on. The defect is the
+ * redirect, which `sitemap.entry.redirects` reports; counting the landing page
+ * as absent would report one mistake twice. Two passes know where an entry
+ * lands: the probe pass, and the crawl, when it reached a page through that
+ * entry. Neither covers every entry — the probe pass has a budget — and an
+ * entry nothing fetched may redirect to a page this rule is about to count.
+ */
+function sitemapReach(site: SiteContext): { listed: Set<string>; unfollowed: number } {
+  const crawled = new Set<string>();
+  const landingOf = new Map<string, string>();
+
+  for (const page of site.pages) {
+    const final = sameUrlKey(page.fetch.finalUrl);
+    const requested = sameUrlKey(page.fetch.requestedUrl);
+    if (!final) continue;
+    crawled.add(final);
+    if (requested && requested !== final) landingOf.set(requested, final);
+  }
+  for (const probe of entryProbes(site)) {
+    const from = sameUrlKey(probe.url);
+    const to = probe.redirected ? sameUrlKey(probe.finalUrl) : undefined;
+    if (from && to) landingOf.set(from, to);
+  }
+
+  const listed = new Set<string>();
+  let unfollowed = 0;
+  for (const entry of site.discovery!.urls) {
+    const key = sameUrlKey(entry.loc);
+    if (!key) continue;
+    listed.add(key);
+
+    const landing = landingOf.get(key);
+    if (landing) listed.add(landing);
+    else if (!crawled.has(key) && !site.sitemapEntries?.byUrl.has(entry.loc)) unfollowed += 1;
+  }
+
+  return { listed, unfollowed };
+}
+
+/**
+ * The sentence `sitemap.orphans` owes when some entries were never followed.
+ *
+ * The mirror of `coverageNote`: there, an unchecked entry may be one more dead
+ * URL, so the count is a floor. Here, it may redirect to a page counted as
+ * absent, so the count is a ceiling.
+ */
+function ceilingNote(unfollowed: number): string {
+  if (unfollowed === 0) return "";
+  return ` ${unfollowed} sitemap entr${unfollowed === 1 ? "y was" : "ies were"} not fetched, and a page one of them redirects to would be counted here — this count is a ceiling, not a total.`;
+}
 
 /**
  * The last two of §4.5, and the only rules in the catalogue whose subject had
