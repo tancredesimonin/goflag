@@ -1134,7 +1134,7 @@
       "scope": "site",
       "severity": "warning",
       "kind": "boolean",
-      "summary": "Indexable pages the crawl found should be listed in the sitemap",
+      "summary": "Indexable pages the crawl found, and the canonical URLs they name, should be listed in the sitemap",
       "rigor": "guideline",
       "sources": [
         "sitemaps-protocol",

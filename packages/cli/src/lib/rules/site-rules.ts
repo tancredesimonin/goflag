@@ -1289,7 +1289,8 @@ const sitemapEntryNonCanonical: SiteRule = {
 const sitemapOrphans: SiteRule = {
   id: "sitemap.orphans",
   severity: "warning",
-  summary: "Indexable pages the crawl found should be listed in the sitemap",
+  summary:
+    "Indexable pages the crawl found, and the canonical URLs they name, should be listed in the sitemap",
   rigor: "guideline",
   sources: ["sitemaps-protocol", "google-sitemaps"],
   // One finding with a count and a sample, not one per page — the same shape

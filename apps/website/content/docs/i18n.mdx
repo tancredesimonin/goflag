@@ -186,7 +186,9 @@ verdict; the third deliberately does not.
   so a page correctly cross-linked and deliberately kept out of it is doing
   nothing wrong. goflag hands you both lists and asks which of your two
   generators is right. It appears under [`--advisories`](/docs/report#advisories--asked-for-with---advisories),
-  never in the counts, and never fails a build.
+  never in the counts, and never fails a build. It is only asked once goflag has
+  read every sitemap the site declares: a translation listed where it could not
+  read would otherwise be asked about as missing.
 
 These were two rules until 2026-08-15, when the pair was split: one half is
 backed by Google's reciprocity requirement and one half is backed by nothing, and
