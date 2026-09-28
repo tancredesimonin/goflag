@@ -36,8 +36,6 @@ reciprocity is intentionally not a rule there.
   registry (done when: the site serves them from the registry, not from hand-written files).
   goflag.tech serves `/raw/docs/*.md`, built from its MDX sources, and a `llms.txt` generated
   from its navigation and the rule catalogue — neither from the `@goflag/next` registry.
-- The advisory `sitemap.unlisted-indexable` in the catalogue — the mechanism exists (done when:
-  the rule is in `rules.json`) — `docs/sitemap-scope-plan.md` X-4.
 
 ## Someday
 
@@ -105,6 +103,12 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 
 ## Dropped
 
+- The advisory `sitemap.unlisted-indexable` (`docs/sitemap-scope-plan.md` X-4): a duplicate.
+  `sitemap.orphans` has reported the same pages since 0.2.10 — crawled, not `noindex`, absent
+  from every sitemap — as a `guideline` warning. X-4 would only have changed its form, a question
+  instead of a verdict; the cost of keeping the verdict is that a route declared
+  `sitemap: false` in `@goflag/next` raises that warning once the crawl reaches it, unless it
+  also says `noindex`.
 - `defineSite({ og })` wiring the image URL into the metadata: it had no caller, there was
   nowhere to write it (Next replaces `openGraph` whole, per segment), and writing it would have
   switched off the image of the file convention — `docs/og-plan.md` §10.9 (!180). OG-5 took its
