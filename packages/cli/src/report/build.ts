@@ -320,7 +320,10 @@ export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): numb
  * and dropping the variant would remove the route from the audit entirely —
  * trading duplicate findings for no findings, which is the worse failure.
  *
- * Variants stay in the crawl either way, so the link audit still probes them.
+ * Variants stay in the crawl either way, so the link audit still probes them,
+ * and they are handed to the site rules as `SiteContext.variants`: never judged
+ * as pages, but still what their URLs serve — which is what a rule about the
+ * URLs a sitemap lists has to know.
  */
 /**
  * Fetch each distinct `<link rel="manifest">` once and hand the result to the
@@ -441,7 +444,7 @@ async function probeAssets(
   }
 }
 
-function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number } {
+function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; variants: Page[] } {
   const crawled = new Set(pages.map((p) => routeKey(p.fetch.finalUrl)));
 
   const kept = pages.filter((page) => {
@@ -460,7 +463,8 @@ function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number
     return !crawled.has(target);
   });
 
-  return { kept, dropped: pages.length - kept.length };
+  const keptSet = new Set(kept);
+  return { kept, variants: pages.filter((page) => !keptSet.has(page)) };
 }
 
 /** Run the full audit and return the report. Never throws for site-level failures. */
@@ -607,7 +611,8 @@ export async function runAudit(
   // Linked resources stay in the crawl (the link audit must still probe them)
   // but never reach the rule layer, which only speaks about HTML documents.
   const documents = okPages.filter(isHtmlPage);
-  const { kept: htmlPages, dropped: duplicatePages } = dropCanonicalDuplicates(documents);
+  const { kept: htmlPages, variants } = dropCanonicalDuplicates(documents);
+  const duplicatePages = variants.length;
   // Two ways a page fails to be audited, and both belong here.
   //
   // A non-2xx answer is the obvious one. The other is a page that never
@@ -884,6 +889,10 @@ export async function runAudit(
     robots,
     favicon,
     sitemapEntries,
+    // Set aside above, and still what their URLs serve. The sitemap rules that
+    // ask what a listed URL serves need them: a listed variant is exactly what
+    // `sitemap.entry.non-canonical` exists to catch.
+    variants,
     // Same index the matrix was built from, so a rule that groups by route
     // and the grid that reports holes cannot disagree about which URLs are
     // one page.

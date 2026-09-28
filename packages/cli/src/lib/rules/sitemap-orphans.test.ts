@@ -461,3 +461,281 @@ describe("the two rules, on one page", () => {
     }
   }
 });
+
+const NOINDEX_RULE = getSiteRule("sitemap.entry.noindex");
+if (!NOINDEX_RULE) throw new Error("sitemap.entry.noindex is not registered");
+
+function noindexRule(ctx: SiteContext) {
+  return lintSite(ctx, [NOINDEX_RULE!]);
+}
+
+describe("what counts as asking not to be indexed", () => {
+  // One table, read by both rules that ask: an unlisted page is left out of
+  // `sitemap.orphans` exactly when it says `noindex`, and a listed one is
+  // flagged by `sitemap.entry.noindex` exactly then too.
+  const cases: Array<{ says: string; head?: string; header?: string; noindex: boolean }> = [
+    { says: "meta robots noindex", head: `<meta name="robots" content="noindex">`, noindex: true },
+    {
+      says: "meta robots in capitals",
+      head: `<meta name="robots" content="NOINDEX">`,
+      noindex: true,
+    },
+    { says: "meta robots none", head: `<meta name="robots" content="none">`, noindex: true },
+    {
+      says: "meta googlebot noindex",
+      head: `<meta name="googlebot" content="noindex">`,
+      noindex: true,
+    },
+    { says: "meta googlebot none", head: `<meta name="googlebot" content="none">`, noindex: true },
+    { says: "header noindex", header: "noindex", noindex: true },
+    { says: "header none", header: "none", noindex: true },
+    { says: "header scoped to googlebot", header: "googlebot: noindex", noindex: true },
+    { says: "header scoped without a space", header: "googlebot:noindex", noindex: true },
+    {
+      says: "header scoped to another crawler",
+      header: "otherbot: noindex, nofollow",
+      noindex: true,
+    },
+    {
+      says: "two headers joined, the second one noindex",
+      header: "bingbot: nofollow, googlebot: noindex",
+      noindex: true,
+    },
+    {
+      says: "meta robots index, follow",
+      head: `<meta name="robots" content="index, follow">`,
+      noindex: false,
+    },
+    {
+      says: "meta googlebot nosnippet",
+      head: `<meta name="googlebot" content="nosnippet">`,
+      noindex: false,
+    },
+    { says: "header scoped nofollow", header: "googlebot: nofollow", noindex: false },
+    {
+      says: "header with valued directives",
+      header: "max-snippet: 20, max-image-preview: large",
+      noindex: false,
+    },
+    {
+      says: "header unavailable_after with a date",
+      header: "unavailable_after: 25 Jun 2010 15:00:00 PST",
+      noindex: false,
+    },
+    {
+      says: "header naming a crawler and a valued directive",
+      header: "googlebot: max-snippet: 0",
+      noindex: false,
+    },
+    { says: "nothing at all", noindex: false },
+  ];
+
+  for (const c of cases) {
+    const p = page("/p", c.head ?? "", c.header ? { "x-robots-tag": c.header } : {});
+
+    it(`${c.says}: ${c.noindex ? "left out of" : "counted by"} sitemap.orphans`, () => {
+      const named = orphans(context([home, p], discovery(["/"]))).some((f) =>
+        f.message.includes(`${O}/p\``),
+      );
+      expect(named).toBe(!c.noindex);
+    });
+
+    it(`${c.says}: ${c.noindex ? "flagged" : "not flagged"} by sitemap.entry.noindex when listed`, () => {
+      expect(noindexRule(context([home, p], discovery(["/", "/p"])))).toHaveLength(
+        c.noindex ? 1 : 0,
+      );
+    });
+  }
+});
+
+describe("canonical variants the audit set aside", () => {
+  // `dropCanonicalDuplicates` takes `/a?ref=x` out of `pages` as soon as `/a`
+  // is crawled, and hands it over as a variant. The sitemap rules that ask what
+  // a listed URL serves must still see it.
+  const target = page("/a");
+  const variant = page("/a?ref=x", canonical("/a"));
+
+  function withVariants(ctx: SiteContext, variants: Page[]): SiteContext {
+    return { ...ctx, variants };
+  }
+
+  it("lets sitemap.entry.non-canonical flag a listed variant — its own example", () => {
+    const found = nonCanonical(
+      withVariants(context([home, target], discovery(["/", "/a", "/a?ref=x"])), [variant]),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain(
+      "1 sitemap entry names a page whose canonical points elsewhere",
+    );
+    expect(found[0]!.message).toContain(`${O}/a?ref=x → ${O}/a`);
+  });
+
+  it("puts two in the plural", () => {
+    const other = page("/a?ref=y", canonical("/a"));
+    const found = nonCanonical(
+      withVariants(context([home, target], discovery(["/", "/a", "/a?ref=x", "/a?ref=y"])), [
+        variant,
+        other,
+      ]),
+    );
+
+    expect(found[0]!.message).toContain(
+      "2 sitemap entries name pages whose canonicals point elsewhere",
+    );
+  });
+
+  it("lets sitemap.entry.noindex flag a listed variant that says noindex", () => {
+    const hidden = page("/a?print=1", `${canonical("/a")}<meta name="robots" content="noindex">`);
+    expect(
+      noindexRule(
+        withVariants(context([home, target], discovery(["/", "/a", "/a?print=1"])), [hidden]),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("never lets sitemap.orphans count a variant", () => {
+    expect(
+      orphans(withVariants(context([home, target], discovery(["/", "/a"])), [variant])),
+    ).toEqual([]);
+  });
+
+  it("counts a listed variant as fetched, not as an entry nothing followed", () => {
+    const [finding] = orphans(
+      withVariants(
+        context([home, target, page("/forgotten")], discovery(["/", "/a", "/a?ref=x"]), {
+          probes: [],
+        }),
+        [variant],
+      ),
+    );
+
+    expect(finding!.message).not.toContain("ceiling");
+  });
+});
+
+describe("the canonical a page names, when nobody audited it", () => {
+  it("counts an unlisted target on the same origin, and says which page named it", () => {
+    const found = orphans(
+      context([home, page("/guide?tab=api", canonical("/guide"))], discovery(["/"])),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toBe(
+      `1 URL that crawled pages name as their canonical is absent from the sitemap, and was not audited: \`${O}/guide (canonical of ${O}/guide?tab=api)\`. A consumer that reads the sitemap rather than following links will never see it.`,
+    );
+  });
+
+  it("does not count a target the sitemap lists", () => {
+    expect(
+      orphans(
+        context([home, page("/guide?tab=api", canonical("/guide"))], discovery(["/", "/guide"])),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not count a target the sitemap reaches through a redirect", () => {
+    expect(
+      orphans(
+        context([home, page("/guide?tab=api", canonical("/guide"))], discovery(["/", "/old"]), {
+          probes: [probe("/old", "/guide")],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not count a target on another origin", () => {
+    expect(
+      orphans(
+        context(
+          [home, page("/syndicated", canonical("https://publisher.example/a"))],
+          discovery(["/"]),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not count a target the crawl fetched — that one is judged as a page", () => {
+    // Here `/guide` is itself unlisted, so it is counted once, as a crawled
+    // page, and not a second time as somebody's canonical.
+    const found = orphans(
+      context(
+        [home, page("/guide"), page("/guide?tab=api", canonical("/guide"))],
+        discovery(["/"]),
+      ),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain("1 crawled page asks to be indexed");
+    expect(found[0]!.message).not.toContain("canonical of");
+  });
+
+  it("counts a target named by several pages once, with the first that named it", () => {
+    const found = orphans(
+      context(
+        [
+          home,
+          page("/guide?tab=api", canonical("/guide")),
+          page("/guide?tab=cli", canonical("/guide")),
+        ],
+        discovery(["/"]),
+      ),
+    );
+
+    expect(found[0]!.message).toContain("1 URL that crawled pages name as their canonical");
+    expect(found[0]!.message).toContain(`(canonical of ${O}/guide?tab=api)`);
+    expect(found[0]!.message).not.toContain("tab=cli");
+  });
+
+  it("does not count the target of a page that asks not to be indexed", () => {
+    expect(
+      orphans(
+        context(
+          [home, page("/print", `${canonical("/guide")}<meta name="robots" content="noindex">`)],
+          discovery(["/"]),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("joins both counts in one finding when there are both", () => {
+    const found = orphans(
+      context(
+        [home, page("/forgotten"), page("/guide?tab=api", canonical("/guide"))],
+        discovery(["/"]),
+      ),
+    );
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain(
+      "1 crawled page asks to be indexed and is absent from the sitemap",
+    );
+    expect(found[0]!.message).toContain(
+      "1 URL that crawled pages name as their canonical is absent from it too, and was not audited",
+    );
+    expect(found[0]!.message).toContain("will never see them.");
+  });
+
+  it("puts several targets in the plural", () => {
+    const found = orphans(
+      context(
+        [home, page("/a?x=1", canonical("/a")), page("/b?x=1", canonical("/b"))],
+        discovery(["/"]),
+      ),
+    );
+
+    expect(found[0]!.message).toContain(
+      "2 URLs that crawled pages name as their canonical are absent from the sitemap, and were not audited",
+    );
+  });
+
+  it("still carries the ceiling when entries were never fetched", () => {
+    const [finding] = orphans(
+      context([home, page("/guide?tab=api", canonical("/guide"))], discovery(["/", "/unseen"]), {
+        probes: [],
+      }),
+    );
+
+    expect(finding!.message).toContain("this count is a ceiling");
+  });
+});

@@ -45,6 +45,19 @@ export interface SiteContext {
   origin: string;
   /** Healthy (2xx) pages the crawl inspected. */
   pages: readonly Page[];
+  /**
+   * Healthy pages the crawl fetched and set aside, because their canonical
+   * names another page it also fetched (`dropCanonicalDuplicates` in
+   * `report/build.ts`). Never judged as pages: the site disclaims them, and
+   * judging each would multiply every finding by its variants.
+   *
+   * But they are still what their URLs serve, so a rule about the URLs a
+   * sitemap lists reads them. Listing one is the defect
+   * `sitemap.entry.non-canonical` exists for, and a rule that only saw `pages`
+   * would never meet its own example: `/a?ref=x → /a` is set aside the moment
+   * `/a` is crawled. Optional, like `discovery`, for contexts built by hand.
+   */
+  variants?: readonly Page[];
   /** The (route × locale) grid, including declared-but-uncrawled cells. */
   matrix: I18nMatrix;
   /** Locales the site is believed to serve, and how we know. */

@@ -336,3 +336,88 @@ describe("sitemap.orphans when an index and its child are both declared", () => 
     expect(found[0]!.message).toContain(`${site.url}/forgotten`);
   });
 });
+
+/**
+ * What a listed URL serves, and what a page asks, in the forms the rules used to
+ * miss: a listed variant of a crawled page, `none`, a header addressed to one
+ * crawler, and a canonical that names a URL nothing links to.
+ */
+function variantsAndDirectives() {
+  return start((app, origin) => {
+    app.get("/robots.txt", (c) =>
+      c.text(`User-agent: *\nAllow: /\nSitemap: ${origin()}/sitemap.xml\n`),
+    );
+    app.get("/sitemap.xml", () => urlset(origin(), ["/", "/a", "/a?ref=x", "/scoped"]));
+    app.get("/", () => page("home", "", links(["/a", "/none", "/guide?tab=api", "/scoped"])));
+    app.get("/a", (c) =>
+      c.req.query("ref")
+        ? page("a, shared", `<link rel="canonical" href="${origin()}/a">`)
+        : page("a"),
+    );
+    app.get(
+      "/scoped",
+      () =>
+        new Response(`<!doctype html><html lang="en"><head><title>scoped</title></head></html>`, {
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "x-robots-tag": "googlebot: noindex",
+          },
+        }),
+    );
+    app.get("/none", () => page("none", `<meta name="robots" content="none">`));
+    app.get("/guide", (c) =>
+      c.req.query("tab")
+        ? page("guide, one tab", `<link rel="canonical" href="${origin()}/guide">`)
+        : page("guide"),
+    );
+  });
+}
+
+describe("the sitemap rules on variants, directives and canonical targets", () => {
+  let site: Fixture;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    site = await variantsAndDirectives();
+    report = await runAudit(site.url, AUDIT);
+  }, 60_000);
+
+  afterAll(async () => {
+    await site.stop();
+  });
+
+  it("crawls the variant and leaves the canonical target unfetched, as the cases below need", () => {
+    const urls = report.pages.map((p) => p.url);
+    expect(urls).toContain(`${site.url}/a?ref=x`);
+    expect(urls).toContain(`${site.url}/guide?tab=api`);
+    expect(urls).not.toContain(`${site.url}/guide`);
+    // The variant is still set aside as a duplicate: seeing it is not judging it.
+    expect(report.diagnostics.duplicatePages).toBe(1);
+  });
+
+  it("flags the listed variant whose canonical names a crawled page — the rule's own example", () => {
+    const found = issuesFor(report, "sitemap.entry.non-canonical");
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain(
+      "1 sitemap entry names a page whose canonical points elsewhere",
+    );
+    expect(found[0]!.message).toContain(`${site.url}/a?ref=x → ${site.url}/a`);
+  });
+
+  it("flags the listed page whose header tells googlebot noindex", () => {
+    const found = issuesFor(report, "sitemap.entry.noindex");
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toContain(`${site.url}/scoped`);
+  });
+
+  it("counts the canonical nothing audited, and not the page that says none", () => {
+    const found = issuesFor(report, "sitemap.orphans");
+
+    expect(found).toHaveLength(1);
+    expect(found[0]!.message).toBe(
+      `1 URL that crawled pages name as their canonical is absent from the sitemap, and was not audited: \`${site.url}/guide (canonical of ${site.url}/guide?tab=api)\`. A consumer that reads the sitemap rather than following links will never see it.`,
+    );
+  });
+});
