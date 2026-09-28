@@ -62,11 +62,16 @@ The library's own suite does not invent its assertions. Each one is named after
 the goflag rule it covers: hreflang reciprocity, `x-default` inside its own
 cluster, sitemap and `<head>` in agreement, `og:locale` territorialised.
 
-That file is explicitly provisional. When `goflag rules --json` ships the
-catalogue as data, it is replaced by a harness that renders the library's output
-and evaluates the real rules against it. A rule added to the catalogue then
-breaks the library if the library does not satisfy it, which is the loop worth
-having rather than an accident to correct.
+That file is still provisional, but no longer for the reason it used to give.
+`goflag rules` already prints the catalogue as JSON — no crawl, no network — and
+`rules.json` ships inside the package. What the library still cannot do is import
+it: the invariant that keeps the two products independently useful forbids
+`packages/next` reaching into the CLI, so the assertions stay hand-written until
+the catalogue moves into a package both may depend on.
+
+The loop worth having is unchanged: a rule added to the catalogue should break
+the library when the library does not satisfy it, rather than be discovered later
+as an accident to correct.
 
 ## What it deliberately does not do
 

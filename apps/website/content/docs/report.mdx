@@ -180,13 +180,14 @@ The field to read before you trust a count.
 The finding collections answer "what is wrong here". They cannot answer "where
 do we stand against the catalogue": a rule that passes on every page and a rule
 that never applied to a single one both look like silence. `--conformance` adds
-the missing view — every rule's status on every judged page.
+the missing view — every **page** rule's status on every judged page. Cross-page
+rules judge the site once and have no per-page cell, so they are not in it.
 
 {/* prettier-ignore */}
 ```jsonc
 "conformance": {
   // Rule metadata is carried once, in a legend, rather than repeated in every
-  // cell: a 200-page grid with it inline is 2,200 copies of the same fields.
+  // cell: a 200-page grid with it inline is 5,000 copies of the same fields.
   "rules": [
     {
       "ruleId": "canonical.absolute",

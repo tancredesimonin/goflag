@@ -22,12 +22,19 @@ goflag https://example.com --profile marketing    # metadata gaps are errors
 
 ## The four profiles
 
-| Profile     | What it does                                                                   |
-| ----------- | ------------------------------------------------------------------------------ |
-| `default`   | Each rule's own severity. No overlay.                                          |
-| `strict`    | Every spec-backed rule becomes an `error`. Heuristics stay warnings.           |
-| `spec-only` | Heuristic rules (`title.length`, `description.length`) are switched off.       |
-| `marketing` | The snippet and unfurl metadata — description, `og:title`, `og:image` — error. |
+| Profile     | What it does                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| `default`   | Each rule's own severity. No overlay.                                                                                 |
+| `strict`    | Every spec-backed **page** rule becomes an `error`; guidelines go from `info` to `warning`. Heuristics stay warnings. |
+| `spec-only` | Heuristic rules (`title.length`, `description.length`) are switched off.                                              |
+| `marketing` | The snippet and unfurl metadata — description, `og:title`, `og:image` — error.                                        |
+
+**A profile only reaches the per-page registry.** The 28 cross-page rules —
+`sitemap.*`, `robotstxt.*`, `robots.*`, `hreflang.*`, `icons.ico.missing` — judge
+the site once rather than each page, and always run at the severity they were
+authored with. So a spec-required cross-page rule stays a `warning` under
+`strict`, and `--fail-on error` does not turn the verdict red on it. That is a
+property of where the overlay applies, not a judgement about those rules.
 
 ## What a profile can and cannot change
 

@@ -42,14 +42,19 @@ export const og = defineOg({
 });
 ```
 
-| Field    | What it is                                                                      |
-| -------- | ------------------------------------------------------------------------------- |
-| `tokens` | Five colours. Not eight — one accent and never three is a constraint, not taste |
-| `name`   | The wordmark beside the mark                                                    |
-| `mark`   | Your logo, as a function of its side in pixels                                  |
-| `footer` | Bottom left. The host, on both sites this came from                             |
-| `dots`   | Bottom right, for a site whose taxonomy is a colour rather than decoration      |
-| `fit`    | The title degression. **Required, and it has no default** — see below           |
+| Field    | What it is                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| `tokens` | Five colours, and an optional sixth. Not eight — one accent and never three is a constraint, not taste |
+| `name`   | The wordmark beside the mark                                                                           |
+| `mark`   | Your logo, as a function of its side in pixels                                                         |
+| `footer` | Bottom left. The host, on both sites this came from                                                    |
+| `dots`   | Bottom right, for a site whose taxonomy is a colour rather than decoration                             |
+| `fit`    | The title degression. **Required, and it has no default** — see below                                  |
+
+The five are `bg`, `fg`, `dim`, `border` and `accent`. The sixth, `subtitle`, is
+there for a site whose subtitle has to stay distinguishable from its footer at
+thumbnail size; leave it out and the subtitle takes `dim`, which is what one of
+the two sites does.
 
 `mark` takes its side as an argument so one drawing serves the card and every
 icon size. That is not a convenience: on the site you are reading, the flag was

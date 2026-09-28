@@ -78,7 +78,7 @@ It returns rather than exits, because a library that called `process.exit` would
 be deciding an exit code on behalf of a script that knows its own name and its
 own remediation message.
 
-## `--check` belongs in CI, not in a hook
+## The write path is what does not belong in a hook
 
 <Callout type="tip" title="A hook that rewrites a file cannot fail a build.">
   A check that writes nothing can. That is the whole difference, and it is the reason the guard is

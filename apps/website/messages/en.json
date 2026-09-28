@@ -192,7 +192,7 @@
       },
       "scale": {
         "q": "Will it finish on a large site?",
-        "a": "The largest site it gates is {pages} pages and takes about {duration} with --static --no-external. On a site that serves a sitemap, goflag does not audit everything: it keeps every page that stands alone and samples three pages per family of same-shaped URLs, and the report prints a COVERAGE line saying how many of how many it audited. --coverage all turns the sampling off, --include and --exclude narrow the crawl, and --max-pages is a guard rail that never cuts a selection short."
+        "a": "The largest site it gates takes about {duration} with --static --no-external, for {pages} audited pages. On a site that serves a sitemap, goflag does not audit everything: it keeps every page that stands alone and samples three pages per family of same-shaped URLs, and the report prints a COVERAGE line saying how many of how many it audited. --coverage all turns the sampling off, --include and --exclude narrow the crawl, and --max-pages is a guard rail that never cuts a selection short."
       }
     },
     "close": {
@@ -204,7 +204,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "lead": "Every published version of goflag: the CLI and the Next.js library, on one timeline. Entries are generated from the commit history, so this page cannot drift from what actually shipped.",
+    "lead": "Every published version of goflag: the CLI, the Next.js library and the share cards, on one timeline. Entries are generated from the commit history, so this page cannot drift from what actually shipped.",
     "currentVersion": "Current version",
     "released": "Released",
     "installPinned": "Pin this version",

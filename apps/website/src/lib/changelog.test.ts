@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getChangelog, parseChangelog } from "./changelog";
+import { PACKAGES, getChangelog, parseChangelog } from "./changelog";
 
 const MULTILINE = `# @goflag/next changelog
 
@@ -57,11 +57,15 @@ describe("parseChangelog", () => {
 });
 
 describe("getChangelog", () => {
-  it("carries both packages, newest first", () => {
+  it("carries every published package, newest first", () => {
+    // Against `PACKAGES` rather than a literal. The page's lead promises it
+    // cannot drift from what actually shipped, and it had — `@goflag/og` was
+    // published, released a breaking version, and appeared nowhere, because a
+    // hand-written pair here agreed with a hand-written pair there.
     const releases = getChangelog();
     const packages = new Set(releases.map((release) => release.package));
 
-    expect(packages).toEqual(new Set(["cli", "next"]));
+    expect(packages).toEqual(new Set(PACKAGES));
 
     const dates = releases.map((release) => release.date ?? "");
     expect([...dates]).toEqual([...dates].sort().reverse());
