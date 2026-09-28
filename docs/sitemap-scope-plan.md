@@ -221,7 +221,7 @@ fonctionnalité crée le cas, donc elle arrive avec la question.
 > sitemap — en warning `guideline`. X-4 n'aurait changé que la forme, une
 > question au lieu d'un verdict. Le prix du verdict conservé : une route
 > `sitemap: false` que le crawl atteint lève ce warning, sauf si elle dit aussi
-> `noindex`.
+> `noindex` ou désigne une autre page comme canonique (!223).
 
 ---
 

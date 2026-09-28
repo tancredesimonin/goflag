@@ -108,7 +108,7 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
   from every sitemap — as a `guideline` warning. X-4 would only have changed its form, a question
   instead of a verdict; the cost of keeping the verdict is that a route declared
   `sitemap: false` in `@goflag/next` raises that warning once the crawl reaches it, unless it
-  also says `noindex`.
+  also says `noindex` or names another page as its canonical (!223).
 - `defineSite({ og })` wiring the image URL into the metadata: it had no caller, there was
   nowhere to write it (Next replaces `openGraph` whole, per segment), and writing it would have
   switched off the image of the file convention — `docs/og-plan.md` §10.9 (!180). OG-5 took its
