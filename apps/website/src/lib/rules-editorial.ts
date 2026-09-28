@@ -190,7 +190,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "1 sitemap entry names a page whose canonical points elsewhere: `https://example.com/a?ref=x → https://example.com/a`. The sitemap is a list of what to index, so it should name the URL the site itself prefers.",
   },
   "sitemap.orphans": {
-    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits.",
+    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits. It counts only what a sitemap should list: not a page that asks for `noindex` or names another URL as canonical, not one the sitemap reaches through a redirect, and nothing at all when part of the sitemap could not be read — past a cap or an unreadable child, a listed page and an unlisted one look the same.",
     message:
       "7 crawled pages ask to be indexed and are absent from the sitemap: `https://example.com/blog/a`, `https://example.com/blog/b`. A consumer that reads the sitemap rather than following links will never see them.",
   },

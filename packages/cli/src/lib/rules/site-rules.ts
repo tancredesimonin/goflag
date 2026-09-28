@@ -1127,6 +1127,18 @@ function saysNoindex(page: Page): boolean {
     .includes("noindex");
 }
 
+/**
+ * Whether a page's canonical names a different page than the one served —
+ * "index that one instead of me". A difference `sameUrlKey` folds away, such as
+ * a trailing slash, is the same page said twice.
+ */
+function canonicalElsewhere(page: Page): boolean {
+  const canonical = page.links.canonical;
+  if (!canonical) return false;
+  const target = sameUrlKey(canonical);
+  return target !== undefined && target !== sameUrlKey(page.fetch.finalUrl);
+}
+
 const sitemapEntryBlockedByRobots: SiteRule = {
   id: "sitemap.entry.blocked-by-robots",
   severity: "error",
@@ -1236,14 +1248,36 @@ const sitemapOrphans: SiteRule = {
   // One finding with a count and a sample, not one per page — the same shape
   // translation holes take, and for the same reason: forty repeats of one
   // omission is noise, and the omission is a property of the sitemap.
-  appliesTo: (site) => site.discovery?.diagnostics.found === true && site.discovery.urls.length > 0,
+  //
+  // Judged only against an inventory goflag read in full. A sitemap cut at a
+  // cap (`truncated`), or an index with a child that yielded no urlset, hides
+  // entries, and a page listed where goflag could not read would be reported
+  // as absent. The unreadable child is `sitemap.index.child-error`'s finding;
+  // this one waits until the list it compares against is whole.
+  appliesTo: (site) =>
+    site.discovery?.diagnostics.found === true &&
+    site.discovery.urls.length > 0 &&
+    !site.discovery.truncated &&
+    site.discovery.diagnostics.childSitemapErrors === 0,
   check: ({ site, issue }) => {
     const listed = new Set(
       site.discovery!.urls.map((entry) => sameUrlKey(entry.loc)).filter(Boolean),
     );
+    // An entry that redirects still names the page it lands on. The defect is
+    // the redirect, which `sitemap.entry.redirects` reports; counting the
+    // landing page here as well would report one mistake twice.
+    for (const probe of entryProbes(site)) {
+      const landing = probe.redirected ? sameUrlKey(probe.finalUrl) : undefined;
+      if (landing) listed.add(landing);
+    }
 
     const orphans = site.pages
-      .filter((page) => !saysNoindex(page))
+      // A page whose canonical names another URL asks for that one to be
+      // indexed, not itself, and listing it is what `sitemap.entry.non-canonical`
+      // warns about. A variant whose target the crawl reached never gets here —
+      // `dropCanonicalDuplicates` takes it out first — but one pointing off-site,
+      // or past what the crawl reached, does.
+      .filter((page) => !saysNoindex(page) && !canonicalElsewhere(page))
       .map((page) => ({ page, key: sameUrlKey(page.fetch.finalUrl) }))
       .filter(({ key }) => key !== undefined && !listed.has(key))
       .map(({ page }) => page.fetch.finalUrl);
