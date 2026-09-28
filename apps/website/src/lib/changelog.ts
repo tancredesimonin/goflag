@@ -10,14 +10,19 @@ import { join } from "node:path";
  * `packages/cli`, and the reason behind it (the site must not depend on either
  * package's build) holds for a generated markdown file too.
  *
- * Two packages, one page. They ship on their own version lines, so a merged
- * timeline is the only view that answers "what changed, and when": two pages
- * would ask the reader to hold both in their head, and a tab would hide half
- * the history behind a click nobody makes.
+ * Three packages, one page. They ship on their own version lines, so a merged
+ * timeline is the only view that answers "what changed, and when": three pages
+ * would ask the reader to hold all of them in their head, and a tab would hide
+ * two thirds of the history behind a click nobody makes.
+ *
+ * `og` joined late, and its absence was the shape worth noticing: the page's own
+ * lead said it carried every published version and "cannot drift from what
+ * actually shipped", while a package with a breaking release was not in it. A
+ * promise like that is only worth making if adding a package is one line.
  */
 
 /** Which package a release belongs to. Ordered: the CLI leads a shared date. */
-export const PACKAGES = ["cli", "next"] as const;
+export const PACKAGES = ["cli", "next", "og"] as const;
 export type PackageId = (typeof PACKAGES)[number];
 
 export interface ChangelogEntry {
@@ -189,6 +194,7 @@ export function parseChangelog(markdown: string, pkg: PackageId): ChangelogRelea
 const SOURCES: Record<PackageId, string> = {
   cli: join(process.cwd(), "..", "..", "packages", "cli", "CHANGELOG.md"),
   next: join(process.cwd(), "..", "..", "packages", "next", "CHANGELOG.md"),
+  og: join(process.cwd(), "..", "..", "packages", "og", "CHANGELOG.md"),
 };
 
 /**

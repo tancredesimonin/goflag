@@ -1,6 +1,6 @@
 import { allDocs } from "content-collections";
 
-import { INSTALL, LIB, PACKAGE, SITE } from "@/lib/constants";
+import { CARDS, INSTALL, LIB, PACKAGE, SITE } from "@/lib/constants";
 import { docsHref, getDocsNav } from "@/lib/docs-nav";
 import { ALL_RULES } from "@/lib/rules-catalog";
 import { site } from "@/lib/seo/site";
@@ -23,11 +23,12 @@ export function GET() {
   lines.push(`> ${SITE.tagline}`);
   lines.push("");
   lines.push(
-    `${PACKAGE.name} is a Node CLI that crawls a site by URL and reports four classes of defect: broken links, missing translation pages, a robots.txt that contradicts the pages it serves, and missing or misconfigured SEO metadata. The JSON report is the source of truth; the terminal output is a rendering of it. MIT licensed, Node ${PACKAGE.nodeRange}, no account and no telemetry.`,
+    `${PACKAGE.name} is a Node CLI that crawls a site by URL and reports five classes of defect: broken links, missing translation pages, a robots.txt that contradicts the pages it serves, a sitemap that disagrees with the pages it lists, and missing or misconfigured SEO metadata — the preview card and the icons included. The JSON report is the source of truth; the terminal output is a rendering of it. MIT licensed, Node ${PACKAGE.nodeRange}, no account and no telemetry.`,
   );
   lines.push("");
   lines.push(
-    `${LIB.name} is the other half: a route registry for the Next.js App Router that produces what the CLI audits. A site declares its routes once, and the metadata, the hreflang cluster, the sitemap and robots.txt are derived from that one declaration rather than kept in agreement by hand. Build-time only, no runtime dependency.`,
+    `${LIB.name} is the second package: a route registry for the Next.js App Router that produces what the CLI audits. A site declares its routes once, and the metadata, the hreflang cluster, the sitemap and robots.txt are derived from that one declaration rather than kept in agreement by hand. Build-time only, no runtime dependency.`,
+    `${CARDS.name} is the third: the share card a page puts in front of every link, and the favicon.ico container no Next convention emits. Its core returns a JSX tree and renders nothing, so it installs no second renderer. It is the remedy for the rules the CLI could otherwise only report.`,
   );
   lines.push("");
   lines.push(`Try it: \`${INSTALL.tryIt}\``);
@@ -60,6 +61,7 @@ export function GET() {
   );
   lines.push(`- [npm](${PACKAGE.npm}): ${PACKAGE.name}`);
   lines.push(`- [npm](${LIB.npm}): ${LIB.name}`);
+  lines.push(`- [npm](${CARDS.npm}): ${CARDS.name}`);
   if (PACKAGE.repoPublic) lines.push(`- [Source](${PACKAGE.repo})`);
   lines.push("");
 

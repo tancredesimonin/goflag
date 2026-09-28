@@ -4,13 +4,13 @@ import { Badge } from "@/components/ui/badge";
 
 export interface Release {
   /**
-   * Anchor and React key. Not the version: two packages share this timeline and
-   * both have shipped a `0.2.0`, so a version alone collides in the DOM and
-   * makes `#0.2.0` mean whichever one rendered last.
+   * Anchor and React key. Not the version: three packages share this timeline
+   * and all three have shipped a `0.2.0`, so a version alone collides in the DOM
+   * and makes `#0.2.0` mean whichever one rendered last.
    */
   id: string;
   version: string;
-  /** Which package shipped it, printed so the two version lines stay legible. */
+  /** Which package shipped it, printed so the three version lines stay legible. */
   packageName: string;
   date: string;
   content: ReactNode;
@@ -18,7 +18,7 @@ export interface Release {
 
 /**
  * The changelog, drawn as one dated track per release rather than a list of
- * headings. Two packages ship on their own version lines and share this
+ * headings. Three packages ship on their own version lines and share this
  * timeline, so every row states which one it belongs to.
  *
  * Adapted from a shadcn/studio block: the sticky date rail is the good idea,

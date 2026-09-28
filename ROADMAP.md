@@ -1,14 +1,15 @@
 ---
-updated: 2026-09-23
+updated: 2026-09-28
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-09-23: latest tags `v0.2.13` (2026-09-22), `next-v0.4.0` and
+> State observed on 2026-09-28: latest tags `v0.2.13` (2026-09-22), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
-> production on `main`; `develop` is one commit ahead, the move to pnpm 12 (!218).
+> production on `main`; `develop` is ahead with pnpm 12 (!218, then 12.6.0 in !220), `next`
+> 16.3.6 (!220) and the documentation audit (!221).
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-09-22. No merge request is open.
+> 2026-09-22.
 
 ## Now
 
@@ -28,13 +29,6 @@ reciprocity is intentionally not a rule there.
 
 ## Next
 
-- The documentation audit of goflag.tech from 2026-08-16, never merged:
-  `origin/docs/the-site-explains-the-cards` carries one commit (`339e997`, 19 files) pushed
-  after its merge request was merged. Its fixes are still missing on `develop`: the landing's
-  proof figures say 11 page rules, 3 site rules and 686 tests (`constants.ts`), and
-  `/changelog` reads `PACKAGES = ["cli", "next"]`, without `@goflag/og` (done when: rebased and
-  merged, or its fixes redone, and `constants.test.ts` holds the rule counts against
-  `rules.json`).
 - The `.goflag/routes.json` manifest emitted by the library at build time, then consumed by
   the CLI (done when: removing every `hreflang` from the render of a site with a manifest
   produces an **error**, not silence) — `docs/coverage-plan.md` V-4.
@@ -62,6 +56,15 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **The pages say what is true again** (2026-09-28, !221) — the documentation audit of
+  2026-08-16, whose commit (`339e997`) reached its branch after the merge request had merged
+  without it, replayed onto `develop`: `/changelog` carries `@goflag/og`, `/docs/og/adopting`
+  says what the two migrations took, and the pages on limits, profiles, the report, the rule
+  catalogue and the library's guarantees match the engine again. The landing quotes 819 tests
+  and 760 pages audited in 7 min (`docs/coverage-plan.md` §6), where it said 686, and 456 pages
+  in 4 min. The 11 page rules and 3 site rules this roadmap listed as stale were never on the
+  page — the landing had stopped quoting them on 2026-08-05 — so they left `PROOF` instead of
+  gaining a test. On `develop` until the next merge into `main`.
 - **0.2.13, and production back** (2026-09-22, !210 then !217) — `main` takes `next` 16.3.5, and
   goflag.tech, stuck on its build of 2026-08-16 since the deployment of 2026-08-23 failed on
   `@swc/helpers`, serves the docs of 2026-08-20; `@goflag/cli` 0.2.13 is on npm. The four sites

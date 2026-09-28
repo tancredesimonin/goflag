@@ -64,11 +64,15 @@ These are decisions, not oversights:
   judges the declaration it was handed rather than which pass handed it over. No
   rule reads that delta. [`goflag preview`](/docs/preview) draws it, and the
   report carries it under `extractions[].hydration` when both readings exist.
-
-**Structured data validity.** JSON-LD presence is used as a signal that a page's
-head is not empty. Its _correctness_ is not judged.
-
-- **Images.** No `alt` audit, no weight checks, no format advice.
+- **Structured data validity.** JSON-LD presence is used as a signal that a page's
+  head is not empty. Its _correctness_ is not judged.
+- **Images in the page body.** No `<img alt>` audit, no weight checks, no
+  WebP/AVIF advice — the probe reads at most 8 KB of a file and never judges its
+  bytes. The preview image and the icons _are_ audited, and that is a different
+  claim: [`og.image.alt`](/docs/rules/og.image.alt) wants a description,
+  [`og.image.reachable`](/docs/rules/og.image.reachable) fetches the URL, and
+  [`og.image.sizes-mismatch`](/docs/rules/og.image.sizes-mismatch) compares the
+  declared shape against the file's own.
 - **JavaScript errors.** The headless path renders a page; it does not report what
   the console said while doing it.
 - **Anything requiring authentication.** goflag sends no credentials and has

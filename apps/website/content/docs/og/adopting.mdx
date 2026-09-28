@@ -1,0 +1,153 @@
+---
+title: Moving a hand-written card onto it
+description: Two sites did this migration, and both removed net code. What they kept, what they measured, and the three things the package deliberately does not do for you.
+navTitle: Adopting it
+group: library
+order: 6
+---
+
+`@goflag/og` was extracted after two sites had written the same card by hand, and
+the second one was written **without** the package on purpose — so that what the
+API should be would be visible rather than guessed.
+
+Both migrations removed net code: 299 lines off one site, 256 off the other. This
+is what that looked like, in the order it is worth doing.
+
+## What you already have that the package wants
+
+If you have a hand-written card, you have four things it takes and one it
+refuses.
+
+| You have                                 | It becomes                                          |
+| ---------------------------------------- | --------------------------------------------------- |
+| A palette restated as hexes              | `tokens` — five of them, and a test that holds them |
+| A logo drawn in the card                 | `mark`, as a function of its side                   |
+| A title-size table                       | `fit` — **yours**, measured, never a default        |
+| A `card(params)` helper both exports use | the `loader` of `ogImage(og, loader)`               |
+| The JSX layout itself                    | gone — that is the part being shared                |
+
+The layout is the only thing you delete outright. Everything else moves.
+
+## Measure your steps before you write anything
+
+Do this first, because it is the one number the package will not supply and the
+one you cannot copy from anywhere.
+
+List every title a card on your site can carry. Not the shapes they might take —
+the actual strings, in every locale you serve. Count the graphemes. They will
+fall into clusters, and the boundaries go **in the gaps**.
+
+```
+ 5–7    Library, About, Credits
+12–28   the eight legal titles, longest "Politique de confidentialité"
+30–31   the pt-br and es home heroes
+51–56   the en and fr home heroes
+```
+
+That site's boundaries are 32 and 64: one separates two clusters with nothing
+near it, the other sits eight characters above the longest real string rather
+than on top of it.
+
+The other site's are 32, 56 and 80, because its longest titles are rule ids with
+sentence-long summaries. **Reusing the first table on the second would have put a
+boundary at 56 — exactly on its longest real title.** Two locales would then
+render a size apart over one character of difference, which is a worse defect
+than the one the degression exists to fix.
+
+Pin them:
+
+```ts
+it("keeps no real title on a boundary", () => {
+  expect(Math.max(...LEGAL_TITLES.map((t) => [...t].length))).toBeLessThan(32);
+  expect(Math.max(...HEROES.map((t) => [...t].length))).toBeLessThan(64);
+});
+```
+
+Four lines, and it is the only thing standing between a copy change and a card
+that shrinks for a reason nobody can see.
+
+## Then the colours, and check them while you are there
+
+Your hexes were transcribed from a stylesheet written in `oklch()`, because
+satori resolves no CSS variable. That duplication is forced; the drift is not.
+
+On one of these sites all four transcribed greys were wrong — the surface by a
+hue step, the foreground by sixteen levels — under a comment asserting they were
+the theme's. On another, the two icon colours were annotated with the right OKLCH
+triples and the wrong hexes for both. **Three of five sites had this.**
+
+In a build script, read the sheet and there is nothing left to transcribe. In a
+bundled module, keep the literals and let a test hold them:
+
+```ts
+const theme = oklchPalette(css, { scope: ".dark" });
+expect(OG_TOKENS.bg).toBe(theme.background);
+```
+
+Name the scope. Without one the first declaration in the file wins — the light
+one, on a site whose card is dark.
+
+## The routes shrink to two exports
+
+Before, each route repeated a `card(params)` helper and two exports around it.
+After:
+
+```tsx
+const image = ogImage(og, async ({ params }) => {
+  const { locale } = await params;
+  const t = translator(locale);
+  const title = t("hero.title");
+
+  return { title, subtitle: t("hero.lead"), alt: t("meta.ogAlt", { title }) };
+});
+
+export const generateImageMetadata = image.generateImageMetadata;
+export default image.render;
+```
+
+Both sites had arrived at that `card(params)` shape independently, word for word,
+which is why it is the API rather than an invention.
+
+## Three things it will not do for you
+
+**It will not guess your steps.** Covered above, and it is the one refusal that
+costs you work. It is also the one that stops the package from shipping a defect
+to everyone.
+
+**It will not describe your card.** `alt` comes from your loader, in your
+language, derived from the same data as the title. A package composing that
+sentence from a template would re-open the gap `og:image:alt` exists to close —
+and a description that repeats the page title is the exact thing ogp.me excludes:
+the field is what is _in_ the image, not a caption.
+
+**It will not rasterise.** Not the card, and not the `.ico`. Your site has
+`sharp` already, for Next's image optimisation, and a package carrying a native
+binary would put that friction on every consumer — in CI, in Docker, on Alpine.
+
+## What it turned out not to need
+
+Written for the first site, then deleted when the second one did not ask for
+them: a mark size, a subtitle length, a line count. Each was optional, each had a
+sensible default, and each was set by nobody.
+
+`ogCatchAllRoute` survived that cut but is not the normal path either — only one
+of the two sites has a `[...slug]` tree. An ordinary `[slug]` segment takes
+`opengraph-image.tsx` directly.
+
+If your site wants one of the things that was cut, that is the second consumer
+asking, which is the process. Open an issue rather than working around it.
+
+## After you migrate, run the auditor at it
+
+The point of the package is the rules it lets you satisfy. Run goflag against the
+built site and read the `og.*` and `icons.*` families —
+[`og.image.alt`](/docs/rules/og.image.alt),
+[`og.locale.alternates`](/docs/rules/og.locale.alternates),
+[`og.image.reachable`](/docs/rules/og.image.reachable) and
+[`icons.ico.missing`](/docs/rules/icons.ico.missing) are the four that a
+hand-written card most often fails.
+
+Audit the artefact you deploy rather than a dev server, if the two differ. On this
+site they did, and `/favicon.ico` answered 404 in production for months while the
+rule passed locally — the file sat on disk beside `next start` and was never
+copied into the container.
