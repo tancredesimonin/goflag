@@ -214,6 +214,15 @@ Le motif est le même que celui qui a fait exister ce plan : le remède doit
 exister avant que la règle ne devienne de la dette. Ici l'ordre s'inverse — la
 fonctionnalité crée le cas, donc elle arrive avec la question.
 
+> **Au 2026-09-28 — abandonnée, doublon.** « Rien ne la signale aujourd'hui »
+> était vrai le 2026-08-09 et a cessé de l'être le 2026-08-15 : `sitemap.orphans`
+> (`e765bf3`, publiée en 0.2.10, spécifiée par `sitemap-robots-plan.md` §4.5)
+> signale exactement ces pages — crawlées, sans `noindex`, absentes de tout
+> sitemap — en warning `guideline`. X-4 n'aurait changé que la forme, une
+> question au lieu d'un verdict. Le prix du verdict conservé : une route
+> `sitemap: false` que le crawl atteint lève ce warning, sauf si elle dit aussi
+> `noindex` ou désigne une autre page comme canonique (!223).
+
 ---
 
 ## 7. Phasage
@@ -224,7 +233,7 @@ fonctionnalité crée le cas, donc elle arrive avec la question.
 | **X-1** | Tests : exclue du sitemap, présente en metadata, présente dans le cluster des sœurs         | ✅   |
 | **X-2** | `@goflag/next@0.3.0`, documentation `/docs/next/routes` avec le tableau du §2               | ✅   |
 | **X-3** | `openfinanceguide` migre — et **tranche d'abord** s'il liste le handbook (§2)               | ✅   |
-| **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue — **le mécanisme existe** (§ ci-dessous) | ⬜   |
+| **X-4** | Advisory `sitemap.unlisted-indexable` au catalogue — **le mécanisme existe** (§ ci-dessous) | ✗    |
 
 X-3 n'est pas une migration mécanique : la question du §2 se pose avant le code.
 Si la réponse est « on liste tout », la fonctionnalité n'est pas ce qui débloque
@@ -233,8 +242,8 @@ sitemap sans elle.
 
 > **Au 2026-09-22** — X-3 tranchée par « on liste tout » : `openfinanceguide` est
 > passé au registre entier, le manuel STET au sitemap pour chaque édition et chaque
-> locale (`7d989ac` dans ce dépôt-là, publié en `v1.3.1`). X-4 reste à faire : la
-> règle n'est pas dans `rules.json`.
+> locale (`7d989ac` dans ce dépôt-là, publié en `v1.3.1`). X-4 est abandonnée le
+> 2026-09-28 : `sitemap.orphans` couvre déjà ces pages (§6).
 
 ### Critères de sortie
 
