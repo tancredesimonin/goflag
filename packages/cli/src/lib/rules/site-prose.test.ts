@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildClusterIndex } from "../core/clusters";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
+import type { RobotsProbe } from "../core/types";
 import { collectSiteAdvisories, getSiteProseRule, SITE_PROSE_RULES } from "./site-prose";
 import type { SiteContext } from "./site-types";
 import { pageFromHtml } from "./test-utils";
@@ -193,5 +194,85 @@ describe("what a question is not allowed to be", () => {
       expect(rule.prose, rule.id).toMatch(/\?$/);
       expect(rule.prose.length, rule.id).toBeGreaterThan(40);
     }
+  });
+});
+
+describe("hreflang.sitemap-mismatch, on a sitemap goflag did not read in full", () => {
+  // The question is about what the sitemap omits, so it has the same blind spot
+  // `sitemap.orphans` has: a translation listed where goflag could not read
+  // would be asked about as missing. Each case would ask twice on a whole read.
+  const urls: SitemapUrlEntry[] = [{ loc: `${O}/en/pricing` }, { loc: `${O}/fr/tarifs` }];
+
+  function robotsDeclaring(...paths: string[]): RobotsProbe {
+    return {
+      url: `${O}/robots.txt`,
+      status: 200,
+      found: true,
+      byteLength: 100,
+      redirects: { count: 0, finalUrl: `${O}/robots.txt`, crossOrigin: false },
+      groups: [],
+      sitemaps: paths.map((path, i) => ({ value: `${O}${path}`, line: i + 1 })),
+      invalidLines: [],
+      unknownDirectives: [],
+    };
+  }
+
+  function read(...paths: string[]): SiteDiscovery["documents"] {
+    return paths.map((path) => ({
+      url: `${O}${path}`,
+      status: 200,
+      byteLength: 400,
+      gzipped: false,
+      kind: "urlset" as const,
+      childLocs: [],
+      urlCount: urls.length,
+      declaredInRobots: true,
+    }));
+  }
+
+  it("asks twice when the read is whole — the baseline the cases below depart from", () => {
+    const ctx = context(translatedPages, urls);
+    expect(
+      ask({
+        ...ctx,
+        discovery: { ...ctx.discovery!, documents: read("/sitemap.xml") },
+        robots: robotsDeclaring("/sitemap.xml"),
+      }),
+    ).toHaveLength(2);
+  });
+
+  it("asks nothing when a cap cut the sitemap short", () => {
+    const ctx = context(translatedPages, urls);
+    expect(ask({ ...ctx, discovery: { ...ctx.discovery!, truncated: true } })).toEqual([]);
+  });
+
+  it("asks nothing when an index named a child that yielded no urlset", () => {
+    const ctx = context(translatedPages, urls);
+    const cut = ctx.discovery!;
+    expect(
+      ask({
+        ...ctx,
+        discovery: {
+          ...cut,
+          diagnostics: {
+            ...cut.diagnostics,
+            isIndex: true,
+            childSitemapCount: 2,
+            childSitemapErrors: 1,
+          },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("asks nothing when robots.txt declares a sitemap discovery never read", () => {
+    const ctx = context(translatedPages, urls);
+    expect(
+      ask({
+        ...ctx,
+        discovery: { ...ctx.discovery!, documents: read("/sitemap.xml") },
+        robots: robotsDeclaring("/sitemap.xml", "/fr.xml"),
+      }),
+    ).toEqual([]);
   });
 });

@@ -180,7 +180,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       '3 sitemap entries are disallowed by `robots.txt`: `https://example.com/admin/a`, `https://example.com/admin/b`. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.',
   },
   "sitemap.entry.noindex": {
-    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one.',
+    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched, canonical variants included: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one. `none`, a `googlebot` meta tag and an `X-Robots-Tag` addressed to one crawler all count: each tells a reader of the sitemap not to index the page.',
     message:
       '2 sitemap entries declare `noindex`: `https://example.com/draft`. "Please index this" and "do not index this" are the same site\'s two answers to one question.',
   },
@@ -190,7 +190,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "1 sitemap entry names a page whose canonical points elsewhere: `https://example.com/a?ref=x → https://example.com/a`. The sitemap is a list of what to index, so it should name the URL the site itself prefers.",
   },
   "sitemap.orphans": {
-    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits.",
+    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits. It counts only what a sitemap should list: not a page that asks for `noindex` — by `robots` or `googlebot` meta tag or by `X-Robots-Tag`, `none` included, to every crawler or to one — nor one that names another URL as canonical, though the URL it names is counted when nothing audited it and no sitemap lists it; not a page the sitemap reaches through a redirect; and nothing at all unless goflag read every sitemap the site declares — past a cap, an unreadable child or an unread `Sitemap:` line, a listed page and an unlisted one look the same. When some entries were never fetched, the count is given as a ceiling: one of them may redirect to a page counted here.",
     message:
       "7 crawled pages ask to be indexed and are absent from the sitemap: `https://example.com/blog/a`, `https://example.com/blog/b`. A consumer that reads the sitemap rather than following links will never see them.",
   },
