@@ -515,6 +515,16 @@ figure[data-rehype-pretty-code-figure] [data-highlighted-chars] {
   border-radius: 0.25rem;
   border: 1px solid var(--border);
   background-color: var(--muted);
+  /* Without this, a token with no break opportunity inside it and wider than
+     its line pushes the page sideways on a 320 px phone:
+     `AuditOptions.extractions` in an h2 on /docs/report,
+     `missingTranslations.reciprocity` in a list item on /docs/i18n.
+     `break-word` splits such a token only where it would overflow — one that
+     fits still moves whole to the next line — and leaves those splits out of
+     the min-content width a table column is sized from; `anywhere` would not.
+     Neither applies inside `white-space: nowrap`: a word kept whole that way
+     can still overflow. */
+  overflow-wrap: break-word;
 }
 
 .prose figure[data-rehype-pretty-code-figure] {
