@@ -1,7 +1,13 @@
 import { MDXContent } from "@content-collections/mdx/react";
 import { InfoIcon, LightbulbIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
 
 import { PackageManagerCode } from "@/components/docs/package-manager-code";
 import { TerminalTranscript } from "@/components/docs/terminal-transcript";
@@ -73,6 +79,45 @@ function Anchor({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">
   );
 }
 
+/**
+ * Inline code in a table cell breaks at its spaces and never inside a word.
+ *
+ * Once a table fits its column, a cell is as narrow as the layout allows, and
+ * the browser fills a line up to the last break it can find — in `--fail-on`,
+ * the hyphen: without this, /docs/ci shows `--fail-` over `on` at 1280 px.
+ * `nowrap` on the whole `<code>` forbids the spaces as well, and
+ * `{ found, sitemapUrl, urlCount, uncrawled, unreachable? }` then holds its
+ * column wider than a phone. A non-breaking hyphen would change the text, and a
+ * copied flag would no longer be one the CLI knows. So each word gets a
+ * `nowrap` span, which adds nothing to the text. Inline code is one plaintext
+ * run — no page tags it with a language — so a word never straddles two
+ * elements.
+ */
+function keepCodeWordsWhole(node: ReactNode, inCode = false): ReactNode {
+  return Children.map(node, (child) => {
+    if (typeof child === "string") {
+      if (!inCode) return child;
+      return child.split(/(\s+)/).map((part, index) =>
+        /\S/.test(part) ? (
+          <span key={index} className="whitespace-nowrap">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      );
+    }
+    if (!isValidElement<{ children?: ReactNode }>(child) || child.props.children === undefined) {
+      return child;
+    }
+    return cloneElement(
+      child,
+      undefined,
+      keepCodeWordsWhole(child.props.children, inCode || child.type === "code"),
+    );
+  });
+}
+
 const components = {
   Callout,
   SiteEmail,
@@ -91,16 +136,27 @@ const components = {
   LocaleMatrix,
   PhantomLocale,
   a: Anchor,
+  // As wide as the column and no wider. `w-max` laid every cell on one line,
+  // which suits a flag and not a sentence: the diagnostics table on
+  // /docs/report came out 5,243 px wide. At the column's width, the browser's
+  // table layout shares the space out: a column of identifiers keeps its
+  // width and the prose wraps. The first column names what the row is about
+  // and stays on one line; when it and the prose's longest words still do not
+  // fit, as on a phone, the table overflows and the div scrolls.
   table: (props: ComponentPropsWithoutRef<"table">) => (
     <div className="my-6 overflow-x-auto rounded-lg border">
-      <table className="m-0 w-max min-w-full text-sm" {...props} />
+      <table className="m-0 w-full text-sm" {...props} />
     </div>
   ),
-  th: ({ className, ...props }: ComponentPropsWithoutRef<"th">) => (
-    <th className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props} />
+  th: ({ className, children, ...props }: ComponentPropsWithoutRef<"th">) => (
+    <th className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props}>
+      {keepCodeWordsWhole(children)}
+    </th>
   ),
-  td: ({ className, ...props }: ComponentPropsWithoutRef<"td">) => (
-    <td className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props} />
+  td: ({ className, children, ...props }: ComponentPropsWithoutRef<"td">) => (
+    <td className={cn("px-4 py-2.5 first:whitespace-nowrap", className)} {...props}>
+      {keepCodeWordsWhole(children)}
+    </td>
   ),
 };
 
