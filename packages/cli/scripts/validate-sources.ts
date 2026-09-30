@@ -1,9 +1,10 @@
 /**
  * Source catalog liveness check — the network half of the provenance
  * contract ("every URL resolves"). The offline half (unique ids, rigor
- * present, dates parse) runs as a unit test on every pipeline; this script
- * is wired to scheduled pipelines and to merge requests that touch the
- * catalog, because it depends on third-party servers and vendor URLs drift.
+ * present, dates parse) runs as a unit test, on every merge request that
+ * touches a package; this script is wired to scheduled pipelines and to merge
+ * requests that touch the catalog, because it depends on third-party servers
+ * and vendor URLs drift.
  *
  * Run it with `pnpm --filter @goflag/cli validate:sources`.
  *
