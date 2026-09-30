@@ -1,19 +1,27 @@
 # Layer 1 — vulnerability scanning (infrastructure/gitlab-templates)
 #
-# Skipped on everything the release bot pushes — which is now exactly one thing,
-# a tag. A cross-project include is resolved with the permissions of whoever
-# triggered the pipeline, and the bot is a project access token: a member of this
-# project and no other, so it cannot read `infrastructure`. The include fails and
-# the pipeline dies at creation with zero jobs, `publish:npm` included.
+# Skipped on tags, which the release bot pushes. A cross-project include is
+# resolved with the permissions of whoever triggered the pipeline, and the bot
+# is a project access token: a member of this project and no other, so it
+# cannot read `infrastructure`. The include fails and the pipeline dies at
+# creation with zero jobs, `publish:npm` included.
 #
 # Nothing is lost: these jobs already restrict themselves to merge requests and
-# the default branch, so they were filtered out on tags anyway.
+# schedules, so they were filtered out on tags anyway.
+#
+# A tag is not the only thing the bot pushes, and this rule covers nothing
+# else. `release:prepare` pushes the release branch as the bot, with the
+# options that open its merge request; the pipelines of that push carry no tag,
+# so the include is attempted and they die exactly as described above. Both did
+# on 2026-08-23, for 0.2.13, and the merge request sat with its auto-merge
+# armed until a person started a pipeline on it a week later — which resolves
+# the include with that person's permissions, and scans the commit that ships.
 #
 # There used to be a second half here, `$CI_COMMIT_MESSAGE !~ /^chore\(release\)/`,
-# because the release job also pushed the version commit to main and to develop.
-# It does not any more — that commit now arrives through a merge request opened
-# by a person, whose permissions resolve the include fine. Keeping the condition
-# would only skip the security scan on the one commit that ships.
+# from the time the release job pushed the version commit to main and to
+# develop itself. It went when that stopped: by then the commit arrived through
+# a merge request opened by a person, and the condition would only have skipped
+# the security scan on the one commit that ships.
 include:
   - project: "tancredesimonin-indie/infrastructure"
     ref: main
@@ -39,8 +47,8 @@ default:
   # In `default:` so it reaches the security jobs from the cross-project
   # includes too; they only read the tree.
   #
-  # Everything that writes opts back out below: the deploy template, both
-  # publish jobs, and `tag`.
+  # Everything that writes opts back out below: the deploy template, the three
+  # publish jobs, `release:prepare` and `tag`.
   interruptible: true
   image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
 
@@ -72,8 +80,8 @@ default:
 # What actually carries the dependencies between pipelines is the cache keyed on
 # `pnpm-lock.yaml`, which is unchanged and still applies to every job through the
 # same anchor. Nothing else in this file declares `artifacts:` any more, so no
-# job downloads anything at startup — `tag`, which needs git and nothing else,
-# was pulling a monorepo's `node_modules` down for no reason at all.
+# job downloads a `node_modules` at startup — `tag`, which needs git and
+# nothing else, was pulling the whole monorepo's down for no reason at all.
 stages:
   - verify
   - test
@@ -90,13 +98,13 @@ variables:
   HUSKY: "0"
 
 # Jobs that only make sense when the CLI package (or the workspace wiring it
-# depends on) actually changed. Docs-only commits are frequent and the test
-# suite boots HTTP servers and Chromium — several minutes for a README edit,
-# against a 400-minute monthly budget.
+# depends on) actually changed. Docs-only commits are frequent, and these jobs
+# boot HTTP servers and Chromium or pack and install the tarball — several
+# minutes for a README edit.
 #
-# Deliberately NOT applied to lint / typecheck / format: those are seconds, and
-# a merge request whose every job is filtered out produces an empty pipeline,
-# which GitLab treats as a failure.
+# Deliberately NOT applied to `check`: lint, typecheck and format are seconds,
+# and a merge request whose every job is filtered out produces an empty
+# pipeline, which GitLab treats as a failure.
 .cli_changes: &cli_changes
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -146,12 +154,13 @@ variables:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 # The cache lives here rather than in `default:` on purpose. Every job in this
-# file pulls in this anchor, so they all still get it; the jobs that come from
-# the security include do not, which is what the two `cache: {}` overrides used
-# to say. Those overrides were the bug: on a ref where the include is skipped,
-# they survived as jobs with no `script:`, the config became invalid, and the
-# pipeline died at creation — the same zero-job symptom the include itself
-# caused, one layer down. A job override cannot outlive the job it overrides.
+# file that installs dependencies pulls in this anchor, so they all still get
+# it; the jobs that come from the security include do not, which is what the
+# two `cache: {}` overrides used to say. Those overrides were the bug: on a ref
+# where the include is skipped, they survived as jobs with no `script:`, the
+# config became invalid, and the pipeline died at creation — the same zero-job
+# symptom the include itself caused, one layer down. A job override cannot
+# outlive the job it overrides.
 .pnpm: &pnpm
   cache:
     key:
@@ -175,8 +184,8 @@ variables:
 #
 # `lint`, `typecheck` and `format-check` each paid a full `pnpm install` to run
 # something that finishes in about as long as it takes to say. Measured over
-# 1–13 August, against the `install` job — which runs `pnpm --version` and
-# nothing else, so its duration *is* the setup:
+# 1–13 August, against the `install` job — which ran two `--version` commands
+# and nothing else, so its duration *was* the setup:
 #
 #   install        1.77 min      setup and nothing else
 #   lint           1.77 min      of which 0.00 is lint
@@ -187,10 +196,12 @@ variables:
 # because that is what the same merged job is called in the six site
 # repositories in this group.
 #
-# The cost is that a failure stops the job: a formatting slip now hides a type
-# error until it is fixed, where three jobs reported all three verdicts at once.
-# `pnpm lint` and `pnpm format:check` are both fixed by the pre-commit hook
-# before CI ever sees them, so the case is rarer than the ordering suggests.
+# The cost is that a failure stops the job: a lint error now hides a type
+# error, and either one hides a formatting slip, where three jobs reported all
+# three verdicts at once. The formatting slip is the one the pre-commit hook
+# fixes before CI ever sees it; linting and typechecking are deliberately not
+# in the hook, so a lint error still reaches this job and hides a type error
+# behind it.
 check:
   stage: verify
   <<: [*pnpm, *mr_only]
@@ -198,7 +209,7 @@ check:
     - pnpm lint
     - pnpm typecheck
     - pnpm format:check
-    # The one build output this repository commits. Verified rather than
+    # The one generated binary this repository commits. Verified rather than
     # regenerated: a pre-commit hook that rewrites it cannot fail a build, and
     # rewriting it on every commit is what made three other sites commit
     # encoder noise for months.
@@ -207,7 +218,7 @@ check:
 build:
   stage: verify
   <<: *pnpm
-  # The one job that stays on `develop` and `main`.
+  # The one verification job that also runs after the merge, on `develop`.
   #
   # A merge request pipeline builds the branch head, not the merge result —
   # `merge_pipelines_enabled` is off on this project — so the merged tree is
@@ -292,10 +303,10 @@ test:unit:
 
 # The rule catalog's provenance contract has a network half: every cited
 # source URL must still resolve (vendor docs drift). Structural validation
-# (unique ids, rigor present, dates parse) already runs inside `test:unit` on
-# every pipeline; this job only probes third-party servers, so it runs where
-# that is worth the flakiness — on schedules (drift detection) and on merge
-# requests that actually touch the catalog.
+# (unique ids, rigor present, dates parse) already runs inside `test:unit`, on
+# every merge request that touches a package; this job only probes third-party
+# servers, so it runs where that is worth the flakiness — on schedules (drift
+# detection) and on merge requests that actually touch the catalog.
 sources:liveness:
   stage: test
   <<: *pnpm
@@ -323,8 +334,8 @@ test:integration:
   script:
     - pnpm test:integration
 
-# The tarball is what users get; the repository is not. Everything below this
-# line exists because a monorepo hides packaging bugs: `dist/` is present
+# The tarball is what users get; the repository is not. This job and the two
+# after it exist because a monorepo hides packaging bugs: `dist/` is present
 # because we just built it, dependencies resolve because the workspace is
 # there. Neither is true in someone else's `node_modules`.
 #
@@ -503,9 +514,12 @@ test:package:og:
   image: docker:29.7.1@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
   services:
     - docker:29.7.1-dind@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
-  # `install` publishes node_modules as an artifact. It is no use to a job that
-  # installs inside the image, and unpacking it here would drop a host-built
-  # node_modules straight into the Docker build context.
+  # Nothing from an earlier stage is unpacked into the Docker build context.
+  # This was written against an `install` job that published `node_modules` as
+  # an artifact and is gone; what it keeps out today is the scheduled scan's
+  # `trivy-report.json`, the one artifact any pipeline here still produces,
+  # which a deploy played by hand from a scheduled pipeline would otherwise
+  # download.
   dependencies: []
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
@@ -527,7 +541,8 @@ test:package:og:
 # scheduled pipelines (sources:liveness, the security template), and a
 # scheduled pipeline on a branch sets `$CI_COMMIT_BRANCH` — so a bare
 # `if: $CI_COMMIT_BRANCH == "main"` would rebuild and redeploy the site on
-# every schedule, on a commit nobody touched.
+# every schedule pointed at `main`, on a commit nobody touched. The weekly one
+# runs on `develop`, where `deploy-develop` carries the same condition.
 deploy:
   extends: .kamal_deploy_template
   stage: deploy
@@ -535,10 +550,9 @@ deploy:
     - kamal deploy
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
-    # The `chore(release)` commit is the one that carries a new
-    # packages/cli/CHANGELOG.md — and `workflow:` skips its pipeline outright to
-    # break the release loop, so production does not pick the changelog up on
-    # its own. It lands with the next merge to main, or by playing this job.
+    # Anything else on `main` — a pipeline started from "Run pipeline", or a
+    # schedule — gets the deploy as a button rather than as a side effect. It
+    # is how production is redeployed by hand, without a new merge.
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
       allow_failure: true
@@ -557,25 +571,31 @@ deploy-develop:
   # `--filter "@goflag/website..."`, so `packages/cli`'s *source* never reaches
   # the output and a change to it cannot show on the site.
   #
-  # Four files under `packages/**` are the exception: `apps/website` reads them
-  # by relative path out of the standalone tree at build time, which is also why
-  # the Dockerfile copies the workspace root rather than the app alone. Every one
-  # of them has to be reachable from this list, or `develop` serves the previous
-  # copy while the repository says otherwise.
+  # Five files and a directory under `packages/**` are the exception:
+  # `apps/website` reads them by relative path out of the standalone tree at
+  # build time, which is also why the Dockerfile copies the workspace root
+  # rather than the app alone. Every one of them has to be reachable from this
+  # list, or `develop` serves the previous copy while the repository says
+  # otherwise.
   #
-  #   packages/next/CHANGELOG.md   the glob above it already covers this one
-  #   packages/cli/CHANGELOG.md    src/lib/changelog.ts:190  → /changelog
-  #   packages/cli/rules.json      src/lib/rules-catalog.ts:109 → /docs/rules
-  #   packages/cli/flags.json      src/lib/cli-reference.ts:76  → /docs/cli
+  #   packages/next/CHANGELOG.md   src/lib/changelog.ts → /[locale]/changelog
+  #   packages/og/CHANGELOG.md     the same; the two package globs cover both
+  #   packages/cli/CHANGELOG.md    the same, and named: no glob covers it
+  #   packages/cli/rules.json      src/lib/rules-catalog.ts → /docs/rules
+  #   packages/cli/flags.json      src/lib/cli-reference.ts → /docs/cli
   #   packages/cli/test/fixtures/transcripts/**
-  #                                src/lib/transcripts.ts:101  → the home page
+  #                                src/lib/transcripts.ts, preview-example.ts
+  #                                and the fingerprint card → the terminal
+  #                                panels, the preview example, /assets
   #
-  # The last two were missing until 2026-08-20, and the paragraph above them used
-  # to claim no `packages/cli` file reached the site at all — true when it was
-  # written, false from the commit that made `/docs/rules` read the generated
-  # catalogue. Both files are generated from the registries under
-  # `packages/cli/src/` (AGENTS.md I6), so adding a rule or a flag rewrites two
-  # published pages, and until this list named them it did not deploy either.
+  # `rules.json` and `flags.json` were missing until 2026-08-20, and the
+  # paragraph above them used to claim no `packages/cli` file reached the site
+  # at all — true when it was written, false from the commit that made
+  # `/docs/rules` read the generated catalogue. Both files are generated from
+  # the registries under `packages/cli/src/` (AGENTS.md I6), so adding a rule or
+  # a flag rewrites two published pages, and until this list named them it did
+  # not deploy either. The transcripts joined the list the same day, in the
+  # commit that made the panels read them.
   #
   # The manual rule below is untouched: anything this list gets wrong is one
   # click away from being deployed by hand.
@@ -616,8 +636,10 @@ kamal-proxy-reboot:
       allow_failure: true
 
 # Publishing happens on a tag and nowhere else: a version is a promise, and
-# `develop` makes no promises. Tags come from `pnpm release`
-# (commit-and-tag-version), which bumps package.json and tags in one step.
+# `develop` makes no promises. Tags come from the `tag` job further down, which
+# names whatever version `main` declares. The version itself is written by
+# `pnpm release` (commit-and-tag-version, its own tagging switched off) and
+# arrives by merge request.
 #
 # Authentication is a short-lived OIDC token, not a stored credential. npm is
 # configured as a trusted publisher for this project and CI file, and trades
@@ -640,8 +662,9 @@ publish:npm:
       # npm rejects any other audience. This is the whole handshake.
       aud: "npm:registry.npmjs.org"
   script:
-    # commit-and-tag-version writes both, so a mismatch means the tag was made
-    # by hand. Publishing it would put a version on npm that matches no commit.
+    # The `tag` job derives the tag from this manifest, so a mismatch means the
+    # tag was made by hand. Publishing it would put a version on npm that
+    # matches no commit.
     - PKG_VERSION="$(node -p "require('./packages/cli/package.json').version")"
     - |
       if [ "$CI_COMMIT_TAG" != "v$PKG_VERSION" ]; then
@@ -744,13 +767,21 @@ publish:og:
 # judgement about whether a version is earned stays in one file, and this job
 # only stops asking a human to type the command.
 #
+# That merge does not happen on its own as things stand. The pipelines this
+# push creates run as the bot and die on the security include — the top of this
+# file says why — so the merge request waits, auto-merge armed, for a pipeline
+# started by a person. 0.2.13, the first release cut this way, waited a week.
+#
 # Manual on purpose. Cutting a release is a decision, and the button is where it
 # is made; a job that fired on every push to develop would open a release merge
 # request against work that is not finished being merged.
 #
 # `allow_failure: true` for the same reason the `tag` retry carries it: a manual
-# job that reddens the develop pipeline when it declines to release — "Nothing
-# to release", which is a correct answer — teaches people to stop reading it.
+# job declared in `rules:` is blocking unless it says otherwise, and every
+# develop pipeline would sit "blocked" on a button nobody meant to press.
+# Declining is not a failure to begin with — "Nothing to release" is a correct
+# answer and exits 0 — because a job that reddens the develop pipeline for a
+# correct answer teaches people to stop reading it.
 release:prepare:
   # It writes a branch and opens a merge request. Not interruptible.
   interruptible: false
@@ -821,7 +852,8 @@ release:prepare:
     # pipeline, so a release that fails to build is a release that does not land.
     #
     # `auto_merge` and not `merge_when_pipeline_succeeds`: that one was deprecated
-    # in 17.11 when the strategy was renamed, and gitlab.com is on 19.4.
+    # in 17.11 when the strategy was renamed, and gitlab.com was already on 19.4
+    # when this was written.
     - |
       DESCRIPTION="Written by \`release:prepare\` on $CI_PIPELINE_URL, from \`scripts/release.mjs\` — the same script and the same judgement as a release cut by hand. Merging this into \`develop\` puts the version and the changelog there; merging \`develop\` into \`main\` after that is what tags and publishes."
       git push \
@@ -833,9 +865,10 @@ release:prepare:
         -o merge_request.remove_source_branch \
         origin "$BRANCH"
 
-# Merging develop into main is the decision to publish. This job is the only
-# thing the pipeline ever writes back to the repository, and it writes exactly
-# one kind of ref: a tag, on a commit that is already on main.
+# Merging develop into main is the decision to publish. This job and
+# `release:prepare` are the only two things the pipeline writes back to the
+# repository, and this one writes exactly one kind of ref: a tag, on a commit
+# that is already on main.
 #
 # It bumps nothing. The version and the changelog are authored on a branch,
 # reviewed, and merged like every other commit — `main` and `develop` both
@@ -858,20 +891,21 @@ release:prepare:
 # it would not trigger the tag pipeline that publishes.
 #
 # A new namespace has to be protected in the project's settings before its first
-# release, or `tag_one` pushes a ref the remote refuses — and refuses silently
-# from the point of view of the two namespaces that worked.
+# release. Nothing refuses an unprotected one — protection only restricts who
+# may create a tag — and that is the problem: a tag any Developer can push is a
+# publication any Developer can trigger (`docs/publishing.md` §3bis).
 tag:
-  # The only job that writes back to this repository. It is idempotent, but a
-  # push of a ref interrupted between `git tag` and `git push` is a tag that
-  # exists locally and nowhere else.
+  # One of the two jobs that write back to this repository. It is idempotent,
+  # but a push of a ref interrupted between `git tag` and `git push` is a tag
+  # that exists locally and nowhere else.
   interruptible: false
   stage: release
-  # `$CI_PIPELINE_SOURCE == "push"`, for the reason `deploy` carries it a
-  # hundred lines up: a scheduled pipeline sets `$CI_COMMIT_BRANCH`, and so does
-  # one started from the "Run pipeline" button. A bare branch rule would put the
-  # one job that writes to this repository into every one of them — reconciling
-  # a tag against a commit nobody touched. This repository is about to get a
-  # weekly schedule for the security scan, which is what makes that concrete.
+  # `$CI_PIPELINE_SOURCE == "push"`, for the reason `deploy` carries it: a
+  # scheduled pipeline sets `$CI_COMMIT_BRANCH`, and so does one started from
+  # the "Run pipeline" button. A bare branch rule would put a job that writes to
+  # this repository into every one of them — reconciling a tag against a commit
+  # nobody touched. The weekly schedule for the security scan runs on `develop`
+  # today; this is what keeps the job out of it the day one runs on `main`.
   #
   # The manual rule keeps the retry the paragraph above promises: idempotent and
   # safe to retry means there has to be a way to ask for it, and re-running a
@@ -919,9 +953,11 @@ tag:
         NAME="$1"; MANIFEST="$2"; PREFIX="$3"
         TAG="$PREFIX$(node -p "require('./$MANIFEST').version")"
 
-        # Asked of the remote rather than the local clone: the checkout is
-        # shallow and fetches no tags, so a local lookup answers "absent" every
-        # time and the push then fails on an existing tag instead of skipping.
+        # Asked of the remote rather than the local clone: the remote is what
+        # would refuse the push, and a local lookup only knows the tags this
+        # checkout happened to fetch. When the checkout was shallow it fetched
+        # none, answered "absent" every time, and the push then failed on an
+        # existing tag instead of skipping.
         if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
           echo "$NAME: $TAG is already tagged — nothing to do."
           return 0
