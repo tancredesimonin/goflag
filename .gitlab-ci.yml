@@ -107,9 +107,16 @@ variables:
         - pnpm-workspace.yaml
         - .gitlab-ci.yml
 
-# `test:unit` runs both packages, so it must fire when either one moves. Kept
-# separate from `.cli_changes` above: that one gates the jobs that boot HTTP
-# servers and Chromium, which only the CLI has.
+# The same gate as `.cli_changes` above, for the two libraries: it holds the
+# jobs that pack one and install its tarball, `test:package:next` and
+# `test:package:og`.
+#
+# `packages/**/*` and not the two directories, because the list was written for
+# `test:unit`, which runs every package and had to fire when any of them moved;
+# the tarball jobs borrowed it as it stood. `test:unit` has since left for a
+# list of its own, on the job. It runs the website's suite as well, so it has
+# to fire when `apps/` moves — which these two must not: nothing under `apps/`
+# is in either tarball.
 .pkg_changes: &pkg_changes
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -238,7 +245,48 @@ build:
 
 test:unit:
   stage: test
-  <<: [*pnpm, *pkg_changes]
+  <<: *pnpm
+  # `pnpm test:unit` is `pnpm -r test:unit`: four suites, the three packages
+  # and the website. The first two lines are the workspace they live in, the
+  # last four are what decides how they are installed and run, and `README.md`
+  # is the one file outside all of that which a test opens. The next file a
+  # test opens from out there belongs here too, or the merge request that edits
+  # it alone skips the test that holds it.
+  #
+  # `apps/**/*` was the missing line. The website's suite is as old as the list
+  # this job used to share — both reached `develop` on 2026-08-07, in the same
+  # merge request — and it only ran when something on that list moved too. Of
+  # the 121 merge requests merged after that one, up to 2026-09-29, ten changed
+  # the site and got no `test:unit` job, and five of those changed one of the
+  # suite's own tests. They are the merge requests the suite is for:
+  # `content.test.ts` counts the MDX files against the documents built from
+  # them, because a file content-collections drops is a page that 404s under a
+  # green build — and a merge request that edits content touches nothing under
+  # `packages/`.
+  #
+  # `README.md` is the root one, and the same gap one file wide. It is the npm
+  # page for `@goflag/cli`, and four test files hold it: its version pins, its
+  # flag list, its links and its generated transcripts from `packages/cli`, the
+  # images it asks the site to serve from `apps/website`. Three of those 121
+  # merge requests changed it and got no `test:unit` job either. This is not
+  # the README edit `.cli_changes` is there for: that list keeps Chromium out
+  # of one, and this job needs neither a browser nor the network.
+  #
+  # What the site's suite reads out of `packages/` needs no line of its own —
+  # `rules.json`, `flags.json`, the `CHANGELOG.md`s, the transcripts, the
+  # manifests, two of the CLI's sources. `deploy-develop` names such files one
+  # by one because its list leaves `packages/cli` out; this one takes
+  # `packages/` whole.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - packages/**/*
+        - apps/**/*
+        - README.md
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .gitlab-ci.yml
   script:
     - pnpm test:unit
 
