@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Fragment, type ReactNode } from "react";
 
 import { DocsPage } from "@/components/docs/docs-page";
 import { stripTicks, Ticks } from "@/components/docs/ticks";
@@ -25,6 +26,27 @@ const SCOPE_LABEL: Record<RuleDoc["scope"], string> = {
   site: "site-wide",
   prose: "asked, not answered",
 };
+
+/**
+ * The rule id is the page's title, and a browser will not break it at a dot: at
+ * the title's 36 px `sitemap.entry.unreachable` is 446 px wide, and on a 320 px
+ * phone it pushed the page 142 px sideways. A `<wbr>` after each dot lets it
+ * break between its segments — `sitemap.entry.` over `unreachable` — and, unlike
+ * a zero-width space, adds nothing to the text: the heading still copies as an
+ * id the CLI knows.
+ */
+function breakAtDots(id: string): ReactNode {
+  return id.split(".").map((segment, index) =>
+    index === 0 ? (
+      segment
+    ) : (
+      <Fragment key={index}>
+        .<wbr />
+        {segment}
+      </Fragment>
+    ),
+  );
+}
 
 export function generateStaticParams() {
   return ALL_RULES.map((rule) => ({ id: rule.id }));
@@ -57,7 +79,7 @@ export default async function RulePage({ params }: PageProps) {
 
   return (
     <DocsPage
-      title={rule.id}
+      title={breakAtDots(rule.id)}
       description={stripTicks(rule.summary)}
       href="/docs/rules"
       breadcrumb={{ label: "Rule catalogue", href: "/docs/rules" }}
