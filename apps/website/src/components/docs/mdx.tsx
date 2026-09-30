@@ -62,6 +62,11 @@ function Callout({
 /**
  * Internal links go through the app router; external ones are marked as such
  * once, here, rather than in every MDX file.
+ *
+ * The router prefetches a link as soon as it is in view, so an internal link
+ * names the URL its page is served at: `/en/changelog`, never `/changelog`. A
+ * prefetch that the locale proxy redirects can be retried without end —
+ * `content.test.ts` has the measurements, and holds every MDX file to it.
  */
 function Anchor({ href = "", children, ...props }: ComponentPropsWithoutRef<"a">) {
   if (href.startsWith("/")) {
