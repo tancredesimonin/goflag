@@ -63,7 +63,7 @@ The pnpm version is written once, in `packageManager`. Never add a
 
 ## Pitfalls
 
-- `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and both
+- `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and the three
   `CHANGELOG.md` by relative path at build time — it cannot import them (I3). That is why the
   Dockerfile copies the workspace root, and why `packages/cli/CHANGELOG.md` is listed by name
   in `deploy-develop`'s `changes:` rules.
@@ -118,8 +118,9 @@ The pnpm version is written once, in `packageManager`. Never add a
 - Branches are `feat/` · `fix/` · `chore/` · `ci/` · `docs/` plus a sentence-shaped slug.
   Everything merges into `develop`; merging `develop` into `main` is the decision to publish.
 - Three tag namespaces, all protected: `v*` for `@goflag/cli`, `next-v*` for `@goflag/next`,
-  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release, or the
-  `tag` job pushes a ref the remote refuses.
+  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release: until
+  it is, any Developer can push the tag that triggers a publication (`docs/publishing.md`
+  §3bis).
 - `pnpm release` decides whether a version is spent: only a `feat`/`fix`/`perf`/breaking
   commit touching a package's declared **published surface** earns one, so a `fix(ci)` spends
   nothing.
