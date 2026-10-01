@@ -14,7 +14,9 @@ packages:
 # Renovate exempts security updates from its own minimumReleaseAge, and pnpm does not — it
 # refuses to resolve a version inside the window at all, writes no lockfile, and so fails CI
 # before any automerge can fire. It covers transitive packages, which Renovate never gated,
-# and lockFileMaintenance, which Renovate documents as not supporting minimumReleaseAge.
+# and a lockfile rebuilt by hand (`rm pnpm-lock.yaml && pnpm install`), which is how they
+# get refreshed: Renovate's lockFileMaintenance is off, and the reason is in the
+# infrastructure repository, gitlab-templates/README-renovate.md.
 #
 # It matters more for a published package than for a site, though not because consumers
 # install what resolves here — they do not. The tarball carries no lockfile and tsup keeps
