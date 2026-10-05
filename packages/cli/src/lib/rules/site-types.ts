@@ -28,6 +28,7 @@ import type { SiteDiscovery } from "../core/sitemap/types";
 import type {
   FaviconProbe,
   Issue,
+  LlmsTxtProbe,
   NotFoundProbe,
   Page,
   RobotsProbe,
@@ -80,6 +81,17 @@ export interface SiteContext {
    * is not the same as the origin answering correctly.
    */
   notFound?: readonly NotFoundProbe[];
+  /**
+   * What the origin serves at `/llms.txt`. Absent when the probe did not run;
+   * `found: false` when it ran and the file is not there, which is fine.
+   */
+  llmsTxt?: LlmsTxtProbe;
+  /**
+   * What answers at each same-origin URL the llms.txt lists — the same pass,
+   * and the same shape, as `sitemapEntries`: the crawl's answer first, the link
+   * audit's second, a fetch only for what neither had.
+   */
+  llmsTxtLinks?: { byUrl: Map<string, SitemapEntryProbe>; unprobed: number };
   /**
    * What is served at each sitemap entry, keyed by its `<loc>`, and how many
    * entries the caps left unanswered.

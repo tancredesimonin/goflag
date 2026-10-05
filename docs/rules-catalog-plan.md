@@ -112,19 +112,22 @@ License references: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ·
 | Bing Webmaster Guidelines                     | Microsoft   | guideline   | crawlability/SEO                      | https://www.bing.com/webmasters/help/webmasters-guidelines-30fba23a                                                                                               |
 | Troubleshoot crawling errors — soft 404       | Google      | vendor-spec | unknown URLs answer 404 or 410        | https://developers.google.com/search/docs/crawling-indexing/troubleshoot-crawling-errors#soft-404-errors                                                          |
 | HTTP status codes and Google Search           | Google      | vendor-spec | how 4xx / 5xx answers change crawling | https://developers.google.com/search/docs/crawling-indexing/http-network-errors#5xx-server-errors                                                                 |
+| Anthropic's crawlers and robots.txt           | Anthropic   | vendor-spec | Claude-User honours robots.txt        | https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler                                   |
 
 ### 4.3 Practical references, guidelines & cross-check tools
 
-| Source                          | Publisher     | Rigor     | Use                                 | Link                                                                        |
-| ------------------------------- | ------------- | --------- | ----------------------------------- | --------------------------------------------------------------------------- |
-| MDN — `<meta name>` values      | MDN / Mozilla | guideline | practical meta reference            | https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name         |
-| MDN — Viewport meta tag         | MDN / Mozilla | guideline | viewport usage                      | https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag         |
-| MDN — `<link>` types            | MDN / Mozilla | guideline | rel reference                       | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel            |
-| Lighthouse — SEO audits         | Google        | guideline | audit definitions to mirror         | https://developer.chrome.com/docs/lighthouse/seo/                           |
-| axe-core — rule descriptions    | Deque         | guideline | a11y rule cross-check               | https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md |
-| Nu HTML Checker                 | W3C           | guideline | HTML validity cross-check           | https://validator.w3.org/nu/                                                |
-| Title tag best practices        | Moz           | heuristic | title length/quality folklore       | https://moz.com/learn/seo/title-tag                                         |
-| Meta description best practices | Moz           | heuristic | description length/quality folklore | https://moz.com/learn/seo/meta-description                                  |
+| Source                          | Publisher     | Rigor     | Use                                            | Link                                                                        |
+| ------------------------------- | ------------- | --------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| MDN — `<meta name>` values      | MDN / Mozilla | guideline | practical meta reference                       | https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name         |
+| MDN — Viewport meta tag         | MDN / Mozilla | guideline | viewport usage                                 | https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag         |
+| MDN — `<link>` types            | MDN / Mozilla | guideline | rel reference                                  | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel            |
+| Lighthouse — SEO audits         | Google        | guideline | audit definitions to mirror                    | https://developer.chrome.com/docs/lighthouse/seo/                           |
+| Lighthouse — llms.txt audit     | Google        | guideline | `/llms.txt`: 404 is n/a, 5xx fails             | https://developer.chrome.com/docs/lighthouse/agentic-browsing/llms-txt      |
+| The /llms.txt file (a proposal) | llmstxt.org   | guideline | `llms.txt` format — a proposal, not a standard | https://llmstxt.org/                                                        |
+| axe-core — rule descriptions    | Deque         | guideline | a11y rule cross-check                          | https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md |
+| Nu HTML Checker                 | W3C           | guideline | HTML validity cross-check                      | https://validator.w3.org/nu/                                                |
+| Title tag best practices        | Moz           | heuristic | title length/quality folklore                  | https://moz.com/learn/seo/title-tag                                         |
+| Meta description best practices | Moz           | heuristic | description length/quality folklore            | https://moz.com/learn/seo/meta-description                                  |
 
 > **Heuristic honesty:** SERP length windows (title ~15–60, description ~50–160 chars) are **heuristics**, not spec. Google states title length is not itself a ranking factor. These rules ship with `rigor: "heuristic"` so agents weight them accordingly.
 

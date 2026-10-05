@@ -364,6 +364,17 @@ const VENDOR: readonly Source[] = [
     note: "How Google's crawlers read each status class: a 4xx other than 429 means the content does not exist; a 5xx slows crawling of the whole site in proportion to the URLs that return one, and URLs that keep returning one leave the index.",
   },
   {
+    id: "anthropic-crawlers",
+    publisher: "Anthropic",
+    rigor: "vendor-spec",
+    title: "Does Anthropic crawl data from the web, and how can site owners block the crawler?",
+    url: "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler",
+    retrievedAt: "2026-10-05",
+    quote:
+      "Anthropic’s Bots respect “do not crawl” signals by honoring industry standard directives in robots.txt.",
+    note: "Names Anthropic's agents, Claude-User among them — the one that fetches a page when a person asks Claude about it — and states that robots.txt governs all of them. An agent reading an llms.txt on a user's behalf is therefore bound by the same file that may forbid what the llms.txt lists.",
+  },
+  {
     id: "bing-webmaster-guidelines",
     publisher: "Microsoft",
     rigor: "guideline",
@@ -414,6 +425,27 @@ const PRACTICAL: readonly Source[] = [
     url: "https://developer.chrome.com/docs/lighthouse/seo/",
     retrievedAt: "2026-08-06",
     note: "The audit definitions Lighthouse ships (document has a title, has a meta description, valid hreflang, valid canonical, …) — the closest thing to an industry-standard checklist to mirror.",
+  },
+  {
+    id: "lighthouse-llms-txt",
+    publisher: "Google",
+    rigor: "guideline",
+    title: "Lighthouse — llms.txt (agentic browsing audit)",
+    url: "https://developer.chrome.com/docs/lighthouse/agentic-browsing/llms-txt",
+    retrievedAt: "2026-10-05",
+    quote:
+      "If the file is not provided by the server (resulting in a 404), the audit is marked as Not Applicable (N/A), as providing the file is optional at the moment.",
+    note: "Lighthouse's llms.txt audit fails a page when fetching /llms.txt returns a server error, and treats a 404 as not applicable. The cross-check for goflag's own reading: absent is fine, broken is not.",
+  },
+  {
+    id: "llmstxt",
+    publisher: "llmstxt.org",
+    rigor: "guideline",
+    title: "The /llms.txt file (a proposal)",
+    url: "https://llmstxt.org/",
+    retrievedAt: "2026-10-05",
+    quote: "An H1 with the name of the project or site. This is the only required section",
+    note: "A proposal by Jeremy Howard, first published 2024-09-03 and revised since — not a standard, and no standards body has taken it up. It describes a markdown file at /llms.txt — an H1, then an optional summary, details and H2 file lists of [name](url) links — for agents to read on a user's behalf. Rules about it can claim no more than guideline.",
   },
   {
     id: "axe-core-rules",

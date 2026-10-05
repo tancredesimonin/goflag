@@ -353,6 +353,41 @@ export interface NotFoundProbe {
   contentType?: string;
 }
 
+/** One `[name](url)` an `llms.txt` lists. */
+export interface LlmsTxtLink {
+  /** The link text, trimmed. */
+  name: string;
+  /** Resolved absolute against the file's URL, fragment dropped. */
+  url: string;
+  /** 1-based line of the file it sits on. */
+  line: number;
+}
+
+/**
+ * What the origin serves at `/llms.txt`, and what the file says.
+ *
+ * `html` is the distinction that keeps the rules honest: a catch-all route that
+ * answers every unknown path with the home page answers this one too, with a
+ * 200. Parsing that as markdown would produce a "missing H1" and a dozen dead
+ * "links" about a file that does not exist.
+ */
+export interface LlmsTxtProbe {
+  url: string;
+  /** Final status, redirects followed. `0` when no answer came back. */
+  status: number;
+  finalUrl: string;
+  /** 2xx. Says nothing yet about whether what came back is an llms.txt. */
+  found: boolean;
+  /** From `content-type`, lowercased, parameters stripped. */
+  contentType?: string;
+  /** The body opens like an HTML document: a page answered, not a file. */
+  html: boolean;
+  /** The first H1 — the one section the proposal requires. Absent when none. */
+  h1?: { text: string; line: number };
+  /** Every markdown link, in file order. Empty when `html` or not `found`. */
+  links: LlmsTxtLink[];
+}
+
 export interface SitemapProbe {
   url: string;
   status: number;

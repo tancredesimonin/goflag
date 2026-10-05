@@ -22,6 +22,8 @@ import { isNotFound } from "../core/probes/not-found";
 import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
+import { LLMS_TXT_RULES } from "./llms-txt";
+import { isDead, sample } from "./site-shared";
 import type { SiteContext, SiteRule } from "./site-types";
 import { sitemapReadInFull } from "./sitemap-inventory";
 
@@ -774,16 +776,6 @@ const robotsBlocksPage: SiteRule = {
 
 /** `<changefreq>` values the protocol defines. Anything else is not one. */
 const CHANGEFREQ = new Set(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]);
-
-/** How many offending entries a finding names before it starts counting. */
-const SAMPLE = 5;
-
-/** `n` entries, listing the first few — forty repeats of one defect is noise. */
-function sample(locs: string[]): string {
-  const shown = locs.slice(0, SAMPLE);
-  const rest = locs.length - shown.length;
-  return `${shown.map((l) => `\`${l}\``).join(", ")}${rest > 0 ? `, and ${rest} more` : ""}`;
-}
 
 const sitemapMissing: SiteRule = {
   id: "sitemap.missing",
@@ -1616,11 +1608,6 @@ const sitemapEntryRedirects: SiteRule = {
   },
 };
 
-/** 4xx, 5xx, or no response at all. A 3xx is a redirect, not a death. */
-function isDead(status: number): boolean {
-  return status === 0 || status >= 400;
-}
-
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -1641,6 +1628,7 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangClusterIncomplete,
   httpNotFound,
   iconsIcoMissing,
+  ...LLMS_TXT_RULES,
   robotsBlocksPage,
   robotsBlocksSite,
   robotstxtCrossOrigin,

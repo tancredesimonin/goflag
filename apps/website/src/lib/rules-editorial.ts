@@ -294,6 +294,31 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "Asked for a path that cannot exist, the origin did not answer 404 or 410: `/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41.txt` answered 200 `text/html` (`/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41` answered 404, so only some unknown paths are affected). A 2xx for a page that does not exist is a soft 404: every invented URL becomes a page to crawl, and a client asking for a file the site does not have — `/llms.txt`, `/feed.xml` — gets a page it may take for that file.",
   },
+  "llmstxt.unreachable": {
+    why: "Having no llms.txt is allowed — the file is a proposal, and a 404 says the site has none. A server error says something is there and failed, which leaves an agent with nothing it can use. Lighthouse fails its llms.txt audit on exactly this case. Stays silent when every unknown `.txt` errors the same way: that is `http.not-found`'s finding, reported once.",
+    message:
+      "`/llms.txt` answered 503. Having no llms.txt is fine — a 404 says so — but a server error says something is here and failed, and the agent that asked for it gets nothing it can use. Lighthouse fails its llms.txt audit on exactly this.",
+  },
+  "llmstxt.content-type": {
+    why: "Two failures with one remedy. A markdown file served as `text/html` is an llms.txt that clients misread: a browser renders it as one run-on paragraph. A home page served at `/llms.txt` is no llms.txt at all, and goflag reads the body rather than the header to tell the two apart. When every unknown `.txt` gets the same page, the cause is the catch-all and `http.not-found` reports it instead, so one defect is not counted twice.",
+    message:
+      "`/llms.txt` is served with `text/html`. The file is markdown, read by agents and by people: `text/plain` or `text/markdown` say so, while anything else tells a client to treat it as something it is not — `text/html` renders it as one run-on paragraph, and a download type does not render it at all.",
+  },
+  "llmstxt.h1.missing": {
+    why: "The proposal calls the H1 the only required section: the name of the site, before anything else the file says. Without it the file is not an llms.txt by its own definition. goflag reads it the way CommonMark spells it, `# Name` with a space after the `#`.",
+    message:
+      "`/llms.txt` has no H1 (`# Name`, with a space after the `#`). The proposal calls it the only required section — without it the file is not an llms.txt by its own definition, and a reader following the format has no name for what the rest describes.",
+  },
+  "llmstxt.link.unreachable": {
+    why: "An llms.txt is a list of where to look, and an agent follows it on a user's behalf. A dead entry turns that lookup into an error instead of an answer. Only entries on the audited origin are checked, through the same pass as sitemap entries: what the crawl or the link audit already answered is not fetched again.",
+    message:
+      "1 URL `/llms.txt` lists does not answer: `https://example.com/raw/pricing.md (HTTP 404)`. The file exists to send agents to these pages, so each dead one is a lookup that ends in an error instead of an answer.",
+  },
+  "llmstxt.link.blocked-by-robots": {
+    why: "The file offers URLs to agents; robots.txt forbids agents to fetch them. Anthropic documents that its bots, Claude-User among them, honour robots.txt, so each such entry is unreadable by exactly the reader it was written for. Read for `User-agent: *`, the file itself included, and left to `robots.blocks-site` when the whole origin is disallowed.",
+    message:
+      "2 URLs `/llms.txt` points agents to are disallowed by `robots.txt` for `User-agent: *`: `https://example.com/raw/guide.md (line 5: Disallow: /raw/)`, `https://example.com/raw/faq.md (line 5: Disallow: /raw/)`. The file offers them to agents, and an agent that honours robots.txt — Anthropic documents that Claude-User does — never fetches them.",
+  },
   "title.descriptive": {
     why: "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",
   },

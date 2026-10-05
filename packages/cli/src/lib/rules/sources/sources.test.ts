@@ -30,9 +30,9 @@ describe("source catalog", () => {
   });
 
   it("seeds every reference from the plan (§4.1–§4.3)", () => {
-    // 41 seeded on 2026-08-06, and three added to the plan's tables on
-    // 2026-10-05 for `http.not-found`.
-    expect(SOURCES.length).toBe(44);
+    // 41 seeded on 2026-08-06, and six added to the plan's tables on
+    // 2026-10-05 for `http.not-found` and the `llmstxt.*` rules.
+    expect(SOURCES.length).toBe(47);
   });
 
   it("covers all four rigor levels", () => {

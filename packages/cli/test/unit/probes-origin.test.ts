@@ -1,12 +1,14 @@
 /**
- * The origin probe behind `http.not-found`, against a real HTTP server on
- * loopback — the same arrangement as `probes-network.test.ts`, with a handler
- * per case so a test can make the server lie about `HEAD`, crash on a dotted
- * path, or answer every unknown path with its home page.
+ * The two origin probes behind `http.not-found` and the `llmstxt.*` rules,
+ * against a real HTTP server on loopback — the same arrangement as
+ * `probes-network.test.ts`, with a handler per case so a test can make the
+ * server lie about `HEAD`, crash on a dotted path, or answer every unknown
+ * path with its home page.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { probeLlmsTxt } from "../../src/lib/core/probes/llms-txt";
 import { probeNotFound } from "../../src/lib/core/probes/not-found";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -95,5 +97,50 @@ describe("probeNotFound", () => {
   it("records no answer as status 0, never as a verdict", async () => {
     const probes = await probeNotFound("http://127.0.0.1:1", { nonce: "n" });
     expect(probes.map((p) => p.status)).toEqual([0, 0]);
+  });
+});
+
+describe("probeLlmsTxt", () => {
+  it("reads a served file: status, type, H1 and links", async () => {
+    handler = (req, res) => {
+      if (req.url !== "/llms.txt") return res.writeHead(404).end();
+      res.writeHead(200, { "content-type": "text/markdown; charset=utf-8" });
+      res.end("# Site\n\n> Summary\n\n## Docs\n\n- [Guide](/raw/guide.md): the guide\n");
+    };
+    const probe = await probeLlmsTxt(baseUrl);
+    expect(probe).toMatchObject({
+      found: true,
+      html: false,
+      status: 200,
+      contentType: "text/markdown",
+      h1: { text: "Site", line: 1 },
+    });
+    expect(probe.links).toEqual([{ name: "Guide", url: `${baseUrl}/raw/guide.md`, line: 7 }]);
+  });
+
+  it("treats a 404 as absent, which is allowed", async () => {
+    handler = (_req, res) => res.writeHead(404).end("not found");
+    expect(await probeLlmsTxt(baseUrl)).toMatchObject({ found: false, status: 404, links: [] });
+  });
+
+  it("keeps a server error's status, so it is not mistaken for an absence", async () => {
+    handler = (_req, res) => res.writeHead(500, { "content-type": "text/plain" }).end("boom");
+    expect(await probeLlmsTxt(baseUrl)).toMatchObject({ found: false, status: 500 });
+  });
+
+  it("does not parse a home page as markdown", async () => {
+    // Parsing it would report a missing H1 and every navigation link as an
+    // entry, about a file that does not exist.
+    handler = (_req, res) => {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(`${HOME}<a href="/about">About</a> [x](/y)`);
+    };
+    const probe = await probeLlmsTxt(baseUrl);
+    expect(probe).toMatchObject({ found: true, html: true, contentType: "text/html", links: [] });
+    expect(probe.h1).toBeUndefined();
+  });
+
+  it("records no answer as status 0", async () => {
+    expect(await probeLlmsTxt("http://127.0.0.1:1")).toMatchObject({ found: false, status: 0 });
   });
 });

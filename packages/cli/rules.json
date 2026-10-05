@@ -1,10 +1,17 @@
 {
   "counts": {
     "page": 25,
-    "site": 29,
+    "site": 34,
     "prose": 5
   },
   "sources": {
+    "anthropic-crawlers": {
+      "id": "anthropic-crawlers",
+      "publisher": "Anthropic",
+      "title": "Does Anthropic crawl data from the web, and how can site owners block the crawler?",
+      "rigor": "vendor-spec",
+      "url": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
+    },
     "apple-web-apps": {
       "id": "apple-web-apps",
       "publisher": "Apple",
@@ -102,6 +109,20 @@
       "title": "RFC 9309 — Robots Exclusion Protocol",
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc9309"
+    },
+    "lighthouse-llms-txt": {
+      "id": "lighthouse-llms-txt",
+      "publisher": "Google",
+      "title": "Lighthouse — llms.txt (agentic browsing audit)",
+      "rigor": "guideline",
+      "url": "https://developer.chrome.com/docs/lighthouse/agentic-browsing/llms-txt"
+    },
+    "llmstxt": {
+      "id": "llmstxt",
+      "publisher": "llmstxt.org",
+      "title": "The /llms.txt file (a proposal)",
+      "rigor": "guideline",
+      "url": "https://llmstxt.org/"
     },
     "mdn-link-rel": {
       "id": "mdn-link-rel",
@@ -536,6 +557,65 @@
         "openGraph.locale"
       ],
       "prose": "Is the text of this page actually written in the language its `lang` attribute declares?"
+    },
+    {
+      "id": "llmstxt.content-type",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`/llms.txt` must be served as text — `text/plain` or `text/markdown` — not as a page",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt",
+        "ietf-rfc9110"
+      ]
+    },
+    {
+      "id": "llmstxt.h1.missing",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "An llms.txt must have an H1 naming the site",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt"
+      ]
+    },
+    {
+      "id": "llmstxt.link.blocked-by-robots",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "An llms.txt must not list URLs that robots.txt forbids fetching",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt",
+        "ietf-rfc9309",
+        "anthropic-crawlers"
+      ]
+    },
+    {
+      "id": "llmstxt.link.unreachable",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Every same-origin URL an llms.txt lists must answer",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt"
+      ]
+    },
+    {
+      "id": "llmstxt.unreachable",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`/llms.txt` must answer with the file or with 404, not with a server error",
+      "rigor": "guideline",
+      "sources": [
+        "lighthouse-llms-txt",
+        "llmstxt"
+      ]
     },
     {
       "id": "og.description.missing",

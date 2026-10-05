@@ -6,15 +6,20 @@ import { runAudit } from "@/report/build";
 import type { GoflagReport } from "@/report/types";
 
 /**
- * `http.not-found`, through `runAudit`.
+ * `http.not-found` and the `llmstxt.*` rules, through `runAudit`.
  *
  * The unit tests prove each rule reads its probe; this proves the probes run,
  * reach the rules, and run under the flags the sites' pipelines use
  * (`--static --no-external`). A rule nothing feeds is the "written, tested,
  * called by nobody" failure this repository has recorded six times.
  *
- * The site is the case measured on openfinanceguide.com on 2026-10-05: every
- * unknown dotted path answers 200 with the home page; bare paths 404.
+ * The two sites are the two cases measured on 2026-10-05:
+ *
+ *   catch-all   openfinanceguide.com — every unknown dotted path, `/llms.txt`
+ *               included, answers 200 with the home page; bare paths 404.
+ *   llms        a correct origin publishing an llms.txt that lists a dead
+ *               mirror and one under `Disallow: /raw/` — the contradiction
+ *               openfinanceguide was about to ship.
  */
 
 interface Fixture {
@@ -70,5 +75,67 @@ describe("an origin that serves every unknown dotted path as its home page", () 
       /\/goflag-probe-[0-9a-f]{32}\.txt` answered 200 `text\/html`/,
     );
     expect(report.summary.verdict).toBe("red");
+  });
+
+  it("leaves /llms.txt to that finding instead of reading the home page as one", () => {
+    expect(report.siteIssues.filter((i) => i.ruleId.startsWith("llmstxt."))).toEqual([]);
+  });
+});
+
+describe("an origin that publishes an llms.txt", () => {
+  let site: Fixture;
+  let report: GoflagReport;
+
+  beforeAll(async () => {
+    site = await start((app, origin) => {
+      app.get("/robots.txt", (c) => c.text("User-agent: *\nAllow: /\nDisallow: /raw/\n"));
+      app.get("/", () => page("home"));
+      app.get("/llms.txt", (c) =>
+        c.text(
+          [
+            "# Fixture",
+            "",
+            "> A site that lists what agents should read.",
+            "",
+            "## Docs",
+            "",
+            `- [Home](${origin()}/): the landing page`,
+            "- [Guide](/raw/guide.md): the markdown mirror",
+            "- [Gone](/missing.md): a mirror that was never built",
+            "- [Elsewhere](https://example.invalid/page): not this site's business",
+          ].join("\n"),
+        ),
+      );
+      app.get("/raw/guide.md", (c) => c.text("# Guide\n"));
+      app.get("*", (c) => c.text("Not Found", 404));
+    });
+    report = await runAudit(site.url, FLAGS);
+  }, 60_000);
+
+  afterAll(() => site.stop());
+
+  const ids = () => report.siteIssues.map((i) => i.ruleId);
+
+  it("finds the origin's not-found handling correct", () => {
+    expect(ids()).not.toContain("http.not-found");
+  });
+
+  it("finds the file well-formed and served as text", () => {
+    expect(ids()).not.toContain("llmstxt.content-type");
+    expect(ids()).not.toContain("llmstxt.h1.missing");
+  });
+
+  it("reports the dead same-origin entry, and only that one", () => {
+    const [found] = report.siteIssues.filter((i) => i.ruleId === "llmstxt.link.unreachable");
+    expect(found?.pageUrl).toBe(`${site.url}/llms.txt`);
+    expect(found?.message).toContain(`${site.url}/missing.md (HTTP 404)`);
+    expect(found?.message).toContain("1 URL");
+    expect(found?.message).not.toContain("example.invalid");
+  });
+
+  it("reports the entry robots.txt forbids an agent to fetch", () => {
+    const [found] = report.siteIssues.filter((i) => i.ruleId === "llmstxt.link.blocked-by-robots");
+    expect(found?.message).toContain(`${site.url}/raw/guide.md (line 3: Disallow: /raw/)`);
+    expect(found?.severity).toBe("warning");
   });
 });
