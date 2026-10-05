@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-28
+updated: 2026-10-05
 ---
 
 # Roadmap — goflag
@@ -13,13 +13,30 @@ updated: 2026-09-28
 
 ## Now
 
+### 6.3 — an origin's unknown paths, and its `llms.txt`, are judged
+
+**Why**: pulled forward on 2026-10-05, ahead of 3.5, for openfinanceguide F09. That site
+answered `/llms.txt`, `/feed.xml` and any invented `.txt` with its home page and a 200 (its
+develop environment with a 500), and planned an `llms.txt` listing `/raw/*.md` while its
+robots.txt said `Disallow: /raw/`. goflag saw neither: it only ever asks for URLs a site
+published.
+**Done when**: `http.not-found` asks the origin for two invented paths, bare and dotted, and
+reports a 2xx or a 5xx; the `llmstxt.*` rules judge a served `/llms.txt` — its H1, its content
+type, a server error, its same-origin entries that do not answer or that robots.txt forbids —
+and stay silent on an absent file and on a catch-all `http.not-found` already reported.
+`docs/spec-and-lib-plan.md` §6.3.
+**State**: on `develop` once this merge request lands, released with the next `@goflag/cli`.
+The sites pin 0.2.13, so nothing changes for them until they bump; openfinanceguide then turns
+red on `http.not-found` — develop answers the dotted path with a 500, production with a 200,
+and its merge-request job builds what production serves — until its fix merges.
+
 ### 3.5 — translation holes move into the rule registry
 
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: half done. The second half holds: the catalogue exposes 58 rules — 25 page,
-28 site, 5 prose — and the only one at `rigor: null` is the prose rule
+**State**: half done. The second half holds: the catalogue exposes 64 rules — 25 page,
+34 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still

@@ -156,8 +156,8 @@ npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
-crawl, no network. It ships fifty-eight rules — twenty-five page rules,
-twenty-eight site rules and five prose rules — and every entry carries its
+crawl, no network. It ships sixty-four rules — twenty-five page rules,
+thirty-four site rules and five prose rules — and every entry carries its
 scope, severity and summary. All but one also carry a rigor, the documents they
 cite and, where a remedy is a line of code, a fix snippet. The exception is
 `hreflang.sitemap-mismatch`, which emits `rigor: null` with an empty `sources`
