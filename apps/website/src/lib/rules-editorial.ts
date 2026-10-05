@@ -289,6 +289,11 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
   },
+  "http.not-found": {
+    why: "Every other check reads a URL the site published, so none of them sees how it answers one it did not. goflag invents two paths, one bare and one ending in `.txt`, because frameworks route them differently: a middleware matcher that skips dotted paths is how `/anything.txt` reaches a page route while `/anything` 404s. A 200 there is a soft 404 — any invented URL becomes a page, and a client asking for `/llms.txt` or `/feed.xml` gets a home page it may take for the file. A 500 makes every mistyped link a server error, and Google slows its crawl of the whole site in proportion. The finding is attributed to the origin, not to the invented URL, so a fresh nonce on every run never makes it new.",
+    message:
+      "Asked for a path that cannot exist, the origin did not answer 404 or 410: `/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41.txt` answered 200 `text/html` (`/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41` answered 404, so only some unknown paths are affected). A 2xx for a page that does not exist is a soft 404: every invented URL becomes a page to crawl, and a client asking for a file the site does not have — `/llms.txt`, `/feed.xml` — gets a page it may take for that file.",
+  },
   "title.descriptive": {
     why: "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",
   },

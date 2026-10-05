@@ -28,6 +28,7 @@ import type { SiteDiscovery } from "../core/sitemap/types";
 import type {
   FaviconProbe,
   Issue,
+  NotFoundProbe,
   Page,
   RobotsProbe,
   Severity,
@@ -73,6 +74,12 @@ export interface SiteContext {
    * so a per-page rule would report one fact as many findings.
    */
   favicon?: FaviconProbe;
+  /**
+   * What the origin answered for two invented paths, one bare and one dotted
+   * (`../core/probes/not-found.ts`). Absent when the probe did not run, which
+   * is not the same as the origin answering correctly.
+   */
+  notFound?: readonly NotFoundProbe[];
   /**
    * What is served at each sitemap entry, keyed by its `<loc>`, and how many
    * entries the caps left unanswered.

@@ -34,6 +34,7 @@ import { selectByStructure } from "../lib/core/coverage";
 import { probeAsset } from "../lib/core/probes/assets";
 import { probeFavicon } from "../lib/core/probes/favicon";
 import { probeManifest } from "../lib/core/probes/manifest";
+import { probeNotFound } from "../lib/core/probes/not-found";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
 import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
@@ -559,6 +560,15 @@ export async function runAudit(
     timeoutMs: options.timeoutMs,
   }).catch(() => undefined);
 
+  // How the origin answers a path nobody published — a fact about the origin
+  // rather than about a page, asked once like the two above. Same-origin, so
+  // `--no-external` has nothing to withhold, and cheap: two HEADs on a site
+  // that 404s correctly.
+  const notFound = await probeNotFound(origin, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+  }).catch(() => undefined);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
@@ -888,6 +898,7 @@ export async function runAudit(
     discovery,
     robots,
     favicon,
+    notFound,
     sitemapEntries,
     // Set aside above, and still what their URLs serve. The sitemap rules that
     // ask what a listed URL serves need them: a listed variant is exactly what

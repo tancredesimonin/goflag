@@ -329,6 +329,30 @@ export interface FaviconProbe {
   contentType?: string;
 }
 
+/**
+ * What the origin answers for one path it cannot have.
+ *
+ * Origin-level, like `/favicon.ico`: how a server treats a URL nobody routed is
+ * one fact about the whole site. Two shapes are asked, because frameworks route
+ * them differently — a middleware matcher that skips dotted paths is exactly how
+ * `/anything.txt` ends up served by a page route while `/anything` 404s.
+ */
+export interface NotFoundProbe {
+  /**
+   * The invented URL. Fresh on every run, so nothing may key on it: a finding
+   * that carried it in its fingerprint would be "new" every time.
+   */
+  url: string;
+  /** `bare` has no extension; `dotted` ends in `.txt`. */
+  shape: "bare" | "dotted";
+  /** Final status, redirects followed. `0` when no answer came back. */
+  status: number;
+  /** Where the redirects landed; equals `url` when nothing redirected. */
+  finalUrl: string;
+  /** From `content-type`, lowercased, parameters stripped. */
+  contentType?: string;
+}
+
 export interface SitemapProbe {
   url: string;
   status: number;

@@ -152,6 +152,17 @@ const NORMATIVE: readonly Source[] = [
     note: 'Defines rel="canonical": the preferred IRI for duplicative content. The target must not be a 404 and should not vary per duplicate (no self-referencing loops through redirects).',
   },
   {
+    id: "ietf-rfc9110",
+    publisher: "IETF",
+    rigor: "normative",
+    title: "RFC 9110 — HTTP Semantics",
+    url: "https://www.rfc-editor.org/rfc/rfc9110",
+    retrievedAt: "2026-10-05",
+    quote:
+      "The 404 (Not Found) status code indicates that the origin server did not find a current representation for the target resource or is not willing to disclose that one exists.",
+    note: "What a status code claims. 404 (§15.5.5) and 410 (§15.5.11, the permanent form) say there is nothing at the URL; a 2xx says there is; a 5xx (§15.6) says the server erred. Content-Type (§8.3) tells the recipient how to read what it was sent.",
+  },
+  {
     id: "ietf-rfc9309",
     publisher: "IETF",
     rigor: "normative",
@@ -328,6 +339,29 @@ const VENDOR: readonly Source[] = [
     url: "https://developers.facebook.com/docs/sharing/webmasters/",
     retrievedAt: "2026-08-06",
     note: "How Meta's crawler builds link previews from og:* tags — including image size expectations (1200×630 recommended, 200×200 minimum) beyond what ogp.me specifies.",
+  },
+  {
+    id: "google-soft-404",
+    publisher: "Google",
+    rigor: "vendor-spec",
+    title: "Troubleshoot Google Search crawling errors — soft 404 errors",
+    url: "https://developers.google.com/search/docs/crawling-indexing/troubleshoot-crawling-errors",
+    anchor: "soft-404-errors",
+    retrievedAt: "2026-10-05",
+    quote:
+      "If you removed the page and there's no replacement page on your site with similar content, return a 404 (not found) or 410 (gone) response (status) code for the page.",
+    note: "A soft 404 is a URL with no page behind it that answers 200 anyway. Google excludes such pages from Search and asks for a 404 or 410 instead. Search Console's Page indexing report (support.google.com/webmasters/answer/7440203) lists the same case and makes the same recommendation.",
+  },
+  {
+    id: "google-http-status",
+    publisher: "Google",
+    rigor: "vendor-spec",
+    title: "How HTTP status codes, and network and DNS errors affect Google Search",
+    url: "https://developers.google.com/search/docs/crawling-indexing/http-network-errors",
+    anchor: "5xx-server-errors",
+    retrievedAt: "2026-10-05",
+    quote: "Google decreases the crawl rate for the site.",
+    note: "How Google's crawlers read each status class: a 4xx other than 429 means the content does not exist; a 5xx slows crawling of the whole site in proportion to the URLs that return one, and URLs that keep returning one leave the index.",
   },
   {
     id: "bing-webmaster-guidelines",
