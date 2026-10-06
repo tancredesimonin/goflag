@@ -63,6 +63,13 @@ overrides:
   # The floor is raised anyway: the audit job reads the whole workspace, and a
   # `high` left standing is one nobody looks at twice.
   nanoid: "^3.3.18"
+  # 1.2.2 patches GHSA-68fv-2mgg-jv7q (high): indexed source-map section offsets
+  # can stall the event loop. Same shape as nanoid above: the only production
+  # path is `next` → `postcss` → `source-map-js` in `apps/website`, and the three
+  # published packages reach it through devDependencies alone (vitest, tsup,
+  # tailwind), so no consumer was exposed. Raised because the audit job reads
+  # the whole workspace.
+  source-map-js: "^1.2.2"
   undici: ^7.28.0
   fast-uri: ^3.1.2
 
