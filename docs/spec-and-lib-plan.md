@@ -529,7 +529,7 @@ circularité que la phase 1 n'a fait que contourner.
 | --- | ------------------------------------------------------------------------------------------------------- |
 | 6.1 | `/raw/[locale]/[slug].md` dérivé du registre (le code existe dans ofg, testé)                           |
 | 6.2 | **`llms.txt` + `llms-full.txt` multilingues** — personne n'a tranché publiquement la forme              |
-| 6.3 | Règles goflag correspondantes                                                                           |
+| 6.3 | ✅ Règles goflag correspondantes — `http.not-found` et `llmstxt.*` (avancé au 2026-10-05, ofg F09)      |
 | 6.4 | Export de `AI_PROVIDERS` / `buildAiPrompt` **sans** les composants React (ils traînent shadcn — cf. I1) |
 
 **Risque** — le créneau bouge vite (`next-geo` de Continue.dev,

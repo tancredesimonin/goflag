@@ -29,10 +29,10 @@ goflag https://example.com --profile marketing    # metadata gaps are errors
 | `spec-only` | Heuristic rules (`title.length`, `description.length`) are switched off.                                              |
 | `marketing` | The snippet and unfurl metadata — description, `og:title`, `og:image` — error.                                        |
 
-**A profile only reaches the per-page registry.** The 28 cross-page rules —
-`sitemap.*`, `robotstxt.*`, `robots.*`, `hreflang.*`, `icons.ico.missing` — judge
-the site once rather than each page, and always run at the severity they were
-authored with. So a spec-required cross-page rule stays a `warning` under
+**A profile only reaches the per-page registry.** The 34 cross-page rules —
+`sitemap.*`, `robotstxt.*`, `robots.*`, `hreflang.*`, `llmstxt.*`,
+`icons.ico.missing`, `http.not-found` — judge the site once rather than each
+page, and always run at the severity they were authored with. So a spec-required cross-page rule stays a `warning` under
 `strict`, and `--fail-on error` does not turn the verdict red on it. That is a
 property of where the overlay applies, not a judgement about those rules.
 

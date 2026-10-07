@@ -1,10 +1,17 @@
 {
   "counts": {
     "page": 25,
-    "site": 28,
+    "site": 34,
     "prose": 5
   },
   "sources": {
+    "anthropic-crawlers": {
+      "id": "anthropic-crawlers",
+      "publisher": "Anthropic",
+      "title": "Does Anthropic crawl data from the web, and how can site owners block the crawler?",
+      "rigor": "vendor-spec",
+      "url": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
+    },
     "apple-web-apps": {
       "id": "apple-web-apps",
       "publisher": "Apple",
@@ -32,6 +39,13 @@
       "title": "Localized versions of your pages (hreflang)",
       "rigor": "vendor-spec",
       "url": "https://developers.google.com/search/docs/specialty/international/localized-versions"
+    },
+    "google-http-status": {
+      "id": "google-http-status",
+      "publisher": "Google",
+      "title": "How HTTP status codes, and network and DNS errors affect Google Search",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/http-network-errors"
     },
     "google-robots-intro": {
       "id": "google-robots-intro",
@@ -61,6 +75,13 @@
       "rigor": "guideline",
       "url": "https://developers.google.com/search/docs/appearance/snippet"
     },
+    "google-soft-404": {
+      "id": "google-soft-404",
+      "publisher": "Google",
+      "title": "Troubleshoot Google Search crawling errors — soft 404 errors",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/troubleshoot-crawling-errors"
+    },
     "google-title-link": {
       "id": "google-title-link",
       "publisher": "Google",
@@ -75,12 +96,33 @@
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc6596"
     },
+    "ietf-rfc9110": {
+      "id": "ietf-rfc9110",
+      "publisher": "IETF",
+      "title": "RFC 9110 — HTTP Semantics",
+      "rigor": "normative",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110"
+    },
     "ietf-rfc9309": {
       "id": "ietf-rfc9309",
       "publisher": "IETF",
       "title": "RFC 9309 — Robots Exclusion Protocol",
       "rigor": "normative",
       "url": "https://www.rfc-editor.org/rfc/rfc9309"
+    },
+    "lighthouse-llms-txt": {
+      "id": "lighthouse-llms-txt",
+      "publisher": "Google",
+      "title": "Lighthouse — llms.txt (agentic browsing audit)",
+      "rigor": "guideline",
+      "url": "https://developer.chrome.com/docs/lighthouse/agentic-browsing/llms-txt"
+    },
+    "llmstxt": {
+      "id": "llmstxt",
+      "publisher": "llmstxt.org",
+      "title": "The /llms.txt file (a proposal)",
+      "rigor": "guideline",
+      "url": "https://llmstxt.org/"
     },
     "mdn-link-rel": {
       "id": "mdn-link-rel",
@@ -354,6 +396,19 @@
       "prose": "Your `<head>` advertises a translation your sitemap does not list. Is the sitemap missing an entry, or is the alternate pointing at a page you did not mean to publish?"
     },
     {
+      "id": "http.not-found",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A URL that does not exist must answer 404 or 410",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9110",
+        "google-soft-404",
+        "google-http-status"
+      ]
+    },
+    {
       "id": "icons.apple-touch.missing",
       "scope": "page",
       "category": "icons",
@@ -502,6 +557,65 @@
         "openGraph.locale"
       ],
       "prose": "Is the text of this page actually written in the language its `lang` attribute declares?"
+    },
+    {
+      "id": "llmstxt.content-type",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`/llms.txt` must be served as text — `text/plain` or `text/markdown` — not as a page",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt",
+        "ietf-rfc9110"
+      ]
+    },
+    {
+      "id": "llmstxt.h1.missing",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "An llms.txt must have an H1 naming the site",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt"
+      ]
+    },
+    {
+      "id": "llmstxt.link.blocked-by-robots",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "An llms.txt must not list URLs that robots.txt forbids fetching",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt",
+        "ietf-rfc9309",
+        "anthropic-crawlers"
+      ]
+    },
+    {
+      "id": "llmstxt.link.unreachable",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "Every same-origin URL an llms.txt lists must answer",
+      "rigor": "guideline",
+      "sources": [
+        "llmstxt"
+      ]
+    },
+    {
+      "id": "llmstxt.unreachable",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`/llms.txt` must answer with the file or with 404, not with a server error",
+      "rigor": "guideline",
+      "sources": [
+        "lighthouse-llms-txt",
+        "llmstxt"
+      ]
     },
     {
       "id": "og.description.missing",

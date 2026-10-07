@@ -18,9 +18,12 @@
  */
 
 import { splitRoute } from "../core/i18n";
+import { isNotFound } from "../core/probes/not-found";
 import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
+import { LLMS_TXT_RULES } from "./llms-txt";
+import { isDead, sample } from "./site-shared";
 import type { SiteContext, SiteRule } from "./site-types";
 import { sitemapReadInFull } from "./sitemap-inventory";
 
@@ -452,6 +455,127 @@ const iconsIcoMissing: SiteRule = {
 };
 
 /**
+ * A URL nobody published must answer 404 or 410.
+ *
+ * Every other rule here judges a URL the site handed out — a link, a sitemap
+ * entry, a declared icon — so none of them can see how the site treats one it
+ * did not. That blind spot is where a catch-all route lives, and the probe
+ * behind this rule (`../core/probes/not-found.ts`) exists to look into it with
+ * two invented paths, one bare and one ending in `.txt`.
+ *
+ * ## One rule, two messages
+ *
+ * A 2xx and a 5xx are different failures with one obligation between them,
+ * which is how this catalogue already draws the line: `icons.ico.missing`
+ * reports a 404, an HTML 200 and a dead connection as one rule with three
+ * messages, and `robotstxt.unreachable` folds a 5xx and a network error into
+ * one. A rule splits when the authority or the consequence changes enough for
+ * the two to deserve different severities — `sitemap.entry.unreachable` against
+ * `sitemap.entry.redirects`. Here neither does: both are the origin failing to
+ * say "nothing here" (RFC 9110 §15.5.5), both are fixed in the same place — the
+ * route that answers unknown paths — and both cost the whole site, not a page.
+ *
+ * ## Why `vendor-spec`
+ *
+ * RFC 9110 defines what a 404 means; it does not oblige a server to send one.
+ * That obligation is Google's, which asks for a 404 or 410 on any URL without
+ * a page and excludes the soft 404s it detects — so the rule claims what Google
+ * claims, and cites the RFC for the meaning of the code it asks for, the way
+ * `hreflang.missing` cites WHATWG for the mechanism.
+ *
+ * ## Why `error`
+ *
+ * The consequence is site-wide either way. On a 2xx every URL anyone invents is
+ * a page — crawl budget spent on nothing, and a client asking for a file the
+ * site does not have (`/llms.txt`, `/feed.xml`) receives a home page it may take
+ * for that file. On a 5xx every mistyped link is a server error, and Google
+ * slows its crawl of the whole host in proportion to the URLs that return one.
+ *
+ * Other answers stay silent on purpose. A 401, 403 or 400 is still a client
+ * error, which Google reads as "this does not exist"; a 3xx cannot be final
+ * once redirects are followed; and a request that got no answer at all is not
+ * evidence about the route.
+ *
+ * Attributed to the origin, never to the invented URL: the nonce is fresh every
+ * run, and a fingerprint keyed on it would make this finding new every time.
+ */
+const httpNotFound: SiteRule = {
+  id: "http.not-found",
+  severity: "error",
+  summary: "A URL that does not exist must answer 404 or 410",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9110", "google-soft-404", "google-http-status"],
+  appliesTo: (site) => (site.notFound ?? []).some((probe) => notFoundFailure(probe.status)),
+  check: ({ site, issue }) => {
+    const probes = site.notFound ?? [];
+    const failed = probes.filter((probe) => notFoundFailure(probe.status));
+    const held = probes.filter((probe) => isNotFound(probe.status));
+
+    const answers = failed.map((probe) => {
+      const path = pathOf(probe.url);
+      const via = probe.finalUrl !== probe.url ? ` after redirecting to \`${probe.finalUrl}\`` : "";
+      const type = probe.contentType ? ` \`${probe.contentType}\`` : "";
+      return `\`${path}\` answered ${probe.status}${type}${via}`;
+    });
+    const contrast = held.length
+      ? ` (${held.map((probe) => `\`${pathOf(probe.url)}\` answered ${probe.status}`).join(", ")}, so only some unknown paths are affected)`
+      : "";
+
+    const soft = failed.some((probe) => notFoundFailure(probe.status) === "soft");
+    const crash = failed.some((probe) => notFoundFailure(probe.status) === "error");
+    const consequences = [
+      soft
+        ? "A 2xx for a page that does not exist is a soft 404: every invented URL becomes a page to crawl, and a client asking for a file the site does not have — `/llms.txt`, `/feed.xml` — gets a page it may take for that file."
+        : "",
+      crash
+        ? "A 5xx says the server failed, not that the page is missing: every mistyped link becomes a server error, and Google slows its crawl of the whole site in proportion to the URLs that return one."
+        : "",
+    ].filter(Boolean);
+
+    return issue({
+      pageUrl: site.origin,
+      message: `Asked for a path that cannot exist, the origin did not answer 404 or 410: ${answers.join("; ")}${contrast}. ${consequences.join(" ")}`,
+      origin: { kind: "computed" },
+      fix: {
+        title: "Make the route that catches unknown paths call notFound()",
+        snippet: [
+          "// A dynamic first segment matches everything, `/anything.txt` included,",
+          "// whenever a middleware matcher skips dotted paths. Validate it wherever",
+          "// it is read — the layout, every page, every generateMetadata:",
+          "const { locale } = await params;",
+          "if (!routing.locales.includes(locale)) notFound();",
+          "//",
+          "// The layout alone is not enough in a production build: the page and its",
+          "// metadata render alongside it, and whichever throws first sets the",
+          "// status — a 500 from a page that formatted a date in locale `llms.txt`.",
+          "//",
+          "// A catch-all `[...slug]` must do the same for slugs it does not know,",
+          "// and a static host's SPA fallback (`/* /index.html 200`) should be a",
+          "// 404 page instead.",
+        ].join("\n"),
+        language: "ts",
+      },
+    });
+  },
+};
+
+/** `soft` for a 2xx, `error` for a 5xx, `undefined` for everything else. */
+function notFoundFailure(status: number): "soft" | "error" | undefined {
+  if (status >= 200 && status < 300) return "soft";
+  if (status >= 500) return "error";
+  return undefined;
+}
+
+function pathOf(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * The file-level robots.txt rules (`docs/sitemap-robots-plan.md` §4.1–4.2).
  *
  * They exist because the parse now keeps what it reads. Every one of them is a
@@ -657,16 +781,6 @@ const robotsBlocksPage: SiteRule = {
 
 /** `<changefreq>` values the protocol defines. Anything else is not one. */
 const CHANGEFREQ = new Set(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]);
-
-/** How many offending entries a finding names before it starts counting. */
-const SAMPLE = 5;
-
-/** `n` entries, listing the first few — forty repeats of one defect is noise. */
-function sample(locs: string[]): string {
-  const shown = locs.slice(0, SAMPLE);
-  const rest = locs.length - shown.length;
-  return `${shown.map((l) => `\`${l}\``).join(", ")}${rest > 0 ? `, and ${rest} more` : ""}`;
-}
 
 const sitemapMissing: SiteRule = {
   id: "sitemap.missing",
@@ -1499,11 +1613,6 @@ const sitemapEntryRedirects: SiteRule = {
   },
 };
 
-/** 4xx, 5xx, or no response at all. A 3xx is a redirect, not a death. */
-function isDead(status: number): boolean {
-  return status === 0 || status >= 400;
-}
-
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -1522,7 +1631,9 @@ function isAbsolute(value: string): boolean {
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangClusterIncomplete,
+  httpNotFound,
   iconsIcoMissing,
+  ...LLMS_TXT_RULES,
   robotsBlocksPage,
   robotsBlocksSite,
   robotstxtCrossOrigin,
