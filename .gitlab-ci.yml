@@ -473,7 +473,15 @@ test:package:og:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - echo "$SERVER_HOST_KEY" >> ~/.ssh/known_hosts
-    - echo "$KAMAL_REGISTRY_PASSWORD" | docker login registry.gitlab.com -u "$KAMAL_REGISTRY_USERNAME" --password-stdin
+    # Two registry credentials, and only the weaker one reaches the host. The
+    # job's own token builds and pushes from this container and never leaves it:
+    # besides the registry, it reaches this project's API with the rights of
+    # whoever started the pipeline. The websites host, which serves seven sites to
+    # the internet, logs in with REGISTRY_PULL_USER / REGISTRY_PULL_TOKEN instead:
+    # this project's deploy token, read_registry only, so whoever takes the host
+    # can pull the images it already holds and nothing else. Each deploy step hands
+    # its pair to Kamal under the names config/deploy.yml and .kamal/ read.
+    - test -n "${REGISTRY_PULL_TOKEN:-}" || { echo "REGISTRY_PULL_USER and REGISTRY_PULL_TOKEN are unset; infrastructure/scripts/registry-pull-tokens.sh create sets them." >&2; exit 1; }
 
 # `$CI_PIPELINE_SOURCE == "push"` is load-bearing. This repository runs
 # scheduled pipelines (sources:liveness, the security template), and a
@@ -484,7 +492,8 @@ deploy:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy
+    - KAMAL_REGISTRY_USERNAME="$CI_REGISTRY_USER" KAMAL_REGISTRY_PASSWORD="$CI_REGISTRY_PASSWORD" kamal build push
+    - KAMAL_REGISTRY_USERNAME="$REGISTRY_PULL_USER" KAMAL_REGISTRY_PASSWORD="$REGISTRY_PULL_TOKEN" kamal deploy --skip-push
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     # The `chore(release)` commit is the one that carries a new
@@ -502,7 +511,8 @@ deploy-develop:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy -d develop
+    - KAMAL_REGISTRY_USERNAME="$CI_REGISTRY_USER" KAMAL_REGISTRY_PASSWORD="$CI_REGISTRY_PASSWORD" kamal build push -d develop
+    - KAMAL_REGISTRY_USERNAME="$REGISTRY_PULL_USER" KAMAL_REGISTRY_PASSWORD="$REGISTRY_PULL_TOKEN" kamal deploy -d develop --skip-push
   # `changes:` because 21 of the 58 pushes to `develop` between 1 and 13 August
   # could not have altered the image, and rebuilt and redeployed a byte-identical
   # site anyway. The Dockerfile installs and builds with
