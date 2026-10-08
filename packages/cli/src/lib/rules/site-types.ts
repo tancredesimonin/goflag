@@ -28,6 +28,8 @@ import type { SiteDiscovery } from "../core/sitemap/types";
 import type {
   FaviconProbe,
   Issue,
+  LlmsTxtProbe,
+  NotFoundProbe,
   Page,
   RobotsProbe,
   Severity,
@@ -45,6 +47,19 @@ export interface SiteContext {
   origin: string;
   /** Healthy (2xx) pages the crawl inspected. */
   pages: readonly Page[];
+  /**
+   * Healthy pages the crawl fetched and set aside, because their canonical
+   * names another page it also fetched (`dropCanonicalDuplicates` in
+   * `report/build.ts`). Never judged as pages: the site disclaims them, and
+   * judging each would multiply every finding by its variants.
+   *
+   * But they are still what their URLs serve, so a rule about the URLs a
+   * sitemap lists reads them. Listing one is the defect
+   * `sitemap.entry.non-canonical` exists for, and a rule that only saw `pages`
+   * would never meet its own example: `/a?ref=x → /a` is set aside the moment
+   * `/a` is crawled. Optional, like `discovery`, for contexts built by hand.
+   */
+  variants?: readonly Page[];
   /** The (route × locale) grid, including declared-but-uncrawled cells. */
   matrix: I18nMatrix;
   /** Locales the site is believed to serve, and how we know. */
@@ -60,6 +75,23 @@ export interface SiteContext {
    * so a per-page rule would report one fact as many findings.
    */
   favicon?: FaviconProbe;
+  /**
+   * What the origin answered for two invented paths, one bare and one dotted
+   * (`../core/probes/not-found.ts`). Absent when the probe did not run, which
+   * is not the same as the origin answering correctly.
+   */
+  notFound?: readonly NotFoundProbe[];
+  /**
+   * What the origin serves at `/llms.txt`. Absent when the probe did not run;
+   * `found: false` when it ran and the file is not there, which is fine.
+   */
+  llmsTxt?: LlmsTxtProbe;
+  /**
+   * What answers at each same-origin URL the llms.txt lists — the same pass,
+   * and the same shape, as `sitemapEntries`: the crawl's answer first, the link
+   * audit's second, a fetch only for what neither had.
+   */
+  llmsTxtLinks?: { byUrl: Map<string, SitemapEntryProbe>; unprobed: number };
   /**
    * What is served at each sitemap entry, keyed by its `<loc>`, and how many
    * entries the caps left unanswered.

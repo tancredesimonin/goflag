@@ -193,13 +193,14 @@ export default function RulesPage() {
         </h2>
         <p className="text-muted-foreground mt-2 leading-relaxed">
           Every rule judged on a single page records how authoritative the requirement behind it is,
-          and cites at least one document that backs it. The three site rules do not yet — they run
-          on the contract that predates the catalogue, so the table above shows{" "}
-          <code className="font-mono text-sm">—</code> for them, and the exported catalogue emits{" "}
-          <code className="font-mono text-sm">rigor: null</code> rather than a rigor nobody
-          assigned. This is the honest answer to &ldquo;says who?&rdquo;: a{" "}
-          <code className="font-mono text-sm">heuristic</code> is folklore you may knowingly ignore,
-          a <code className="font-mono text-sm">spec-required</code> is not. A rule can never claim
+          and cites at least one document that backs it. So do all {SITE_RULES.length} site rules. A
+          prose rule has no severity, because it asks a question instead of handing down a verdict,
+          but it still records a rigor wherever a document backs the question. Where none can, the
+          exported catalogue emits <code className="font-mono text-sm">rigor: null</code> rather
+          than a rigor nobody assigned, and the rule&rsquo;s entry says why. This is the honest
+          answer to &ldquo;says who?&rdquo;: a <code className="font-mono text-sm">heuristic</code>{" "}
+          is folklore you may knowingly ignore, a{" "}
+          <code className="font-mono text-sm">spec-required</code> is not. A rule can never claim
           more authority than its strongest source carries — that is enforced in CI, not left to
           good intentions.
         </p>

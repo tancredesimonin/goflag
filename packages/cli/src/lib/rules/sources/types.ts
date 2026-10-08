@@ -11,9 +11,10 @@
  * and always safe to ship.
  *
  * The catalog itself lives in `./index.ts`; the structural validator in
- * `./validate.ts` runs as a unit test on every pipeline, and the network
- * liveness check (`scripts/validate-sources.ts`) confirms the URLs still
- * resolve on scheduled pipelines and on merge requests that touch this folder.
+ * `./validate.ts` runs as a unit test on every merge request that touches a
+ * package, and the network liveness check (`scripts/validate-sources.ts`)
+ * confirms the URLs still resolve on scheduled pipelines and on merge requests
+ * that touch this folder.
  */
 
 /**

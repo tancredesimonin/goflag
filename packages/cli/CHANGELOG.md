@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.14](https://github.com/tancredesimonin/goflag/compare/v0.2.13...v0.2.14) (2026-10-07)
+
+
+### Features
+
+* **cli:** a served llms.txt is read, and what it lists must answer and be fetchable ([4d73703](https://github.com/tancredesimonin/goflag/commit/4d737039c82b1d95109506ec2c9dc8d11a5cfb48))
+* **cli:** the origin is asked for a path it cannot have, and must answer 404 ([9f4da6f](https://github.com/tancredesimonin/goflag/commit/9f4da6fd8e2b0e2bf7c3ba3242b1c190c30ae42f))
+
+
+### Bug Fixes
+
+* **cli:** http.not-found's remedy guards the locale wherever it is read ([db9e5a5](https://github.com/tancredesimonin/goflag/commit/db9e5a5e38ba4e79ed83c97dfddf022224dcf149))
+* **cli:** max-image-preview: none is not a noindex ([6422925](https://github.com/tancredesimonin/goflag/commit/64229258cb646d39e427c8b8863435937075a2a9))
+* **cli:** sitemap.orphans counts only the pages a sitemap should list ([8b030e3](https://github.com/tancredesimonin/goflag/commit/8b030e309258d7145c8bd16cff47faa088b21b31))
+* **cli:** sitemap.orphans stands back from sitemaps it did not read ([78d96c7](https://github.com/tancredesimonin/goflag/commit/78d96c79e10e5558286dce3cfad2224a7a3f45aa))
+* **cli:** the sitemap rules read what pages and listed URLs actually say ([47f94e8](https://github.com/tancredesimonin/goflag/commit/47f94e811d316b33516139171e1ff462b80f0583))
+
+
+### Documentation
+
+* AGENTS.md and the source catalogue agree with the pipeline ([130c292](https://github.com/tancredesimonin/goflag/commit/130c29256556896bf430d71fcbdac3434a9f69a2))
+* the pages say what the sitemap rules now read ([b3184e9](https://github.com/tancredesimonin/goflag/commit/b3184e90907931f06d02edad6a7b733226c4b293))
+
 ## [0.2.13](https://github.com/tancredesimonin/goflag/compare/v0.2.12...v0.2.13) (2026-08-23)
 
 

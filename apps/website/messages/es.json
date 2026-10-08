@@ -192,7 +192,7 @@
       },
       "scale": {
         "q": "¿Termina en un sitio grande?",
-        "a": "El sitio más grande en el que actúa como barrera tiene {pages} páginas y tarda unos {duration} con --static --no-external. En un sitio que publica un sitemap, goflag no lo audita todo: conserva cada página que va sola y muestrea tres páginas por familia de URL con la misma forma, y el informe imprime una línea COVERAGE que dice cuántas páginas de cuántas se auditaron. --coverage all desactiva el muestreo, --include y --exclude acotan el rastreo, y --max-pages es una barrera que nunca recorta una selección."
+        "a": "El sitio más grande en el que actúa como barrera tarda unos {duration} con --static --no-external, con {pages} páginas auditadas. En un sitio que publica un sitemap, goflag no lo audita todo: conserva cada página que va sola y muestrea tres páginas por familia de URL con la misma forma, y el informe imprime una línea COVERAGE que dice cuántas páginas de cuántas se auditaron. --coverage all desactiva el muestreo, --include y --exclude acotan el rastreo, y --max-pages es una barrera que nunca recorta una selección."
       }
     },
     "close": {
@@ -204,7 +204,7 @@
   },
   "changelog": {
     "title": "Registro de cambios",
-    "lead": "Todas las versiones publicadas de goflag: la CLI y la biblioteca Next.js, en una sola línea de tiempo. Las entradas se generan a partir del historial de commits, así que esta página no puede desviarse de lo que realmente se publicó.",
+    "lead": "Todas las versiones publicadas de goflag: la CLI, la biblioteca Next.js y las tarjetas de presentación, en una sola línea de tiempo. Las entradas se generan a partir del historial de commits, así que esta página no puede desviarse de lo que realmente se publicó.",
     "currentVersion": "Versión actual",
     "released": "Publicada",
     "installPinned": "Fijar esta versión",

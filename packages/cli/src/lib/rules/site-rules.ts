@@ -18,10 +18,14 @@
  */
 
 import { splitRoute } from "../core/i18n";
+import { isNotFound } from "../core/probes/not-found";
 import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
+import { LLMS_TXT_RULES } from "./llms-txt";
+import { isDead, sample } from "./site-shared";
 import type { SiteContext, SiteRule } from "./site-types";
+import { sitemapReadInFull } from "./sitemap-inventory";
 
 /** A site is only subject to hreflang policy when it serves 2+ locales. */
 function isMultilingual(site: SiteContext): boolean {
@@ -451,6 +455,127 @@ const iconsIcoMissing: SiteRule = {
 };
 
 /**
+ * A URL nobody published must answer 404 or 410.
+ *
+ * Every other rule here judges a URL the site handed out — a link, a sitemap
+ * entry, a declared icon — so none of them can see how the site treats one it
+ * did not. That blind spot is where a catch-all route lives, and the probe
+ * behind this rule (`../core/probes/not-found.ts`) exists to look into it with
+ * two invented paths, one bare and one ending in `.txt`.
+ *
+ * ## One rule, two messages
+ *
+ * A 2xx and a 5xx are different failures with one obligation between them,
+ * which is how this catalogue already draws the line: `icons.ico.missing`
+ * reports a 404, an HTML 200 and a dead connection as one rule with three
+ * messages, and `robotstxt.unreachable` folds a 5xx and a network error into
+ * one. A rule splits when the authority or the consequence changes enough for
+ * the two to deserve different severities — `sitemap.entry.unreachable` against
+ * `sitemap.entry.redirects`. Here neither does: both are the origin failing to
+ * say "nothing here" (RFC 9110 §15.5.5), both are fixed in the same place — the
+ * route that answers unknown paths — and both cost the whole site, not a page.
+ *
+ * ## Why `vendor-spec`
+ *
+ * RFC 9110 defines what a 404 means; it does not oblige a server to send one.
+ * That obligation is Google's, which asks for a 404 or 410 on any URL without
+ * a page and excludes the soft 404s it detects — so the rule claims what Google
+ * claims, and cites the RFC for the meaning of the code it asks for, the way
+ * `hreflang.missing` cites WHATWG for the mechanism.
+ *
+ * ## Why `error`
+ *
+ * The consequence is site-wide either way. On a 2xx every URL anyone invents is
+ * a page — crawl budget spent on nothing, and a client asking for a file the
+ * site does not have (`/llms.txt`, `/feed.xml`) receives a home page it may take
+ * for that file. On a 5xx every mistyped link is a server error, and Google
+ * slows its crawl of the whole host in proportion to the URLs that return one.
+ *
+ * Other answers stay silent on purpose. A 401, 403 or 400 is still a client
+ * error, which Google reads as "this does not exist"; a 3xx cannot be final
+ * once redirects are followed; and a request that got no answer at all is not
+ * evidence about the route.
+ *
+ * Attributed to the origin, never to the invented URL: the nonce is fresh every
+ * run, and a fingerprint keyed on it would make this finding new every time.
+ */
+const httpNotFound: SiteRule = {
+  id: "http.not-found",
+  severity: "error",
+  summary: "A URL that does not exist must answer 404 or 410",
+  rigor: "vendor-spec",
+  sources: ["ietf-rfc9110", "google-soft-404", "google-http-status"],
+  appliesTo: (site) => (site.notFound ?? []).some((probe) => notFoundFailure(probe.status)),
+  check: ({ site, issue }) => {
+    const probes = site.notFound ?? [];
+    const failed = probes.filter((probe) => notFoundFailure(probe.status));
+    const held = probes.filter((probe) => isNotFound(probe.status));
+
+    const answers = failed.map((probe) => {
+      const path = pathOf(probe.url);
+      const via = probe.finalUrl !== probe.url ? ` after redirecting to \`${probe.finalUrl}\`` : "";
+      const type = probe.contentType ? ` \`${probe.contentType}\`` : "";
+      return `\`${path}\` answered ${probe.status}${type}${via}`;
+    });
+    const contrast = held.length
+      ? ` (${held.map((probe) => `\`${pathOf(probe.url)}\` answered ${probe.status}`).join(", ")}, so only some unknown paths are affected)`
+      : "";
+
+    const soft = failed.some((probe) => notFoundFailure(probe.status) === "soft");
+    const crash = failed.some((probe) => notFoundFailure(probe.status) === "error");
+    const consequences = [
+      soft
+        ? "A 2xx for a page that does not exist is a soft 404: every invented URL becomes a page to crawl, and a client asking for a file the site does not have — `/llms.txt`, `/feed.xml` — gets a page it may take for that file."
+        : "",
+      crash
+        ? "A 5xx says the server failed, not that the page is missing: every mistyped link becomes a server error, and Google slows its crawl of the whole site in proportion to the URLs that return one."
+        : "",
+    ].filter(Boolean);
+
+    return issue({
+      pageUrl: site.origin,
+      message: `Asked for a path that cannot exist, the origin did not answer 404 or 410: ${answers.join("; ")}${contrast}. ${consequences.join(" ")}`,
+      origin: { kind: "computed" },
+      fix: {
+        title: "Make the route that catches unknown paths call notFound()",
+        snippet: [
+          "// A dynamic first segment matches everything, `/anything.txt` included,",
+          "// whenever a middleware matcher skips dotted paths. Validate it wherever",
+          "// it is read — the layout, every page, every generateMetadata:",
+          "const { locale } = await params;",
+          "if (!routing.locales.includes(locale)) notFound();",
+          "//",
+          "// The layout alone is not enough in a production build: the page and its",
+          "// metadata render alongside it, and whichever throws first sets the",
+          "// status — a 500 from a page that formatted a date in locale `llms.txt`.",
+          "//",
+          "// A catch-all `[...slug]` must do the same for slugs it does not know,",
+          "// and a static host's SPA fallback (`/* /index.html 200`) should be a",
+          "// 404 page instead.",
+        ].join("\n"),
+        language: "ts",
+      },
+    });
+  },
+};
+
+/** `soft` for a 2xx, `error` for a 5xx, `undefined` for everything else. */
+function notFoundFailure(status: number): "soft" | "error" | undefined {
+  if (status >= 200 && status < 300) return "soft";
+  if (status >= 500) return "error";
+  return undefined;
+}
+
+function pathOf(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * The file-level robots.txt rules (`docs/sitemap-robots-plan.md` §4.1–4.2).
  *
  * They exist because the parse now keeps what it reads. Every one of them is a
@@ -656,16 +781,6 @@ const robotsBlocksPage: SiteRule = {
 
 /** `<changefreq>` values the protocol defines. Anything else is not one. */
 const CHANGEFREQ = new Set(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]);
-
-/** How many offending entries a finding names before it starts counting. */
-const SAMPLE = 5;
-
-/** `n` entries, listing the first few — forty repeats of one defect is noise. */
-function sample(locs: string[]): string {
-  const shown = locs.slice(0, SAMPLE);
-  const rest = locs.length - shown.length;
-  return `${shown.map((l) => `\`${l}\``).join(", ")}${rest > 0 ? `, and ${rest} more` : ""}`;
-}
 
 const sitemapMissing: SiteRule = {
   id: "sitemap.missing",
@@ -1107,24 +1222,86 @@ function sameUrlKey(url: string): string | undefined {
   }
 }
 
-/** Crawled pages, keyed the way a sitemap entry would name them. */
+/**
+ * What each crawled URL serves, keyed the way a sitemap entry would name it —
+ * canonical variants included. The rules that read this ask what a *listed* URL
+ * serves, and a listed variant still serves a page, even one the audit set
+ * aside rather than judge twice.
+ */
 function pagesByUrl(site: SiteContext): Map<string, Page> {
   const byUrl = new Map<string, Page>();
-  for (const page of site.pages) {
+  for (const page of [...site.pages, ...(site.variants ?? [])]) {
     const key = sameUrlKey(page.fetch.finalUrl);
     if (key) byUrl.set(key, page);
   }
   return byUrl;
 }
 
-/** Whether a page asks not to be indexed, by meta tag or by header. */
+/** `none` is Google's own shorthand for `noindex, nofollow`. */
+const NOINDEX = new Set(["noindex", "none"]);
+
+/** The directives that take a value after a colon, so that colon names no crawler. */
+const VALUED_DIRECTIVES = new Set([
+  "max-snippet",
+  "max-image-preview",
+  "max-video-preview",
+  "unavailable_after",
+]);
+
+/**
+ * The name of the directive each `X-Robots-Tag` token carries. A token may
+ * address one crawler (`googlebot: noindex`) and a directive may carry a value
+ * (`max-image-preview: none`), and the two look alike: what comes before the
+ * colon is a directive when it is one of those that take a value, and the
+ * crawler the rest is addressed to otherwise. Reading the last word instead
+ * takes that `none` — no image preview — for `noindex, nofollow`, which is the
+ * mistake this list exists to prevent. Two headers arrive joined by a comma, so
+ * tokens are read one by one.
+ */
+function headerDirectiveNames(value: string | undefined): string[] {
+  if (!value) return [];
+  return value.split(",").map((token) => {
+    let directive = token.trim().toLowerCase();
+    const colon = directive.indexOf(":");
+    if (colon !== -1 && !VALUED_DIRECTIVES.has(directive.slice(0, colon).trim())) {
+      directive = directive.slice(colon + 1);
+    }
+    return directive.split(":")[0]!.trim();
+  });
+}
+
+/**
+ * Whether a page asks not to be indexed — by `<meta name="robots">`, by
+ * `<meta name="googlebot">`, or by `X-Robots-Tag`, to every crawler or to one.
+ *
+ * A page that tells any crawler reading the sitemap not to index it does not
+ * ask to be indexed, and a sitemap that lists it contradicts it for that
+ * crawler. `none` counts: it is `noindex` said in one word.
+ */
 function saysNoindex(page: Page): boolean {
-  if (metaRobotsTokens(page).has("noindex")) return true;
-  const header = page.fetch.headers["x-robots-tag"] ?? "";
-  return header
-    .split(",")
-    .map((token) => token.trim().toLowerCase())
-    .includes("noindex");
+  const metas = [page.meta.robots?.value, page.meta.googlebot?.value];
+  if (metas.some((content) => (content ?? "").split(",").some(isNoindex))) return true;
+  return headerDirectiveNames(page.fetch.headers["x-robots-tag"]).some(isNoindex);
+}
+
+function isNoindex(directive: string): boolean {
+  return NOINDEX.has(directive.trim().toLowerCase());
+}
+
+/**
+ * Whether a page's canonical names a different page than the one served —
+ * "index that one instead of me". A difference `sameUrlKey` folds away, such as
+ * a trailing slash, is the same page said twice. `self` is the page's own key,
+ * for a caller that has already computed it.
+ */
+function canonicalElsewhere(
+  page: Page,
+  self: string | undefined = sameUrlKey(page.fetch.finalUrl),
+): boolean {
+  const canonical = page.links.canonical;
+  if (!canonical) return false;
+  const target = sameUrlKey(canonical);
+  return target !== undefined && target !== self;
 }
 
 const sitemapEntryBlockedByRobots: SiteRule = {
@@ -1206,22 +1383,18 @@ const sitemapEntryNonCanonical: SiteRule = {
     for (const entry of site.discovery!.urls) {
       const key = sameUrlKey(entry.loc);
       const page = key ? byUrl.get(key) : undefined;
-      const canonical = page?.links.canonical;
-      if (!page || !canonical) continue;
-
-      const canonicalKey = sameUrlKey(canonical);
-      // Only when the page names a *different* page. A canonical that differs
-      // by a trailing slash is the same page said twice, which `sameUrlKey`
-      // already folds together.
-      if (canonicalKey && canonicalKey !== key) {
-        wrong.push(`${entry.loc} → ${canonical}`);
+      // The same test `sitemap.orphans` uses to leave a page out, and it has to
+      // be: a page this rule says must not be listed is one that rule must not
+      // ask to be listed. Two copies of the comparison could drift apart.
+      if (page && canonicalElsewhere(page)) {
+        wrong.push(`${entry.loc} → ${page.links.canonical}`);
       }
     }
 
     if (wrong.length === 0) return [];
     return issue({
       pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
-      message: `${wrong.length} sitemap entr${wrong.length === 1 ? "y names a page whose canonical" : "ies name pages whose canonicals"} point elsewhere: ${sample(wrong)}. The sitemap is a list of what to index, so it should name the URL the site itself prefers.`,
+      message: `${wrong.length} sitemap entr${wrong.length === 1 ? "y names a page whose canonical points" : "ies name pages whose canonicals point"} elsewhere: ${sample(wrong)}. The sitemap is a list of what to index, so it should name the URL the site itself prefers.`,
       origin: { kind: "computed" },
     });
   },
@@ -1230,32 +1403,151 @@ const sitemapEntryNonCanonical: SiteRule = {
 const sitemapOrphans: SiteRule = {
   id: "sitemap.orphans",
   severity: "warning",
-  summary: "Indexable pages the crawl found should be listed in the sitemap",
+  summary:
+    "Indexable pages the crawl found, and the canonical URLs they name, should be listed in the sitemap",
   rigor: "guideline",
   sources: ["sitemaps-protocol", "google-sitemaps"],
   // One finding with a count and a sample, not one per page — the same shape
   // translation holes take, and for the same reason: forty repeats of one
   // omission is noise, and the omission is a property of the sitemap.
-  appliesTo: (site) => site.discovery?.diagnostics.found === true && site.discovery.urls.length > 0,
+  //
+  // Judged only against an inventory goflag read in full — every sitemap the
+  // site declares, none of them cut short (`./sitemap-inventory.ts`). A page
+  // listed where goflag could not read looks exactly like one the site forgot.
+  // What stopped the read is its own finding where one exists
+  // (`sitemap.index.child-error`); this one waits until the list is whole.
+  appliesTo: (site) => sitemapReadInFull(site) && site.discovery!.urls.length > 0,
   check: ({ site, issue }) => {
-    const listed = new Set(
-      site.discovery!.urls.map((entry) => sameUrlKey(entry.loc)).filter(Boolean),
-    );
+    const { listed, fetched, unfollowed } = sitemapReach(site);
+    const orphans: string[] = [];
+    // Canonical targets nobody audited, by key, with the first page that named each.
+    const unaudited = new Map<string, { url: string; namedBy: string }>();
 
-    const orphans = site.pages
-      .filter((page) => !saysNoindex(page))
-      .map((page) => ({ page, key: sameUrlKey(page.fetch.finalUrl) }))
-      .filter(({ key }) => key !== undefined && !listed.has(key))
-      .map(({ page }) => page.fetch.finalUrl);
+    for (const page of site.pages) {
+      if (saysNoindex(page)) continue;
+      const key = sameUrlKey(page.fetch.finalUrl);
+      if (key === undefined) continue;
 
-    if (orphans.length === 0) return [];
+      if (!canonicalElsewhere(page, key)) {
+        if (!listed.has(key)) orphans.push(page.fetch.finalUrl);
+        continue;
+      }
+
+      // The page asks for another URL to be indexed instead, and listing it is
+      // what `sitemap.entry.non-canonical` warns about, so it is not counted.
+      // The URL it names is the one the sitemap should hold. A variant whose
+      // target the crawl reached never gets here — `dropCanonicalDuplicates`
+      // set it aside, and the target is judged as a page of its own. One whose
+      // target nobody audited does, and leaving it out would leave that target
+      // unjudged: the trade of a finding for no finding that
+      // `dropCanonicalDuplicates` refuses for the same reason. So the target is
+      // counted, on the audited origin only — completing another site's
+      // sitemap is not this one's job.
+      const target = page.links.canonical!;
+      const targetKey = sameUrlKey(target)!;
+      if (
+        sameOrigin(target, site.origin) &&
+        !listed.has(targetKey) &&
+        !fetched.has(targetKey) &&
+        !unaudited.has(targetKey)
+      ) {
+        unaudited.set(targetKey, { url: target, namedBy: page.fetch.finalUrl });
+      }
+    }
+
+    const named = [...unaudited.values()];
+    const total = orphans.length + named.length;
+    if (total === 0) return [];
+
+    const said: string[] = [];
+    if (orphans.length > 0) {
+      said.push(
+        `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}.`,
+      );
+    }
+    if (named.length > 0) {
+      said.push(
+        `${named.length} URL${named.length === 1 ? "" : "s"} that crawled pages name as their canonical ${named.length === 1 ? "is" : "are"} absent from ${orphans.length > 0 ? "it too" : "the sitemap"}, and ${named.length === 1 ? "was" : "were"} not audited: ${sample(named.map((t) => `${t.url} (canonical of ${t.namedBy})`))}.`,
+      );
+    }
+
     return issue({
       pageUrl: site.discovery!.diagnostics.sitemapUrl ?? `${site.origin}/sitemap.xml`,
-      message: `${orphans.length} crawled page${orphans.length === 1 ? "" : "s"} ask${orphans.length === 1 ? "s" : ""} to be indexed and ${orphans.length === 1 ? "is" : "are"} absent from the sitemap: ${sample(orphans)}. A consumer that reads the sitemap rather than following links will never see ${orphans.length === 1 ? "it" : "them"}.`,
+      message: `${said.join(" ")} A consumer that reads the sitemap rather than following links will never see ${total === 1 ? "it" : "them"}.${ceilingNote(unfollowed)}`,
       origin: { kind: "computed" },
     });
   },
 };
+
+/** Whether two URLs share an origin. An unparsable one shares nothing. */
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Every URL the sitemap names, as `sameUrlKey`s — directly, or through an entry
+ * that redirects — every URL the crawl fetched, and how many entries nothing
+ * followed.
+ *
+ * An entry that redirects still names the page it lands on. The defect is the
+ * redirect, which `sitemap.entry.redirects` reports; counting the landing page
+ * as absent would report one mistake twice. Two passes know where an entry
+ * lands: the probe pass, and the crawl, when it reached a page through that
+ * entry. Neither covers every entry — the probe pass has a budget — and an
+ * entry nothing fetched may redirect to a page this rule is about to count.
+ */
+function sitemapReach(site: SiteContext): {
+  listed: Set<string>;
+  fetched: Set<string>;
+  unfollowed: number;
+} {
+  const fetched = new Set<string>();
+  const landingOf = new Map<string, string>();
+
+  // Variants too: set aside rather than judged, but fetched all the same.
+  for (const page of [...site.pages, ...(site.variants ?? [])]) {
+    const final = sameUrlKey(page.fetch.finalUrl);
+    const requested = sameUrlKey(page.fetch.requestedUrl);
+    if (!final) continue;
+    fetched.add(final);
+    if (requested && requested !== final) landingOf.set(requested, final);
+  }
+  for (const probe of entryProbes(site)) {
+    const from = sameUrlKey(probe.url);
+    const to = probe.redirected ? sameUrlKey(probe.finalUrl) : undefined;
+    if (from && to) landingOf.set(from, to);
+  }
+
+  const listed = new Set<string>();
+  let unfollowed = 0;
+  for (const entry of site.discovery!.urls) {
+    const key = sameUrlKey(entry.loc);
+    if (!key) continue;
+    listed.add(key);
+
+    const landing = landingOf.get(key);
+    if (landing) listed.add(landing);
+    else if (!fetched.has(key) && !site.sitemapEntries?.byUrl.has(entry.loc)) unfollowed += 1;
+  }
+
+  return { listed, fetched, unfollowed };
+}
+
+/**
+ * The sentence `sitemap.orphans` owes when some entries were never followed.
+ *
+ * The mirror of `coverageNote`: there, an unchecked entry may be one more dead
+ * URL, so the count is a floor. Here, it may redirect to a page counted as
+ * absent, so the count is a ceiling.
+ */
+function ceilingNote(unfollowed: number): string {
+  if (unfollowed === 0) return "";
+  return ` ${unfollowed} sitemap entr${unfollowed === 1 ? "y was" : "ies were"} not fetched, and a page one of them redirects to would be counted here — this count is a ceiling, not a total.`;
+}
 
 /**
  * The last two of §4.5, and the only rules in the catalogue whose subject had
@@ -1321,11 +1613,6 @@ const sitemapEntryRedirects: SiteRule = {
   },
 };
 
-/** 4xx, 5xx, or no response at all. A 3xx is a redirect, not a death. */
-function isDead(status: number): boolean {
-  return status === 0 || status >= 400;
-}
-
 /** A status that means the file could not be read, as opposed to absent. */
 function isRobotsFailure(status: number): boolean {
   return status === 0 || status >= 500;
@@ -1344,7 +1631,9 @@ function isAbsolute(value: string): boolean {
 export const SITE_RULES: ReadonlyArray<SiteRule> = [
   hreflangMissing,
   hreflangClusterIncomplete,
+  httpNotFound,
   iconsIcoMissing,
+  ...LLMS_TXT_RULES,
   robotsBlocksPage,
   robotsBlocksSite,
   robotstxtCrossOrigin,

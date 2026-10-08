@@ -192,7 +192,7 @@
       },
       "scale": {
         "q": "Va-t-il aller au bout sur un gros site ?",
-        "a": "Le plus gros site sur lequel il sert de garde-fou fait {pages} pages et prend environ {duration} avec --static --no-external. Sur un site qui publie un sitemap, goflag n’audite pas tout : il garde chaque page isolée et échantillonne trois pages par famille d’URL de même forme, et le rapport imprime une ligne COVERAGE disant combien de pages sur combien ont été auditées. --coverage all désactive l’échantillonnage, --include et --exclude restreignent l’exploration, et --max-pages est un garde-fou qui ne tronque jamais une sélection."
+        "a": "Le plus gros site sur lequel il sert de garde-fou prend environ {duration} avec --static --no-external, pour {pages} pages auditées. Sur un site qui publie un sitemap, goflag n’audite pas tout : il garde chaque page isolée et échantillonne trois pages par famille d’URL de même forme, et le rapport imprime une ligne COVERAGE disant combien de pages sur combien ont été auditées. --coverage all désactive l’échantillonnage, --include et --exclude restreignent l’exploration, et --max-pages est un garde-fou qui ne tronque jamais une sélection."
       }
     },
     "close": {
@@ -204,7 +204,7 @@
   },
   "changelog": {
     "title": "Changelog",
-    "lead": "Toutes les versions publiées de goflag : le CLI et la bibliothèque Next.js, sur une seule frise. Les entrées sont générées depuis l'historique des commits, donc cette page ne peut pas diverger de ce qui est réellement sorti.",
+    "lead": "Toutes les versions publiées de goflag : le CLI, la bibliothèque Next.js et les cartes de partage, sur une seule frise. Les entrées sont générées depuis l'historique des commits, donc cette page ne peut pas diverger de ce qui est réellement sorti.",
     "currentVersion": "Version actuelle",
     "released": "Publiée le",
     "installPinned": "Épingler cette version",

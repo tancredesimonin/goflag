@@ -180,7 +180,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       '3 sitemap entries are disallowed by `robots.txt`: `https://example.com/admin/a`, `https://example.com/admin/b`. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.',
   },
   "sitemap.entry.noindex": {
-    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one.',
+    why: '"Please index this" and "do not index this" are one site\'s two answers to one question. Only judged on pages the crawl actually fetched, canonical variants included: an entry goflag never opened has no `noindex` to have seen, and guessing either way would invent a finding or hide one. `none`, a `googlebot` meta tag and an `X-Robots-Tag` addressed to one crawler all count: each tells a reader of the sitemap not to index the page.',
     message:
       '2 sitemap entries declare `noindex`: `https://example.com/draft`. "Please index this" and "do not index this" are the same site\'s two answers to one question.',
   },
@@ -190,7 +190,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "1 sitemap entry names a page whose canonical points elsewhere: `https://example.com/a?ref=x → https://example.com/a`. The sitemap is a list of what to index, so it should name the URL the site itself prefers.",
   },
   "sitemap.orphans": {
-    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits.",
+    why: "One finding with a count and a sample rather than one per page: the omission belongs to the sitemap, not to each page it forgot. A consumer that reads the sitemap instead of following links never sees them, and link-only discovery is the part of a site nobody audits. It counts only what a sitemap should list: not a page that asks for `noindex` — by `robots` or `googlebot` meta tag or by `X-Robots-Tag`, `none` included, to every crawler or to one — nor one that names another URL as canonical, though the URL it names is counted when nothing audited it and no sitemap lists it; not a page the sitemap reaches through a redirect; and nothing at all unless goflag read every sitemap the site declares — past a cap, an unreadable child or an unread `Sitemap:` line, a listed page and an unlisted one look the same. When some entries were never fetched, the count is given as a ceiling: one of them may redirect to a page counted here.",
     message:
       "7 crawled pages ask to be indexed and are absent from the sitemap: `https://example.com/blog/a`, `https://example.com/blog/b`. A consumer that reads the sitemap rather than following links will never see them.",
   },
@@ -288,6 +288,36 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     message:
       '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
+  },
+  "http.not-found": {
+    why: "Every other check reads a URL the site published, so none of them sees how it answers one it did not. goflag invents two paths, one bare and one ending in `.txt`, because frameworks route them differently: a middleware matcher that skips dotted paths is how `/anything.txt` reaches a page route while `/anything` 404s. A 200 there is a soft 404 — any invented URL becomes a page, and a client asking for `/llms.txt` or `/feed.xml` gets a home page it may take for the file. A 500 makes every mistyped link a server error, and Google slows its crawl of the whole site in proportion. The finding is attributed to the origin, not to the invented URL, so a fresh nonce on every run never makes it new.",
+    message:
+      "Asked for a path that cannot exist, the origin did not answer 404 or 410: `/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41.txt` answered 200 `text/html` (`/goflag-probe-9f2c4e1a7b3d5f60812a4c6e8b0d2f41` answered 404, so only some unknown paths are affected). A 2xx for a page that does not exist is a soft 404: every invented URL becomes a page to crawl, and a client asking for a file the site does not have — `/llms.txt`, `/feed.xml` — gets a page it may take for that file.",
+  },
+  "llmstxt.unreachable": {
+    why: "Having no llms.txt is allowed — the file is a proposal, and a 404 says the site has none. A server error says something is there and failed, which leaves an agent with nothing it can use. Lighthouse fails its llms.txt audit on exactly this case. Stays silent when every unknown `.txt` errors the same way: that is `http.not-found`'s finding, reported once.",
+    message:
+      "`/llms.txt` answered 503. Having no llms.txt is fine — a 404 says so — but a server error says something is here and failed, and the agent that asked for it gets nothing it can use. Lighthouse fails its llms.txt audit on exactly this.",
+  },
+  "llmstxt.content-type": {
+    why: "Two failures with one remedy. A markdown file served as `text/html` is an llms.txt that clients misread: a browser renders it as one run-on paragraph. A home page served at `/llms.txt` is no llms.txt at all, and goflag reads the body rather than the header to tell the two apart. When every unknown `.txt` gets the same page, the cause is the catch-all and `http.not-found` reports it instead, so one defect is not counted twice.",
+    message:
+      "`/llms.txt` is served with `text/html`. The file is markdown, read by agents and by people: `text/plain` or `text/markdown` say so, while anything else tells a client to treat it as something it is not — `text/html` renders it as one run-on paragraph, and a download type does not render it at all.",
+  },
+  "llmstxt.h1.missing": {
+    why: "The proposal calls the H1 the only required section: the name of the site, before anything else the file says. Without it the file is not an llms.txt by its own definition. goflag reads it the way CommonMark spells it, `# Name` with a space after the `#`.",
+    message:
+      "`/llms.txt` has no H1 (`# Name`, with a space after the `#`). The proposal calls it the only required section — without it the file is not an llms.txt by its own definition, and a reader following the format has no name for what the rest describes.",
+  },
+  "llmstxt.link.unreachable": {
+    why: "An llms.txt is a list of where to look, and an agent follows it on a user's behalf. A dead entry turns that lookup into an error instead of an answer. Only entries on the audited origin are checked, through the same pass as sitemap entries: what the crawl or the link audit already answered is not fetched again.",
+    message:
+      "1 URL `/llms.txt` lists does not answer: `https://example.com/raw/pricing.md (HTTP 404)`. The file exists to send agents to these pages, so each dead one is a lookup that ends in an error instead of an answer.",
+  },
+  "llmstxt.link.blocked-by-robots": {
+    why: "The file offers URLs to agents; robots.txt forbids agents to fetch them. Anthropic documents that its bots, Claude-User among them, honour robots.txt, so each such entry is unreadable by exactly the reader it was written for. Read for `User-agent: *`, the file itself included, and left to `robots.blocks-site` when the whole origin is disallowed.",
+    message:
+      "2 URLs `/llms.txt` points agents to are disallowed by `robots.txt` for `User-agent: *`: `https://example.com/raw/guide.md (line 5: Disallow: /raw/)`, `https://example.com/raw/faq.md (line 5: Disallow: /raw/)`. The file offers them to agents, and an agent that honours robots.txt — Anthropic documents that Claude-User does — never fetches them.",
   },
   "title.descriptive": {
     why: "A title that repeats the site name, or describes the section rather than the page, gives a searcher no way to tell two results apart — and gives Google a reason to rewrite it into something you did not choose.",

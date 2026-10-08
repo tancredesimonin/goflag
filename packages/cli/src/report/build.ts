@@ -33,7 +33,9 @@ import {
 import { selectByStructure } from "../lib/core/coverage";
 import { probeAsset } from "../lib/core/probes/assets";
 import { probeFavicon } from "../lib/core/probes/favicon";
+import { probeLlmsTxt } from "../lib/core/probes/llms-txt";
 import { probeManifest } from "../lib/core/probes/manifest";
+import { probeNotFound } from "../lib/core/probes/not-found";
 import { probeRobots } from "../lib/core/probes/robots";
 import { collectAdvisories } from "../lib/rules/advisory";
 import { evaluateRules, findingsToIssues } from "../lib/rules/evaluate";
@@ -320,7 +322,10 @@ export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): numb
  * and dropping the variant would remove the route from the audit entirely —
  * trading duplicate findings for no findings, which is the worse failure.
  *
- * Variants stay in the crawl either way, so the link audit still probes them.
+ * Variants stay in the crawl either way, so the link audit still probes them,
+ * and they are handed to the site rules as `SiteContext.variants`: never judged
+ * as pages, but still what their URLs serve — which is what a rule about the
+ * URLs a sitemap lists has to know.
  */
 /**
  * Fetch each distinct `<link rel="manifest">` once and hand the result to the
@@ -441,7 +446,7 @@ async function probeAssets(
   }
 }
 
-function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number } {
+function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; variants: Page[] } {
   const crawled = new Set(pages.map((p) => routeKey(p.fetch.finalUrl)));
 
   const kept = pages.filter((page) => {
@@ -460,7 +465,8 @@ function dropCanonicalDuplicates(pages: Page[]): { kept: Page[]; dropped: number
     return !crawled.has(target);
   });
 
-  return { kept, dropped: pages.length - kept.length };
+  const keptSet = new Set(kept);
+  return { kept, variants: pages.filter((page) => !keptSet.has(page)) };
 }
 
 /** Run the full audit and return the report. Never throws for site-level failures. */
@@ -555,6 +561,19 @@ export async function runAudit(
     timeoutMs: options.timeoutMs,
   }).catch(() => undefined);
 
+  // Two more facts about the origin rather than about a page: how it answers a
+  // path nobody published, and what it serves at `/llms.txt`. Both same-origin,
+  // so `--no-external` has nothing to withhold, and both cheap — two HEADs on a
+  // site that 404s correctly, one GET for a file that is usually absent.
+  const [notFound, llmsTxt] = await Promise.all([
+    probeNotFound(origin, { signal: options.signal, timeoutMs: options.timeoutMs }).catch(
+      () => undefined,
+    ),
+    probeLlmsTxt(origin, { signal: options.signal, timeoutMs: options.timeoutMs }).catch(
+      () => undefined,
+    ),
+  ]);
+
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
   const crawlResult = await crawl({
     entryUrl: entry,
@@ -607,7 +626,8 @@ export async function runAudit(
   // Linked resources stay in the crawl (the link audit must still probe them)
   // but never reach the rule layer, which only speaks about HTML documents.
   const documents = okPages.filter(isHtmlPage);
-  const { kept: htmlPages, dropped: duplicatePages } = dropCanonicalDuplicates(documents);
+  const { kept: htmlPages, variants } = dropCanonicalDuplicates(documents);
+  const duplicatePages = variants.length;
   // Two ways a page fails to be audited, and both belong here.
   //
   // A non-2xx answer is the obvious one. The other is a page that never
@@ -858,21 +878,38 @@ export async function runAudit(
   //
   // This is also why the cross-page rules moved below the link audit: they
   // used to run before it and could not see any of this.
+  const answered = {
+    crawled: new Map(crawlResult.pages.map((page) => [page.fetch.finalUrl, page.fetch.status])),
+    checked: new Map(Object.values(linkReport.checks).map((check) => [check.url, check])),
+    maxProbes: effectiveMaxPages,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    allowInsecureTls: options.allowInsecureTls,
+  };
   const sitemapEntries = discovery
     ? await probeSitemapEntries(
         discovery.urls.map((entry) => entry.loc),
-        {
-          crawled: new Map(
-            crawlResult.pages.map((page) => [page.fetch.finalUrl, page.fetch.status]),
-          ),
-          checked: new Map(Object.values(linkReport.checks).map((check) => [check.url, check])),
-          maxProbes: effectiveMaxPages,
-          signal: options.signal,
-          timeoutMs: options.timeoutMs,
-          allowInsecureTls: options.allowInsecureTls,
-        },
+        answered,
       )
     : undefined;
+
+  // --- What the llms.txt promises -----------------------------------------
+  //
+  // The same pass over a second list, and deliberately not a second checker:
+  // a URL the crawl or the link audit already answered is not fetched again,
+  // and what is left goes through `checkLink` like every other URL goflag
+  // probes. Same-origin only — an llms.txt may point anywhere, and the run was
+  // asked about this site. Skipped when what answered at `/llms.txt` is an
+  // HTML page, whose "links" are navigation, not entries.
+  const llmsTxtLinks =
+    llmsTxt?.found && !llmsTxt.html
+      ? await probeSitemapEntries(
+          [...new Set(llmsTxt.links.map((link) => link.url))].filter((url) =>
+            sameOriginAs(url, origin),
+          ),
+          answered,
+        )
+      : undefined;
 
   // --- Cross-page rules ---------------------------------------------------
   const siteContext: SiteContext = {
@@ -883,7 +920,14 @@ export async function runAudit(
     discovery,
     robots,
     favicon,
+    notFound,
+    llmsTxt,
+    llmsTxtLinks,
     sitemapEntries,
+    // Set aside above, and still what their URLs serve. The sitemap rules that
+    // ask what a listed URL serves need them: a listed variant is exactly what
+    // `sitemap.entry.non-canonical` exists to catch.
+    variants,
     // Same index the matrix was built from, so a rule that groups by route
     // and the grid that reports holes cannot disagree about which URLs are
     // one page.
@@ -1088,6 +1132,14 @@ function countUncrawled(sitemapUrls: string[], pages: Page[]): number {
   let n = 0;
   for (const url of sitemapUrls) if (!crawled.has(url)) n += 1;
   return n;
+}
+
+function sameOriginAs(url: string, origin: string): boolean {
+  try {
+    return new URL(url).origin === origin;
+  } catch {
+    return false;
+  }
 }
 
 /** Build a `SiteDiscovery` from the crawl result so the link audit can reuse the page set. */

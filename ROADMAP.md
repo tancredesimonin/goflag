@@ -1,42 +1,42 @@
 ---
-updated: 2026-09-22
+updated: 2026-10-05
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-09-22: latest tags `v0.2.12`, `next-v0.4.0` and `og-v0.2.0`, all of
-> 2026-08-16 — the three versions npm serves. Integration on `develop`, production on `main`;
-> `origin/main` is 14 commits behind `origin/develop`, among them the release commit of
-> `@goflag/cli` 0.2.13.
-> In production: `@goflag/cli`, `@goflag/next` and `@goflag/og` on npm; goflag.tech still
-> serves the build of 2026-08-16, because the deployment of `main` on 2026-08-23 failed;
-> develop.goflag.tech is current. No merge request is open.
+> State observed on 2026-09-28: latest tags `v0.2.13` (2026-09-22), `next-v0.4.0` and
+> `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
+> production on `main`; `develop` is ahead with pnpm 12 (!218, then 12.6.0 in !220), `next`
+> 16.3.6 (!220) and the documentation audit (!221).
+> In production: the three packages on npm, and goflag.tech, redeployed from `main` on
+> 2026-09-22.
 
 ## Now
 
-### Merge `develop` into `main`: production back, and 0.2.13 published
+### 6.3 — an origin's unknown paths, and its `llms.txt`, are judged
 
-**Why**: goals 1 and 3 of [STRATEGY.md](STRATEGY.md) — a version that is not published
-protects no site — and goflag.tech is the product's first proof.
-**Done when**: the `main` pipeline is green, deployment included; the tag `v0.2.13` exists and
-`npm view @goflag/cli@0.2.13` answers; `https://goflag.tech/assets/hero.png` answers 200.
-**State**: the deployment of `main` failed on 2026-08-23 (`1569521`, !208): the new container
-never became healthy — `MODULE_NOT_FOUND` on `@swc/helpers` inside the standalone output of
-`next` 16.3.1 — and Kamal kept the container of 2026-08-16. `main` still pins `next` 16.3.1;
-`develop` is on 16.3.5, and `deploy-develop` passed on 2026-08-29, 09-05, 09-12 and 09-19.
-Two visible consequences: the README that the GitHub mirror shows from `main` displays
-`https://goflag.tech/assets/hero.png`, which production answers with a 404; and the README on
-`develop` already pins 0.2.13 in its CI snippets, a version npm does not have yet. The 0.2.13
-release commit has been on `develop` since 2026-08-30 (!210); the rest of the 14 commits are
-the `release:prepare` job (!209), the Playwright image pin, and dependency updates.
+**Why**: pulled forward on 2026-10-05, ahead of 3.5, for openfinanceguide F09. That site
+answered `/llms.txt`, `/feed.xml` and any invented `.txt` with its home page and a 200 (its
+develop environment with a 500), and planned an `llms.txt` listing `/raw/*.md` while its
+robots.txt said `Disallow: /raw/`. goflag saw neither: it only ever asks for URLs a site
+published.
+**Done when**: `http.not-found` asks the origin for two invented paths, bare and dotted, and
+reports a 2xx or a 5xx; the `llmstxt.*` rules judge a served `/llms.txt` — its H1, its content
+type, a server error, its same-origin entries that do not answer or that robots.txt forbids —
+and stay silent on an absent file and on a catch-all `http.not-found` already reported.
+`docs/spec-and-lib-plan.md` §6.3.
+**State**: on `develop` once this merge request lands, released with the next `@goflag/cli`.
+The sites pin 0.2.13, so nothing changes for them until they bump; openfinanceguide then turns
+red on `http.not-found` — develop answers the dotted path with a 500, production with a 200,
+and its merge-request job builds what production serves — until its fix merges.
 
 ### 3.5 — translation holes move into the rule registry
 
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: half done. The second half holds: the catalogue exposes 58 rules — 25 page,
-28 site, 5 prose — and the only one at `rigor: null` is the prose rule
+**State**: half done. The second half holds: the catalogue exposes 64 rules — 25 page,
+34 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still
@@ -44,28 +44,8 @@ computed outside the catalogue — holes in `packages/cli/src/report/build.ts`, 
 `packages/cli/src/lib/core/i18n.ts` — and `packages/cli/src/lib/rules/index.ts` states that
 reciprocity is intentionally not a rule there.
 
-### Move to pnpm 12
-
-**Why**: pnpm 12 is the current major, and Renovate proposes no major version
-(`major.enabled: false` in the shared preset, `infrastructure/renovate-base.json`): it only
-arrives through a merge request made by hand.
-**Done when**: `packageManager` pins `pnpm@12`, the lockfile is regenerated with it, and the
-merge request pipeline passes. CI and the `Dockerfile` both install pnpm through corepack, so
-the pin is the only switch.
-**State**: to redo. A first pass on 2026-09-17 — pin `pnpm@12.4.1`, lockfile regenerated,
-merge request pipeline replayed with `gitlab-ci-local`, production image built with
-`docker buildx` — was never committed, and its base predates !215 (2026-09-19), which moved
-`develop` to pnpm 11.27.0. pnpm 12.5.1 has been out since 2026-09-18.
-
 ## Next
 
-- The documentation audit of goflag.tech from 2026-08-16, never merged:
-  `origin/docs/the-site-explains-the-cards` carries one commit (`339e997`, 19 files) pushed
-  after its merge request was merged. Its fixes are still missing on `develop`: the landing's
-  proof figures say 11 page rules, 3 site rules and 686 tests (`constants.ts`), and
-  `/changelog` reads `PACKAGES = ["cli", "next"]`, without `@goflag/og` (done when: rebased and
-  merged, or its fixes redone, and `constants.test.ts` holds the rule counts against
-  `rules.json`).
 - The `.goflag/routes.json` manifest emitted by the library at build time, then consumed by
   the CLI (done when: removing every `hreflang` from the render of a site with a manifest
   produces an **error**, not silence) — `docs/coverage-plan.md` V-4.
@@ -73,8 +53,6 @@ merge request pipeline replayed with `gitlab-ci-local`, production image built w
   registry (done when: the site serves them from the registry, not from hand-written files).
   goflag.tech serves `/raw/docs/*.md`, built from its MDX sources, and a `llms.txt` generated
   from its navigation and the rule catalogue — neither from the `@goflag/next` registry.
-- The advisory `sitemap.unlisted-indexable` in the catalogue — the mechanism exists (done when:
-  the rule is in `rules.json`) — `docs/sitemap-scope-plan.md` X-4.
 
 ## Someday
 
@@ -93,11 +71,25 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **The pages say what is true again** (2026-09-28, !221) — the documentation audit of
+  2026-08-16, whose commit (`339e997`) reached its branch after the merge request had merged
+  without it, replayed onto `develop`: `/changelog` carries `@goflag/og`, `/docs/og/adopting`
+  says what the two migrations took, and the pages on limits, profiles, the report, the rule
+  catalogue and the library's guarantees match the engine again. The landing quotes 819 tests
+  and 760 pages audited in 7 min (`docs/coverage-plan.md` §6), where it said 686, and 456 pages
+  in 4 min. The 11 page rules and 3 site rules this roadmap listed as stale were never on the
+  page — the landing had stopped quoting them on 2026-08-05 — so they left `PROOF` instead of
+  gaining a test. On `develop` until the next merge into `main`.
+- **0.2.13, and production back** (2026-09-22, !210 then !217) — `main` takes `next` 16.3.5, and
+  goflag.tech, stuck on its build of 2026-08-16 since the deployment of 2026-08-23 failed on
+  `@swc/helpers`, serves the docs of 2026-08-20; `@goflag/cli` 0.2.13 is on npm. The four sites
+  took it the same day (openfinanceguide !53, tancredo !106, stereo-house !99, tancrede !176).
+- **pnpm 12.5.1** (2026-09-23, !218) — the `packageManager` pin, and the lockfile pnpm 12 writes.
 - **Show the output instead of describing it** (2026-08-20, !194 to !205) — terminal panels
   rendered from generated transcripts, a preview page that shows a preview, the matrix, the
   fingerprint, the Chromium decision, the phantom locale and the forbidden loop drawn, the
   README quoting the renderer and showing the verdict in colour — `docs/visuals-plan.md`,
-  V-0 to V-6. Deployed on develop.goflag.tech only (see Now).
+  V-0 to V-6. In production since 2026-09-22.
 - **The pipeline prepares the release** (2026-08-23, !209) — a manual `release:prepare` job on
   `develop` writes the release branch and opens its merge request (`90e3126`); a devDependency
   bump no longer counts as a published surface change (`e9e06c7`).
@@ -128,6 +120,12 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 
 ## Dropped
 
+- The advisory `sitemap.unlisted-indexable` (`docs/sitemap-scope-plan.md` X-4): a duplicate.
+  `sitemap.orphans` has reported the same pages since 0.2.10 — crawled, not `noindex`, absent
+  from every sitemap — as a `guideline` warning. X-4 would only have changed its form, a question
+  instead of a verdict; the cost of keeping the verdict is that a route declared
+  `sitemap: false` in `@goflag/next` raises that warning once the crawl reaches it, unless it
+  also says `noindex` or names another page as its canonical (!223).
 - `defineSite({ og })` wiring the image URL into the metadata: it had no caller, there was
   nowhere to write it (Next replaces `openGraph` whole, per segment), and writing it would have
   switched off the image of the file convention — `docs/og-plan.md` §10.9 (!180). OG-5 took its

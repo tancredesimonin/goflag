@@ -33,6 +33,7 @@
 
 import { splitRoute } from "../core/i18n";
 import type { SiteContext } from "./site-types";
+import { sitemapReadInFull } from "./sitemap-inventory";
 import type { AdvisoryFinding, Rigor } from "./types";
 
 /** One question, asked about one URL, with the observations behind it. */
@@ -97,7 +98,15 @@ const hreflangSitemapMismatch: SiteProseRule = {
     "The two are derived from one intent by different code paths, so a disagreement means " +
     "one of them is wrong. No specification says which: the declaration methods are " +
     "equivalent, and a page can legitimately be cross-linked and kept out of the sitemap.",
-  appliesTo: (site) => site.localeAxis.multilingual && (site.discovery?.urls.length ?? 0) > 0,
+  // A question about what the sitemap *omits*, so it waits for a sitemap read in
+  // full (`./sitemap-inventory.ts`): a translation listed in a child goflag
+  // could not read, or in a second declared sitemap it never opened, would be
+  // asked about as missing — a question with a false premise wastes an agent's
+  // turn as surely as a false finding wastes a human's.
+  appliesTo: (site) =>
+    site.localeAxis.multilingual &&
+    (site.discovery?.urls.length ?? 0) > 0 &&
+    sitemapReadInFull(site),
   ask: (site) => {
     const axis = new Set(site.localeAxis.locales.map((l) => l.toLowerCase()));
     const bySitemap = new Map<string, Set<string>>();

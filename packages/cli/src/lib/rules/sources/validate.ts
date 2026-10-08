@@ -3,10 +3,11 @@
  * provenance contract (the online half, URL liveness, lives in
  * `scripts/validate-sources.ts` because it needs the network).
  *
- * Pure and side-effect free so it can run as a unit test on every pipeline:
- * a malformed entry fails `sources.test.ts`, not a scheduled job three days
- * later. It takes the catalog as an argument rather than importing it so the
- * negative cases are testable with fabricated bad entries.
+ * Pure and side-effect free so it can run as a unit test, in the merge request
+ * that changes the catalog: a malformed entry fails `sources.test.ts`, not a
+ * scheduled job three days later. It takes the catalog as an argument rather
+ * than importing it so the negative cases are testable with fabricated bad
+ * entries.
  */
 
 import type { Source } from "./types";

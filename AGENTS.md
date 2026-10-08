@@ -9,15 +9,16 @@ it.
 
 ## Commands
 
-| Goal                       | Command                                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Install                    | `corepack enable && pnpm install`                                                                            |
-| Develop                    | `pnpm dev <url> [flags]` (CLI from source, tsx) · `pnpm dev:website` (port 3004)                             |
-| Test                       | `pnpm test:unit` · `pnpm test:integration`                                                                   |
-| Lint / typecheck           | `pnpm lint` · `pnpm typecheck` · `pnpm format:check`                                                         |
-| Build                      | `pnpm build`                                                                                                 |
-| Release                    | the manual `release:prepare` job, on the `develop` pipeline (`pnpm release --dry-run` locally to look first) |
-| Audit the site with itself | `pnpm --filter @goflag/website seo`                                                                          |
+| Goal                         | Command                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Install                      | `corepack enable && pnpm install`                                                                                        |
+| Develop                      | `pnpm dev <url> [flags]` (CLI from source, tsx) · `pnpm dev:website` (port 3004)                                         |
+| Test                         | `pnpm test:unit` · `pnpm test:integration`                                                                               |
+| Lint / typecheck             | `pnpm lint` · `pnpm typecheck` · `pnpm format:check`                                                                     |
+| Build                        | `pnpm build`                                                                                                             |
+| Release                      | the manual `release:prepare` job, on the `develop` pipeline (`pnpm release --dry-run` locally to look first)             |
+| Audit the site with itself   | `pnpm --filter @goflag/website seo`                                                                                      |
+| Show a site change in its MR | `pnpm --filter @goflag/website build:local-origin`, serve `website-standalone` (`.claude/launch.json`), then `/mr-shots` |
 
 `format` and `format:check` run once at the root over the whole repository; `build`,
 `typecheck`, `test*` and `clean` fan out with `pnpm -r`; `lint` does both — root ESLint
@@ -62,7 +63,7 @@ The pnpm version is written once, in `packageManager`. Never add a
 
 ## Pitfalls
 
-- `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and both
+- `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and the three
   `CHANGELOG.md` by relative path at build time — it cannot import them (I3). That is why the
   Dockerfile copies the workspace root, and why `packages/cli/CHANGELOG.md` is listed by name
   in `deploy-develop`'s `changes:` rules.
@@ -117,8 +118,9 @@ The pnpm version is written once, in `packageManager`. Never add a
 - Branches are `feat/` · `fix/` · `chore/` · `ci/` · `docs/` plus a sentence-shaped slug.
   Everything merges into `develop`; merging `develop` into `main` is the decision to publish.
 - Three tag namespaces, all protected: `v*` for `@goflag/cli`, `next-v*` for `@goflag/next`,
-  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release, or the
-  `tag` job pushes a ref the remote refuses.
+  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release: until
+  it is, any Developer can push the tag that triggers a publication (`docs/publishing.md`
+  §3bis).
 - `pnpm release` decides whether a version is spent: only a `feat`/`fix`/`perf`/breaking
   commit touching a package's declared **published surface** earns one, so a `fix(ci)` spends
   nothing.
@@ -127,3 +129,13 @@ The pnpm version is written once, in `packageManager`. Never add a
   constraint means removing its paragraph too.
 - `docs/*-plan.md` are authored design documents, not generated. Several carry counts and
   versions that are several releases stale; verify against the code before repeating one.
+- A merge request that changes what goflag.tech renders — `apps/website/**`, or what the site
+  reads at build time (`packages/cli/rules.json`, `flags.json`, the `CHANGELOG.md`s) — shows
+  the pages it changes, as the other repositories' merge requests do: `/mr-shots`, from the
+  `workstation` repository, captures them and `gl-upload` posts them as a comment. Captures
+  are uploads, never commits (`.mr-shots/` is ignored), and they are taken on this machine,
+  never in CI: a runner has no `glab` session. Shoot the build the container serves —
+  `build:local-origin`, then `serve:standalone` on port 3004, the `website-standalone` entry
+  of `.claude/launch.json` — not `next dev`, whose indicator lands in every shot. A docs page
+  is `content/docs/<path>.mdx` at `/docs/<path>`, a rule's page `/docs/rules/<id>`; a change
+  of prose inside a long page is shown as a crop of that passage, not as the whole page.

@@ -11,7 +11,7 @@ import {
   type ChangelogSectionId,
   type PackageId,
 } from "@/lib/changelog";
-import { LIB, PACKAGE } from "@/lib/constants";
+import { CARDS, LIB, PACKAGE } from "@/lib/constants";
 import { requireLocale, routes } from "@/lib/seo/site";
 
 // Breaking first. It is the one thing a reader has to act on, and it used to
@@ -22,6 +22,7 @@ const SECTION_ORDER: ChangelogSectionId[] = ["breaking", "features", "fixes", "d
 const NAMES: Record<PackageId, { name: string; npm: string }> = {
   cli: { name: PACKAGE.name, npm: PACKAGE.npm },
   next: { name: LIB.name, npm: LIB.npm },
+  og: { name: CARDS.name, npm: CARDS.npm },
 };
 
 export async function generateMetadata({
@@ -64,7 +65,7 @@ export default async function ChangelogPage({ params }: { params: Promise<{ loca
         {/* One card per package. They ship on their own version lines, so a
             single "current version" would have to pick one and be wrong about
             the other. */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {current.map(({ package: pkg, version }) => (
             <div key={pkg}>
               <p className="text-muted-foreground font-mono text-sm">{NAMES[pkg].name}</p>

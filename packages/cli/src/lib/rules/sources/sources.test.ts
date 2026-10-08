@@ -1,10 +1,11 @@
 /**
  * Provenance contract tests for the source catalog.
  *
- * The shipped catalog must pass structural validation on every pipeline —
- * this is the CI half of "every source has a rigor" from the rule-catalog
- * plan. URL liveness is deliberately not tested here (unit tests are
- * offline); `scripts/validate-sources.ts` covers it on scheduled pipelines.
+ * The shipped catalog must pass structural validation on every merge request
+ * that touches a package — this is the CI half of "every source has a rigor"
+ * from the rule-catalog plan. URL liveness is deliberately not tested here
+ * (unit tests are offline); `scripts/validate-sources.ts` covers it on
+ * scheduled pipelines and on merge requests that touch this folder.
  */
 
 import { describe, expect, it } from "vitest";
@@ -29,7 +30,9 @@ describe("source catalog", () => {
   });
 
   it("seeds every reference from the plan (§4.1–§4.3)", () => {
-    expect(SOURCES.length).toBe(41);
+    // 41 seeded on 2026-08-06, and six added to the plan's tables on
+    // 2026-10-05 for `http.not-found` and the `llmstxt.*` rules.
+    expect(SOURCES.length).toBe(47);
   });
 
   it("covers all four rigor levels", () => {

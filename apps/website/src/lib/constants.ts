@@ -19,7 +19,7 @@ export const SITE = {
 export const PACKAGE = {
   name: "@goflag/cli",
   bin: "goflag",
-  version: "0.2.13",
+  version: "0.2.14",
   npm: "https://www.npmjs.com/package/@goflag/cli",
   repo: "https://github.com/tancredesimonin/goflag",
   issues: "https://github.com/tancredesimonin/goflag/issues",
@@ -68,17 +68,24 @@ export const INSTALL = {
 
 /**
  * Numbers used as proof on the landing page. Every one of them is measured and
- * recorded in the repository — `docs/spec-and-lib-plan.md` for the audit
- * timings and the false positives, the test suite for the count. Nothing here
- * is rounded up for effect; if a figure cannot be sourced it does not belong
- * on the page.
+ * recorded in the repository — `docs/coverage-plan.md` §6 for the largest
+ * audit, `pnpm --filter @goflag/cli test:unit` for the count, the same measure
+ * `STRATEGY.md` quotes. Nothing here is rounded up for effect; if a figure
+ * cannot be sourced it does not belong on the page.
+ *
+ * Only what the page shows lives here. The rule counts and a false-positive
+ * tally used to sit in this object after the landing had stopped quoting them,
+ * and went stale unseen — 11 and 3 against a catalogue at 25 and 28 — because
+ * nothing read them. A count the site does quote comes from `rules-catalog.ts`,
+ * which reads `rules.json` rather than restating it.
+ *
+ * `tests` stays a literal. Counting the suites from a test would be a test
+ * asserting its own arithmetic, and the number moves on every commit that adds
+ * one — a guard there would fail more often than it would catch anything.
  */
 export const PROOF = {
-  pageRules: 11,
-  siteRules: 3,
-  tests: 686,
+  tests: 819,
   sitesGated: 4,
-  largestSitePages: 456,
-  largestSiteDuration: "4 min",
-  falsePositivesFound: 5,
+  largestSitePages: 760,
+  largestSiteDuration: "7 min",
 } as const;

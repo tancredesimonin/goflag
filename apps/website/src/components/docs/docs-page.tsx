@@ -6,7 +6,8 @@ import { PageActions } from "@/components/docs/page-actions";
 import { getDocsNeighbours } from "@/lib/docs-nav";
 
 interface DocsPageProps {
-  title: string;
+  /** A node, so a title that is an identifier can mark where it may break. */
+  title: ReactNode;
   description: string;
   /** This page's own href, used to work out previous/next. */
   href: string;
@@ -32,7 +33,12 @@ export function DocsPage({ title, description, href, raw, breadcrumb, children }
           </Link>
         ) : null}
 
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-balance">{title}</h1>
+        {/* `wrap-break-word` breaks a word only when it alone is wider than the
+            line, so no title can push the page sideways on a phone — the
+            backstop for a rule id segment too long even between its `<wbr>`s. */}
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-balance wrap-break-word">
+          {title}
+        </h1>
         <p className="text-muted-foreground mt-4 text-lg leading-relaxed">{description}</p>
 
         {raw ? <PageActions markdown={raw.markdown} rawPath={raw.path} className="mt-6" /> : null}

@@ -17,6 +17,14 @@ const TONE = {
   red: "text-flag-red",
 } as const;
 
+// A default is a value for most flags and a sentence for three: "default
+// structural when a sitemap is found, all otherwise" is 394 px wide at this
+// size, and the shared badge is `whitespace-nowrap`, so on a 320 px phone it
+// pushed the page 111 px sideways. These badges may wrap. `leading-3.5` gives
+// one line exactly the badge's own 20 px, so only a badge too wide for its line
+// changes shape; it grows a line at a time.
+const FLAG_BADGE = "h-auto font-mono text-[0.6875rem] leading-3.5 font-normal whitespace-normal";
+
 export const metadata: Metadata = routes.metadata({
   path: "/docs/cli",
   title: TITLE,
@@ -83,14 +91,14 @@ export default function CliPage() {
                     <code className="text-muted-foreground font-mono text-sm">{flag.short}</code>
                   ) : null}
                   {flag.default ? (
-                    <Badge variant="outline" className="font-mono text-[0.6875rem] font-normal">
+                    <Badge variant="outline" className={FLAG_BADGE}>
                       default {flag.default}
                     </Badge>
                   ) : null}
                   {flag.requires ? (
                     <Badge
                       variant="outline"
-                      className="border-flag-yellow/50 text-flag-yellow font-mono text-[0.6875rem] font-normal"
+                      className={cn("border-flag-yellow/50 text-flag-yellow", FLAG_BADGE)}
                     >
                       requires {flag.requires}
                     </Badge>
