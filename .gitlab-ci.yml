@@ -547,7 +547,16 @@ deploy:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy
+    # One retry, without the build. The sites share one host, and two deploys
+    # pulling at once can lose a race inside containerd: on 2026-10-07 and
+    # 2026-10-08 a production deploy died on `docker pull` — "lease does not
+    # exist", then "failed commit on ref … no such file or directory" — while a
+    # sibling site pulled the same base layers, and a manual retry minutes later
+    # went through both times. `--skip-push` reuses the image the first attempt
+    # pushed; if that attempt died before the push, the retry finds no image and
+    # fails as the job would have. A failed healthcheck is retried too and fails
+    # again, harmlessly: Kamal keeps the running container either way.
+    - kamal deploy || { sleep 60; kamal deploy --skip-push; }
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     # Anything else on `main` — a pipeline started from "Run pipeline", or a
@@ -564,7 +573,8 @@ deploy-develop:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy -d develop
+    # Same retry as `deploy`, for the same shared host.
+    - kamal deploy -d develop || { sleep 60; kamal deploy -d develop --skip-push; }
   # `changes:` because 21 of the 58 pushes to `develop` between 1 and 13 August
   # could not have altered the image, and rebuilt and redeployed a byte-identical
   # site anyway. The Dockerfile installs and builds with
