@@ -627,6 +627,13 @@ deploy-develop:
   # not deploy either. The transcripts joined the list the same day, in the
   # commit that made the panels read them.
   #
+  # The list also has to name what changes the deploy rather than the site:
+  # this file, whose deploy jobs carry the registry login, the retry and the
+  # logout, and `.kamal/`, which holds the secrets file and any hooks. Neither
+  # was on it until 2026-10-10, when the switch to a read-only registry token
+  # merged into develop and its deploy-develop waited for a click — the one
+  # change whose deploy most needed to run was the one the list left out.
+  #
   # The manual rule below is untouched: anything this list gets wrong is one
   # click away from being deployed by hand.
   rules:
@@ -641,6 +648,8 @@ deploy-develop:
         - packages/cli/test/fixtures/transcripts/**/*
         - Dockerfile
         - config/deploy*.yml
+        - .kamal/**/*
+        - .gitlab-ci.yml
         - package.json
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
