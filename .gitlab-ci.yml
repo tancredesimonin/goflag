@@ -77,9 +77,9 @@ default:
 # --version` and took 1.77 minutes, which is the same 1.77 minutes `lint` took
 # to lint. It was publishing setup, not skipping it.
 #
-# What actually carries the dependencies between pipelines is the cache keyed on
-# `pnpm-lock.yaml`, which is unchanged and still applies to every job through the
-# same anchor. Nothing else in this file declares `artifacts:` any more, so no
+# What carries the dependencies between pipelines is the pnpm store the runner
+# keeps on its `/builds` volume — the `.pnpm` anchor below says why it is no
+# longer a `cache:`. Nothing else in this file declares `artifacts:` any more, so no
 # job downloads a `node_modules` at startup — `tag`, which needs git and
 # nothing else, was pulling the whole monorepo's down for no reason at all.
 stages:
@@ -153,22 +153,28 @@ variables:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-# The cache lives here rather than in `default:` on purpose. Every job in this
-# file that installs dependencies pulls in this anchor, so they all still get
-# it; the jobs that come from the security include do not, which is what the
-# two `cache: {}` overrides used to say. Those overrides were the bug: on a ref
-# where the include is skipped, they survived as jobs with no `script:`, the
-# config became invalid, and the pipeline died at creation — the same zero-job
-# symptom the include itself caused, one layer down. A job override cannot
-# outlive the job it overrides.
+# No `cache:`, and no `store-dir`. The cache keyed on `pnpm-lock.yaml` that
+# used to live here cost more than it saved on the group's runner: unzipping
+# `.pnpm-store` and `node_modules`, then zipping them back, took 92 to 105 s
+# per job — 58 to 76 % of every `test:*` job, 42 % of `check` (last three runs
+# of each, to 13 October). The six site repositories never had one, and their
+# `pnpm install` takes 16 to 22 s with nothing in the store and 10 to 15 s
+# with it: a cold install is still several times cheaper than the archive.
+#
+# The store persists without it. Left to its default, pnpm keeps it at the
+# root of the `/builds` volume, `/builds/.pnpm-store`, outside the checkout:
+# `git clean` leaves it alone and the next job on the same slot reuses it. The
+# nightly `prune-ci-runner` empties the volume, so the first job of the day
+# downloads — which it also did with the cache, kept on a volume the same
+# prune empties.
+#
+# The anchor still stays out of `default:`: the jobs from the security include
+# need no install. Two `cache: {}` overrides used to keep the cache off them,
+# and they were a bug of their own: on a ref where the include is skipped, they
+# survived as jobs with no `script:`, the config became invalid, and the
+# pipeline died at creation. A job override cannot outlive the job it
+# overrides.
 .pnpm: &pnpm
-  cache:
-    key:
-      files:
-        - pnpm-lock.yaml
-    paths:
-      - .pnpm-store
-      - node_modules
   before_script:
     # No version here on purpose. `packageManager` in package.json is the single
     # declaration; corepack reads it on the first `pnpm` call and fetches that
@@ -177,7 +183,6 @@ variables:
     # two drifted every job downloaded pnpm twice, the activate step being the
     # wasted one. Same reason the Dockerfile says `corepack enable pnpm` bare.
     - corepack enable
-    - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
 # One job, three commands, because the commands were never the cost.
