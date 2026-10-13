@@ -535,7 +535,11 @@ test:package:og:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - echo "$SERVER_HOST_KEY" >> ~/.ssh/known_hosts
-    - echo "$KAMAL_REGISTRY_PASSWORD" | docker login registry.gitlab.com -u "$KAMAL_REGISTRY_USERNAME" --password-stdin
+    # The job's own token pushes the image to this project's registry, and
+    # dies with the job. The host never sees it: Kamal logs the host in with
+    # REGISTRY_PULL_*, a read-only deploy token of this project alone, and the
+    # deploy logs it out again (infrastructure, scripts/sites-registry-tokens.sh).
+    - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u gitlab-ci-token --password-stdin
 
 # `$CI_PIPELINE_SOURCE == "push"` is load-bearing. This repository runs
 # scheduled pipelines (sources:liveness, the security template), and a
@@ -547,7 +551,24 @@ deploy:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy
+    # One retry, without the build. The sites share one host, and two deploys
+    # pulling at once can lose a race inside containerd: on 2026-10-07 and
+    # 2026-10-08 a production deploy died on `docker pull` — "lease does not
+    # exist", then "failed commit on ref … no such file or directory" — while a
+    # sibling site pulled the same base layers, and a manual retry minutes later
+    # went through both times. `--skip-push` reuses the image the first attempt
+    # pushed; if that attempt died before the push, the retry finds no image and
+    # fails as the job would have. A failed healthcheck is retried too and fails
+    # again, harmlessly: Kamal keeps the running container either way.
+    # Built and pushed first, with the job's token. Every attempt after that only
+    # pulls, with the read-only token, and the host is logged out at the end: it
+    # holds no registry credential between deploys. A deploy that fails leaves
+    # the read-only token there until the next one succeeds.
+    - test -n "${REGISTRY_PULL_TOKEN:-}" || { echo "REGISTRY_PULL_TOKEN is not set, run scripts/sites-registry-tokens.sh create in infrastructure"; exit 1; }
+    - KAMAL_REGISTRY_USERNAME=gitlab-ci-token KAMAL_REGISTRY_PASSWORD="$CI_JOB_TOKEN" kamal build push
+    - export KAMAL_REGISTRY_USERNAME="$REGISTRY_PULL_USER" KAMAL_REGISTRY_PASSWORD="$REGISTRY_PULL_TOKEN"
+    - kamal deploy --skip-push || { sleep 60; kamal deploy --skip-push; }
+    - kamal registry remove --skip-local
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     # Anything else on `main` — a pipeline started from "Run pipeline", or a
@@ -564,7 +585,16 @@ deploy-develop:
   extends: .kamal_deploy_template
   stage: deploy
   script:
-    - kamal deploy -d develop
+    # Same retry as `deploy`, for the same shared host.
+    # Built and pushed first, with the job's token. Every attempt after that only
+    # pulls, with the read-only token, and the host is logged out at the end: it
+    # holds no registry credential between deploys. A deploy that fails leaves
+    # the read-only token there until the next one succeeds.
+    - test -n "${REGISTRY_PULL_TOKEN:-}" || { echo "REGISTRY_PULL_TOKEN is not set, run scripts/sites-registry-tokens.sh create in infrastructure"; exit 1; }
+    - KAMAL_REGISTRY_USERNAME=gitlab-ci-token KAMAL_REGISTRY_PASSWORD="$CI_JOB_TOKEN" kamal build push -d develop
+    - export KAMAL_REGISTRY_USERNAME="$REGISTRY_PULL_USER" KAMAL_REGISTRY_PASSWORD="$REGISTRY_PULL_TOKEN"
+    - kamal deploy -d develop --skip-push || { sleep 60; kamal deploy -d develop --skip-push; }
+    - kamal registry remove -d develop --skip-local
   # `changes:` because 21 of the 58 pushes to `develop` between 1 and 13 August
   # could not have altered the image, and rebuilt and redeployed a byte-identical
   # site anyway. The Dockerfile installs and builds with
@@ -597,6 +627,13 @@ deploy-develop:
   # not deploy either. The transcripts joined the list the same day, in the
   # commit that made the panels read them.
   #
+  # The list also has to name what changes the deploy rather than the site:
+  # this file, whose deploy jobs carry the registry login, the retry and the
+  # logout, and `.kamal/`, which holds the secrets file and any hooks. Neither
+  # was on it until 2026-10-10, when the switch to a read-only registry token
+  # merged into develop and its deploy-develop waited for a click — the one
+  # change whose deploy most needed to run was the one the list left out.
+  #
   # The manual rule below is untouched: anything this list gets wrong is one
   # click away from being deployed by hand.
   rules:
@@ -611,6 +648,8 @@ deploy-develop:
         - packages/cli/test/fixtures/transcripts/**/*
         - Dockerfile
         - config/deploy*.yml
+        - .kamal/**/*
+        - .gitlab-ci.yml
         - package.json
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
