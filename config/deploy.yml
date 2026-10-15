@@ -9,6 +9,18 @@ servers:
   web:
     hosts:
       - <%= ENV['SERVER_IP'] %>
+    # docker run flags, so that one site cannot take the shared host down with
+    # it. memory: at least 3x what the container used once settled (140 MiB on
+    # 2026-10-15); Node sizes its heap from it (~260 MB here). cpus: a third of
+    # the host's 6 vCPU. pids-limit counts threads, and Node runs about 11. The
+    # app runs as `nextjs` on port 3000 and needs no capability. Not read-only:
+    # Next writes revalidated pages into .next/server at runtime.
+    # no-new-privileges comes from the host's daemon.json. Applies to develop too.
+    options:
+      memory: 512m
+      cpus: 2
+      pids-limit: 256
+      cap-drop: ALL
 
 proxy:
   hosts:
