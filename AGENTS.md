@@ -83,7 +83,9 @@ The pnpm version is written once, in `packageManager`. Never add a
   `pnpm --filter @goflag/next generate:locales`.
 - The `playwright` devDependency of `packages/cli` and the `mcr.microsoft.com/playwright:`
   image tag in `.gitlab-ci.yml` are one pin in two files. They must move together, or
-  `chromium.executablePath()` points at a browser build that is not in the image.
+  `chromium.executablePath()` points at a browser build that is not in the image. Renovate
+  moves both in one merge request, through a custom manager in `renovate.json`; a bump by
+  hand has to move both too.
 - `pnpm-workspace.yaml` sets `minimumReleaseAge: 4320` — a dependency published in the last
   three days does not resolve at all, and no lockfile is written.
 - `apps/website` refuses to build when `CI` or `APP_ENV=production` is set without

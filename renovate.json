@@ -1,5 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["gitlab>tancredesimonin-indie/infrastructure:renovate-base"],
-  "baseBranches": ["develop"]
+  "baseBranches": ["develop"],
+  "customManagers": [
+    {
+      "description": "The Playwright image of `test:integration` is read as the npm package `playwright`, the exact-pinned devDependency of packages/cli. Both are then one dependency looked up once per run, so they get the same new version, land in the same `dependencies` merge request, and wait out the same three-day floor, dated from the npm publish. Read as a Docker image it never moved, though the gitlabci manager did extract it: mcr.microsoft.com gives Renovate no release dates, renovate-base sets `minimumReleaseAge`, Renovate's default `minimumReleaseAgeBehaviour` (`timestamp-required`) treats an undated release as too young forever, and a grouped merge request drops its pending upgrades with nothing above debug level in the log. Three times the package moved and the image did not, and each time the tag was moved by hand: the first time the browser tests skipped in silence (c637fa0 moved the tag and made that a failure), the next two `test:integration` failed on purpose (97602a8, and 3088d01 for !247). The match stops at the version, so a distro suffix, or none, does not matter: moving off `noble` does not quietly detach the tag from the package. There is no digest to capture: npm has none to offer for an image, so Renovate would move the tag and leave the old digest behind, and the digest is what the runner pulls.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.gitlab-ci\\.yml$/"],
+      "matchStrings": ["mcr\\.microsoft\\.com/playwright:v(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "playwright",
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The same image, as the gitlabci manager sees it. Turned off so that the custom manager above is the only thing that moves it. Left on, its tag update stays pending forever for the reason given there, and its `pinDigest` (renovate-base sets `pinDigests`) is a second edit of the same line, and a digest added to it would go stale on the next version bump. That pin was the only content of goflag's renovate/pin-dependencies branch, which never got created: on 2026-10-17 it ended in `update failure`, as it did in every repository of the group, for a cause not traced here.",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["mcr.microsoft.com/playwright"],
+      "enabled": false
+    }
+  ]
 }

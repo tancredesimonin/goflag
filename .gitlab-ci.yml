@@ -334,6 +334,32 @@ test:integration:
   # expects, and `chromium.executablePath()` points somewhere that does not
   # exist as soon as they disagree. The dependency is pinned exactly for the
   # same reason — a caret range silently resolves past the image.
+  #
+  # Renovate keeps them together. A custom manager in `renovate.json` reads
+  # this tag as the npm package `playwright`, so the one lookup that bumps the
+  # devDependency also bumps the tag: same version, same run, same
+  # `dependencies` merge request, same three-day floor counted from the npm
+  # publish. The image is published separately from the package; if it is not
+  # there yet, the job fails to pull it, which is loud, rather than running
+  # the wrong browser.
+  #
+  # Before that, Renovate read this line as a Docker image, and as one the tag
+  # never moved. The registry gives no release dates, an undated release never
+  # clears the shared preset's `minimumReleaseAge`, and the grouped merge
+  # request dropped the update without a word at the log level the job runs
+  # at. The package moved alone three times, and each time the tag followed
+  # by hand: c637fa0, 97602a8, and 3088d01 for !247. That Docker reading is
+  # switched off in `renovate.json`, so the two never edit this line against
+  # each other.
+  #
+  # Two things would detach them again. The custom manager matches the
+  # reference as it is written here, `mcr.microsoft.com/playwright:v<x.y.z>`
+  # with or without a distro suffix; written any other way, Renovate stops
+  # seeing it and says nothing. And no `@sha256:` digest: npm has none to
+  # offer, so Renovate would move the tag and leave the old digest, which is
+  # what the runner pulls. If they drift anyway, `inspect-spa.test.ts` fails
+  # this job with "Chromium is missing in CI" instead of skipping the
+  # browser tests.
   image: mcr.microsoft.com/playwright:v1.64.0-noble
   <<: [*pnpm, *cli_changes]
   script:
