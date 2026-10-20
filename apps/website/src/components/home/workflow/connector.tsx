@@ -14,7 +14,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
  * with any other number.
  *
  * It does not animate, and that is now a local choice rather than a site rule:
- * the first tab draws its connectors with `motion`. These four tabs are a
+ * the first tab draws its connectors in (`.workflow-draw`). These four tabs are a
  * reference diagram someone clicks into, so there is nothing here worth staging.
  */
 export function Connector() {

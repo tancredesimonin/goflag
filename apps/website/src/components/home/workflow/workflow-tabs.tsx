@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import {
   BotIcon,
@@ -32,22 +33,34 @@ const ICON: Record<FlowIcon, LucideIcon> = {
  */
 export function WorkflowTabs({ label }: { label: string }) {
   const t = useTranslations("home.workflow");
+  const headingId = useId();
 
   return (
     <Tabs defaultValue={FLOWS[0]!.id} className="gap-5">
       {/* The label is read out, not printed. "One gate, four checks" is exactly
           what the five tabs already say, and a caption above them would be a line
-          spent restating the line below it. */}
+          spent restating the line below it. It is a heading rather than an
+          `aria-label` because the diagram's cards are `h3`s: without an `h2`
+          above them the outline jumped from the page's `h1` straight to a card. */}
+      <h2 id={headingId} className="sr-only">
+        {label}
+      </h2>
+
       <div className="flex flex-col items-center">
+        {/* The height is overridden under the same variant that sets it: the
+            primitive's `group-data-horizontal/tabs:h-9` outranks a bare `h-auto`,
+            so on a phone, where the five tabs wrap onto three rows, the pill
+            stayed one row tall and its last row sat on the first card. Each tab
+            is pinned at `h-7` to keep the single row exactly the primitive's 36px. */}
         <TabsList
-          aria-label={label}
-          className="h-auto max-w-full flex-wrap justify-center rounded-2xl"
+          aria-labelledby={headingId}
+          className="max-w-full flex-wrap justify-center rounded-2xl group-data-horizontal/tabs:h-auto"
         >
           {FLOWS.map((flow) => {
             const Icon = ICON[flow.icon];
 
             return (
-              <TabsTrigger key={flow.id} value={flow.id} className="flex-none">
+              <TabsTrigger key={flow.id} value={flow.id} className="h-7 flex-none">
                 <Icon aria-hidden="true" />
                 {t(`${flow.id}.name`)}
               </TabsTrigger>
