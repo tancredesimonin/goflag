@@ -36,7 +36,14 @@ export function CopyCommand({ command, copyLabel, copiedLabel, className }: Copy
       <span className="text-terminal-dim select-none font-mono text-sm" aria-hidden="true">
         $
       </span>
-      <code className="grow overflow-x-auto font-mono text-sm whitespace-nowrap">{command}</code>
+      {/* `min-w-0`, or `overflow-x-auto` never engages: a flex item will not
+          shrink below its content, so on a 375px phone the hero's command was
+          384px wide and its `overflow-hidden` cut off the copy button. The
+          scrollbar is hidden: where scrollbars are not overlays it drew a grey
+          strip under the command, and the button copies all of it anyway. */}
+      <code className="min-w-0 grow overflow-x-auto font-mono text-sm whitespace-nowrap [scrollbar-width:none]">
+        {command}
+      </code>
       <Button
         variant="ghost"
         size="icon"

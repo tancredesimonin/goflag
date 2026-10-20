@@ -1,7 +1,4 @@
-"use client";
-
-import type { ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -21,16 +18,32 @@ import { cn } from "@/lib/utils";
  * whole point here. goflag's case is about *when* you find out, so the badge
  * carries the argument and is the only thing on the card allowed to say
  * "months later".
+ *
+ * Each card fades in on `.workflow-enter`, `delay` seconds after the diagram
+ * mounts — a CSS animation, for the reason `globals.css` gives beside it.
  */
 
-/** The chip's colour comes from the track; its wording comes from the step. */
+/** The inline style that staggers a `.workflow-*` entrance `delay` seconds in. */
+export function beat(delay: number): CSSProperties | undefined {
+  return delay ? { animationDelay: `${delay}s` } : undefined;
+}
+
+/**
+ * The chip's colour comes from the track; its wording comes from the step.
+ *
+ * The washes are as light as they are because the label is 10px text and needs
+ * 4.5:1 on them in the light theme, where it measured 4.39 on `bg-muted` and
+ * 4.28 on a 16% emerald. At 50% and 10% they are 4.60 and 4.67. Red cannot get
+ * there on any wash of itself (4.16 at 10%): red-600 is 4.83 on white to begin
+ * with. Its track is the one faded out on purpose, so that is left as it is.
+ */
 const KIND = {
   /** The commit both timelines start from. Neutral: nothing has gone wrong yet. */
-  trigger: "bg-muted text-muted-foreground",
+  trigger: "bg-[color-mix(in_oklab,var(--muted)50%,var(--background))] text-muted-foreground",
   /** The timeline nobody is watching. */
-  cost: "bg-[color-mix(in_oklab,var(--flag-red)16%,var(--background))] text-flag-red",
+  cost: "bg-[color-mix(in_oklab,var(--flag-red)10%,var(--background))] text-flag-red",
   /** The timeline goflag puts you on. */
-  caught: "bg-[color-mix(in_oklab,var(--flag-green)16%,var(--background))] text-flag-green",
+  caught: "bg-[color-mix(in_oklab,var(--flag-green)10%,var(--background))] text-flag-green",
 } as const;
 
 export type WorkflowKind = keyof typeof KIND;
@@ -58,15 +71,8 @@ export function WorkflowItem({
   className?: string;
   children?: ReactNode;
 }) {
-  const still = useReducedMotion();
-
   return (
-    <motion.div
-      initial={still ? undefined : { opacity: 0, y: 8 }}
-      animate={still ? undefined : { opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut", delay }}
-      className={cn("relative z-1 w-full pt-6", className)}
-    >
+    <div className={cn("workflow-enter relative z-1 w-full pt-6", className)} style={beat(delay)}>
       <div
         className={cn(
           "absolute top-0 left-0 -z-1 flex items-center gap-1.5 rounded-t-lg px-2.5 pt-1 pb-4 font-mono text-[0.625rem] tracking-widest uppercase",
@@ -95,6 +101,6 @@ export function WorkflowItem({
 
         {children}
       </div>
-    </motion.div>
+    </div>
   );
 }

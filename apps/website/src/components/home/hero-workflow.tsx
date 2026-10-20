@@ -14,8 +14,10 @@ import { INSTALL } from "@/lib/constants";
  * in CI needs to see what it actually does before they will believe the verdict.
  *
  * Everything above the switcher is a server component and ships in the HTML.
- * Only the tab selection is client-side, and no panel starts invisible, so the
- * headline and the copy survive with JavaScript off.
+ * Only the tab selection is client-side, and nothing in the first panel starts
+ * invisible — its entrance is a CSS animation, not a server-rendered
+ * `opacity:0` — so the headline, the copy and the diagram survive with
+ * JavaScript off, and for a reader who asked for reduced motion.
  */
 export async function HeroWorkflow() {
   const t = await getTranslations("home.hero");
@@ -29,7 +31,10 @@ export async function HeroWorkflow() {
       {/* Everything between the headline and the first tab is spend against a
           three-second budget: one sentence, one command, and the diagram. */}
       <div className="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
+        {/* `w-full`: with only `mx-auto`, a flex item is as wide as its content's
+            minimum, which is the command on one line — wider than a phone, and
+            the section's `overflow-hidden` then cut the lead and the copy button. */}
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 text-center">
           <h1 className="text-4xl font-semibold text-balance sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
             {t("title")}
           </h1>

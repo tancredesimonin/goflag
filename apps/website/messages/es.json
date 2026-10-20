@@ -14,7 +14,7 @@
   "meta": {
     "ogAlt": "El título «{title}» en una tarjeta de vista previa oscura de goflag.",
     "home": {
-      "title": "goflag: una CLI que señala en CI los defectos invisibles de un sitio",
+      "title": "goflag: una CLI que señala en CI los defectos invisibles",
       "description": "Una CLI que informa de enlaces rotos, páginas de traducción que faltan, un robots.txt que contradice sus páginas y metadatos SEO mal configurados."
     },
     "changelog": {

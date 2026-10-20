@@ -27,7 +27,10 @@ export async function Invisible() {
           <p className="text-muted-foreground text-lg">{t("lead")}</p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* `grid-cols-1` is not redundant. Without it the one implicit column is
+            sized to its widest `whitespace-pre` line, the code blocks never get
+            to scroll, and on a 375px phone the whole page grew 50px wide. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {cases.map((key) => (
             <div key={key} className="reveal">
               <Card className="h-full">

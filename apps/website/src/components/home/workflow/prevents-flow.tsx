@@ -1,8 +1,5 @@
-"use client";
-
 import { Fragment, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { motion, useReducedMotion } from "motion/react";
 import {
   BadgeCheckIcon,
   CheckIcon,
@@ -19,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { ArrowBottom, ArrowRight } from "@/components/home/workflow/arrows";
-import { WorkflowItem } from "@/components/home/workflow/workflow-item";
+import { beat, WorkflowItem } from "@/components/home/workflow/workflow-item";
 import type { Step, StepIcon, Track } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +53,10 @@ function Pipeline({ jobs, failed }: { jobs: readonly string[]; failed?: string }
   );
 }
 
-/** A two-line mono snippet in the site's terminal palette. */
+/** A two-line mono snippet in the site's terminal palette.
+ *  Its spans take `text-terminal-*`, never `text-flag-*`: the panel stays dark
+ *  in light mode, and the page's severities are shades meant for white
+ *  (`globals.css`, on `--terminal-green`). */
 function Snippet({ lines }: { lines: readonly ReactNode[] }) {
   return (
     <div
@@ -85,7 +85,7 @@ const MOCKUPS: Record<StepIcon, ReactNode> = {
         </span>,
         <span key="l2">
           <span className="opacity-60">{"  href="}</span>
-          <span className="text-flag-yellow">{'"/another-page"'}</span>
+          <span className="text-terminal-yellow">{'"/another-page"'}</span>
           <span className="opacity-60">{" />"}</span>
         </span>,
       ]}
@@ -129,10 +129,10 @@ const MOCKUPS: Record<StepIcon, ReactNode> = {
   fix: (
     <Snippet
       lines={[
-        <span key="del" className="text-flag-red">
+        <span key="del" className="text-terminal-red">
           {'- href="/another-page"'}
         </span>,
-        <span key="add" className="text-flag-green">
+        <span key="add" className="text-terminal-green">
           {'+ href="/pricing"'}
         </span>,
       ]}
@@ -184,33 +184,26 @@ const RULE =
  * tracks use. Nothing is measured, so nothing can drift: the shared stub leaves
  * the origin at the boundary between the rows, which is where the origin card is
  * centred, and each branch stub sits at the middle of its own row.
+ *
+ * Each rule grows from its origin on `.workflow-grow-x` or `-y`, `delay`
+ * seconds in.
  */
 function ForkConnector() {
-  const still = useReducedMotion();
-  const grow = (axis: "x" | "y", delay: number) => ({
-    initial: still ? undefined : { [`scale${axis.toUpperCase()}`]: 0 },
-    animate: still ? undefined : { [`scale${axis.toUpperCase()}`]: 1 },
-    transition: { duration: 0.35, ease: "easeInOut" as const, delay },
-  });
-
   return (
     <div className={cn("relative w-10 shrink-0 max-md:hidden", TRACKS)} aria-hidden="true">
-      <motion.span
-        {...grow("x", 0)}
-        className={cn(RULE, "top-1/2 left-0 w-1/2 origin-left border-t-2")}
-      />
-      <motion.span
-        {...grow("y", 0.2)}
-        className={cn(RULE, "top-1/4 bottom-1/4 left-1/2 border-l-2")}
+      <span className={cn(RULE, "workflow-grow-x top-1/2 left-0 w-1/2 origin-left border-t-2")} />
+      <span
+        className={cn(RULE, "workflow-grow-y top-1/4 bottom-1/4 left-1/2 border-l-2")}
+        style={beat(0.2)}
       />
 
-      <motion.span
-        {...grow("x", BEAT * 2)}
-        className={cn(RULE, "top-1/4 left-1/2 w-1/2 origin-left border-t-2")}
+      <span
+        className={cn(RULE, "workflow-grow-x top-1/4 left-1/2 w-1/2 origin-left border-t-2")}
+        style={beat(BEAT * 2)}
       />
-      <motion.span
-        {...grow("x", BEAT * 3)}
-        className={cn(RULE, "top-3/4 left-1/2 w-1/2 origin-left border-t-2")}
+      <span
+        className={cn(RULE, "workflow-grow-x top-3/4 left-1/2 w-1/2 origin-left border-t-2")}
+        style={beat(BEAT * 3)}
       />
 
       <ChevronRightIcon className="absolute top-1/4 right-0 size-3.5 -translate-y-1/2 text-[color-mix(in_oklab,var(--foreground)28%,var(--background))] dark:text-[color-mix(in_oklab,var(--foreground)38%,var(--background))]" />
