@@ -126,15 +126,18 @@ export function PackageManagerCode({ pnpm, npm, yarn, bun, className }: PackageM
         }}
         className="gap-0"
       >
+        {/* 36px, what the bar has always measured: it said `h-10`, which never
+            applied while the primitive forced `h-9`. The tabs fill it less a pixel,
+            as the primitive's used to, so nothing on a docs page moves. */}
         <TabsList
           variant="line"
-          className="border-border h-10 w-full justify-start rounded-none border-b bg-transparent px-1"
+          className="border-border h-9 w-full justify-start rounded-none border-b bg-transparent px-1"
         >
           {available.map((manager) => (
             <TabsTrigger
               key={manager}
               value={manager}
-              className="rounded-none px-3 font-mono text-xs data-active:bg-transparent"
+              className="h-[calc(100%-1px)] rounded-none px-3 font-mono text-xs data-active:bg-transparent"
             >
               {manager}
             </TabsTrigger>

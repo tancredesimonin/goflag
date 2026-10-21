@@ -47,20 +47,15 @@ export function WorkflowTabs({ label }: { label: string }) {
       </h2>
 
       <div className="flex flex-col items-center">
-        {/* The height is overridden under the same variant that sets it: the
-            primitive's `group-data-horizontal/tabs:h-9` outranks a bare `h-auto`,
-            so on a phone, where the five tabs wrap onto three rows, the pill
-            stayed one row tall and its last row sat on the first card. Each tab
-            is pinned at `h-7` to keep the single row exactly the primitive's 36px. */}
         <TabsList
           aria-labelledby={headingId}
-          className="max-w-full flex-wrap justify-center rounded-2xl group-data-horizontal/tabs:h-auto"
+          className="max-w-full flex-wrap justify-center rounded-2xl"
         >
           {FLOWS.map((flow) => {
             const Icon = ICON[flow.icon];
 
             return (
-              <TabsTrigger key={flow.id} value={flow.id} className="h-7 flex-none">
+              <TabsTrigger key={flow.id} value={flow.id} className="flex-none">
                 <Icon aria-hidden="true" />
                 {t(`${flow.id}.name`)}
               </TabsTrigger>
