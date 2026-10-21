@@ -436,7 +436,9 @@
  * Here the starting frame exists only inside the keyframes, and the keyframes
  * only under `no-preference`. Everyone else, with or without JavaScript, gets
  * the finished drawing. Each element staggers itself with an inline
- * `animation-delay`, which outranks the shorthand's. */
+ * `animation-delay`, which outranks the shorthand's. `entrance.test.tsx` fails
+ * if a `.workflow-*` rule leaves this block, or a node of the diagram renders an
+ * inline style other than that delay. */
 @keyframes workflow-enter {
   from {
     opacity: 0;

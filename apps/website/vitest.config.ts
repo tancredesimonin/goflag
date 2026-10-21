@@ -32,7 +32,10 @@ export default defineConfig({
   // CSS at all rather than to make the site's pipeline work twice.
   css: { postcss: { plugins: [] } },
   test: {
-    include: ["src/**/*.test.ts"],
+    // `.tsx` for a test that renders a component. Without JSX a provider's child
+    // has nowhere to go: `tsc` wants it among the props, and `react/no-children-prop`
+    // forbids it there.
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "node",
   },
 });
