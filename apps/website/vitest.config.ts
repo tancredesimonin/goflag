@@ -3,16 +3,17 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 /**
- * Unit tests for the metadata layer.
+ * The site's unit tests: what a page says, checked against what it is drawn
+ * from — the catalogues, transcripts, changelogs and source under `packages/`,
+ * and the documents content-collections builds — plus the share images and the
+ * hero diagram's server render.
  *
- * `src/lib/seo/routes.ts` and `metadata.ts` import no generated content and no
- * Next runtime, which is the whole point of the split: they run here in
- * milliseconds, with no `content-collections build` and no `next build` in
- * front of them. `site-routes.ts` is the file that touches both, and the build
- * is what covers it.
+ * None of it needs `next build`. Two builds do run first, from the `test` script:
+ * `content-collections build`, for the collection `content.test.ts` reads, and
+ * `@goflag/og`'s, whose output the share-image code imports.
  *
- * The `@/` alias is spelled out rather than read from `tsconfig.json` by a
- * plugin. One alias is not worth a dependency, and the plugin that does it is
+ * The aliases are spelled out rather than read from `tsconfig.json` by a plugin.
+ * Two aliases are not worth a dependency, and the plugin that does it is
  * ESM-only while this package is CommonJS — a mismatch that fails at config
  * load, before a single test runs.
  */
