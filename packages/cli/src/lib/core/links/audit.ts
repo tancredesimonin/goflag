@@ -27,6 +27,7 @@ import {
   type LinkAuditReport,
   type LinkCheck,
   type LinkOccurrence,
+  type LinkRef,
 } from "./types";
 
 export interface LinkAuditOptions {
@@ -52,10 +53,33 @@ export interface LinkAuditOptions {
   userAgent?: string;
   /** Bytes of page HTML to read during the scan. Defaults to 3 MB. */
   maxScanBytes?: number;
+  /**
+   * Pages already in hand, keyed by the URL the discovery lists. A page found
+   * here is not fetched again — see `HandedPage`. A page left out is fetched
+   * exactly as before, so a caller that passes nothing gets the old behaviour.
+   */
+  pages?: ReadonlyMap<string, HandedPage>;
   /** Injectable sleep forwarded to `checkLink` (tests). */
   sleep?: (ms: number) => Promise<void>;
   /** Progress callback fired after each scanned page and each checked link. */
   onProgress?: (p: AuditProgress) => void;
+}
+
+/**
+ * A page the caller already fetched, and possibly already read the links of.
+ *
+ * The audit's crawl fetched every page it hands over, moments before, and
+ * parsed it for the `<head>`. Fetching it again cost a round trip per page,
+ * and parsing it again cost more than the fetch: on openfinanceguide, whose
+ * pages average 1 MB of HTML, parsing them is most of what the scan did.
+ *
+ * `links` are used only when they are what the scan would have read anyway:
+ * anchors only, from a page no longer than `maxScanBytes`. Otherwise `html` is
+ * cut and parsed as a fetched body would have been.
+ */
+export interface HandedPage {
+  html: string;
+  links?: readonly LinkRef[];
 }
 
 const DEFAULTS = {
@@ -93,8 +117,26 @@ export async function runLinkAudit(
   let pagesFailed = 0;
   let scanDone = 0;
 
+  // The pages that need a fetch go first, then the pages handed over.
+  //
+  // Not the other way round, and not mixed in one pool: reading a handed page
+  // never awaits, so the event loop sits out the whole of that stretch — 15 s
+  // on openfinanceguide, for the pages over `maxScanBytes`. The server closes
+  // idle keep-alive connections in that time, nothing in this process hears
+  // about it, and the next request goes out on a dead socket. Tried that way,
+  // every run reported the four Atom feeds of openfinanceguide as failed scans,
+  // all four with a network error in the same millisecond.
+  const maxBytes = options.maxScanBytes ?? DEFAULTS.maxScanBytes;
+  const handedPages: [string, HandedPage][] = [];
+  const toFetch: string[] = [];
+  for (const pageUrl of pageUrls) {
+    const handed = options.pages?.get(pageUrl);
+    if (handed) handedPages.push([pageUrl, handed]);
+    else toFetch.push(pageUrl);
+  }
+
   await mapWithHostCaps(
-    pageUrls,
+    toFetch,
     {
       concurrency: options.scanConcurrency ?? DEFAULTS.scanConcurrency,
       perHost: Infinity,
@@ -106,7 +148,7 @@ export async function runLinkAudit(
         timeoutMs: options.timeoutMs ?? DEFAULTS.timeoutMs,
         allowInsecureTls: options.allowInsecureTls,
         userAgent: options.userAgent,
-        maxBytes: options.maxScanBytes ?? DEFAULTS.maxScanBytes,
+        maxBytes,
         signal: options.signal,
       });
       if (res.status === 0 || res.status >= 400 || res.body === undefined) {
@@ -124,6 +166,21 @@ export async function runLinkAudit(
     },
     () => "scan",
   );
+
+  for (const [pageUrl, handed] of handedPages) {
+    if (options.signal?.aborted) break;
+    const refs =
+      handed.links && !options.includeAssets && Buffer.byteLength(handed.html) <= maxBytes
+        ? handed.links
+        : extractLinks(capBytes(handed.html, maxBytes), {
+            baseUrl: pageUrl,
+            includeAssets: options.includeAssets,
+          });
+    for (const ref of refs) occurrences.push({ pageUrl, ref });
+    pagesScanned += 1;
+    scanDone += 1;
+    options.onProgress?.({ phase: "scan", done: scanDone, total: pageUrls.length });
+  }
 
   // --- Global dedupe ------------------------------------------------------
   const uniqueUrls: string[] = [];
@@ -220,6 +277,16 @@ function buildBrokenByPage(
   return Array.from(byPage.entries())
     .map(([pageUrl, map]) => ({ pageUrl, broken: Array.from(map.values()) }))
     .sort((a, b) => b.broken.length - a.broken.length);
+}
+
+/**
+ * The same cut `fetchUrl` makes when it stops reading at `maxBytes`: bytes,
+ * not characters, so a page handed over yields the very links a fetch of it
+ * would have.
+ */
+function capBytes(text: string, maxBytes: number): string {
+  if (Buffer.byteLength(text, "utf8") <= maxBytes) return text;
+  return Buffer.from(text, "utf8").subarray(0, maxBytes).toString("utf8");
 }
 
 function hostOf(url: string): string {

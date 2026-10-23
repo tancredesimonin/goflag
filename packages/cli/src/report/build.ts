@@ -585,6 +585,7 @@ export async function runAudit(
     inspectOptions: {
       mode: options.static ? "static" : "auto",
       probes: false,
+      linkRefs: true,
       allowInsecureTls: options.allowInsecureTls,
       timeoutMs: options.timeoutMs,
       signal: options.signal,
@@ -854,11 +855,31 @@ export async function runAudit(
   // the coverage claim it was. `0 broken links` then meant 200 pages, on a
   // report that said 748.
   const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
+  //
+  // The HTML pages are handed over rather than fetched and parsed a second
+  // time: the crawl kept their bodies, and read their links from the parse it
+  // made for the `<head>` (`linkRefs` on the crawl above). Only HTML: anything
+  // else the scan reads exactly as it always did, including the types it
+  // declines to decode.
+  //
+  // An escalated page keeps its body but not its links. Those were resolved
+  // against the URL the static fetch ended on, and the page is keyed by the one
+  // the browser ended on; the two only differ when the page redirects itself,
+  // and parsing again is the price of not having to think about it.
   const linkReport = await runLinkAudit(linkDiscovery, {
     allowInsecureTls: options.allowInsecureTls,
     checkExternal,
     timeoutMs: options.timeoutMs,
     maxPages: effectiveMaxPages,
+    pages: new Map(
+      okPages.filter(isHtmlPage).map((page) => [
+        page.fetch.finalUrl,
+        {
+          html: page.html.static,
+          links: page.extractor.escalated ? undefined : page.linkRefs,
+        },
+      ]),
+    ),
     signal: options.signal,
     onProgress: (p) =>
       options.onProgress?.({

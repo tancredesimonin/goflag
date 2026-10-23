@@ -52,7 +52,15 @@ const ASSET_SPECS: ElementSpec[] = [
  * occurrence list tidy.
  */
 export function extractLinks(html: string, options: ExtractLinksOptions): LinkRef[] {
-  const $ = cheerio.load(html);
+  return extractLinksFrom(cheerio.load(html), options);
+}
+
+/**
+ * The same, from a document already parsed. `inspect` uses it to read a page's
+ * links from the parse it made for the `<head>`, so the link audit does not
+ * parse the page a second time.
+ */
+export function extractLinksFrom($: cheerio.CheerioAPI, options: ExtractLinksOptions): LinkRef[] {
   // Relative links resolve against <base href> when present; "internal vs
   // external" is judged against the *audited* origin (the page URL).
   const base = resolveBase($, options.baseUrl);
