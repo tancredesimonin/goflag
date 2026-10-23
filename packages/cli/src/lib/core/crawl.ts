@@ -197,82 +197,117 @@ export async function crawl(options: CrawlOptions): Promise<CrawlResult> {
   // crawl must have.
   const seenFinal = new Set<string>();
 
-  while (queue.length > 0) {
+  type Inspection =
+    { kind: "ok"; item: QueueItem; page: Page } | { kind: "err"; item: QueueItem; error: string };
+  const inspectItem = async (item: QueueItem): Promise<Inspection> => {
+    try {
+      const page = await inspect(item.url, options.inspectOptions);
+      return { kind: "ok", item, page };
+    } catch (err) {
+      return { kind: "err", item, error: err instanceof Error ? err.message : String(err) };
+    }
+  };
+
+  // Inspections started and not yet taken into account, oldest first.
+  //
+  // A new one starts the moment a request finishes, not when a whole batch is
+  // done. This loop used to start `concurrency` pages, wait for all of them,
+  // and only then start the next batch, so every batch ran at the pace of its
+  // slowest page and the slots that finished early sat idle until it answered.
+  //
+  // Results are still taken strictly in the order the pages were started, which
+  // is the queue's order. Everything downstream depends on that: the frontier
+  // grows in the same order, `seenFinal` keeps the same copy of a redirected
+  // document, and a run cut short by `maxPages` keeps the same pages. Taking
+  // results as they arrive would make all three depend on which response
+  // happened to be faster, and a baseline cannot be compared against a page set
+  // that changes from one run to the next.
+  //
+  // So two counts, not one. `active` is requests in flight, held to
+  // `concurrency`. `pending` also holds the answers that arrived ahead of an
+  // older, slower page and wait for it to be taken first; it is bounded so that
+  // one page that hangs until its timeout cannot pull the rest of the queue in
+  // behind it — the work past a `maxPages` cut is thrown away.
+  const pending: Promise<Inspection>[] = [];
+  const maxPending = concurrency * 4;
+  let active = 0;
+  let requestDone: () => void = () => undefined;
+  const start = (item: QueueItem): void => {
+    active += 1;
+    pending.push(
+      inspectItem(item).finally(() => {
+        active -= 1;
+        requestDone();
+      }),
+    );
+  };
+
+  while (queue.length > 0 || pending.length > 0) {
     if (options.inspectOptions?.signal?.aborted) break;
 
-    // Drain up to `concurrency` items per wave; preserves BFS order
-    // because every item in this wave came from the same depth or
-    // earlier than every item still in the queue.
-    const wave = queue.splice(0, concurrency);
-    type WaveResult =
-      { kind: "ok"; item: QueueItem; page: Page } | { kind: "err"; item: QueueItem; error: string };
-    const inspections: Promise<WaveResult>[] = wave.map(async (item) => {
-      try {
-        const page = await inspect(item.url, options.inspectOptions);
-        return { kind: "ok" as const, item, page };
-      } catch (err) {
-        return {
-          kind: "err" as const,
-          item,
-          error: err instanceof Error ? err.message : String(err),
-        };
-      }
-    });
-
-    const results = await Promise.all(inspections);
-    for (const result of results) {
-      if (result.kind === "err") {
-        const attempt = (result.item.attempt ?? 0) + 1;
-        if (attempt < MAX_ATTEMPTS) {
-          queue.push({ ...result.item, attempt });
-          continue;
-        }
-        errors.push({ url: result.item.url, message: result.error });
-        continue;
-      }
-
-      if (result.item.attempt) recovered.push(result.item.url);
-
-      // A document already answered for. Its links were extracted from the
-      // copy we kept, so there is nothing here the frontier has not seen.
-      //
-      // That holds because the queue is BFS and never goes back up a level: the
-      // copy we kept is always the shallowest one, so it is the copy that had
-      // the most depth budget left to follow links with. Drop that ordering and
-      // this becomes a way to lose a subtree.
-      const finalUrl = canonicaliseUrl(result.page.fetch.finalUrl) ?? result.page.fetch.finalUrl;
-      if (seenFinal.has(finalUrl)) continue;
-      seenFinal.add(finalUrl);
-
-      pages.push(result.page);
-      if (options.onPage) {
-        options.onPage(result.page, { visited: pages.length, queued: queue.length });
-      }
-      if (pages.length >= maxPages) {
-        truncated = true;
-        break;
-      }
-
-      if (result.item.depth >= depthLimit) continue;
-
-      const candidates = extractCandidateLinks(result.page);
-      for (const candidate of candidates) {
-        const normalised = canonicaliseUrl(candidate.href, result.page.fetch.finalUrl);
-        if (!normalised) continue;
-        if (visitedSet.has(normalised)) continue;
-        const parsed = new URL(normalised);
-        if (parsed.origin !== origin) continue;
-
-        const passesIncludeExclude = filterAllows(parsed.pathname, include, exclude);
-        const isHreflang = candidate.source === "hreflang";
-        if (!passesIncludeExclude && !(followHreflang && isHreflang)) continue;
-
-        visitedSet.add(normalised);
-        queue.push({ url: normalised, depth: result.item.depth + 1 });
-      }
+    while (active < concurrency && pending.length < maxPending && queue.length > 0) {
+      start(queue.shift()!);
     }
 
-    if (truncated) break;
+    // Wake for whichever comes first: the oldest answer, which is the next one
+    // to take, or any request finishing, which is room to start another page.
+    const oldest = pending[0]!;
+    const finished = new Promise<void>((resolve) => {
+      requestDone = resolve;
+    });
+    const oldestReady = await Promise.race([oldest.then(() => true), finished.then(() => false)]);
+    if (!oldestReady) continue;
+
+    const result = await pending.shift()!;
+    if (result.kind === "err") {
+      const attempt = (result.item.attempt ?? 0) + 1;
+      if (attempt < MAX_ATTEMPTS) {
+        queue.push({ ...result.item, attempt });
+        continue;
+      }
+      errors.push({ url: result.item.url, message: result.error });
+      continue;
+    }
+
+    if (result.item.attempt) recovered.push(result.item.url);
+
+    // A document already answered for. Its links were extracted from the
+    // copy we kept, so there is nothing here the frontier has not seen.
+    //
+    // That holds because the queue is BFS and never goes back up a level: the
+    // copy we kept is always the shallowest one, so it is the copy that had
+    // the most depth budget left to follow links with. Drop that ordering and
+    // this becomes a way to lose a subtree.
+    const finalUrl = canonicaliseUrl(result.page.fetch.finalUrl) ?? result.page.fetch.finalUrl;
+    if (seenFinal.has(finalUrl)) continue;
+    seenFinal.add(finalUrl);
+
+    pages.push(result.page);
+    if (options.onPage) {
+      options.onPage(result.page, { visited: pages.length, queued: queue.length });
+    }
+    if (pages.length >= maxPages) {
+      truncated = true;
+      break;
+    }
+
+    if (result.item.depth >= depthLimit) continue;
+
+    const candidates = extractCandidateLinks(result.page);
+    for (const candidate of candidates) {
+      const normalised = canonicaliseUrl(candidate.href, result.page.fetch.finalUrl);
+      if (!normalised) continue;
+      if (visitedSet.has(normalised)) continue;
+      const parsed = new URL(normalised);
+      if (parsed.origin !== origin) continue;
+
+      const passesIncludeExclude = filterAllows(parsed.pathname, include, exclude);
+      const isHreflang = candidate.source === "hreflang";
+      if (!passesIncludeExclude && !(followHreflang && isHreflang)) continue;
+
+      visitedSet.add(normalised);
+      queue.push({ url: normalised, depth: result.item.depth + 1 });
+    }
   }
 
   return {
