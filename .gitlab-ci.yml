@@ -50,7 +50,7 @@ default:
   # Everything that writes opts back out below: the deploy template, the three
   # publish jobs, `release:prepare` and `tag`.
   interruptible: true
-  image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
+  image: node:24.21.0@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0
 
   # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
   # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
@@ -542,9 +542,9 @@ test:package:og:
   # auto-cancelling the pipeline at all — cancel during the checks, never once a
   # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
   interruptible: false
-  image: docker:29.7.1@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
+  image: docker:29.9.1@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
   services:
-    - docker:29.7.1-dind@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
+    - docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
   # Nothing from an earlier stage is unpacked into the Docker build context.
   # This was written against an `install` job that published `node_modules` as
   # an artifact and is gone; what it keeps out today is the scheduled scan's
