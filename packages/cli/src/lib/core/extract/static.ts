@@ -31,11 +31,24 @@ export interface ExtractStaticOptions {
  * This function is fully deterministic and side-effect-free. It accepts a
  * string of HTML and returns a JSON-serializable object.
  */
-export function extractStatic(
-  html: string,
+export function extractStatic(html: string, options: ExtractStaticOptions): StaticExtraction {
+  return extractStaticFrom(cheerio.load(html), options);
+}
+
+/** What `extractStatic` produces: everything on a `Page` that comes from the HTML. */
+export type StaticExtraction = Omit<
+  Page,
+  "fetch" | "fetchedAt" | "probes" | "extractor" | "html" | "hydration" | "linkRefs"
+>;
+
+/**
+ * The same, from a document already parsed — so a caller that needs something
+ * else from the page too (its links, for `inspect`) parses it once.
+ */
+export function extractStaticFrom(
+  $: cheerio.CheerioAPI,
   options: ExtractStaticOptions,
-): Omit<Page, "fetch" | "fetchedAt" | "probes" | "extractor" | "html" | "hydration"> {
-  const $ = cheerio.load(html);
+): StaticExtraction {
   const base = resolveBase($, options.baseUrl);
 
   const raw = extractRaw($);

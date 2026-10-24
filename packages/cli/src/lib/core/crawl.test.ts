@@ -269,6 +269,72 @@ describe("crawl (BFS, depth, filters, dedupe)", () => {
   });
 });
 
+describe("crawl (concurrency)", () => {
+  it("starts the next page when a request finishes, not when the slowest one does", async () => {
+    const inspectOptions = mockInspect({
+      "https://x.com/": "entry",
+      "https://x.com/slow": { delayMs: 60, body: "slow" },
+      "https://x.com/a": "a",
+      "https://x.com/b": "b",
+    });
+    await crawl({
+      entryUrl: "https://x.com/",
+      seedUrls: ["https://x.com/slow", "https://x.com/a", "https://x.com/b"],
+      depth: 0,
+      concurrency: 2,
+      inspectOptions,
+    });
+    // Batches of two would have held `/a` and `/b` back until `/slow` answered.
+    const slowEnds = inspectLog.indexOf("end https://x.com/slow");
+    expect(inspectLog.indexOf("start https://x.com/a")).toBeLessThan(slowEnds);
+    expect(inspectLog.indexOf("start https://x.com/b")).toBeLessThan(slowEnds);
+  });
+
+  it("keeps the queue's order, whichever page answers first", async () => {
+    const inspectOptions = mockInspect({
+      "https://x.com/": "entry",
+      "https://x.com/slow": { delayMs: 40, body: "slow" },
+      "https://x.com/fast": "fast",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      seedUrls: ["https://x.com/slow", "https://x.com/fast"],
+      depth: 0,
+      concurrency: 3,
+      inspectOptions,
+    });
+    expect(inspectLog.indexOf("end https://x.com/fast")).toBeLessThan(
+      inspectLog.indexOf("end https://x.com/slow"),
+    );
+    expect(result.pages.map((p) => p.fetch.finalUrl)).toEqual([
+      "https://x.com/",
+      "https://x.com/slow",
+      "https://x.com/fast",
+    ]);
+  });
+
+  it("cuts at maxPages by queue order, not by who answered first", async () => {
+    const inspectOptions = mockInspect({
+      "https://x.com/": "entry",
+      "https://x.com/slow": { delayMs: 40, body: "slow" },
+      "https://x.com/fast": "fast",
+    });
+    const result = await crawl({
+      entryUrl: "https://x.com/",
+      seedUrls: ["https://x.com/slow", "https://x.com/fast"],
+      depth: 0,
+      maxPages: 2,
+      concurrency: 3,
+      inspectOptions,
+    });
+    expect(result.truncated).toBe(true);
+    expect(result.pages.map((p) => p.fetch.finalUrl)).toEqual([
+      "https://x.com/",
+      "https://x.com/slow",
+    ]);
+  });
+});
+
 /**
  * Build a fake `InspectOptions` payload that the crawler treats as
  * regular options but whose `signal.reason` carries our routing
@@ -291,6 +357,12 @@ vi.mock("./inspect", async () => {
         throw new Error(`crawl test: unexpected URL ${url}`);
       }
       if (entry instanceof Error) throw entry;
+      inspectLog.push(`start ${url}`);
+      // A page that takes its time, so a test can watch who waits for whom.
+      if (typeof entry === "object" && "delayMs" in entry) {
+        await new Promise((resolve) => setTimeout(resolve, entry.delayMs));
+      }
+      inspectLog.push(`end ${url}`);
       // A page that fails its first `failTimes` requests and then answers —
       // the transient timeout the retry exists for.
       if (typeof entry === "object" && "failTimes" in entry) {
@@ -315,19 +387,27 @@ vi.mock("./inspect", async () => {
 });
 
 /**
- * A body, a thrown failure, a body served from a different final URL, or a
- * body that only arrives after the first `failTimes` requests have thrown.
+ * A body, a thrown failure, a body served from a different final URL, a
+ * body that only arrives after the first `failTimes` requests have thrown, or
+ * a body that arrives after `delayMs`.
  */
 type MockEntry =
-  string | Error | { finalUrl: string; body: string } | { failTimes: number; body: string };
+  | string
+  | Error
+  | { finalUrl: string; body: string }
+  | { failTimes: number; body: string }
+  | { delayMs: number; body: string };
 
 const inspectMockTable = new Map<string, MockEntry>();
 /** Requests seen per URL, so `failTimes` can count them. */
 const inspectAttempts = new Map<string, number>();
+/** `start <url>` and `end <url>`, in the order they happened. */
+const inspectLog: string[] = [];
 
 function mockInspect(table: Record<string, MockEntry>): undefined {
   inspectMockTable.clear();
   inspectAttempts.clear();
+  inspectLog.length = 0;
   for (const [url, body] of Object.entries(table)) {
     inspectMockTable.set(url, body);
   }
