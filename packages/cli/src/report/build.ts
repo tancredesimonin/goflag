@@ -47,6 +47,7 @@ import { collectSiteAdvisories } from "../lib/rules/site-prose";
 import { getSiteRule } from "../lib/rules/site-rules";
 import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
+import type { LinkAnswer } from "../lib/core/links/check";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
 import type { AssetProbe, ManifestProbe, Page } from "../lib/core/types";
@@ -880,6 +881,7 @@ export async function runAudit(
         },
       ]),
     ),
+    answers: crawlAnswers(okPages),
     signal: options.signal,
     onProgress: (p) =>
       options.onProgress?.({
@@ -1164,6 +1166,33 @@ function sameOriginAs(url: string, origin: string): boolean {
 }
 
 /** Build a `SiteDiscovery` from the crawl result so the link audit can reuse the page set. */
+/**
+ * What the crawl's fetches can tell the link check, keyed by the URL each one
+ * asked for.
+ *
+ * Only an HTML page fetched statically, straight to a 2xx: the GET the check
+ * would make for a link to that URL. A page reached through a redirect is left
+ * out — the crawl kept where it ended, not the hops a check reports — and so
+ * is an escalated page, whose `fetch` is the browser's navigation rather than
+ * a GET. A link with a trailing slash the crawl dropped does not match either,
+ * and is probed: the slash is significant on plenty of servers.
+ */
+function crawlAnswers(pages: readonly Page[]): Map<string, LinkAnswer> {
+  const answers = new Map<string, LinkAnswer>();
+  for (const page of pages) {
+    if (!isOkStatus(page.fetch.status) || !isHtmlPage(page)) continue;
+    if (page.extractor.escalated) continue;
+    if (page.fetch.redirectCount > 0 || page.fetch.finalUrl !== page.fetch.requestedUrl) continue;
+    answers.set(page.fetch.requestedUrl, {
+      status: page.fetch.status,
+      body: page.html.static,
+      checkedAt: page.fetchedAt,
+      durationMs: page.fetch.durationMs,
+    });
+  }
+  return answers;
+}
+
 function syntheticDiscovery(
   origin: string,
   baseUrl: string,

@@ -240,3 +240,43 @@ describe("runLinkAudit — pages handed over", () => {
     expect(report.pagesScanned).toBe(11);
   });
 });
+
+describe("runLinkAudit — answers in hand", () => {
+  const running: ConcurrencyProbe[] = [];
+  afterEach(async () => {
+    await Promise.all(running.splice(0).map((p) => p.stop()));
+  });
+
+  const answer = (status: number) => ({
+    status,
+    body: "<html><body>a page</body></html>",
+    checkedAt: "2026-10-24T00:00:00.000Z",
+    durationMs: 3,
+  });
+
+  it("judges a link from a 2xx it already has, without probing it", async () => {
+    const site = await startProbe(["/known", "/unknown"], 0);
+    running.push(site);
+
+    const report = await runLinkAudit(discoveryFor(site.url), {
+      checkExternal: false,
+      answers: new Map([[`${site.url}/known`, answer(200)]]),
+    });
+
+    expect(report.checks[`${site.url}/known`]).toMatchObject({ verdict: "ok", method: "GET" });
+    expect(site.requests.filter((r) => r.endsWith(" /known"))).toEqual([]);
+    expect(site.requests).toContain("HEAD /unknown");
+  });
+
+  it("probes a link whose answer was not a 2xx", async () => {
+    const site = await startProbe(["/known"], 0);
+    running.push(site);
+
+    await runLinkAudit(discoveryFor(site.url), {
+      checkExternal: false,
+      answers: new Map([[`${site.url}/known`, answer(503)]]),
+    });
+
+    expect(site.requests).toContain("HEAD /known");
+  });
+});

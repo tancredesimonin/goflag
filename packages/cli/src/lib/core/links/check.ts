@@ -22,7 +22,7 @@
  * Never throws — every path returns a shaped `LinkCheck`.
  */
 
-import { fetchUrl, type FetchFailureReason } from "../net/fetch-url";
+import { capText, fetchUrl, type FetchFailureReason } from "../net/fetch-url";
 import { classifyLink } from "./classify";
 import type { LinkCheck } from "./types";
 
@@ -109,6 +109,66 @@ export async function checkLink(url: string, options: CheckLinkOptions = {}): Pr
     reason: describeReason(outcome, softNotFound),
     checkedAt,
     durationMs: Date.now() - started,
+  };
+}
+
+/**
+ * A GET of exactly the URL to check, made earlier in the same run, that came
+ * back without a redirect — what the audit's crawl has for every page it
+ * fetched.
+ */
+export interface LinkAnswer {
+  status: number;
+  /** The body as received. Only the first `softBodyBytes` of it are read. */
+  body: string;
+  /** When the GET was made (ISO), and how long it took. */
+  checkedAt: string;
+  durationMs: number;
+}
+
+/**
+ * The check a probe of `url` would produce, from an answer already in hand —
+ * or `undefined` when only a probe can say.
+ *
+ * Only a 2xx qualifies. That is the case where the probe's outcome *is* the
+ * GET's: HEAD answers 2xx, the GET follows for the soft-404 test, nothing is
+ * retried, and the verdict comes from the GET's status and its first
+ * `softBodyBytes`. It assumes the server answers HEAD as it answers GET, which
+ * RFC 9110 §9.3.2 asks of it. A 3xx, 4xx or 5xx goes through
+ * `probeWithHeadFallback` and its retries instead: there the outcome depends
+ * on what HEAD said and on a second attempt, which no earlier GET can stand
+ * in for.
+ */
+export function checkFromAnswer(
+  url: string,
+  answer: LinkAnswer,
+  options: Pick<CheckLinkOptions, "softBodyBytes"> = {},
+): LinkCheck | undefined {
+  if (answer.status < 200 || answer.status >= 300) return undefined;
+  const outcome: ProbeOutcome = {
+    status: answer.status,
+    finalUrl: url,
+    redirectChain: [],
+    loop: false,
+    body: capText(answer.body, options.softBodyBytes ?? DEFAULTS.softBodyBytes),
+    method: "GET",
+  };
+  const softNotFound = isSoftNotFound(outcome);
+  return {
+    url,
+    finalUrl: url,
+    status: outcome.status,
+    verdict: classifyLink({
+      status: outcome.status,
+      redirected: false,
+      softNotFound,
+      loop: false,
+    }),
+    method: "GET",
+    redirectChain: [],
+    reason: describeReason(outcome, softNotFound),
+    checkedAt: answer.checkedAt,
+    durationMs: answer.durationMs,
   };
 }
 
