@@ -46,7 +46,10 @@ function Card({
   );
 }
 
-/** A block in the site's terminal palette, one line per child. */
+/** A block in the site's terminal palette, one line per child.
+ *  Its spans take `text-terminal-*`, never `text-flag-*`: the panel stays dark
+ *  in light mode, and the page's severities are shades meant for white
+ *  (`globals.css`, on `--terminal-green`). */
 function Term({ lines, className }: { lines: readonly ReactNode[]; className?: string }) {
   return (
     <div
@@ -104,13 +107,13 @@ function LinksFlow() {
       <Card>
         <Term
           lines={[
-            <span key="ok" className="text-flag-green">
+            <span key="ok" className="text-terminal-green">
               [200] /pricing
             </span>,
-            <span key="dead" className="text-flag-red">
+            <span key="dead" className="text-terminal-red">
               [404] /ghost
             </span>,
-            <span key="blocked" className="text-flag-yellow">
+            <span key="blocked" className="text-terminal-yellow">
               [blocked 403] /members
             </span>,
           ]}
@@ -131,7 +134,7 @@ function LinksFlow() {
             </span>,
             <span key="status">
               <span className="text-terminal-dim">{'  "status": '}</span>
-              <span className="text-flag-red">404</span>,
+              <span className="text-terminal-red">404</span>,
             </span>,
             <span key="page">
               <span className="text-terminal-dim">{'  "pageUrl": '}</span>
@@ -213,7 +216,7 @@ function I18nFlow() {
             </span>,
             <span key="missing">
               <span className="text-terminal-dim">{'  "missingLocales": '}</span>
-              <span className="text-flag-yellow">{'["es"]'}</span>
+              <span className="text-terminal-yellow">{'["es"]'}</span>
             </span>,
             <span key="close" className="text-terminal-dim">
               {"}"}
@@ -235,7 +238,7 @@ function RobotsFlow() {
           <Term
             lines={[
               "User-agent: *",
-              <span key="disallow" className="text-flag-red">
+              <span key="disallow" className="text-terminal-red">
                 Disallow: /
               </span>,
             ]}
@@ -256,7 +259,7 @@ function RobotsFlow() {
               '<meta name="robots"',
               <span key="content">
                 {'      content="'}
-                <span className="text-flag-green">index,follow</span>
+                <span className="text-terminal-green">index,follow</span>
                 {'">'}
               </span>,
             ]}
@@ -268,7 +271,7 @@ function RobotsFlow() {
         className="lg:mx-auto lg:w-fit"
         lines={[
           <span key="verdict">
-            <span className="text-flag-red">error</span>{" "}
+            <span className="text-terminal-red">error</span>{" "}
             <span className="text-terminal-dim">robots.blocks-site</span> robots.txt wins, so the
             pages are never fetched and the meta tag is never read
           </span>,
@@ -290,7 +293,7 @@ function MetadataFlow() {
             "<title>Pricing | Acme</title>",
             <span key="description">
               {'<meta name="description" content="'}
-              <span className="text-flag-yellow underline decoration-wavy underline-offset-3">
+              <span className="text-terminal-yellow underline decoration-wavy underline-offset-3">
                 ………………………………………………
               </span>
               {'">'}
@@ -312,11 +315,11 @@ function MetadataFlow() {
         <Term
           lines={[
             <span key="length">
-              <span className="text-flag-yellow">warning</span>{" "}
+              <span className="text-terminal-yellow">warning</span>{" "}
               <span className="text-terminal-dim">description.length</span>
             </span>,
             <span key="canonical">
-              <span className="text-flag-yellow">warning</span>{" "}
+              <span className="text-terminal-yellow">warning</span>{" "}
               <span className="text-terminal-dim">canonical.missing</span>
             </span>,
           ]}

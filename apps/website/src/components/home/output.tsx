@@ -22,12 +22,15 @@ export async function Output() {
         </div>
 
         <Tabs defaultValue={FULL_REPORT.id}>
-          <TabsList className="mb-4">
+          {/* Wraps: in French, Spanish and Portuguese the three labels are wider
+              than a 375px phone, and a row that cannot wrap widened the whole page.
+              Only a phone wraps, so only a phone squares the pill's corners. */}
+          <TabsList className="mb-4 max-w-full flex-wrap max-sm:rounded-2xl">
             {views.map(({ sample, label }) => (
               <TabsTrigger
                 key={sample.id}
                 value={sample.id}
-                className="font-mono text-xs sm:text-sm"
+                className="flex-none font-mono text-xs sm:text-sm"
               >
                 {label}
               </TabsTrigger>

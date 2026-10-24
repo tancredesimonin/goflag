@@ -47,8 +47,8 @@ is treating the symptom.
 
 ## How we would know it works
 
-- **What is measured today**: 819 unit tests on `@goflag/cli`, 120 on `@goflag/next` and 77
-  on `@goflag/og` (`pnpm --filter … test:unit`, counted on 2026-09-22), plus the integration
+- **What is measured today**: 1003 unit tests on `@goflag/cli`, 120 on `@goflag/next` and 77
+  on `@goflag/og` (`pnpm --filter … test:unit`, counted on 2026-10-24), plus the integration
   suites; the published catalogue
   (`rules.json`, `flags.json`) is compared byte for byte against what the engine runs, so the
   documentation can no longer describe a rule that is gone.

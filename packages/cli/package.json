@@ -1,6 +1,6 @@
 {
   "name": "@goflag/cli",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "type": "module",
   "description": "Audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.",
   "keywords": [
@@ -86,7 +86,7 @@
     "@vitest/coverage-v8": "^2.1.8",
     "commit-and-tag-version": "^12.5.0",
     "hono": "^4.12.25",
-    "playwright": "1.63.0",
+    "playwright": "1.64.1",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { resolve } from "node:path";
 import { inspect } from "./inspect";
 import { HeadlessUnavailableError, type HeadlessLauncher } from "./extract/headless";
+import { extractLinks } from "./links/extract";
 import { startFixtureServer, type FixtureServer } from "../../../test/fixture-server";
 
 describe("inspect orchestrator", () => {
@@ -67,6 +68,16 @@ describe("inspect orchestrator", () => {
     } finally {
       await synthetic.stop();
     }
+  });
+
+  it("reads the page's links from the same parse only when asked", async () => {
+    const without = await inspect(`${server.url}/fr`, { probes: false });
+    expect(without.linkRefs).toBeUndefined();
+
+    const page = await inspect(`${server.url}/fr`, { probes: false, linkRefs: true });
+    // Exactly what the link audit would have read from the body itself.
+    expect(page.linkRefs).toEqual(extractLinks(page.html.static, { baseUrl: page.fetch.finalUrl }));
+    expect(page.linkRefs?.length).toBeGreaterThan(0);
   });
 
   it("--static mode never boots the browser even if asked to escalate", async () => {
@@ -148,6 +159,23 @@ describe("inspect — mode plumbing with injected headless launcher", () => {
     expect(page.hydration).toBeDefined();
     expect(page.hydration?.titleChanged).toBe(true);
     expect(page.hydration?.clientInjectedMetas.length).toBeGreaterThan(0);
+  });
+
+  it("reads the links of the static HTML on an escalated page, which is what the scan reads", async () => {
+    const launcher = rendererLauncher(
+      `<!doctype html><html lang="en"><head><title>Hydrated</title></head>
+      <body><a href="/only-after-hydration">x</a></body></html>`,
+    );
+    const page = await inspect(`${server.url}/`, {
+      probes: false,
+      headless: { launcher },
+      linkRefs: true,
+    });
+    expect(page.extractor.escalated).toBe(true);
+    expect(page.linkRefs).toEqual(extractLinks(page.html.static, { baseUrl: page.fetch.finalUrl }));
+    expect(page.linkRefs?.map((ref) => ref.url)).not.toContain(
+      `${server.url}/only-after-hydration`,
+    );
   });
 
   it("forced --headless mode skips the static fetch entirely", async () => {

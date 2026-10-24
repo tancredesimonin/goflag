@@ -32,8 +32,10 @@ export async function Closing() {
                 {t("title")}
               </h2>
               {/* Not `text-muted-foreground`: on `bg-primary` that pairing
-                  inverts and fails contrast in one of the two themes. */}
-              <p className="text-primary-foreground/70 text-lg">{t("lead")}</p>
+                  inverts and fails contrast in one of the two themes. And not
+                  below /90: at /70 the lead measured 3.45:1 light and 3.48:1
+                  dark against the 4.5:1 body text needs; /90 is 4.66 and 5.15. */}
+              <p className="text-primary-foreground/90 text-lg">{t("lead")}</p>
             </div>
 
             <div className="shrink-0">

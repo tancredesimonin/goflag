@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { PACKAGES, getChangelog, parseChangelog } from "./changelog";
@@ -44,6 +47,23 @@ describe("parseChangelog", () => {
     expect(release?.date).toBe("2026-08-08");
     expect(release?.compareUrl).toBeNull();
     expect(release?.package).toBe("next");
+  });
+
+  it("gives performance its own section, under the heading the CLI's generator writes", () => {
+    // Read from `.versionrc.json` rather than typed here: the heading is the
+    // generator's decision, and a rename there should fail this test rather
+    // than quietly send every `perf` entry back under "Other changes".
+    const versionrc = JSON.parse(
+      readFileSync(join(process.cwd(), "..", "..", "packages", "cli", ".versionrc.json"), "utf8"),
+    ) as { types: { type: string; section: string }[] };
+    const heading = versionrc.types.find((type) => type.type === "perf")?.section;
+
+    const [release] = parseChangelog(
+      `## 0.2.15 (2026-10-24)\n\n### ${heading}\n\n* **cli:** the crawl is faster ([c303ad4](https://example.com/commit/c303ad4))\n`,
+      "cli",
+    );
+
+    expect(release?.sections.map((section) => section.id)).toEqual(["perf"]);
   });
 
   it("still splits entries that stand on one line", () => {

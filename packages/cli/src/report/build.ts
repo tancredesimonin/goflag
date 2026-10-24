@@ -47,6 +47,7 @@ import { collectSiteAdvisories } from "../lib/rules/site-prose";
 import { getSiteRule } from "../lib/rules/site-rules";
 import type { SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
+import type { LinkAnswer } from "../lib/core/links/check";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
 import type { AssetProbe, ManifestProbe, Page } from "../lib/core/types";
@@ -585,6 +586,7 @@ export async function runAudit(
     inspectOptions: {
       mode: options.static ? "static" : "auto",
       probes: false,
+      linkRefs: true,
       allowInsecureTls: options.allowInsecureTls,
       timeoutMs: options.timeoutMs,
       signal: options.signal,
@@ -854,11 +856,32 @@ export async function runAudit(
   // the coverage claim it was. `0 broken links` then meant 200 pages, on a
   // report that said 748.
   const linkDiscovery = syntheticDiscovery(origin, entry, okPages, crawlResult.truncated);
+  //
+  // The HTML pages are handed over rather than fetched and parsed a second
+  // time: the crawl kept their bodies, and read their links from the parse it
+  // made for the `<head>` (`linkRefs` on the crawl above). Only HTML: anything
+  // else the scan reads exactly as it always did, including the types it
+  // declines to decode.
+  //
+  // An escalated page keeps its body but not its links. Those were resolved
+  // against the URL the static fetch ended on, and the page is keyed by the one
+  // the browser ended on; the two only differ when the page redirects itself,
+  // and parsing again is the price of not having to think about it.
   const linkReport = await runLinkAudit(linkDiscovery, {
     allowInsecureTls: options.allowInsecureTls,
     checkExternal,
     timeoutMs: options.timeoutMs,
     maxPages: effectiveMaxPages,
+    pages: new Map(
+      okPages.filter(isHtmlPage).map((page) => [
+        page.fetch.finalUrl,
+        {
+          html: page.html.static,
+          links: page.extractor.escalated ? undefined : page.linkRefs,
+        },
+      ]),
+    ),
+    answers: crawlAnswers(okPages),
     signal: options.signal,
     onProgress: (p) =>
       options.onProgress?.({
@@ -1143,6 +1166,33 @@ function sameOriginAs(url: string, origin: string): boolean {
 }
 
 /** Build a `SiteDiscovery` from the crawl result so the link audit can reuse the page set. */
+/**
+ * What the crawl's fetches can tell the link check, keyed by the URL each one
+ * asked for.
+ *
+ * Only an HTML page fetched statically, straight to a 2xx: the GET the check
+ * would make for a link to that URL. A page reached through a redirect is left
+ * out — the crawl kept where it ended, not the hops a check reports — and so
+ * is an escalated page, whose `fetch` is the browser's navigation rather than
+ * a GET. A link with a trailing slash the crawl dropped does not match either,
+ * and is probed: the slash is significant on plenty of servers.
+ */
+function crawlAnswers(pages: readonly Page[]): Map<string, LinkAnswer> {
+  const answers = new Map<string, LinkAnswer>();
+  for (const page of pages) {
+    if (!isOkStatus(page.fetch.status) || !isHtmlPage(page)) continue;
+    if (page.extractor.escalated) continue;
+    if (page.fetch.redirectCount > 0 || page.fetch.finalUrl !== page.fetch.requestedUrl) continue;
+    answers.set(page.fetch.requestedUrl, {
+      status: page.fetch.status,
+      body: page.html.static,
+      checkedAt: page.fetchedAt,
+      durationMs: page.fetch.durationMs,
+    });
+  }
+  return answers;
+}
+
 function syntheticDiscovery(
   origin: string,
   baseUrl: string,

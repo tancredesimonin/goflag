@@ -14,12 +14,12 @@
   "meta": {
     "ogAlt": "O título «{title}» num cartão de partilha escuro do goflag.",
     "home": {
-      "title": "goflag: uma CLI que sinaliza no CI os defeitos invisíveis de um site",
+      "title": "goflag: uma CLI que sinaliza no CI os defeitos invisíveis",
       "description": "Uma CLI que reporta links quebrados, páginas de tradução ausentes, um robots.txt que contradiz suas páginas e metadados de SEO mal configurados."
     },
     "changelog": {
       "title": "Changelog",
-      "description": "Todas as versões publicadas de @goflag/cli e @goflag/next, geradas a partir do histórico de commits, com as notas que explicam cada versão."
+      "description": "Todas as versões publicadas de @goflag/cli, @goflag/next e @goflag/og, geradas a partir do histórico de commits, com as notas que explicam cada versão."
     }
   },
   "home": {
@@ -220,6 +220,7 @@
       "breaking": "Alterações incompatíveis",
       "features": "Funcionalidades",
       "fixes": "Correções de bugs",
+      "perf": "Desempenho",
       "docs": "Documentação",
       "other": "Outras mudanças"
     }

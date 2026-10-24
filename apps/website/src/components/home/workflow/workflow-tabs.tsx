@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import {
   BotIcon,
@@ -32,16 +33,23 @@ const ICON: Record<FlowIcon, LucideIcon> = {
  */
 export function WorkflowTabs({ label }: { label: string }) {
   const t = useTranslations("home.workflow");
+  const headingId = useId();
 
   return (
     <Tabs defaultValue={FLOWS[0]!.id} className="gap-5">
       {/* The label is read out, not printed. "One gate, four checks" is exactly
           what the five tabs already say, and a caption above them would be a line
-          spent restating the line below it. */}
+          spent restating the line below it. It is a heading rather than an
+          `aria-label` because the diagram's cards are `h3`s: without an `h2`
+          above them the outline jumped from the page's `h1` straight to a card. */}
+      <h2 id={headingId} className="sr-only">
+        {label}
+      </h2>
+
       <div className="flex flex-col items-center">
         <TabsList
-          aria-label={label}
-          className="h-auto max-w-full flex-wrap justify-center rounded-2xl"
+          aria-labelledby={headingId}
+          className="max-w-full flex-wrap justify-center rounded-2xl"
         >
           {FLOWS.map((flow) => {
             const Icon = ICON[flow.icon];

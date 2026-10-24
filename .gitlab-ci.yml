@@ -50,7 +50,7 @@ default:
   # Everything that writes opts back out below: the deploy template, the three
   # publish jobs, `release:prepare` and `tag`.
   interruptible: true
-  image: node:24.19.0@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584
+  image: node:24.21.0@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0
 
   # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
   # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
@@ -77,9 +77,9 @@ default:
 # --version` and took 1.77 minutes, which is the same 1.77 minutes `lint` took
 # to lint. It was publishing setup, not skipping it.
 #
-# What actually carries the dependencies between pipelines is the cache keyed on
-# `pnpm-lock.yaml`, which is unchanged and still applies to every job through the
-# same anchor. Nothing else in this file declares `artifacts:` any more, so no
+# What carries the dependencies between pipelines is the pnpm store the runner
+# keeps on its `/builds` volume — the `.pnpm` anchor below says why it is no
+# longer a `cache:`. Nothing else in this file declares `artifacts:` any more, so no
 # job downloads a `node_modules` at startup — `tag`, which needs git and
 # nothing else, was pulling the whole monorepo's down for no reason at all.
 stages:
@@ -153,22 +153,28 @@ variables:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-# The cache lives here rather than in `default:` on purpose. Every job in this
-# file that installs dependencies pulls in this anchor, so they all still get
-# it; the jobs that come from the security include do not, which is what the
-# two `cache: {}` overrides used to say. Those overrides were the bug: on a ref
-# where the include is skipped, they survived as jobs with no `script:`, the
-# config became invalid, and the pipeline died at creation — the same zero-job
-# symptom the include itself caused, one layer down. A job override cannot
-# outlive the job it overrides.
+# No `cache:`, and no `store-dir`. The cache keyed on `pnpm-lock.yaml` that
+# used to live here cost more than it saved on the group's runner: unzipping
+# `.pnpm-store` and `node_modules`, then zipping them back, took 92 to 105 s
+# per job — 58 to 76 % of every `test:*` job, 42 % of `check` (last three runs
+# of each, to 13 October). The six site repositories never had one, and their
+# `pnpm install` takes 16 to 22 s with nothing in the store and 10 to 15 s
+# with it: a cold install is still several times cheaper than the archive.
+#
+# The store persists without it. Left to its default, pnpm keeps it at the
+# root of the `/builds` volume, `/builds/.pnpm-store`, outside the checkout:
+# `git clean` leaves it alone and the next job on the same slot reuses it. The
+# nightly `prune-ci-runner` empties the volume, so the first job of the day
+# downloads — which it also did with the cache, kept on a volume the same
+# prune empties.
+#
+# The anchor still stays out of `default:`: the jobs from the security include
+# need no install. Two `cache: {}` overrides used to keep the cache off them,
+# and they were a bug of their own: on a ref where the include is skipped, they
+# survived as jobs with no `script:`, the config became invalid, and the
+# pipeline died at creation. A job override cannot outlive the job it
+# overrides.
 .pnpm: &pnpm
-  cache:
-    key:
-      files:
-        - pnpm-lock.yaml
-    paths:
-      - .pnpm-store
-      - node_modules
   before_script:
     # No version here on purpose. `packageManager` in package.json is the single
     # declaration; corepack reads it on the first `pnpm` call and fetches that
@@ -177,7 +183,6 @@ variables:
     # two drifted every job downloaded pnpm twice, the activate step being the
     # wasted one. Same reason the Dockerfile says `corepack enable pnpm` bare.
     - corepack enable
-    - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
 # One job, three commands, because the commands were never the cost.
@@ -329,7 +334,33 @@ test:integration:
   # expects, and `chromium.executablePath()` points somewhere that does not
   # exist as soon as they disagree. The dependency is pinned exactly for the
   # same reason — a caret range silently resolves past the image.
-  image: mcr.microsoft.com/playwright:v1.63.0-noble
+  #
+  # Renovate keeps them together. A custom manager in `renovate.json` reads
+  # this tag as the npm package `playwright`, so the one lookup that bumps the
+  # devDependency also bumps the tag: same version, same run, same
+  # `dependencies` merge request, same three-day floor counted from the npm
+  # publish. The image is published separately from the package; if it is not
+  # there yet, the job fails to pull it, which is loud, rather than running
+  # the wrong browser.
+  #
+  # Before that, Renovate read this line as a Docker image, and as one the tag
+  # never moved. The registry gives no release dates, an undated release never
+  # clears the shared preset's `minimumReleaseAge`, and the grouped merge
+  # request dropped the update without a word at the log level the job runs
+  # at. The package moved alone three times, and each time the tag followed
+  # by hand: c637fa0, 97602a8, and 3088d01 for !247. That Docker reading is
+  # switched off in `renovate.json`, so the two never edit this line against
+  # each other.
+  #
+  # Two things would detach them again. The custom manager matches the
+  # reference as it is written here, `mcr.microsoft.com/playwright:v<x.y.z>`
+  # with or without a distro suffix; written any other way, Renovate stops
+  # seeing it and says nothing. And no `@sha256:` digest: npm has none to
+  # offer, so Renovate would move the tag and leave the old digest, which is
+  # what the runner pulls. If they drift anyway, `inspect-spa.test.ts` fails
+  # this job with "Chromium is missing in CI" instead of skipping the
+  # browser tests.
+  image: mcr.microsoft.com/playwright:v1.64.0-noble
   <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:integration
@@ -511,9 +542,9 @@ test:package:og:
   # auto-cancelling the pipeline at all — cancel during the checks, never once a
   # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
   interruptible: false
-  image: docker:29.7.1@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
+  image: docker:29.9.1@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
   services:
-    - docker:29.7.1-dind@sha256:e8faad5a8dc5279dff929afc5449f2791736912fff9f99351d742db2fad01b4c
+    - docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
   # Nothing from an earlier stage is unpacked into the Docker build context.
   # This was written against an `install` job that published `node_modules` as
   # an artifact and is gone; what it keeps out today is the scheduled scan's

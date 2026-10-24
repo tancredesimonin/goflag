@@ -20,6 +20,8 @@
  *    `og:image`?" toggle and the Phase 9 diff classifier.
  */
 
+import type { LinkRef } from "./links/types";
+
 // ---------------------------------------------------------------------------
 // Atoms
 // ---------------------------------------------------------------------------
@@ -586,6 +588,13 @@ export interface Page {
    * if they did anything else.
    */
   assets?: Record<string, AssetProbe>;
+  /**
+   * Every `<a href>` of the static HTML, as the link audit reads them. Only
+   * set when `inspect` was asked for them (`InspectOptions.linkRefs`): the
+   * audit's crawl asks, so the link scan can take a page's links from the
+   * parse `inspect` already made instead of parsing the page again.
+   */
+  linkRefs?: LinkRef[];
 }
 
 // ---------------------------------------------------------------------------

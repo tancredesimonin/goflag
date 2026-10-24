@@ -425,6 +425,67 @@
   }
 }
 
+/* ── Hero diagram entrance ──
+ * The first tab's cards, rules and arrows land one beat after another. This was
+ * `motion`, which server-renders the starting frame inline (`opacity:0`,
+ * `scaleX(0)`) and clears it from the client. Before hydration the diagram was
+ * therefore blank, and for a reader who prefers reduced motion it stayed blank:
+ * the client renders no animation, React keeps the server's `style` attribute
+ * on hydration, and nothing ever set the final frame.
+ *
+ * Here the starting frame exists only inside the keyframes, and the keyframes
+ * only under `no-preference`. Everyone else, with or without JavaScript, gets
+ * the finished drawing. Each element staggers itself with an inline
+ * `animation-delay`, which outranks the shorthand's. `entrance.test.tsx` fails
+ * if a `.workflow-*` rule leaves this block, or a node of the diagram renders an
+ * inline style other than that delay. */
+@keyframes workflow-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes workflow-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes workflow-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Runs on the arrow's `<g>`. `stroke-dashoffset` inherits, so its stroke paths
+   follow the group's offset; they carry `pathLength="1"` and a dash of 1, which
+   is the whole path at rest, and the line before it is drawn at an offset of 1. */
+@keyframes workflow-draw {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workflow-enter {
+    animation: workflow-enter 0.4s ease-out both;
+  }
+
+  .workflow-grow-x {
+    animation: workflow-grow-x 0.35s ease-in-out both;
+  }
+
+  .workflow-grow-y {
+    animation: workflow-grow-y 0.35s ease-in-out both;
+  }
+
+  .workflow-draw {
+    animation: workflow-draw 0.45s ease-in-out both;
+  }
+}
+
 /* ── Shiki dual themes ──
  * Two producers, one switch. `rehype-pretty-code` (MDX) marks the element with
  * `data-theme`; a direct `codeToHtml` call (the rule fix snippets) marks it with
