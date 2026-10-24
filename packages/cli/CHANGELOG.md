@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.15](https://github.com/tancredesimonin/goflag/compare/v0.2.14...v0.2.15) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deps:** update dependencies ([9e84198](https://github.com/tancredesimonin/goflag/commit/9e8419840e5ea0fa09070bfe1a1ea573b2ff3dc8))
+
+
+### Performance
+
+* **cli:** a link to a page the crawl just fetched is not probed again ([f0f8e4b](https://github.com/tancredesimonin/goflag/commit/f0f8e4b5b7b0abd48f94f0eea83cc6d16fb10627))
+* **cli:** the crawl starts a page when a request finishes, not when its batch does ([c303ad4](https://github.com/tancredesimonin/goflag/commit/c303ad4a552251b78dd7be6ab048f764583efb88))
+* **cli:** the link scan reads the pages the crawl already parsed ([161b22b](https://github.com/tancredesimonin/goflag/commit/161b22bb10b3c41ee8b3e6feec522c9a4beb4392))
+
+
+### Refactor
+
+* **cli:** canonicaliseUrl has a module of its own ([3e5d82e](https://github.com/tancredesimonin/goflag/commit/3e5d82e73f298bcabb92e707634a7b3013652ba3))
+
+
+### Documentation
+
+* **cli:** the link audit's header says what the scan and the check are handed ([1ed7d43](https://github.com/tancredesimonin/goflag/commit/1ed7d43270a17948b51b8ea6fd100cfd6dfa5108))
+
 ## [0.2.14](https://github.com/tancredesimonin/goflag/compare/v0.2.13...v0.2.14) (2026-10-07)
 
 

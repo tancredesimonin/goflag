@@ -4,13 +4,17 @@
  * Takes the suite's shared `SiteDiscovery` (the page list) and runs a
  * two-phase pipeline:
  *
- *   1. **Scan** — fetch each page's static HTML (capped `maxBytes`) and
- *      extract its links with `extractLinks`. A page fetch failure is
- *      recorded in `diagnostics.pagesFailed`; it never aborts the audit.
+ *   1. **Scan** — read each page's links: from the copy the caller hands
+ *      over (`pages`), or else from its static HTML, fetched and capped at
+ *      `maxBytes`, with `extractLinks`. A page fetch failure is recorded in
+ *      `diagnostics.pagesFailed`; it never aborts the audit. A handed page
+ *      is not fetched, so it cannot fail here.
  *   2. **Check** — globally de-duplicate the link targets (the footer
  *      link on 500 pages is probed *once*) and `checkLink` each unique
  *      URL, bounded by a global concurrency cap *and* a per-host cap so a
- *      run can't get the IP banned.
+ *      run can't get the IP banned. A target the caller already holds a
+ *      GET for (`answers`) is judged from it by `checkFromAnswer` when it
+ *      can be, and not probed.
  *
  * Then it joins checks back to occurrences to build `brokenByPage` and a
  * per-verdict summary. Every loop is bounded (`maxPages`, `maxLinks`,

@@ -1,34 +1,19 @@
 ---
-updated: 2026-10-05
+updated: 2026-10-24
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-09-28: latest tags `v0.2.13` (2026-09-22), `next-v0.4.0` and
+> State observed on 2026-10-24: latest tags `v0.2.14` (2026-10-08), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
-> production on `main`; `develop` is ahead with pnpm 12 (!218, then 12.6.0 in !220), `next`
-> 16.3.6 (!220) and the documentation audit (!221).
+> production on `main`; `develop` is ahead with the audit's performance work (!252, !255),
+> `next` 16.4.2 (!251), undici 7.30.1 (!254) and the landing on a phone (!249, !250). The next
+> merge into `main` publishes `@goflag/cli` 0.2.15 and redeploys goflag.tech; `@goflag/next`
+> and `@goflag/og` moved only their devDependencies and spend no version.
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-09-22.
+> 2026-10-13.
 
 ## Now
-
-### 6.3 — an origin's unknown paths, and its `llms.txt`, are judged
-
-**Why**: pulled forward on 2026-10-05, ahead of 3.5, for openfinanceguide F09. That site
-answered `/llms.txt`, `/feed.xml` and any invented `.txt` with its home page and a 200 (its
-develop environment with a 500), and planned an `llms.txt` listing `/raw/*.md` while its
-robots.txt said `Disallow: /raw/`. goflag saw neither: it only ever asks for URLs a site
-published.
-**Done when**: `http.not-found` asks the origin for two invented paths, bare and dotted, and
-reports a 2xx or a 5xx; the `llmstxt.*` rules judge a served `/llms.txt` — its H1, its content
-type, a server error, its same-origin entries that do not answer or that robots.txt forbids —
-and stay silent on an absent file and on a catch-all `http.not-found` already reported.
-`docs/spec-and-lib-plan.md` §6.3.
-**State**: on `develop` once this merge request lands, released with the next `@goflag/cli`.
-The sites pin 0.2.13, so nothing changes for them until they bump; openfinanceguide then turns
-red on `http.not-found` — develop answers the dotted path with a 500, production with a 200,
-and its merge-request job builds what production serves — until its fix merges.
 
 ### 3.5 — translation holes move into the rule registry
 
@@ -71,6 +56,19 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **0.2.15: the audit fetches and parses each page once** (!252 and !255, 2026-10-24;
+  published when `develop` next merges into `main`) — the crawl starts a page as soon as a
+  request finishes, not when its batch of four does; the link scan reads the links the crawl
+  already parsed for the `<head>` instead of fetching and parsing every page again; and a link
+  to a page the crawl fetched straight to a 2xx is judged from that answer instead of probed.
+  The report is the same byte for byte. Against openfinanceguide's deployed develop site, each
+  measured on its own commit: the crawl from 170 s to 82 s, the scan from 91 s to 15 s, the
+  link check from 721 s to 618 s.
+- **0.2.14: an origin's unknown paths, and its `llms.txt`, are judged** (!232, tag
+  2026-10-08) — 6.3, pulled forward on 2026-10-05 for openfinanceguide F09.
+  `http.not-found` asks the origin for two invented paths, bare and dotted, and reports a 2xx
+  or a 5xx; the `llmstxt.*` rules judge a served `/llms.txt` and stay silent on an absent file
+  (`docs/spec-and-lib-plan.md` §6.3).
 - **The pages say what is true again** (2026-09-28, !221) — the documentation audit of
   2026-08-16, whose commit (`339e997`) reached its branch after the merge request had merged
   without it, replayed onto `develop`: `/changelog` carries `@goflag/og`, `/docs/og/adopting`
@@ -79,7 +77,7 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
   and 760 pages audited in 7 min (`docs/coverage-plan.md` §6), where it said 686, and 456 pages
   in 4 min. The 11 page rules and 3 site rules this roadmap listed as stale were never on the
   page — the landing had stopped quoting them on 2026-08-05 — so they left `PROOF` instead of
-  gaining a test. On `develop` until the next merge into `main`.
+  gaining a test. In production since 2026-10-08.
 - **0.2.13, and production back** (2026-09-22, !210 then !217) — `main` takes `next` 16.3.5, and
   goflag.tech, stuck on its build of 2026-08-16 since the deployment of 2026-08-23 failed on
   `@swc/helpers`, serves the docs of 2026-08-20; `@goflag/cli` 0.2.13 is on npm. The four sites

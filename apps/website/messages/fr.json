@@ -19,7 +19,7 @@
     },
     "changelog": {
       "title": "Changelog",
-      "description": "Toutes les versions publiées de @goflag/cli et @goflag/next, générées depuis l'historique des commits, avec les notes qui expliquent chaque version."
+      "description": "Toutes les versions publiées de @goflag/cli, @goflag/next et @goflag/og, générées depuis l'historique des commits, avec les notes de chaque version."
     }
   },
   "home": {
@@ -220,6 +220,7 @@
       "breaking": "Changements incompatibles",
       "features": "Fonctionnalités",
       "fixes": "Corrections de bugs",
+      "perf": "Performances",
       "docs": "Documentation",
       "other": "Autres changements"
     }

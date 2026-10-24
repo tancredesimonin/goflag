@@ -19,7 +19,7 @@ export const SITE = {
 export const PACKAGE = {
   name: "@goflag/cli",
   bin: "goflag",
-  version: "0.2.14",
+  version: "0.2.15",
   npm: "https://www.npmjs.com/package/@goflag/cli",
   repo: "https://github.com/tancredesimonin/goflag",
   issues: "https://github.com/tancredesimonin/goflag/issues",
@@ -84,7 +84,7 @@ export const INSTALL = {
  * one — a guard there would fail more often than it would catch anything.
  */
 export const PROOF = {
-  tests: 984,
+  tests: 1003,
   sitesGated: 4,
   largestSitePages: 760,
   largestSiteDuration: "7 min",
