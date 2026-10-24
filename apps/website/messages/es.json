@@ -19,7 +19,7 @@
     },
     "changelog": {
       "title": "Registro de cambios",
-      "description": "Todas las versiones publicadas de @goflag/cli y @goflag/next, generadas desde el historial de commits, con las notas que explican cada versión."
+      "description": "Todas las versiones publicadas de @goflag/cli, @goflag/next y @goflag/og, generadas desde el historial de commits, con las notas que explican cada versión."
     }
   },
   "home": {
