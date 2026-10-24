@@ -220,6 +220,7 @@
       "breaking": "Breaking changes",
       "features": "Features",
       "fixes": "Bug fixes",
+      "perf": "Performance",
       "docs": "Documentation",
       "other": "Other changes"
     }

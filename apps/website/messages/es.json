@@ -220,6 +220,7 @@
       "breaking": "Cambios incompatibles",
       "features": "Funcionalidades",
       "fixes": "Correcciones de fallos",
+      "perf": "Rendimiento",
       "docs": "Documentación",
       "other": "Otros cambios"
     }

@@ -34,7 +34,7 @@ export interface ChangelogEntry {
   commitUrl: string | null;
 }
 
-export type ChangelogSectionId = "breaking" | "features" | "fixes" | "docs" | "other";
+export type ChangelogSectionId = "breaking" | "features" | "fixes" | "perf" | "docs" | "other";
 
 export interface ChangelogSection {
   id: ChangelogSectionId;
@@ -54,12 +54,20 @@ export interface ChangelogRelease {
   note: string | null;
 }
 
+/**
+ * Headings to sections. `performance` is the one `packages/cli/.versionrc.json`
+ * writes; `performance improvements` is the generator's default, for a package
+ * that names none. Until 0.2.15 no release had a `perf` commit, and the only
+ * entry here mapped the default to `other` — so the first release whose whole
+ * point was speed rendered it under "Other changes", below a dependency bump.
+ */
 const SECTION_IDS: Record<string, ChangelogSectionId> = {
   "breaking changes": "breaking",
   features: "features",
   "bug fixes": "fixes",
+  performance: "perf",
+  "performance improvements": "perf",
   documentation: "docs",
-  "performance improvements": "other",
   reverts: "other",
 };
 
