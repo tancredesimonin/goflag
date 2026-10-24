@@ -18,9 +18,9 @@
  */
 
 import type { SiteDiscovery } from "../sitemap/types";
-import { fetchUrl } from "../net/fetch-url";
+import { capText, fetchUrl } from "../net/fetch-url";
 import { extractLinks } from "./extract";
-import { checkLink } from "./check";
+import { checkFromAnswer, checkLink, type LinkAnswer } from "./check";
 import {
   emptyVerdictSummary,
   type AuditProgress,
@@ -59,6 +59,17 @@ export interface LinkAuditOptions {
    * exactly as before, so a caller that passes nothing gets the old behaviour.
    */
   pages?: ReadonlyMap<string, HandedPage>;
+  /**
+   * GETs already made, keyed by the exact URL they asked for. A link to one of
+   * those URLs is judged from that answer when `checkFromAnswer` can — a 2xx
+   * with no redirect — and probed otherwise.
+   *
+   * The audit's crawl fetched every page it audited, and the pages of a site
+   * link to each other: on openfinanceguide, 750 of the 4,551 link targets are
+   * pages the crawl had fetched moments before, each of which the check probed
+   * again with a HEAD and a GET.
+   */
+  answers?: ReadonlyMap<string, LinkAnswer>;
   /** Injectable sleep forwarded to `checkLink` (tests). */
   sleep?: (ms: number) => Promise<void>;
   /** Progress callback fired after each scanned page and each checked link. */
@@ -172,7 +183,7 @@ export async function runLinkAudit(
     const refs =
       handed.links && !options.includeAssets && Buffer.byteLength(handed.html) <= maxBytes
         ? handed.links
-        : extractLinks(capBytes(handed.html, maxBytes), {
+        : extractLinks(capText(handed.html, maxBytes), {
             baseUrl: pageUrl,
             includeAssets: options.includeAssets,
           });
@@ -202,8 +213,23 @@ export async function runLinkAudit(
   const checks: Record<string, LinkCheck> = {};
   let checkDone = 0;
 
+  // Answers in hand first. They cost no request and almost no time, so the
+  // pool below is left with only what has to go to the network.
+  const toProbe: string[] = [];
+  for (const url of uniqueUrls) {
+    const answer = options.answers?.get(url);
+    const check = answer ? checkFromAnswer(url, answer) : undefined;
+    if (!check) {
+      toProbe.push(url);
+      continue;
+    }
+    checks[url] = check;
+    checkDone += 1;
+    options.onProgress?.({ phase: "check", done: checkDone, total: uniqueUrls.length });
+  }
+
   await mapWithHostCaps(
-    uniqueUrls,
+    toProbe,
     {
       concurrency: options.checkConcurrency ?? DEFAULTS.checkConcurrency,
       perHost: options.maxPerHost ?? DEFAULTS.maxPerHost,
@@ -277,16 +303,6 @@ function buildBrokenByPage(
   return Array.from(byPage.entries())
     .map(([pageUrl, map]) => ({ pageUrl, broken: Array.from(map.values()) }))
     .sort((a, b) => b.broken.length - a.broken.length);
-}
-
-/**
- * The same cut `fetchUrl` makes when it stops reading at `maxBytes`: bytes,
- * not characters, so a page handed over yields the very links a fetch of it
- * would have.
- */
-function capBytes(text: string, maxBytes: number): string {
-  if (Buffer.byteLength(text, "utf8") <= maxBytes) return text;
-  return Buffer.from(text, "utf8").subarray(0, maxBytes).toString("utf8");
 }
 
 function hostOf(url: string): string {

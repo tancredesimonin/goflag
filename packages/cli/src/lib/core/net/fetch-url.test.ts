@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { fetchUrl, DEFAULT_USER_AGENT } from "./fetch-url";
+import { capText, fetchUrl, DEFAULT_USER_AGENT } from "./fetch-url";
 import {
   startAuditFixtureServer,
   startSelfSignedHttpsServer,
@@ -155,5 +155,21 @@ describe("fetchUrl — TLS handling", () => {
     const res = await fetchUrl(tls.url, { allowInsecureTls: true });
     expect(res.status).toBe(200);
     expect(res.body).toContain("secure ok");
+  });
+});
+
+describe("capText", () => {
+  it("leaves a body within the cap as it is", () => {
+    expect(capText('<a href="/x">x</a>', 64)).toBe('<a href="/x">x</a>');
+  });
+
+  it("cuts in bytes, where a capped read would, not in characters", () => {
+    // "é" is two bytes and the emoji four, so byte and character cuts differ,
+    // and some cuts land inside a character.
+    const text = "aé🎵".repeat(50);
+    for (const maxBytes of [1, 2, 3, 4, 5, 6, 7, 64, 200, 349]) {
+      const fromBuffer = Buffer.from(text, "utf8").subarray(0, maxBytes).toString("utf8");
+      expect(capText(text, maxBytes)).toBe(fromBuffer);
+    }
   });
 });

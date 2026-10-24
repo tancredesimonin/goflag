@@ -195,6 +195,18 @@ function normaliseContentType(raw: string | null): string | undefined {
 }
 
 /**
+ * The text a read stopped at `maxBytes` returns, for a body already in memory:
+ * the same cut as `readCappedText`, in bytes rather than characters, so code
+ * that reads a page handed over sees what a fetch of it would have seen.
+ */
+export function capText(text: string, maxBytes: number): string {
+  if (Buffer.byteLength(text, "utf8") <= maxBytes) return text;
+  // `maxBytes` bytes never decode to more than `maxBytes` characters, so the
+  // cut needs that much of the string and not a copy of the whole page.
+  return Buffer.from(text.slice(0, maxBytes), "utf8").subarray(0, maxBytes).toString("utf8");
+}
+
+/**
  * Read a response body as UTF-8 text, stopping once `maxBytes` have been
  * consumed. Falls back to a buffered read if the body isn't a stream.
  */
