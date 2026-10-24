@@ -84,7 +84,7 @@ export const INSTALL = {
  * one — a guard there would fail more often than it would catch anything.
  */
 export const PROOF = {
-  tests: 984,
+  tests: 1003,
   sitesGated: 4,
   largestSitePages: 760,
   largestSiteDuration: "7 min",
