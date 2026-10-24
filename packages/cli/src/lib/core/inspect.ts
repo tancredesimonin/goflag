@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import type { ExtractorMode, FetchMeta, Page } from "./types";
 
 /**
@@ -6,7 +7,7 @@ import type { ExtractorMode, FetchMeta, Page } from "./types";
  * without reaching into individual extractor modules.
  */
 export type InspectMode = "auto" | ExtractorMode;
-import { extractStatic } from "./extract/static";
+import { extractStatic, extractStaticFrom, type StaticExtraction } from "./extract/static";
 import { fetchStatic, type FetchStaticOptions } from "./fetch/static";
 import {
   extractHeadless,
@@ -18,6 +19,8 @@ import { computeHydrationDelta } from "./extract/hydration";
 import { probeManifest } from "./probes/manifest";
 import { probeRobots } from "./probes/robots";
 import { probeSitemap } from "./probes/sitemap";
+import { extractLinksFrom } from "./links/extract";
+import type { LinkRef } from "./links/types";
 
 export interface InspectOptions extends FetchStaticOptions {
   /**
@@ -41,6 +44,12 @@ export interface InspectOptions extends FetchStaticOptions {
    * `launcher` here to avoid touching the real Playwright binary.
    */
   headless?: Pick<HeadlessExtractOptions, "launcher" | "waitUntil" | "timeoutMs">;
+  /**
+   * Also read the static HTML's `<a href>` links into `Page.linkRefs`, from
+   * the same parse. Defaults to `false`; the audit's crawl sets it so its link
+   * scan does not parse every page a second time.
+   */
+  linkRefs?: boolean;
 }
 
 /**
@@ -58,6 +67,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
     probes: enableProbes = true,
     mode = "auto",
     headless: headlessOpts,
+    linkRefs: wantLinkRefs = false,
     ...fetchOptions
   } = options;
 
@@ -77,7 +87,10 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
 
   // Both `"static"` and `"auto"` start with a static fetch + parse.
   const { meta: staticMeta, body: staticBody } = await fetchStatic(url, fetchOptions);
-  const staticParsed = extractStatic(staticBody, { baseUrl: staticMeta.finalUrl });
+  const { staticParsed, linkRefs } = parseStatic(staticBody, staticMeta.finalUrl, wantLinkRefs);
+  // From the static HTML on every path, the escalated one included: that is
+  // the HTML the link audit scans, `html.static`.
+  const withLinkRefs = linkRefs ? { linkRefs } : {};
 
   if (mode === "static") {
     const probes = await runProbes({
@@ -93,6 +106,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       extractor: { mode: "static", escalated: false },
       html: { static: staticBody },
       probes,
+      ...withLinkRefs,
     };
   }
 
@@ -112,6 +126,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       extractor: { mode: "static", escalated: false },
       html: { static: staticBody },
       probes,
+      ...withLinkRefs,
     };
   }
 
@@ -151,6 +166,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       },
       html: { static: staticBody },
       probes,
+      ...withLinkRefs,
     };
   }
 
@@ -175,7 +191,26 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
     html: { static: staticBody, rendered: renderedBody },
     hydration,
     probes,
+    ...withLinkRefs,
   };
+}
+
+/**
+ * Parse the static HTML once, for the `<head>` and — when asked — the links.
+ *
+ * Its own function so the parsed document goes out of scope when it returns.
+ * Held as a local of `inspect`, it would stay alive across every `await` that
+ * follows, and on a large page that is the biggest object in the process.
+ */
+function parseStatic(
+  html: string,
+  baseUrl: string,
+  wantLinkRefs: boolean,
+): { staticParsed: StaticExtraction; linkRefs?: LinkRef[] } {
+  const $ = cheerio.load(html);
+  const staticParsed = extractStaticFrom($, { baseUrl });
+  if (!wantLinkRefs) return { staticParsed };
+  return { staticParsed, linkRefs: extractLinksFrom($, { baseUrl }) };
 }
 
 async function inspectHeadlessOnly(args: {

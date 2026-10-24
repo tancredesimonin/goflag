@@ -12,7 +12,7 @@
  * images/assets surface too.
  *
  * Every URL is resolved against the page's (post-redirect) base URL,
- * then canonicalised with `canonicaliseUrl` (reused from `crawl.ts`,
+ * then canonicalised with `canonicaliseUrl` (shared with the crawl,
  * which strips the fragment, preserves trailing slashes and rejects
  * `mailto:` / `tel:` / `javascript:`). Non-canonicalisable links (e.g.
  * `mailto:`) are still reported — with their `rawHref` — so the checker
@@ -20,7 +20,7 @@
  */
 
 import * as cheerio from "cheerio";
-import { canonicaliseUrl } from "../crawl";
+import { canonicaliseUrl } from "../canonicalise";
 import type { LinkKind, LinkRef, LinkSource } from "./types";
 
 export interface ExtractLinksOptions {
@@ -52,7 +52,15 @@ const ASSET_SPECS: ElementSpec[] = [
  * occurrence list tidy.
  */
 export function extractLinks(html: string, options: ExtractLinksOptions): LinkRef[] {
-  const $ = cheerio.load(html);
+  return extractLinksFrom(cheerio.load(html), options);
+}
+
+/**
+ * The same, from a document already parsed. `inspect` uses it to read a page's
+ * links from the parse it made for the `<head>`, so the link audit does not
+ * parse the page a second time.
+ */
+export function extractLinksFrom($: cheerio.CheerioAPI, options: ExtractLinksOptions): LinkRef[] {
   // Relative links resolve against <base href> when present; "internal vs
   // external" is judged against the *audited* origin (the page URL).
   const base = resolveBase($, options.baseUrl);

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { checkLink } from "./check";
+import { checkFromAnswer, checkLink, type LinkAnswer } from "./check";
+import { fetchUrl } from "../net/fetch-url";
 import {
   startAuditFixtureServer,
   type AuditFixtureServer,
@@ -108,5 +109,60 @@ describe("checkLink — real fetch path", () => {
     const check = await checkLink("http://nonexistent.invalid.goflag-test/", { sleep: noSleep });
     expect(check.verdict).toBe("broken");
     expect(check.reason).toBe("dns");
+  });
+});
+
+describe("checkFromAnswer — the probe's verdict from a GET already made", () => {
+  let server: AuditFixtureServer;
+
+  beforeAll(async () => {
+    server = await startAuditFixtureServer();
+  });
+  afterAll(async () => {
+    await server.stop();
+  });
+  beforeEach(() => server.reset());
+
+  /** A GET of `path` as the crawl makes it: whole body, no redirect. */
+  async function answerFor(path: string): Promise<LinkAnswer> {
+    const res = await fetchUrl(`${server.url}${path}`, { redirect: "manual", maxBytes: 1 << 24 });
+    return { status: res.status, body: res.body ?? "", checkedAt: "t", durationMs: 1 };
+  }
+
+  const comparable = ({ checkedAt: _c, durationMs: _d, ...rest }: Record<string, unknown>) => rest;
+
+  it("agrees with a probe on a page that answers 200", async () => {
+    const fromAnswer = checkFromAnswer(`${server.url}/about`, await answerFor("/about"));
+    const probed = await checkLink(`${server.url}/about`, { sleep: noSleep });
+    expect(fromAnswer?.verdict).toBe("ok");
+    expect(comparable({ ...fromAnswer })).toEqual(comparable({ ...probed }));
+  });
+
+  it("agrees with a probe on a soft 404", async () => {
+    const fromAnswer = checkFromAnswer(`${server.url}/soft-404`, await answerFor("/soft-404"));
+    const probed = await checkLink(`${server.url}/soft-404`, { sleep: noSleep });
+    expect(fromAnswer?.verdict).toBe("warning");
+    expect(comparable({ ...fromAnswer })).toEqual(comparable({ ...probed }));
+  });
+
+  it("reads only the bytes a probe would read for the soft-404 test", () => {
+    // Past the 16 KB a probe reads, the words "not found" are never seen, and
+    // a body that long is no soft 404 anyway.
+    const body = `${" ".repeat(20_000)}Page not found`;
+    const check = checkFromAnswer("https://x.test/p", {
+      status: 200,
+      body,
+      checkedAt: "t",
+      durationMs: 1,
+    });
+    expect(check?.verdict).toBe("ok");
+  });
+
+  it("leaves anything but a 2xx to a probe", () => {
+    for (const status of [301, 404, 429, 500]) {
+      expect(
+        checkFromAnswer("https://x.test/p", { status, body: "", checkedAt: "t", durationMs: 1 }),
+      ).toBeUndefined();
+    }
   });
 });
