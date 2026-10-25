@@ -53,7 +53,7 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **A robots.txt that keeps an AI answer engine's search crawler out is asked about** (!260,
+- **A robots.txt that keeps an AI answer engine's search crawler out is asked about** (!261,
   2026-10-25; published with the next `@goflag/cli`) — `robotstxt.blocks-ai-search`, a
   question under `--advisories`, for a file that lets Googlebot fetch `/` and disallows
   `OAI-SearchBot`, `Claude-SearchBot` or `PerplexityBot` there, whether through the crawler's
