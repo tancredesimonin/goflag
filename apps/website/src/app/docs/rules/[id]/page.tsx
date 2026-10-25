@@ -134,9 +134,7 @@ export default async function RulePage({ params }: PageProps) {
           ) : (
             <>
               <span className="text-terminal-dim">{rule.id}</span>{" "}
-              <span className="text-terminal-dim">
-                ({rule.samplePages} page{rule.samplePages === 1 ? "" : "s"})
-              </span>
+              <span className="text-terminal-dim">(6 pages)</span>
               <br />
               <span className="pl-4">{stripTicks(rule.message)}</span>
             </>
