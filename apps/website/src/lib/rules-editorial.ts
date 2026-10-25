@@ -284,6 +284,9 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "`Sitemap:` must be a full URL: line 3 declares `/sitemap.xml`. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.",
   },
+  "robotstxt.blocks-ai-search": {
+    why: "A search crawler kept out is a site left out: OpenAI says a site that disallows OAI-SearchBot is not shown in ChatGPT search answers, and Anthropic and Perplexity say as much of theirs in softer words. Choosing that is yours to do, and goflag does not call it a mistake. It asks because the accident looks identical — a `User-agent: *` disallow with a Googlebot exception, or a list of AI bots pasted from somewhere, catches the search crawlers along with the training ones. You get, for each crawler, the group and the line that kept it out. Read at `/`, for the three search crawlers only: training crawlers (`GPTBot`, `ClaudeBot`) decide what a model learns from, not what an engine cites, and fetchers acting for a person (`ChatGPT-User`, `Claude-User`, `Perplexity-User`) fetch one page on request rather than build an index. Silent when the file keeps Googlebot out as well, since nothing then singles an AI engine out.",
+  },
   "robots.blocks-site": {
     why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     message:

@@ -32,6 +32,7 @@
  */
 
 import { splitRoute } from "../core/i18n";
+import { robotsAllows, type RobotsDecision } from "../core/robots/match";
 import type { SiteContext } from "./site-types";
 import { sitemapReadInFull } from "./sitemap-inventory";
 import type { AdvisoryFinding, Rigor } from "./types";
@@ -170,7 +171,147 @@ const hreflangSitemapMismatch: SiteProseRule = {
   },
 };
 
-export const SITE_PROSE_RULES: readonly SiteProseRule[] = [hreflangSitemapMismatch];
+/**
+ * The crawler each AI answer engine documents as the one that puts a site into
+ * its search answers — one per vendor that documents one, with the source that
+ * says so. Product tokens as the vendors spell them; the matcher folds case.
+ */
+const AI_SEARCH_CRAWLERS = [
+  {
+    userAgent: "OAI-SearchBot",
+    operator: "OpenAI",
+    engine: "ChatGPT search",
+    source: "openai-crawlers",
+  },
+  {
+    userAgent: "Claude-SearchBot",
+    operator: "Anthropic",
+    engine: "Claude",
+    source: "anthropic-crawlers",
+  },
+  {
+    userAgent: "PerplexityBot",
+    operator: "Perplexity",
+    engine: "Perplexity",
+    source: "perplexity-crawlers",
+  },
+] as const;
+
+/** A matcher decision as evidence: the group, its lines, the rule that decided. */
+function decidedBy(decision: RobotsDecision) {
+  return {
+    // `null` when no group names the agent and there is no `*` either: the
+    // file says nothing to it, which is an observation of its own.
+    group: decision.group ?? null,
+    groupLines: decision.groupLines ?? [],
+    rule: decision.rule
+      ? { kind: decision.rule.kind, pattern: decision.rule.pattern, line: decision.rule.line }
+      : null,
+  };
+}
+
+/**
+ * `robots.txt` lets Googlebot in and keeps an AI answer engine's search crawler
+ * out.
+ *
+ * OpenAI, Anthropic and Perplexity each document one crawler whose access
+ * decides whether a site can appear in their search answers —
+ * `OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot` — and each says
+ * robots.txt governs it. That makes the outcome of a disallow `vendor-spec`:
+ * OpenAI says an opted-out site is not shown in ChatGPT search answers,
+ * Anthropic that it may lose visibility, Perplexity that allowing its crawler
+ * is how a site appears.
+ *
+ * ## Why a question and not a finding
+ *
+ * Opting out is a choice the vendors built their tokens to allow. Each keeps
+ * its search crawler apart from its training crawler so that a site can refuse
+ * one and keep the other, or refuse both, and no document says a site should
+ * not. So goflag has no verdict to give. What it can see is narrower and still
+ * worth asking: the file treats Google's search crawler and an AI engine's
+ * differently. That happens on purpose, and it happens by accident — a
+ * `User-agent: *` disallow written for scrapers with a Googlebot exception, or
+ * a list of "AI bots" pasted in whole, catches the search crawlers along with
+ * the training ones. Only the site knows which, so the question says what the
+ * file does to each crawler and asks.
+ *
+ * ## What "a site asking to be indexed" means here
+ *
+ * Googlebot may fetch `/`. That is the file's own statement that the site
+ * wants to be found, and the comparison the question rests on. When Googlebot
+ * is kept out too, nothing singles an AI engine out and the whole-site case
+ * belongs to `robots.blocks-site`. Decided at `/`, as `robots.blocks-site`
+ * decides: a disallow narrower than the root keeps a crawler out of a section,
+ * not out of the site.
+ *
+ * ## Out of scope
+ *
+ * - **Training crawlers** (`GPTBot`, `ClaudeBot`). Disallowing them decides
+ *   what a model is trained on, not whether a site is cited — and refusing
+ *   them is the common, deliberate case, so asking would be noise.
+ * - **Fetchers acting for a person** (`ChatGPT-User`, `Claude-User`,
+ *   `Perplexity-User`). They fetch one page because someone asked, not to
+ *   build an index, and two of the three operators say robots.txt may not
+ *   apply to them — so the file does not reliably decide what they do.
+ */
+const robotstxtBlocksAiSearch: SiteProseRule = {
+  id: "robotstxt.blocks-ai-search",
+  summary: "`robots.txt` lets Googlebot in and keeps an AI answer engine's search crawler out",
+  prose:
+    "Your robots.txt lets Googlebot in but disallows the search crawler of an AI answer " +
+    "engine — OAI-SearchBot, Claude-SearchBot or PerplexityBot — which each operator says " +
+    "is how a site gets into that engine's answers. Did you mean to keep this site out of " +
+    "them, or did a group written for other crawlers catch this one too?",
+  why:
+    "Each vendor gives search its own token so that a site can refuse training and still be " +
+    "cited, or refuse both, and no document says it should not — so keeping one out is not " +
+    "a defect. A file that lets Google's search crawler in and keeps an AI engine's out may " +
+    "mean exactly that, or may be a `User-agent: *` disallow or a pasted list of AI bots " +
+    "catching a crawler it was not written for. Only the site can say which.",
+  rigor: "vendor-spec",
+  sources: AI_SEARCH_CRAWLERS.map((crawler) => crawler.source),
+  appliesTo: (site) =>
+    site.robots?.found === true && robotsAllows(site.robots.groups, "/", "Googlebot").allowed,
+  ask: (site) => {
+    const probe = site.robots!;
+
+    const disallowed: Array<(typeof AI_SEARCH_CRAWLERS)[number] & ReturnType<typeof decidedBy>> =
+      [];
+    const allowed: string[] = [];
+    for (const crawler of AI_SEARCH_CRAWLERS) {
+      const decision = robotsAllows(probe.groups, "/", crawler.userAgent);
+      if (decision.allowed) {
+        allowed.push(crawler.userAgent);
+        continue;
+      }
+      disallowed.push({ ...crawler, ...decidedBy(decision) });
+    }
+    if (disallowed.length === 0) return [];
+
+    return [
+      {
+        pageUrl: probe.url,
+        evidence: {
+          path: "/",
+          // The half of the comparison the premise rests on, with the group and
+          // rule that let it in, so an agent can check the premise rather than
+          // take it on trust.
+          googlebot: decidedBy(robotsAllows(probe.groups, "/", "Googlebot")),
+          disallowed,
+          // The engines the file lets in, by token. A file that keeps out one
+          // of three looks different from one that keeps out all three, and
+          // the difference is the agent's to read.
+          allowed,
+        },
+      },
+    ];
+  },
+};
+
+export const SITE_PROSE_RULES: readonly SiteProseRule[] = [
+  hreflangSitemapMismatch,
+  robotstxtBlocksAiSearch,
+];
 
 export function getSiteProseRule(id: string): SiteProseRule | undefined {
   return SITE_PROSE_RULES.find((rule) => rule.id === id);

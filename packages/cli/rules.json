@@ -2,7 +2,7 @@
   "counts": {
     "page": 25,
     "site": 34,
-    "prose": 5
+    "prose": 6
   },
   "sources": {
     "anthropic-crawlers": {
@@ -165,6 +165,20 @@
       "title": "The Open Graph protocol",
       "rigor": "vendor-spec",
       "url": "https://ogp.me/"
+    },
+    "openai-crawlers": {
+      "id": "openai-crawlers",
+      "publisher": "OpenAI",
+      "title": "Overview of OpenAI Crawlers",
+      "rigor": "vendor-spec",
+      "url": "https://developers.openai.com/api/docs/bots"
+    },
+    "perplexity-crawlers": {
+      "id": "perplexity-crawlers",
+      "publisher": "Perplexity",
+      "title": "Perplexity Crawlers",
+      "rigor": "vendor-spec",
+      "url": "https://docs.perplexity.ai/guides/bots"
     },
     "sitemaps-protocol": {
       "id": "sitemaps-protocol",
@@ -1001,6 +1015,21 @@
         "http.headers"
       ],
       "expected": "consistent indexing directives across meta tags and headers"
+    },
+    {
+      "id": "robotstxt.blocks-ai-search",
+      "scope": "prose",
+      "severity": null,
+      "kind": "prose",
+      "summary": "`robots.txt` lets Googlebot in and keeps an AI answer engine's search crawler out",
+      "why": "Each vendor gives search its own token so that a site can refuse training and still be cited, or refuse both, and no document says it should not — so keeping one out is not a defect. A file that lets Google's search crawler in and keeps an AI engine's out may mean exactly that, or may be a `User-agent: *` disallow or a pasted list of AI bots catching a crawler it was not written for. Only the site can say which.",
+      "rigor": "vendor-spec",
+      "sources": [
+        "openai-crawlers",
+        "anthropic-crawlers",
+        "perplexity-crawlers"
+      ],
+      "prose": "Your robots.txt lets Googlebot in but disallows the search crawler of an AI answer engine — OAI-SearchBot, Claude-SearchBot or PerplexityBot — which each operator says is how a site gets into that engine's answers. Did you mean to keep this site out of them, or did a group written for other crawlers catch this one too?"
     },
     {
       "id": "robotstxt.cross-origin",
