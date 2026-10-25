@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.16](https://github.com/tancredesimonin/goflag/compare/v0.2.15...v0.2.16) (2026-10-25)
+
+
+### Features
+
+* **cli:** a robots.txt that keeps AI answer engines out is a warning, not a question ([207b1b4](https://github.com/tancredesimonin/goflag/commit/207b1b43ece4fcc4a5259089d4dba0812e570980))
+* **cli:** a robots.txt that keeps an AI answer engine's search crawler out is asked about ([35242e0](https://github.com/tancredesimonin/goflag/commit/35242e08bd1b058e5d49b6f9268ac1e80e74c65a))
+
+
+### Bug Fixes
+
+* **cli:** a robots.txt decision names the agent that chose its group ([faee9ec](https://github.com/tancredesimonin/goflag/commit/faee9ecee43582b08d49f0182fb4657697d6ee2a))
+* **cli:** robots.blocks-site is silent on a Googlebot allowlist and names the agents let in ([5bcb156](https://github.com/tancredesimonin/goflag/commit/5bcb156ce96292f72e1ed1eebd1839bd58566d79))
+* **cli:** the robots rules decide for the agent their sources document, not for `*` ([cae495e](https://github.com/tancredesimonin/goflag/commit/cae495e784c10d1cdae77c3462ec753833205d66))
+
 ## [0.2.15](https://github.com/tancredesimonin/goflag/compare/v0.2.14...v0.2.15) (2026-10-24)
 
 

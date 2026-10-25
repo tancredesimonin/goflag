@@ -1,17 +1,14 @@
 ---
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-10-24: latest tags `v0.2.14` (2026-10-08), `next-v0.4.0` and
+> State observed on 2026-10-25: latest tags `v0.2.15` (2026-10-24), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
-> production on `main`; `develop` is ahead with the audit's performance work (!252, !255),
-> `next` 16.4.2 (!251), undici 7.30.1 (!254) and the landing on a phone (!249, !250). The next
-> merge into `main` publishes `@goflag/cli` 0.2.15 and redeploys goflag.tech; `@goflag/next`
-> and `@goflag/og` moved only their devDependencies and spend no version.
+> production on `main`, and the two carry the same code since the release merge (!257).
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-10-13.
+> 2026-10-24.
 
 ## Now
 
@@ -20,8 +17,8 @@ updated: 2026-10-24
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: half done. The second half holds: the catalogue exposes 64 rules — 25 page,
-34 site, 5 prose — and the only one at `rigor: null` is the prose rule
+**State**: half done. The second half holds: the catalogue exposes 65 rules — 25 page,
+35 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still
@@ -56,10 +53,20 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **0.2.15: the audit fetches and parses each page once** (!252 and !255, 2026-10-24;
-  published when `develop` next merges into `main`) — the crawl starts a page as soon as a
-  request finishes, not when its batch of four does; the link scan reads the links the crawl
-  already parsed for the `<head>` instead of fetching and parsing every page again; and a link
+- **A robots.txt that keeps AI answer engines out is a finding** (!261, 2026-10-25; published
+  with the next `@goflag/cli`) — `robots.blocks-ai-answers`, a site rule at `warning`, for a
+  file that lets Googlebot fetch `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`,
+  `PerplexityBot` or `Claude-User`, whether through the agent's own group or through
+  `User-agent: *`. Each operator states what follows — left out of ChatGPT search answers, not
+  indexed for Claude's search, not crawled for Perplexity's results, not fetched when someone
+  asks Claude about a page — so it cites the three pages at `vendor-spec` and names, for each
+  agent, the group and the line that kept it out. Training crawlers, and the `-User` fetchers
+  whose operators say robots.txt may not bind them, are left out. The RFC 9309 matcher now
+  names the `User-agent` that selected a group, where it named the group's first line.
+- **0.2.15: the audit fetches and parses each page once** (!252 and !255, tag 2026-10-24) —
+  the crawl starts a page as soon as a request finishes, not when its batch of four does; the
+  link scan reads the links the crawl already parsed for the `<head>` instead of fetching and
+  parsing every page again; and a link
   to a page the crawl fetched straight to a 2xx is judged from that answer instead of probed.
   The report is the same byte for byte. Against openfinanceguide's deployed develop site, each
   measured on its own commit: the crawl from 170 s to 82 s, the scan from 91 s to 15 s, the

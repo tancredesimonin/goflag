@@ -31,8 +31,20 @@ export interface RobotsDecision {
   allowed: boolean;
   /** The rule that decided, absent when nothing matched (allow by default). */
   rule?: RobotsRule;
-  /** Which group's rules were consulted; `*` or a product token. */
+  /**
+   * Which group's rules were consulted: `*`, or the product token that selected
+   * the group. That token, not the group's first `User-agent` — a group that
+   * opens with `GPTBot` and goes on to name `OAI-SearchBot` was chosen for
+   * `OAI-SearchBot` by the second line, and saying `gptbot` would point a
+   * reader at the wrong agent.
+   */
   group?: string;
+  /**
+   * The `User-agent` lines naming `group`, ascending — several when duplicate
+   * groups were merged. A finding can then point at the group as well as at
+   * the rule that decided.
+   */
+  groupLines?: number[];
 }
 
 /**
@@ -46,12 +58,16 @@ export function robotsAllows(
   path: string,
   userAgent = "*",
 ): RobotsDecision {
-  const group = selectGroup(groups, userAgent);
+  const selected = selectGroup(groups, userAgent);
   // No group applies: nothing forbids anything. §2.2.1 — a file that names
   // only `Googlebot` says nothing at all about anyone else.
-  if (!group) return { allowed: true };
+  if (!selected) return { allowed: true };
 
-  const token = group.userAgents[0]?.value ?? "*";
+  const { group, token } = selected;
+  const groupLines = group.userAgents
+    .filter((agent) => agent.value === token)
+    .map((agent) => agent.line)
+    .sort((a, b) => a - b);
 
   let best: RobotsRule | undefined;
   let bestLength = -1;
@@ -69,8 +85,8 @@ export function robotsAllows(
     if (length === bestLength && rule.kind === "allow") best = rule;
   }
 
-  if (!best) return { allowed: true, group: token };
-  return { allowed: best.kind === "allow", rule: best, group: token };
+  if (!best) return { allowed: true, group: token, groupLines };
+  return { allowed: best.kind === "allow", rule: best, group: token, groupLines };
 }
 
 /**
@@ -82,7 +98,10 @@ export function robotsAllows(
  * groups for one token are merged, because a file that names the same agent
  * twice means the union and crawlers read it that way.
  */
-function selectGroup(groups: readonly RobotsGroup[], userAgent: string): RobotsGroup | undefined {
+function selectGroup(
+  groups: readonly RobotsGroup[],
+  userAgent: string,
+): { group: RobotsGroup; token: string } | undefined {
   const wanted = userAgent.trim().toLowerCase();
 
   let bestToken: string | undefined;
@@ -103,11 +122,14 @@ function selectGroup(groups: readonly RobotsGroup[], userAgent: string): RobotsG
     group.userAgents.some((agent) => agent.value === token),
   );
   if (matching.length === 0) return undefined;
-  if (matching.length === 1) return matching[0];
+  if (matching.length === 1) return { group: matching[0]!, token };
 
   return {
-    userAgents: matching.flatMap((group) => group.userAgents),
-    rules: matching.flatMap((group) => group.rules),
+    group: {
+      userAgents: matching.flatMap((group) => group.userAgents),
+      rules: matching.flatMap((group) => group.rules),
+    },
+    token,
   };
 }
 

@@ -156,8 +156,8 @@ npx @goflag/cli rules > rules.json
 ```
 
 `rules` answers a question about goflag rather than about a site: no URL, no
-crawl, no network. It ships sixty-four rules — twenty-five page rules,
-thirty-four site rules and five prose rules — and every entry carries its
+crawl, no network. It ships sixty-five rules — twenty-five page rules,
+thirty-five site rules and five prose rules — and every entry carries its
 scope, severity and summary. All but one also carry a rigor, the documents they
 cite and, where a remedy is a line of code, a fix snippet. The exception is
 `hreflang.sitemap-mismatch`, which emits `rigor: null` with an empty `sources`
@@ -558,7 +558,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.15"
+  GOFLAG_VERSION: "0.2.16"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -610,7 +610,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.15 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.16 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

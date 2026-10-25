@@ -18,7 +18,10 @@ import { buildClusterIndex } from "../core/clusters";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
 import type { RobotsProbe } from "../core/types";
 import { collectSiteAdvisories, getSiteProseRule, SITE_PROSE_RULES } from "./site-prose";
+import { getSource } from "./sources";
+import type { SourceRigor } from "./sources/types";
 import type { SiteContext } from "./site-types";
+import type { Rigor } from "./types";
 import { pageFromHtml } from "./test-utils";
 
 const MISMATCH = getSiteProseRule("hreflang.sitemap-mismatch");
@@ -274,5 +277,48 @@ describe("hreflang.sitemap-mismatch, on a sitemap goflag did not read in full", 
         robots: robotsDeclaring("/sitemap.xml", "/fr.xml"),
       }),
     ).toEqual([]);
+  });
+});
+
+describe("the cross-page questions' provenance", () => {
+  // The contract `site-rules.test.ts` holds the cross-page rules to, applied
+  // to the questions too, so the first one to cite documents meets it. A
+  // question with no rigor is honest; one that claims a rigor its sources do
+  // not carry is not.
+  it("cites real sources wherever it claims a rigor, and none where it claims none", () => {
+    for (const rule of SITE_PROSE_RULES) {
+      if (rule.rigor === undefined) {
+        expect(rule.sources ?? [], rule.id).toHaveLength(0);
+        continue;
+      }
+      expect(rule.sources?.length, rule.id).toBeGreaterThan(0);
+      for (const id of rule.sources ?? []) {
+        expect(getSource(id), `${rule.id} cites unknown source ${id}`).toBeDefined();
+      }
+    }
+  });
+
+  it("never claims more authority than its strongest source carries", () => {
+    // Same table as `site-rules.test.ts`, duplicated for the reason given
+    // there: one registry's contract must not silently change another's.
+    const NEEDS: Record<Rigor, SourceRigor> = {
+      "spec-required": "normative",
+      "spec-recommended": "normative",
+      "vendor-spec": "vendor-spec",
+      guideline: "guideline",
+      heuristic: "heuristic",
+    };
+    const AUTHORITY: Record<SourceRigor, number> = {
+      normative: 4,
+      "vendor-spec": 3,
+      guideline: 2,
+      heuristic: 1,
+    };
+
+    for (const rule of SITE_PROSE_RULES) {
+      if (rule.rigor === undefined) continue;
+      const best = Math.max(...(rule.sources ?? []).map((id) => AUTHORITY[getSource(id)!.rigor]));
+      expect(best, rule.id).toBeGreaterThanOrEqual(AUTHORITY[NEEDS[rule.rigor]]);
+    }
   });
 });

@@ -275,7 +275,7 @@ describe("llmstxt.link.blocked-by-robots", () => {
     expect(found[0]!.message).toContain("the file itself");
   });
 
-  it("reads the group for `*`, not a group addressed to someone else", () => {
+  it("reads the group Claude-User reads, not one addressed to someone else", () => {
     const ctx = site({
       llmsTxt: served(MARKDOWN),
       robots: robots("User-agent: Googlebot\nDisallow: /raw/\n"),
@@ -283,8 +283,61 @@ describe("llmstxt.link.blocked-by-robots", () => {
     expect(run(ctx, "llmstxt.link.blocked-by-robots")).toEqual([]);
   });
 
-  it("leaves a site-wide disallow to robots.blocks-site", () => {
-    const ctx = site({ llmsTxt: served(MARKDOWN), robots: robots("User-agent: *\nDisallow: /\n") });
+  it("names `*` when Claude-User reads it, in the words it always used", () => {
+    const [finding] = run(
+      site({ llmsTxt: served(MARKDOWN), robots: robots(RAW_BLOCKED) }),
+      "llmstxt.link.blocked-by-robots",
+    );
+    expect(finding!.message).toContain("disallowed by `robots.txt` for `User-agent: *`:");
+  });
+
+  it("is silent on URLs `*` keeps out and Claude-User's own group lets in", () => {
+    // The reader the file is written for may fetch them; a `*` reading told
+    // the site it could not.
+    const ctx = site({
+      llmsTxt: served(MARKDOWN),
+      robots: robots(`User-agent: Claude-User\nAllow: /\n\n${RAW_BLOCKED}`),
+    });
     expect(run(ctx, "llmstxt.link.blocked-by-robots")).toEqual([]);
+  });
+
+  it("reports URLs Claude-User's own group keeps out, though `*` lets them in", () => {
+    const [finding] = run(
+      site({
+        llmsTxt: served(MARKDOWN),
+        robots: robots("User-agent: *\nAllow: /\n\nUser-agent: Claude-User\nDisallow: /raw/\n"),
+      }),
+      "llmstxt.link.blocked-by-robots",
+    );
+    expect(finding!.message).toContain("for `User-agent: claude-user`:");
+    expect(finding!.message).toContain(`${O}/raw/guide.md (line 5: Disallow: /raw/)`);
+  });
+
+  it("names the token that chose Claude-User's group, however short", () => {
+    // `Claude` is a prefix of `Claude-User`, so it is the group Claude-User
+    // reads — and the one that keeps it out of /raw/.
+    const [finding] = run(
+      site({ llmsTxt: served(MARKDOWN), robots: robots("User-agent: Claude\nDisallow: /raw/\n") }),
+      "llmstxt.link.blocked-by-robots",
+    );
+    expect(finding!.message).toContain("for `User-agent: claude`:");
+  });
+
+  it("leaves Claude-User kept out of the whole site to the rules that say so once", () => {
+    // `robots.blocks-site` when Googlebot is kept out too…
+    const blocked = site({
+      llmsTxt: served(MARKDOWN),
+      robots: robots("User-agent: *\nDisallow: /\n"),
+    });
+    expect(run(blocked, "llmstxt.link.blocked-by-robots")).toEqual([]);
+    expect(run(blocked, "robots.blocks-site")).toHaveLength(1);
+
+    // …and `robots.blocks-ai-answers` when Googlebot has its own way in.
+    const allowlist = site({
+      llmsTxt: served(MARKDOWN),
+      robots: robots("User-agent: Googlebot\nAllow: /\n\nUser-agent: *\nDisallow: /\n"),
+    });
+    expect(run(allowlist, "llmstxt.link.blocked-by-robots")).toEqual([]);
+    expect(run(allowlist, "robots.blocks-ai-answers")[0]!.message).toContain("`Claude-User`");
   });
 });
