@@ -1,7 +1,10 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  esbuild: { jsx: "automatic", jsxImportSource: "react" },
+  // Vite 8 transforms with oxc; an `esbuild` block is ignored when both are
+  // set. These are oxc's defaults, spelled out so the `.tsx` tests' JSX runtime
+  // does not depend on them staying so.
+  oxc: { jsx: { runtime: "automatic", importSource: "react" } },
   test: {
     globals: true,
     environment: "node",
