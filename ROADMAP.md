@@ -18,7 +18,7 @@ updated: 2026-10-25
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
 **State**: half done. The second half holds: the catalogue exposes 65 rules — 25 page,
-34 site, 6 prose — and the only one at `rigor: null` is the prose rule
+35 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still
@@ -53,16 +53,16 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **A robots.txt that keeps an AI answer engine's search crawler out is asked about** (!261,
-  2026-10-25; published with the next `@goflag/cli`) — `robotstxt.blocks-ai-search`, a
-  question under `--advisories`, for a file that lets Googlebot fetch `/` and disallows
-  `OAI-SearchBot`, `Claude-SearchBot` or `PerplexityBot` there, whether through the crawler's
-  own group or through `User-agent: *`. Each operator documents that crawler as the one that
-  decides whether a site appears in its answers, so it cites the three pages at
-  `vendor-spec`; opting out is legitimate, so it hands over which crawler, which group and
-  which line, and asks. Training crawlers and fetchers acting for a person are left out. The
-  RFC 9309 matcher now names the `User-agent` that selected a group, where it named the
-  group's first line.
+- **A robots.txt that keeps AI answer engines out is a finding** (!261, 2026-10-25; published
+  with the next `@goflag/cli`) — `robots.blocks-ai-answers`, a site rule at `warning`, for a
+  file that lets Googlebot fetch `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`,
+  `PerplexityBot` or `Claude-User`, whether through the agent's own group or through
+  `User-agent: *`. Each operator states what follows — left out of ChatGPT search answers, not
+  indexed for Claude's search, not crawled for Perplexity's results, not fetched when someone
+  asks Claude about a page — so it cites the three pages at `vendor-spec` and names, for each
+  agent, the group and the line that kept it out. Training crawlers, and the `-User` fetchers
+  whose operators say robots.txt may not bind them, are left out. The RFC 9309 matcher now
+  names the `User-agent` that selected a group, where it named the group's first line.
 - **0.2.15: the audit fetches and parses each page once** (!252 and !255, tag 2026-10-24) —
   the crawl starts a page as soon as a request finishes, not when its batch of four does; the
   link scan reads the links the crawl already parsed for the `<head>` instead of fetching and

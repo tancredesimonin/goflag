@@ -23,6 +23,7 @@ import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, SitemapEntryProbe } from "../core/types";
 import { LLMS_TXT_RULES } from "./llms-txt";
+import { robotsBlocksAiAnswers } from "./robots-ai-answers";
 import { isDead, sample } from "./site-shared";
 import type { SiteContext, SiteRule } from "./site-types";
 import { sitemapReadInFull } from "./sitemap-inventory";
@@ -1634,6 +1635,7 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   httpNotFound,
   iconsIcoMissing,
   ...LLMS_TXT_RULES,
+  robotsBlocksAiAnswers,
   robotsBlocksPage,
   robotsBlocksSite,
   robotstxtCrossOrigin,

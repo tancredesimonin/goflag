@@ -32,7 +32,7 @@ describe("source catalog", () => {
   it("seeds every reference from the plan (§4.1–§4.3)", () => {
     // 41 seeded on 2026-08-06, six added to the plan's tables on 2026-10-05
     // for `http.not-found` and the `llmstxt.*` rules, and OpenAI's and
-    // Perplexity's crawler pages on 2026-10-25 for `robotstxt.blocks-ai-search`.
+    // Perplexity's crawler pages on 2026-10-25 for `robots.blocks-ai-answers`.
     expect(SOURCES.length).toBe(49);
   });
 

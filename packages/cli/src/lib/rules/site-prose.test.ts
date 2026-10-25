@@ -15,7 +15,6 @@
 import { describe, expect, it } from "vitest";
 
 import { buildClusterIndex } from "../core/clusters";
-import { parseRobots } from "../core/robots/parse";
 import type { SiteDiscovery, SitemapAlternate, SitemapUrlEntry } from "../core/sitemap/types";
 import type { RobotsProbe } from "../core/types";
 import { collectSiteAdvisories, getSiteProseRule, SITE_PROSE_RULES } from "./site-prose";
@@ -281,147 +280,11 @@ describe("hreflang.sitemap-mismatch, on a sitemap goflag did not read in full", 
   });
 });
 
-describe("robotstxt.blocks-ai-search", () => {
-  const AI_SEARCH = getSiteProseRule("robotstxt.blocks-ai-search");
-  if (!AI_SEARCH) throw new Error("robotstxt.blocks-ai-search is not registered");
-
-  function served(body: string, found = true): RobotsProbe {
-    return {
-      url: `${O}/robots.txt`,
-      status: found ? 200 : 404,
-      found,
-      byteLength: Buffer.byteLength(body),
-      redirects: { count: 0, finalUrl: `${O}/robots.txt`, crossOrigin: false },
-      ...parseRobots(found ? body : ""),
-    };
-  }
-
-  function askAbout(body: string, found = true) {
-    return collectSiteAdvisories(
-      {
-        origin: O,
-        pages: [],
-        matrix: { locales: [], routes: [], cells: {} },
-        localeAxis: { locales: [], source: "none", multilingual: false, candidates: [] },
-        robots: served(body, found),
-      },
-      [AI_SEARCH!],
-    );
-  }
-
-  it("asks about a crawler its own group keeps out", () => {
-    const [advisory, ...rest] = askAbout(
-      "User-agent: OAI-SearchBot\nDisallow: /\n\nUser-agent: *\nAllow: /\n",
-    );
-
-    expect(rest).toEqual([]);
-    expect(advisory?.pageUrl).toBe(`${O}/robots.txt`);
-    expect(advisory?.verdict).toBe("needs-judgment");
-    // Which crawler, which group, which line — and the Googlebot half the
-    // premise rests on, so an agent can check it instead of trusting it.
-    expect(advisory?.evidence).toEqual({
-      path: "/",
-      googlebot: { group: "*", groupLines: [4], rule: { kind: "allow", pattern: "/", line: 5 } },
-      disallowed: [
-        {
-          userAgent: "OAI-SearchBot",
-          operator: "OpenAI",
-          engine: "ChatGPT search",
-          source: "openai-crawlers",
-          group: "oai-searchbot",
-          groupLines: [1],
-          rule: { kind: "disallow", pattern: "/", line: 2 },
-        },
-      ],
-      allowed: ["Claude-SearchBot", "PerplexityBot"],
-    });
-  });
-
-  it("asks about every crawler `User-agent: *` catches while Googlebot is let in", () => {
-    // The accident the question exists for: a fallback group written for
-    // scrapers, a Googlebot exception, and the AI search crawlers caught
-    // along with everything else.
-    const [advisory] = askAbout("User-agent: Googlebot\nAllow: /\n\nUser-agent: *\nDisallow: /\n");
-
-    const evidence = advisory?.evidence as {
-      googlebot: { group: string | null };
-      disallowed: Array<{ userAgent: string; group: string; groupLines: number[]; rule: unknown }>;
-      allowed: string[];
-    };
-    expect(evidence.googlebot.group).toBe("googlebot");
-    expect(evidence.disallowed.map((c) => c.userAgent)).toEqual([
-      "OAI-SearchBot",
-      "Claude-SearchBot",
-      "PerplexityBot",
-    ]);
-    for (const crawler of evidence.disallowed) {
-      expect(crawler, crawler.userAgent).toMatchObject({
-        group: "*",
-        groupLines: [4],
-        rule: { kind: "disallow", pattern: "/", line: 5 },
-      });
-    }
-    expect(evidence.allowed).toEqual([]);
-  });
-
-  it("names the agent a shared group was chosen for, not the group's first line", () => {
-    const [advisory] = askAbout("User-agent: GPTBot\nUser-agent: PerplexityBot\nDisallow: /\n");
-
-    expect(advisory?.evidence).toMatchObject({
-      disallowed: [{ userAgent: "PerplexityBot", group: "perplexitybot", groupLines: [2] }],
-      allowed: ["OAI-SearchBot", "Claude-SearchBot"],
-    });
-  });
-
-  it("says nothing when the file lets every crawler in", () => {
-    expect(askAbout("User-agent: *\nDisallow:\n")).toEqual([]);
-    expect(askAbout("User-agent: *\nAllow: /\n")).toEqual([]);
-    expect(askAbout("")).toEqual([]);
-  });
-
-  it("says nothing when the site has no robots.txt", () => {
-    // A 404 allows everything (RFC 9309 §2.3.1.3).
-    expect(askAbout("User-agent: *\nDisallow: /\n", false)).toEqual([]);
-  });
-
-  it("says nothing when Googlebot is kept out too", () => {
-    // Nothing singles an AI engine out, and a whole-site disallow is
-    // `robots.blocks-site`'s finding.
-    expect(askAbout("User-agent: *\nDisallow: /\n")).toEqual([]);
-  });
-
-  it("leaves training crawlers and fetchers acting for a person alone", () => {
-    // GPTBot and ClaudeBot decide what a model is trained on, not what an
-    // engine cites; the `-User` agents fetch for a person, and robots.txt may
-    // not apply to them. Refusing all of them is the common, deliberate case.
-    expect(
-      askAbout(
-        "User-agent: GPTBot\nUser-agent: ClaudeBot\nUser-agent: ChatGPT-User\n" +
-          "User-agent: Claude-User\nUser-agent: Perplexity-User\nDisallow: /\n",
-      ),
-    ).toEqual([]);
-  });
-
-  it("says nothing about a disallow narrower than the root", () => {
-    // A section kept out of one engine, not the site — decided at `/`, as
-    // `robots.blocks-site` decides.
-    expect(askAbout("User-agent: OAI-SearchBot\nDisallow: /members/\n")).toEqual([]);
-  });
-
-  it("cites each operator's own page, at the rigor those pages carry", () => {
-    expect(AI_SEARCH!.rigor).toBe("vendor-spec");
-    expect(AI_SEARCH!.sources).toEqual([
-      "openai-crawlers",
-      "anthropic-crawlers",
-      "perplexity-crawlers",
-    ]);
-  });
-});
-
 describe("the cross-page questions' provenance", () => {
   // The contract `site-rules.test.ts` holds the cross-page rules to, applied
-  // to the questions now that one of them cites documents. A question with no
-  // rigor is honest; one that claims a rigor its sources do not carry is not.
+  // to the questions too, so the first one to cite documents meets it. A
+  // question with no rigor is honest; one that claims a rigor its sources do
+  // not carry is not.
   it("cites real sources wherever it claims a rigor, and none where it claims none", () => {
     for (const rule of SITE_PROSE_RULES) {
       if (rule.rigor === undefined) {
