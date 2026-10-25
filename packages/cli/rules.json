@@ -1117,7 +1117,8 @@
       "rigor": "vendor-spec",
       "sources": [
         "ietf-rfc9309",
-        "sitemaps-protocol"
+        "sitemaps-protocol",
+        "google-robots-intro"
       ]
     },
     {
