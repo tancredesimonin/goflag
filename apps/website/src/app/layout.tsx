@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 
 import { Analytics } from "@/components/providers/analytics";
@@ -67,6 +66,14 @@ export const metadata: Metadata = {
  * `getLocale()` resolves the locale segment on `/[locale]/…` and falls back to
  * `en` on `/docs/…`, which is the right answer there rather than a default
  * standing in for a missing one — the documentation really is English.
+ *
+ * Nothing locale-dependent is provided from here, deliberately. This layout
+ * renders once per page load and is left alone by every client-side navigation
+ * that follows, so a `NextIntlClientProvider` at this level kept the locale of
+ * the first page a reader opened for the rest of their visit — `[locale]/layout`
+ * has the account. Each tree below carries its own provider, and the one value
+ * only this layout can write, `<html lang>`, is corrected from the client by
+ * `HtmlLang` for the same reason.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
@@ -85,12 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             enableSystem
             disableTransitionOnChange
           >
-            {/* The provider sits above both trees, not inside `[locale]`: the
-                documentation is unlocalized but still renders the shared header,
-                whose controls are client components that need a locale. */}
-            <NextIntlClientProvider>
-              <TooltipProvider>{children}</TooltipProvider>
-            </NextIntlClientProvider>
+            <TooltipProvider>{children}</TooltipProvider>
           </ThemeProvider>
         </Analytics>
       </body>
