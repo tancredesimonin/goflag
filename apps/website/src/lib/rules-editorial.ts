@@ -175,7 +175,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "3 sitemap entries redirect: `https://example.com/a → https://example.com/a/`. Google asks for the final URL, and every hop is crawl budget spent plus one more chance for a consumer to disagree about which address is the page.",
   },
   "sitemap.entry.blocked-by-robots": {
-    why: "The sitemap says index this and robots.txt says never fetch it. Both are the same site speaking, and robots.txt is the one that decides — so the entry is not merely ignored, it is an instruction the site contradicts a line later.",
+    why: "The sitemap says index this and robots.txt says never fetch it. Both are the same site speaking, and robots.txt is the one that decides — so the entry is not merely ignored, it is an instruction the site contradicts a line later. Decided for Googlebot, the way it reads the file: through a group that names it when there is one, `*` otherwise.",
     message:
       '3 sitemap entries are disallowed by `robots.txt`: `https://example.com/admin/a`, `https://example.com/admin/b`. The sitemap says "index this" and robots.txt says "never fetch it" — both cannot hold, and robots.txt is the one that decides.',
   },
@@ -250,7 +250,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "1 entry carries a field outside the protocol's values: https://example.com/a — priority `1.5`. Google ignores both fields either way — so this is worth fixing or deleting, never worth trusting.",
   },
   "robots.blocks-page": {
-    why: "The quiet version of the site-wide block. A `Disallow` added years ago for a reason that made sense then, still shadowing a section that has since been given pages asking to be found. Nothing in a browser shows it: the page loads perfectly for you and is never fetched by a crawler.",
+    why: "The quiet version of the site-wide block. A `Disallow` added years ago for a reason that made sense then, still shadowing a section that has since been given pages asking to be found. Nothing in a browser shows it: the page loads perfectly for you and is never fetched by a crawler. Decided for Googlebot, through a group that names it when there is one and `*` otherwise: a path `*` keeps out and Googlebot's own group lets in is not reported, and one Googlebot's group alone keeps out is.",
     message:
       'Page declares `<meta name="robots" content="index">` but `robots.txt` line 4 disallows `/blog` for `*`. robots.txt wins: the page is never fetched, so the tag asking for it is never read.',
   },
@@ -290,7 +290,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "`robots.txt` lets Googlebot in and keeps 2 AI answer engine agents out of the whole site. `OAI-SearchBot`, through `User-agent: OAI-SearchBot` (line 3) and `Disallow: /` (line 5): ChatGPT search leaves the site out of its answers. `Claude-User`, through `User-agent: Claude-User` (line 4) and `Disallow: /` (line 5): Claude does not fetch a page when someone asks about it.",
   },
   "robots.blocks-site": {
-    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to. Read the way a crawler reads it, group by group: when Googlebot has a group of its own that lets it in, Google crawls the site and keeping everyone else out is what the file was written to do, so this rule says nothing — `robots.blocks-ai-answers` reports the AI answer engines it catches. Any other agent let in by name is listed in the message, since goflag cannot claim no search engine crawls a site that lets agents in it does not classify.",
+    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to. Read for Googlebot, the way Googlebot reads the file: through a group that names it when there is one, `*` otherwise. So a file that keeps Googlebot alone out is reported, and one whose Googlebot group lets it in is not — Google crawls that site, and `robots.blocks-ai-answers` reports the AI answer engines its `*` group catches. Any other agent let in by name is listed in the message, since goflag cannot claim no search engine crawls a site that lets agents in it does not classify.",
     message:
       '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
   },
@@ -320,7 +320,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "1 URL `/llms.txt` lists does not answer: `https://example.com/raw/pricing.md (HTTP 404)`. The file exists to send agents to these pages, so each dead one is a lookup that ends in an error instead of an answer.",
   },
   "llmstxt.link.blocked-by-robots": {
-    why: "The file offers URLs to agents; robots.txt forbids agents to fetch them. Anthropic documents that its bots, Claude-User among them, honour robots.txt, so each such entry is unreadable by exactly the reader it was written for. Read for `User-agent: *`, the file itself included, and left to `robots.blocks-site` when the whole origin is disallowed.",
+    why: "The file offers URLs to agents; robots.txt forbids agents to fetch them. Anthropic documents that its bots, Claude-User among them, honour robots.txt, so each such entry is unreadable by exactly the reader it was written for. Read for Claude-User — through `*` unless the file gives it a group of its own — the file itself included. When Claude-User is kept out of the whole site, `robots.blocks-ai-answers` or `robots.blocks-site` says so once instead.",
     message:
       "2 URLs `/llms.txt` points agents to are disallowed by `robots.txt` for `User-agent: *`: `https://example.com/raw/guide.md (line 5: Disallow: /raw/)`, `https://example.com/raw/faq.md (line 5: Disallow: /raw/)`. The file offers them to agents, and an agent that honours robots.txt — Anthropic documents that Claude-User does — never fetches them.",
   },

@@ -299,6 +299,18 @@ describe("the two halves, on a route that disagrees in both directions", () => {
   });
 });
 
+/** A robots.txt served at the root with `body`, parsed the way the probe parses it. */
+function served(body: string): RobotsProbe {
+  return {
+    url: `${O}/robots.txt`,
+    status: 200,
+    found: true,
+    byteLength: Buffer.byteLength(body),
+    redirects: { count: 0, finalUrl: `${O}/robots.txt`, crossOrigin: false },
+    ...parseRobots(body),
+  };
+}
+
 /**
  * `robots.blocks-site` read the way a crawler reads the file.
  *
@@ -311,17 +323,6 @@ describe("the two halves, on a route that disagrees in both directions", () => {
 describe("robots.blocks-site", () => {
   const BLOCKS_SITE = getSiteRule("robots.blocks-site");
   if (!BLOCKS_SITE) throw new Error("robots.blocks-site is not registered");
-
-  function served(body: string): RobotsProbe {
-    return {
-      url: `${O}/robots.txt`,
-      status: 200,
-      found: true,
-      byteLength: Buffer.byteLength(body),
-      redirects: { count: 0, finalUrl: `${O}/robots.txt`, crossOrigin: false },
-      ...parseRobots(body),
-    };
-  }
 
   /** A page that asks to be indexed in so many words. */
   function asking(path: string) {
@@ -456,15 +457,183 @@ describe("robots.blocks-site", () => {
     expect(finding?.message).toContain("lets in `googlebot-image` (line 1), not Googlebot");
   });
 
-  it("is silent when `*` lets the site in, whatever Googlebot's group says", () => {
-    // Unchanged scope: the rule is about the fallback group keeping the
-    // origin out, not about one crawler's group.
-    expect(check("User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nAllow: /\n")).toEqual([]);
+  it("warns when Googlebot alone is kept out, naming its group and rule", () => {
+    // The `*` reading said nothing here: every other crawler is let in, and
+    // Google never crawls the site.
+    const [finding, ...rest] = check(
+      "User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nAllow: /\n",
+    );
+
+    expect(rest).toEqual([]);
+    expect(finding?.severity).toBe("warning");
+    expect(finding?.message).toBe(
+      "`robots.txt` disallows the whole site for Googlebot, through `User-agent: googlebot` " +
+        "(line 1) and `Disallow: /` (line 2), while crawlers it does not name are let in. " +
+        "Googlebot will not crawl any page on this origin, so the site is invisible to Google.",
+    );
+    // A staging file keeps everyone out, so the environment gate is not this
+    // fix: the group naming Googlebot is.
+    expect(finding?.fix?.snippet).toContain("User-agent: Googlebot");
+    expect(finding?.fix?.snippet).not.toContain("APP_ENV");
+  });
+
+  it("errs when Googlebot alone is kept out and pages ask to be indexed", () => {
+    // No `*` group at all lets every unnamed crawler in, as an `Allow: /` does.
+    const [finding] = check("User-agent: Googlebot\nDisallow: /\n", [asking("/")]);
+
+    expect(finding?.severity).toBe("error");
+    expect(finding?.message).toBe(
+      "`robots.txt` disallows the whole site for Googlebot, through `User-agent: googlebot` " +
+        "(line 1) and `Disallow: /` (line 2), while crawlers it does not name are let in — " +
+        'but 1 crawled page declares `<meta name="robots" content="index">`. robots.txt wins, ' +
+        "so Googlebot never fetches the page and never reads the meta tag.",
+    );
+  });
+
+  it("names the token that chose Googlebot's group, however short", () => {
+    // `Google` is a prefix of `Googlebot`, so it is the group Googlebot reads.
+    const [finding] = check("User-agent: Google\nDisallow: /\n\nUser-agent: *\nAllow: /\n");
+
+    expect(finding?.message).toContain("through `User-agent: google` (line 1)");
   });
 
   it("cites the documents it judges by", () => {
     expect(BLOCKS_SITE!.rigor).toBe("vendor-spec");
     expect(BLOCKS_SITE!.sources).toEqual(["ietf-rfc9309", "google-robots-intro"]);
+  });
+});
+
+/**
+ * The path rules decided for the same crawler as `robots.blocks-site`.
+ *
+ * Each page and each sitemap entry was decided for `*` until 2026-10-25, so a
+ * file that gives Googlebot a group of its own was misread in both directions:
+ * a path Google fetches reported as "never fetched", and a path Googlebot's
+ * own group keeps out not reported at all. A file that names nobody has to
+ * come out exactly as it did.
+ */
+describe("robots.blocks-page", () => {
+  const BLOCKS_PAGE = getSiteRule("robots.blocks-page");
+  if (!BLOCKS_PAGE) throw new Error("robots.blocks-page is not registered");
+
+  function check(body: string, paths: string[]) {
+    return lintSite(
+      {
+        origin: O,
+        pages: paths.map((path) =>
+          pageFromHtml(
+            '<html><head><title>t</title><meta name="robots" content="index"></head><body>b</body></html>',
+            { url: `${O}${path}` },
+          ),
+        ),
+        matrix: { locales: [], routes: [], cells: {} },
+        localeAxis: { locales: [], source: "none", multilingual: false, candidates: [] },
+        robots: served(body),
+      },
+      [BLOCKS_PAGE!],
+    );
+  }
+
+  it("reports a page `*` keeps out, in the words it always used", () => {
+    const [finding, ...rest] = check("User-agent: *\nDisallow: /private/\n", ["/", "/private/a"]);
+
+    expect(rest).toEqual([]);
+    expect(finding?.pageUrl).toBe(`${O}/private/a`);
+    expect(finding?.message).toBe(
+      'Page declares `<meta name="robots" content="index">` but `robots.txt` line 2 disallows ' +
+        "`/private/` for `*`. robots.txt wins: the page is never fetched, so the tag asking " +
+        "for it is never read.",
+    );
+  });
+
+  it("is silent on a page `*` keeps out and Googlebot's own group lets in", () => {
+    // The finding this rule used to make: "never fetched", of a page Google
+    // fetches.
+    expect(
+      check("User-agent: Googlebot\nAllow: /\n\nUser-agent: *\nDisallow: /private/\n", [
+        "/private/a",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("reports a page Googlebot's own group keeps out, though `*` lets it in", () => {
+    const [finding] = check(
+      "User-agent: Googlebot\nDisallow: /private/\n\nUser-agent: *\nAllow: /\n",
+      ["/private/a"],
+    );
+
+    expect(finding?.message).toBe(
+      'Page declares `<meta name="robots" content="index">` but `robots.txt` line 2 disallows ' +
+        "`/private/` for Googlebot, through `User-agent: googlebot` (line 1). robots.txt wins: " +
+        "Googlebot never fetches the page, so it never reads the tag asking for it.",
+    );
+  });
+
+  it("leaves a whole-site block for Googlebot to robots.blocks-site", () => {
+    expect(check("User-agent: *\nDisallow: /\n", ["/private/a"])).toEqual([]);
+    expect(
+      check("User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nAllow: /\n", ["/private/a"]),
+    ).toEqual([]);
+  });
+});
+
+describe("sitemap.entry.blocked-by-robots", () => {
+  const BLOCKED = getSiteRule("sitemap.entry.blocked-by-robots");
+  if (!BLOCKED) throw new Error("sitemap.entry.blocked-by-robots is not registered");
+
+  function check(body: string, paths: string[]) {
+    return lintSite(
+      {
+        origin: O,
+        pages: [],
+        matrix: { locales: [], routes: [], cells: {} },
+        localeAxis: { locales: [], source: "none", multilingual: false, candidates: [] },
+        discovery: discovery(paths.map((path) => ({ loc: `${O}${path}` }))),
+        robots: served(body),
+      },
+      [BLOCKED!],
+    );
+  }
+
+  const ENTRIES = ["/", "/admin/a", "/admin/b"];
+
+  it("reports entries `*` keeps out, in the words it always used", () => {
+    const [finding] = check("User-agent: *\nDisallow: /admin/\n", ENTRIES);
+
+    expect(finding?.message).toBe(
+      `2 sitemap entries are disallowed by \`robots.txt\`: \`${O}/admin/a\`, \`${O}/admin/b\`. ` +
+        'The sitemap says "index this" and robots.txt says "never fetch it" — both cannot ' +
+        "hold, and robots.txt is the one that decides.",
+    );
+  });
+
+  it("is silent on entries `*` keeps out and Googlebot's own group lets in", () => {
+    expect(
+      check("User-agent: Googlebot\nAllow: /\n\nUser-agent: *\nDisallow: /admin/\n", ENTRIES),
+    ).toEqual([]);
+  });
+
+  it("reports entries Googlebot's own group keeps out, though `*` lets them in", () => {
+    const [finding] = check(
+      "User-agent: *\nAllow: /\n\nUser-agent: Googlebot\nDisallow: /admin/\n",
+      ENTRIES,
+    );
+
+    expect(finding?.message).toContain(
+      "2 sitemap entries are disallowed for Googlebot by `robots.txt`, through " +
+        "`User-agent: googlebot` (line 4):",
+    );
+  });
+
+  it("leaves a whole-site block for Googlebot to robots.blocks-site", () => {
+    expect(check("User-agent: *\nDisallow: /\n", ENTRIES)).toEqual([]);
+    expect(
+      check("User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nAllow: /\n", ENTRIES),
+    ).toEqual([]);
+  });
+
+  it("cites the page that says Googlebot obeys robots.txt", () => {
+    expect(BLOCKED!.sources).toContain("google-robots-intro");
   });
 });
 

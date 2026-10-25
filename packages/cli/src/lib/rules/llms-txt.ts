@@ -169,6 +169,9 @@ const llmstxtLinkUnreachable: SiteRule = {
   },
 };
 
+/** The agent an llms.txt entry is decided for — see "Why Claude-User" below. */
+const READER = "Claude-User";
+
 /**
  * The contradiction that prompted this family, measured on openfinanceguide:
  * `Disallow: /raw/` in robots.txt, and an llms.txt planned to list `/raw/*.md`
@@ -177,13 +180,26 @@ const llmstxtLinkUnreachable: SiteRule = {
  * entry is a URL the file offers and its reader is forbidden to open.
  *
  * Same shape as `sitemap.entry.blocked-by-robots`, through the same RFC 9309
- * matcher, for `User-agent: *`. The file itself is checked too: a disallowed
- * `/llms.txt` is unreadable before any of its entries is reached. Skipped when
- * `*` is kept out of the whole origin, because `robots.blocks-site` is that
- * finding. On a file that lets Googlebot in through a group of its own, that
- * rule is silent on purpose and this one stays out with it — although the
- * agents an llms.txt is written for fall under `*` and are kept out of every
- * entry, so here nothing reports them yet.
+ * matcher, decided for `Claude-User` (`READER`, below). The file itself is
+ * checked too: a disallowed `/llms.txt` is unreadable before any of its
+ * entries is reached.
+ *
+ * ## Why Claude-User
+ *
+ * "Forbidden to its reader" needs a reader, and a robots.txt decides nothing
+ * until it is asked for whom (RFC 9309 §2.2.1). Claude-User is the one this
+ * rule's source documents: it fetches a page because a person asked Claude
+ * about it — the reader an llms.txt is written for — and Anthropic states it
+ * honours robots.txt. `ChatGPT-User` and `Perplexity-User` do the same job,
+ * but their operators say robots.txt may not bind them, so the file does not
+ * decide what they read and a finding about them would assert what nobody
+ * documents. On a file that names none of them Claude-User reads `*`, which is
+ * what this rule read until 2026-10-25; the two differ only where a file gives
+ * Claude-User — or a `Claude` prefix of it — a group of its own.
+ *
+ * Skipped when Claude-User is kept out of the whole origin. That is reported
+ * once, as a whole: by `robots.blocks-ai-answers` when Googlebot is let in,
+ * and by `robots.blocks-site` when it is not.
  */
 const llmstxtLinkBlockedByRobots: SiteRule = {
   id: "llmstxt.link.blocked-by-robots",
@@ -192,11 +208,16 @@ const llmstxtLinkBlockedByRobots: SiteRule = {
   rigor: "guideline",
   sources: ["llmstxt", "ietf-rfc9309", "anthropic-crawlers"],
   appliesTo: (site) =>
-    readable(site) && site.robots?.found === true && robotsAllows(site.robots.groups, "/").allowed,
+    readable(site) &&
+    site.robots?.found === true &&
+    robotsAllows(site.robots.groups, "/", READER).allowed,
   check: ({ site, issue }) => {
     const robots = site.robots!;
     const file = fileUrl(site);
     const blocked: string[] = [];
+    // Group selection does not depend on the path, so every refusal names the
+    // same group: `*`, or the token that gave Claude-User one of its own.
+    let group = "*";
 
     for (const url of [file, ...sameOriginLinks(site).map((link) => link.url)]) {
       let path: string;
@@ -206,8 +227,9 @@ const llmstxtLinkBlockedByRobots: SiteRule = {
       } catch {
         continue;
       }
-      const decision = robotsAllows(robots.groups, path);
+      const decision = robotsAllows(robots.groups, path, READER);
       if (decision.allowed || !decision.rule) continue;
+      group = decision.group ?? group;
       // No backticks inside: `sample` already wraps each entry in a pair.
       const self = url === file ? ", the file itself" : "";
       blocked.push(
@@ -218,7 +240,7 @@ const llmstxtLinkBlockedByRobots: SiteRule = {
     if (blocked.length === 0) return [];
     return issue({
       pageUrl: file,
-      message: `${blocked.length} URL${blocked.length === 1 ? "" : "s"} \`/llms.txt\` points agents to ${blocked.length === 1 ? "is" : "are"} disallowed by \`robots.txt\` for \`User-agent: *\`: ${sample(blocked)}. The file offers them to agents, and an agent that honours robots.txt — Anthropic documents that Claude-User does — never fetches them.`,
+      message: `${blocked.length} URL${blocked.length === 1 ? "" : "s"} \`/llms.txt\` points agents to ${blocked.length === 1 ? "is" : "are"} disallowed by \`robots.txt\` for \`User-agent: ${group}\`: ${sample(blocked)}. The file offers them to agents, and an agent that honours robots.txt — Anthropic documents that Claude-User does — never fetches them.`,
       origin: { kind: "computed" },
     });
   },
