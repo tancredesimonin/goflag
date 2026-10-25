@@ -179,7 +179,11 @@ const llmstxtLinkUnreachable: SiteRule = {
  * Same shape as `sitemap.entry.blocked-by-robots`, through the same RFC 9309
  * matcher, for `User-agent: *`. The file itself is checked too: a disallowed
  * `/llms.txt` is unreadable before any of its entries is reached. Skipped when
- * the whole origin is disallowed, because `robots.blocks-site` is that finding.
+ * `*` is kept out of the whole origin, because `robots.blocks-site` is that
+ * finding. On a file that lets Googlebot in through a group of its own, that
+ * rule is silent on purpose and this one stays out with it — although the
+ * agents an llms.txt is written for fall under `*` and are kept out of every
+ * entry, so here nothing reports them yet.
  */
 const llmstxtLinkBlockedByRobots: SiteRule = {
   id: "llmstxt.link.blocked-by-robots",

@@ -21,7 +21,7 @@ import { splitRoute } from "../core/i18n";
 import { isNotFound } from "../core/probes/not-found";
 import { robotsAllows } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
-import type { Page, SitemapEntryProbe } from "../core/types";
+import type { Page, RobotsGroup, SitemapEntryProbe } from "../core/types";
 import { LLMS_TXT_RULES } from "./llms-txt";
 import { robotsBlocksAiAnswers } from "./robots-ai-answers";
 import { isDead, sample } from "./site-shared";
@@ -328,6 +328,25 @@ function metaRobotsTokens(page: Page): Set<string> {
 }
 
 /**
+ * The agents a robots.txt names whose own group lets them fetch `/`, in the
+ * order the file first names them, each with the `User-agent` lines naming it.
+ *
+ * Asked of the matcher one token at a time, so a group shared with `*`, two
+ * groups merged for one token, or an `Allow: /` that ties a `Disallow: /` are
+ * read the way a crawler would read them rather than by looking for a line.
+ */
+function agentsLetIn(groups: readonly RobotsGroup[]): Array<{ token: string; lines: number[] }> {
+  const tokens = new Set<string>();
+  for (const group of groups) {
+    for (const agent of group.userAgents) if (agent.value !== "*") tokens.add(agent.value);
+  }
+  return [...tokens].flatMap((token) => {
+    const decision = robotsAllows(groups, "/", token);
+    return decision.allowed ? [{ token, lines: decision.groupLines ?? [] }] : [];
+  });
+}
+
+/**
  * `robots.txt` forbids the whole site.
  *
  * The most expensive misconfiguration a site can carry, and the one nothing
@@ -346,6 +365,37 @@ function metaRobotsTokens(page: Page): Set<string> {
  * looking for a literal `Disallow: /` line. Same answer on the file that
  * prompted the rule, and a correct one on the files that spell it otherwise —
  * `Disallow: *`, or a `Disallow: /` that an `Allow:` further down takes back.
+ *
+ * ## When Googlebot has a way in of its own
+ *
+ * `User-agent: *` is the group a crawler falls back to, not the one every
+ * crawler reads: RFC 9309 §2.2.1 sends a crawler to the group that names it
+ * when there is one. A file that gives `Googlebot` a group allowing `/` and
+ * disallows `/` for `*` is an allowlist — Google crawls the site, and what the
+ * file does not name is kept out. Until 2026-10-25 the rule judged `*` alone
+ * and told that file "no search engine will crawl any page on this origin",
+ * which Google's own crawl contradicts.
+ *
+ * It is silent there — not quieter, not reworded — because what it stands on
+ * is gone and nothing its sources back is left to say:
+ *
+ * - RFC 9309 and Google's robots.txt introduction say which group Googlebot
+ *   reads, and that group lets it in. The pages are fetched, an `index` in
+ *   them is read, and the site is not invisible in Google. Both messages would
+ *   be false.
+ * - What the file still keeps out is reported where a source states what it
+ *   costs: `robots.blocks-ai-answers` applies exactly when Googlebot is let
+ *   in, and warns about each AI answer engine agent the `*` group catches.
+ * - For every other crawler — Bing, Yandex, an archiver — neither source says
+ *   what being kept out costs, and a finding that asserted it would be a
+ *   verdict without authority, at `info` or any other severity.
+ *
+ * Googlebot rather than a list of search crawlers, because it is the crawler
+ * the rule's sources speak for; calling another token a search engine's would
+ * need a source the rule does not cite. Any other agent the file lets in —
+ * `Bingbot`, an SEO auditor, `GPTBot` — leaves Google kept out, so the rule
+ * still fires, and the message names those agents instead of saying no search
+ * engine will crawl, which goflag cannot know of agents it does not classify.
  */
 const robotsBlocksSite: SiteRule = {
   id: "robots.blocks-site",
@@ -354,7 +404,12 @@ const robotsBlocksSite: SiteRule = {
   rigor: "vendor-spec",
   sources: ["ietf-rfc9309", "google-robots-intro"],
   appliesTo: (site) =>
-    site.robots?.found === true && !robotsAllows(site.robots.groups, "/").allowed,
+    site.robots?.found === true &&
+    !robotsAllows(site.robots.groups, "/").allowed &&
+    // Googlebot reads its own group when the file gives it one. When that group
+    // lets it in, the file is an allowlist and every message below would be
+    // false about Google — see "When Googlebot has a way in of its own".
+    !robotsAllows(site.robots.groups, "/", "Googlebot").allowed,
   check: ({ site, issue }) => {
     const robotsUrl = site.robots?.url ?? `${site.origin}/robots.txt`;
 
@@ -363,18 +418,47 @@ const robotsBlocksSite: SiteRule = {
     // on every blocked staging environment.
     const asking = site.pages.filter((page) => metaRobotsTokens(page).has("index"));
 
-    const detail = asking.length
-      ? `but ${asking.length} crawled page${asking.length === 1 ? "" : "s"} declare ` +
-        '`<meta name="robots" content="index">`. Both cannot be true: robots.txt ' +
-        "wins, so the pages are never fetched and the meta tag is never read."
-      : "so no search engine will crawl any page on this origin. If this is a " +
-        "staging or preview environment, that is correct — otherwise the site is " +
-        "invisible.";
+    // Googlebot is never among these: the gate returned before it could be.
+    // With any here, "no search engine will crawl" would be a claim about
+    // agents goflag does not classify, so the message names them and says
+    // what it can — that Googlebot is not one of them.
+    const letIn = agentsLetIn(site.robots!.groups);
+
+    const declaring =
+      `${asking.length} crawled page${asking.length === 1 ? " declares" : "s declare"} ` +
+      '`<meta name="robots" content="index">`';
+
+    let message: string;
+    if (letIn.length === 0) {
+      const detail = asking.length
+        ? `but ${declaring}. Both cannot be true: robots.txt wins, so the pages are ` +
+          "never fetched and the meta tag is never read."
+        : "so no search engine will crawl any page on this origin. If this is a " +
+          "staging or preview environment, that is correct — otherwise the site is " +
+          "invisible.";
+      message = `\`robots.txt\` disallows the whole site for \`User-agent: *\`, ${detail}`;
+    } else {
+      const named = letIn
+        .map(
+          ({ token, lines }) =>
+            `\`${token}\` (line${lines.length === 1 ? "" : "s"} ${lines.join(", ")})`,
+        )
+        .join(", ");
+      const head =
+        "`robots.txt` disallows the whole site for `User-agent: *`. Of the agents " +
+        `it names it lets in ${named}, not Googlebot`;
+      message = asking.length
+        ? `${head} — but ${declaring}. robots.txt wins, so Googlebot never fetches ` +
+          `the page${asking.length === 1 ? "" : "s"} and never reads the meta tag.`
+        : `${head}, so Googlebot will not crawl any page on this origin. If this is a ` +
+          "staging or preview environment, that is correct — otherwise the site is " +
+          "invisible to Google.";
+    }
 
     return issue({
       pageUrl: robotsUrl,
       severity: asking.length > 0 ? "error" : "warning",
-      message: `\`robots.txt\` disallows the whole site for \`User-agent: *\`, ${detail}`,
+      message,
       origin: { kind: "computed" },
       fix: {
         title: "Gate the disallow on the deployed environment",
@@ -726,8 +810,11 @@ const robotstxtSitemapRelative: SiteRule = {
  * sense once, still shadowing a section of the site that has since been given
  * pages that ask to be found.
  *
- * `robots.blocks-site` takes precedence: when the whole origin is disallowed,
- * every page is blocked and saying so once is the finding.
+ * `robots.blocks-site` takes precedence: when `*` is kept out of the whole
+ * origin, every page is blocked and saying so once is the finding. On a file
+ * that lets Googlebot in through a group of its own, that rule is silent on
+ * purpose and this one stays out with it: each page is decided for `*`, and
+ * "never fetched" would be false of Google.
  */
 const robotsBlocksPage: SiteRule = {
   id: "robots.blocks-page",
@@ -1311,8 +1398,10 @@ const sitemapEntryBlockedByRobots: SiteRule = {
   summary: "A sitemap must not list URLs that robots.txt forbids fetching",
   rigor: "vendor-spec",
   sources: ["ietf-rfc9309", "sitemaps-protocol"],
-  // Skipped when the whole origin is disallowed: `robots.blocks-site` is that
-  // finding, and repeating it once per sitemap entry would bury it.
+  // Skipped when `*` is kept out of the whole origin: `robots.blocks-site` is
+  // that finding, and repeating it once per sitemap entry would bury it. On a
+  // file that lets Googlebot in through a group of its own, that rule is silent
+  // on purpose and this one, which decides each entry for `*`, stays out too.
   appliesTo: (site) =>
     site.robots?.found === true &&
     robotsAllows(site.robots.groups, "/").allowed &&

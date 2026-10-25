@@ -290,7 +290,7 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
       "`robots.txt` lets Googlebot in and keeps 2 AI answer engine agents out of the whole site. `OAI-SearchBot`, through `User-agent: OAI-SearchBot` (line 3) and `Disallow: /` (line 5): ChatGPT search leaves the site out of its answers. `Claude-User`, through `User-agent: Claude-User` (line 4) and `Disallow: /` (line 5): Claude does not fetch a page when someone asks about it.",
   },
   "robots.blocks-site": {
-    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
+    why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to. Read the way a crawler reads it, group by group: when Googlebot has a group of its own that lets it in, Google crawls the site and keeping everyone else out is what the file was written to do, so this rule says nothing — `robots.blocks-ai-answers` reports the AI answer engines it catches. Any other agent let in by name is listed in the message, since goflag cannot claim no search engine crawls a site that lets agents in it does not classify.",
     message:
       '`robots.txt` disallows the whole site for `User-agent: *`, but 42 crawled pages declare `<meta name="robots" content="index">`. Both cannot be true: robots.txt wins, so the pages are never fetched and the meta tag is never read.',
   },
