@@ -70,6 +70,11 @@ export interface RuleDoc {
    * real message is built at audit time from what the page said.
    */
   message: string;
+  /**
+   * Prose rules only: how many pages the sample question is shown against —
+   * editorial, like `message`, and six unless the entry says otherwise.
+   */
+  samplePages?: number;
   /** Editorial: what the mistake costs. Not present in the registry. */
   why: string;
   fix?: RuleFix;
@@ -136,6 +141,7 @@ function toDoc(rule: GeneratedCatalog["rules"][number]): RuleDoc {
     severity: rule.severity,
     summary: rule.summary,
     message,
+    ...(rule.scope === "prose" ? { samplePages: editorial.samplePages ?? 6 } : {}),
     why: editorial.why,
     ...(rule.fix
       ? {

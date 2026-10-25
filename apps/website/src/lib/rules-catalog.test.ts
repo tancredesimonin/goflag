@@ -60,4 +60,15 @@ describe("the rule catalogue the site renders", () => {
       expect(RULE_EDITORIAL[rule.id]?.message).toBeUndefined();
     }
   });
+
+  it("gives a page count to a question's sample, and to nothing else", () => {
+    // The `(N pages)` the terminal prints beside a question. A verdict's sample
+    // has no such count, and a question asked once per site — about robots.txt
+    // itself — can only ever print one.
+    for (const rule of ALL_RULES) {
+      if (rule.scope === "prose") expect(rule.samplePages, rule.id).toBeGreaterThan(0);
+      else expect(rule.samplePages, rule.id).toBeUndefined();
+    }
+    expect(ALL_RULES.find((r) => r.id === "robotstxt.blocks-ai-search")?.samplePages).toBe(1);
+  });
 });
