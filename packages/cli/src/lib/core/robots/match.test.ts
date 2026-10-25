@@ -136,3 +136,36 @@ describe("robotsAllows — the permissive cases", () => {
     expect(decision.group).toBe("*");
   });
 });
+
+describe("robotsAllows — naming the group that decided", () => {
+  it("names the token that selected a group, not the group's first line", () => {
+    // One group, two agents. `OAI-SearchBot` is chosen by line 2, so a finding
+    // that said `gptbot` would send its reader to the wrong crawler.
+    const decision = robotsAllows(
+      parseRobots("User-agent: GPTBot\nUser-agent: OAI-SearchBot\nDisallow: /").groups,
+      "/",
+      "OAI-SearchBot",
+    );
+
+    expect(decision).toMatchObject({ allowed: false, group: "oai-searchbot", groupLines: [2] });
+  });
+
+  it("names `*` when the fallback group also names a product token", () => {
+    const decision = robotsAllows(
+      parseRobots("User-agent: googlebot\nUser-agent: *\nDisallow: /private").groups,
+      "/private/x",
+      "goflag",
+    );
+
+    expect(decision).toMatchObject({ allowed: false, group: "*", groupLines: [2] });
+  });
+
+  it("lists every line naming the token once duplicate groups merge", () => {
+    const decision = robotsAllows(
+      parseRobots("User-agent: *\nDisallow: /a\n\nUser-agent: *\nDisallow: /b").groups,
+      "/b",
+    );
+
+    expect(decision).toMatchObject({ allowed: false, group: "*", groupLines: [1, 4] });
+  });
+});

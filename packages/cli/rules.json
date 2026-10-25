@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 25,
-    "site": 34,
+    "site": 35,
     "prose": 5
   },
   "sources": {
@@ -165,6 +165,20 @@
       "title": "The Open Graph protocol",
       "rigor": "vendor-spec",
       "url": "https://ogp.me/"
+    },
+    "openai-crawlers": {
+      "id": "openai-crawlers",
+      "publisher": "OpenAI",
+      "title": "Overview of OpenAI Crawlers",
+      "rigor": "vendor-spec",
+      "url": "https://developers.openai.com/api/docs/bots"
+    },
+    "perplexity-crawlers": {
+      "id": "perplexity-crawlers",
+      "publisher": "Perplexity",
+      "title": "Perplexity Crawlers",
+      "rigor": "vendor-spec",
+      "url": "https://docs.perplexity.ai/guides/bots"
     },
     "sitemaps-protocol": {
       "id": "sitemaps-protocol",
@@ -958,6 +972,19 @@
         "og.image.missing"
       ],
       "expected": "an explicit `og:title`"
+    },
+    {
+      "id": "robots.blocks-ai-answers",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "`robots.txt` must not keep AI answer engines out of a site Googlebot may crawl",
+      "rigor": "vendor-spec",
+      "sources": [
+        "openai-crawlers",
+        "anthropic-crawlers",
+        "perplexity-crawlers"
+      ]
     },
     {
       "id": "robots.blocks-page",

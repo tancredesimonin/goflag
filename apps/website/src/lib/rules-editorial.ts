@@ -284,6 +284,11 @@ export const RULE_EDITORIAL: Readonly<Record<string, RuleEditorial>> = {
     message:
       "`Sitemap:` must be a full URL: line 3 declares `/sitemap.xml`. robots.txt is fetched on its own, so there is no page for a consumer to resolve a relative path against.",
   },
+  "robots.blocks-ai-answers": {
+    why: "An AI answer engine cites what its agents may read. OpenAI says a site that disallows OAI-SearchBot is not shown in ChatGPT search answers; Anthropic, that disallowing Claude-SearchBot stops Claude indexing it for search, and disallowing Claude-User stops Claude reading a page someone asks it about; Perplexity, that a site appears in its results by allowing PerplexityBot. The usual cause is not a decision: a `User-agent: *` disallow with a Googlebot exception, or a list of AI bots pasted from somewhere, catches these agents along with the training crawlers. Training crawlers (`GPTBot`, `ClaudeBot`) are left alone — they decide what a model learns from, not what an engine cites — and so are `ChatGPT-User` and `Perplexity-User`, which their operators say robots.txt may not bind. Read at `/`, and silent when the file keeps Googlebot out as well: that is `robots.blocks-site`.",
+    message:
+      "`robots.txt` lets Googlebot in and keeps 2 AI answer engine agents out of the whole site. `OAI-SearchBot`, through `User-agent: OAI-SearchBot` (line 3) and `Disallow: /` (line 5): ChatGPT search leaves the site out of its answers. `Claude-User`, through `User-agent: Claude-User` (line 4) and `Disallow: /` (line 5): Claude does not fetch a page when someone asks about it.",
+  },
   "robots.blocks-site": {
     why: "The most expensive misconfiguration a site can carry, and it is invisible from inside a browser. Severity drops to a warning when nothing contradicts the block: a staging environment that disallows everything and claims nothing else is doing exactly what it means to.",
     message:
