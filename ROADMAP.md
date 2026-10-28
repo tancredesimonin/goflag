@@ -1,14 +1,14 @@
 ---
-updated: 2026-10-25
+updated: 2026-10-28
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-10-25: latest tags `v0.2.15` (2026-10-24), `next-v0.4.0` and
+> State observed on 2026-10-28: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
-> production on `main`, and the two carry the same code since the release merge (!257).
+> production on `main`, and the two carry the same code since the release merge (!265).
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-10-24.
+> 2026-10-25.
 
 ## Now
 
@@ -53,16 +53,33 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **A robots.txt that keeps AI answer engines out is a finding** (!261, 2026-10-25; published
-  with the next `@goflag/cli`) — `robots.blocks-ai-answers`, a site rule at `warning`, for a
-  file that lets Googlebot fetch `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`,
-  `PerplexityBot` or `Claude-User`, whether through the agent's own group or through
-  `User-agent: *`. Each operator states what follows — left out of ChatGPT search answers, not
-  indexed for Claude's search, not crawled for Perplexity's results, not fetched when someone
-  asks Claude about a page — so it cites the three pages at `vendor-spec` and names, for each
-  agent, the group and the line that kept it out. Training crawlers, and the `-User` fetchers
-  whose operators say robots.txt may not bind them, are left out. The RFC 9309 matcher now
-  names the `User-agent` that selected a group, where it named the group's first line.
+- **0.2.16: a robots.txt that keeps AI answer engines out is a finding, and the robots rules
+  read the group of the agent they speak for** (!261 to !263, tag 2026-10-25) —
+  `robots.blocks-ai-answers`, a site rule at `warning`, for a file that lets Googlebot fetch
+  `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot` or
+  `Claude-User`, whether through the agent's own group or through `User-agent: *`. Each
+  operator states what follows — left out of ChatGPT search answers, not indexed for Claude's
+  search, not crawled for Perplexity's results, not fetched when someone asks Claude about a
+  page — so it cites the three pages at `vendor-spec` and names, for each agent, the group and
+  the line that kept it out. Training crawlers, and the `-User` fetchers whose operators say
+  robots.txt may not bind them, are left out. The RFC 9309 matcher now names the `User-agent`
+  that selected a group, where it named the group's first line. The two fixes that followed:
+  `robots.blocks-site`, `robots.blocks-page` and `sitemap.entry.blocked-by-robots` decide for
+  Googlebot, the crawler their sources document, and `llmstxt.link.blocked-by-robots` for
+  `Claude-User` — none of them for `*`, which per RFC 9309 §2.2.1 answers for nobody once the
+  file names the agent. So a Googlebot allowlist over a `*` disallow no longer reads as a site
+  kept out of every search engine, a `Disallow` in Googlebot's own group is reported where it
+  was silent, and a file that keeps Googlebot out while naming other agents says which ones it
+  lets in. On a file that names nobody, every message is what it was.
+- **The site's footer and locale switcher** (!258 and !259, 2026-10-25) — the footer lays its
+  links out in titled Product, Project and Legal columns; the locale switcher follows a
+  client-side locale change, where after `/fr` to `/en` it still ticked Français and sent a
+  reader asking for French to `/fr/en`, a 404 — and `<html lang>` follows it too. In
+  production since 2026-10-25.
+- **vitest 5** (!260, 2026-10-25) — three majors at once, in the four packages that test. The
+  vitest chain leaves `pnpm audit` over every dependency: 60 advisories (6 critical) before, 41
+  (3 critical) after, all of what remains in dev tooling. Production dependencies were clean
+  before and still are.
 - **0.2.15: the audit fetches and parses each page once** (!252 and !255, tag 2026-10-24) —
   the crawl starts a page as soon as a request finishes, not when its batch of four does; the
   link scan reads the links the crawl already parsed for the `<head>` instead of fetching and
