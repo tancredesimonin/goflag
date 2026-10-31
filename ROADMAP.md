@@ -1,13 +1,14 @@
 ---
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-10-31: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
+> State observed on 2026-11-01: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`, production
-> on `main`. Since the release merge (!265), `develop` is ahead by the roadmap update (!266), TypeScript 6 and
-> Renovate's merges: no `src/` of a package changed, only their `tsup.config.ts`.
+> on `main`. Since the release merge (!265), `develop` is ahead by the roadmap update (!266),
+> TypeScript 6, Renovate's merges, `--expect-indexing` (!271), and the share cards' fonts, which
+> earn `og-v0.3.0` at the next release.
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
 > 2026-10-25.
 
@@ -54,6 +55,16 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **Share cards take the site's fonts and can draw its accent** (on `develop`, not yet tagged)
+  — `@goflag/og` gains `fonts` (a lazy loader, read once per process, refusing WOFF2 and
+  anything that is not a font), `accentBar`, `content.footer` and `ogCardResponse`.
+  tancrede, openfinanceguide and tancredo hand-write a satori route of 202, 216 and 253 lines,
+  and a card that could carry no font was the first thing stopping them; the first two are
+  near-copies, and all three draw the same 8px bar. goflag.tech is the first consumer: its
+  cards are set in the JetBrains Mono it already commits, with the bold the bundled face lacks.
+  Neither site has migrated, and that is each site's call: a scratch port removes 116 and 114
+  lines, and costs the rule above the footer, the line on its right and the coloured host,
+  which the card cannot draw.
 - **An operator can say whether a target belongs in an index** (on `develop`, not yet tagged)
   — `--expect-indexing no|yes`, a gate flag that is only ever an argument. Under `no`,
   `robots.blocks-site` and `sitemap.entry.noindex` stop firing, and `indexing.not-excluded` and
