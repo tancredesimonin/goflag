@@ -84,6 +84,8 @@ export const FLAG_EDITORIAL: Record<string, string> = {
     "A locale-free route that is deliberately not translated everywhere, so its gaps are not reported as missing translations. Repeatable, and the suppressed count is still reported under diagnostics.ignoredHoles.",
   "--profile":
     "Policy overlay on the rule set: default, strict (every spec-backed rule fails the build), spec-only (heuristic rules switched off entirely), or marketing (snippet and unfurl metadata gaps are errors). It changes how loudly a rule fires and whether it runs, never what it observes or how authoritative it claims to be. The report records which profile judged it, and the terminal names any non-default one.",
+  "--expect-indexing":
+    "Whether this target belongs in a search index, which only you can know. no, for a staging host: a whole-site block and noindex sitemap entries stop being findings, and the audit asks whether the host is really out of the index. yes, for production: a whole-site block is an error, and so is a noindex on the home page or on every page. Both have rules of their own, so a baseline captured on a staging host cannot hold them. Always an argument and never read from the target, so a production site with staging settings cannot excuse itself. Recorded in the report, named by the terminal, and noted by the gate when a baseline declared something else. Unset, the question stays open and nothing changes.",
   "--fail-on": "Exit 1 at or above this severity: warning, error, or never.",
   "--baseline":
     "Stored report to compare against. On its own it is an error: it weakens the gate, so it has to be asked for by name.",

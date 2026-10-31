@@ -18,8 +18,8 @@ updated: 2026-10-31
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: half done. The second half holds: the catalogue exposes 65 rules — 25 page,
-35 site, 5 prose — and the only one at `rigor: null` is the prose rule
+**State**: half done. The second half holds: the catalogue exposes 69 rules — 25 page,
+39 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still
@@ -54,6 +54,16 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
+- **An operator can say whether a target belongs in an index** (on `develop`, not yet tagged)
+  — `--expect-indexing no|yes`, a gate flag that is only ever an argument. Under `no`,
+  `robots.blocks-site` and `sitemap.entry.noindex` stop firing, and `indexing.not-excluded` and
+  `indexing.blocked-url-indexable` ask whether the host is really out of the index. Under `yes`,
+  `indexing.site-blocked` makes a whole-site block an error, and `indexing.site-excluded` names a
+  `noindex` on the home or on every page. On `develop.tancrede.eu`, the 2 findings all four sites
+  pay for with `--max-debt 2` become 1 that says what they hid: 24 pages whose `noindex` Googlebot
+  cannot read. The sites have not moved, and they cannot before `seo-goflag.yml` gives its two jobs
+  a declaration each: `seo` and `seo:mr` share `GOFLAG_ARGS`, and `no` on a production-shaped build
+  is an error.
 - **0.2.16: a robots.txt that keeps AI answer engines out is a finding, and the robots rules
   read the group of the agent they speak for** (!261 to !263, tag 2026-10-25) —
   `robots.blocks-ai-answers`, a site rule at `warning`, for a file that lets Googlebot fetch

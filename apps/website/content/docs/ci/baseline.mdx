@@ -141,6 +141,67 @@ goflag … --baseline .goflag/baseline.json --regressions-only --max-debt 12
 Fix a finding, drop the number by one, commit both in the same change. Without
 this step a baseline is a permission slip; with it, it is a plan.
 
+## A staging host is not a debt
+
+`Disallow: /` and `noindex` on every page are what a staging environment is for,
+and goflag cannot know that from the outside, so it reports both. Written into a
+baseline, that pair becomes a `--max-debt 2` for as long as the job exists, and a
+budget with room in it for two real regressions.
+
+Tell it instead. The answer is an argument and never read from the target, because
+a production site shipped with its staging settings must not be able to excuse
+itself:
+
+```bash
+goflag https://staging.example.com --expect-indexing no   # the deployed develop
+goflag https://example.com --expect-indexing yes          # production
+```
+
+<Terminal id="staging">
+
+```plaintext
+goflag https://staging.example.com/
+YELLOW FLAG  2 pages crawled, 2 scanned, expecting indexing: no
+
+0 broken links   0 missing translations   0 SEO issues   1 site issue   0 unreachable pages
+
+Site-wide issues
+  locales: en, fr (via sitemap)
+  https://staging.example.com/robots.txt
+    warn  indexing.blocked-url-indexable  robots.txt keeps Googlebot out of 2 pages on a target declared out of the index: https://staging.example.com/en, https://staging.example.com/fr. All of them say noindex, which Googlebot never reads because it never fetches them. A blocked URL can still appear in Google's results, from links alone.
+```
+
+</Terminal>
+
+The declaration moves the question rather than dropping it.
+
+| Declared | No longer reported                            | Now reported                                                                                                                                              |
+| -------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `no`     | `robots.blocks-site`, `sitemap.entry.noindex` | [a page Google may index](/docs/rules/indexing.not-excluded), [a blocked page](/docs/rules/indexing.blocked-url-indexable)                                |
+| `yes`    | `robots.blocks-site`                          | [a whole-site block, as an error](/docs/rules/indexing.site-blocked), [a `noindex` on the home page or on every page](/docs/rules/indexing.site-excluded) |
+
+**The finding left under `no` is real.** Google documents that robots.txt does not
+keep a URL out of its results, and that a blocked page never has its `noindex`
+read. Exclusion takes a `noindex` the crawler can reach, so the fix is opening the
+host, which also lets in every crawler that honours the file. Whether that beats a
+URL surfacing with no description is your decision, and an accepted finding is what
+a baseline is for: `--max-debt 1`, with this as the commit message.
+
+**A page declaring `index` on a blocked host still fails under either.** No
+declaration explains that one.
+
+**`yes` does not call every `noindex` an error.** Production has search results and
+thank-you pages. It names the home page, or all of them, which is what a staging
+build reaching production looks like.
+
+**One baseline can serve two declarations.** A merge-request job building
+production-shaped pages takes `yes`, or nothing, and a deployed develop job takes
+`no`, so the flag belongs on each job rather than in arguments they share. Capture
+the baseline with the deployed job's. The merge-request job then prints a note on
+every run saying the two differ, and that note is expected there. Finding identity
+ignores the host, so a `yes` run still treats a new block as a new finding: it has
+its own rule, and no baseline captured under `no` holds it.
+
 ## What a baseline does not do
 
 - It does not make the findings go away. `goflag` without `--regressions-only`
