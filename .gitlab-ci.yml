@@ -50,7 +50,7 @@ default:
   # Everything that writes opts back out below: the deploy template, the three
   # publish jobs, `release:prepare` and `tag`.
   interruptible: true
-  image: node:24.21.0@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0
+  image: node:24.22.0@sha256:925de64a85319052d6971ae81ef2417da956e8a3a2c4a0fac732327970f017f5
 
   # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
   # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
@@ -360,7 +360,7 @@ test:integration:
   # what the runner pulls. If they drift anyway, `inspect-spa.test.ts` fails
   # this job with "Chromium is missing in CI" instead of skipping the
   # browser tests.
-  image: mcr.microsoft.com/playwright:v1.64.0-noble
+  image: mcr.microsoft.com/playwright:v1.64.1-noble
   <<: [*pnpm, *cli_changes]
   script:
     - pnpm test:integration
@@ -542,9 +542,9 @@ test:package:og:
   # auto-cancelling the pipeline at all — cancel during the checks, never once a
   # deploy is underway. A Kamal deploy killed halfway leaves a partial rollout.
   interruptible: false
-  image: docker:29.9.1@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+  image: docker:29.9.2@sha256:9e79b879b177fbd72c34376a3dd3d91747da5db49e1f560f76aea59561471977
   services:
-    - docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+    - docker:29.9.2-dind@sha256:9e79b879b177fbd72c34376a3dd3d91747da5db49e1f560f76aea59561471977
   # Nothing from an earlier stage is unpacked into the Docker build context.
   # This was written against an `install` job that published `node_modules` as
   # an artifact and is gone; what it keeps out today is the scheduled scan's
