@@ -6,8 +6,8 @@ updated: 2026-10-31
 
 > State observed on 2026-10-31: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`, production
-> on `main`. Since the release merge (!265), `develop` is ahead by the roadmap update (!266) and
-> Renovate's merges: no package source changed.
+> on `main`. Since the release merge (!265), `develop` is ahead by the roadmap update (!266), TypeScript 6 and
+> Renovate's merges: no `src/` of a package changed, only their `tsup.config.ts`.
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
 > 2026-10-25.
 
