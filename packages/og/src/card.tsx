@@ -118,10 +118,10 @@ export interface Og extends OgDefinition {
 /**
  * Freeze a site's card into something both its routes and its tests can call.
  *
- * When `@goflag/next` is present, `defineSite({ og })` takes this same object
- * and wires the image's URL into the metadata. When it is absent this stands on
- * its own, which is the whole of D1: a site may want good cards without letting
- * a library decide its routes.
+ * This stands on its own, with or without `@goflag/next`, which is the whole of
+ * D1: a site may want good cards without letting a library decide its routes.
+ * What ties a card to the metadata is the route: `@goflag/next` is told about
+ * the image a page has, and takes its size from `OG_SIZE`.
  */
 export function defineOg(definition: OgDefinition): Og {
   return {
