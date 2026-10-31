@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import type { ReactElement } from "react";
+
 import type { Og, OgCardContent } from "../card.js";
 
 /**
@@ -28,6 +30,34 @@ import type { Og, OgCardContent } from "../card.js";
  * makes it unnecessary to think about — `loader` is called once per export, and
  * whatever it returns for `alt` is what the metadata carries.
  */
+
+/**
+ * Every route below draws through this, so a site's fonts cannot reach one and
+ * miss another.
+ *
+ * With none declared the options are the size and nothing else, exactly what
+ * they were: `next/og` reads `fonts || defaultFonts`, so an empty list would not
+ * mean "the default". `next/og` types `data` as `Buffer | ArrayBuffer`, a name
+ * that must stay out of the core's declarations (a consumer without `@types/node`
+ * could not compile them), hence the cast here and nowhere else. At runtime a
+ * `Uint8Array` is fine: satori copies out its own window of the buffer.
+ */
+async function respond(
+  og: Og,
+  element: ReactElement,
+  size: { readonly width: number; readonly height: number },
+): Promise<ImageResponse> {
+  const fonts = await og.loadFonts();
+
+  return new ImageResponse(
+    element,
+    fonts ? { ...size, fonts: fonts as unknown as ResponseFonts } : size,
+  );
+}
+
+type ResponseFonts = NonNullable<
+  NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["fonts"]
+>;
 
 /** Whatever Next hands the two exports of one `opengraph-image` file. */
 export interface RouteContext<Params> {
@@ -90,7 +120,7 @@ export function ogImage<Params = Record<string, string>>(
     render: async (context) => {
       const { element, size } = og.card(await loader(context));
 
-      return new ImageResponse(element, size);
+      return respond(og, element, size);
     },
   };
 }
@@ -113,13 +143,14 @@ export function ogImage<Params = Record<string, string>>(
 export function ogIcon(og: Og, side: number): OgIconRoute {
   const { element, size, contentType } = og.icon(side);
 
-  return { size, contentType, render: () => new ImageResponse(element, size) };
+  return { size, contentType, render: () => respond(og, element, size) };
 }
 
 export interface OgIconRoute {
   readonly size: { readonly width: number; readonly height: number };
   readonly contentType: string;
-  render: () => ImageResponse;
+  /** Asynchronous since a card can carry fonts: a mark with text in it needs them too. */
+  render: () => Promise<ImageResponse>;
 }
 
 export interface CatchAllOptions<Entry> {
@@ -173,7 +204,22 @@ export function ogCatchAllRoute<Entry>(og: Og, options: CatchAllOptions<Entry>):
 
       const { element, size } = og.card(options.card(entry));
 
-      return new ImageResponse(element, size);
+      return respond(og, element, size);
     },
   };
+}
+
+/**
+ * One card as a response, for a route that is neither of the above: a site that
+ * draws its card from a handler of its own.
+ *
+ * **A title read from the query string renders any text at all on your card**,
+ * under your name, at a URL on your domain. That is what `ogCatchAllRoute` looks
+ * its slug up in a collection to refuse. Here the decision is the site's, so
+ * cap the length and consider signing the URL.
+ */
+export function ogCardResponse(og: Og, content: OgCardContent): Promise<ImageResponse> {
+  const { element, size } = og.card(content);
+
+  return respond(og, element, size);
 }

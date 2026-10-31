@@ -21,6 +21,8 @@ export {
   type OgCard,
   type OgCardContent,
   type OgDefinition,
+  type OgFontFace,
+  type OgFonts,
   type OgIcon,
 } from "./card.js";
 export { countGraphemes, fitTitle, type Fit, type FitStep, type FittedTitle } from "./fit.js";

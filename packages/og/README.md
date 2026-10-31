@@ -129,6 +129,39 @@ catch-all segment**, so a `[...slug]` route needs a `force-static` route handler
 instead. That is a special case, not the normal path: an ordinary `[slug]`
 segment takes `opengraph-image.tsx` directly.
 
+### Your fonts, if you want them
+
+Leave `fonts` out and `next/og` sets the card in the face it bundles, which has
+one weight: the title draws regular whatever the template asks for. To use your
+own, hand over a function that returns the bytes. The package ships none.
+
+```tsx
+export const og = defineOg({
+  // …
+  fonts: {
+    body: "Inter",
+    display: "Fraunces", // the title and the wordmark; defaults to `body`
+    load: async () => (await import("./og-fonts")).FACES,
+  },
+  accentBar: true, // `tokens.accent`, in a strip along the top edge
+});
+```
+
+`load` runs when the first card renders and once per process after that, so a
+page importing `og.tsx` for its alt sentence reads no font. Commit TTF, OTF or
+WOFF: satori cannot read the WOFF2 that `next/font` emits. The first card refuses
+WOFF2, any file without a font's signature, an empty list and a family no loaded
+face carries. A glyph your faces lack is fetched from Google Fonts as the card
+renders, at build or on the request, so cover every locale you serve. The card is
+upright, so leave italic files out.
+
+`ogCardResponse(og, content)`, from `@goflag/og/next`, draws one card from a route
+handler of your own. A
+title read from the query string renders any text at all on your card, which is
+what `ogCatchAllRoute` refuses by looking its slug up in a collection: cap the
+length and consider signing the URL. `content.footer` replaces the definition's
+line on one card, for a line that has to be translated.
+
 ## The `.ico`, and why it is guarded
 
 No Next convention emits an ICO. `favicon.ico` is a static file; `icon.tsx` goes
