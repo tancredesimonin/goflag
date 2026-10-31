@@ -278,6 +278,27 @@ export const FLAGS: readonly FlagSpec[] = [
     },
   },
   {
+    name: "--expect-indexing",
+    arg: "<no|yes>",
+    label: "--expect-indexing <no|yes>",
+    group: "gate",
+    help: [
+      "Whether this target belongs in a search index, which",
+      "only you can know. `no` (staging): a whole-site block",
+      "stops being a finding, and a page Google could still",
+      "index becomes one. `yes` (production): a block or a",
+      "noindex on the home page is an error. Unset, the",
+      "question stays open",
+    ],
+    takesValue: true,
+    apply: ({ parsed, value, flag }) => {
+      if (value !== "no" && value !== "yes") {
+        throw new Error(`${flag} expects one of: no, yes`);
+      }
+      parsed.options.expectIndexing = value;
+    },
+  },
+  {
     name: "--conformance",
     label: "--conformance",
     group: "output",
@@ -591,9 +612,10 @@ const DESCRIPTION_COLUMN = 25;
 
 function block(label: string, lines: readonly string[]): string[] {
   const pad = " ".repeat(DESCRIPTION_COLUMN);
-  return lines.map((line, i) =>
-    i === 0 ? `  ${label.padEnd(DESCRIPTION_COLUMN - 2)}${line}` : `${pad}${line}`,
-  );
+  const width = DESCRIPTION_COLUMN - 2;
+  // A label reaching the column would run straight into its description.
+  if (label.length >= width) return [`  ${label}`, ...lines.map((line) => `${pad}${line}`)];
+  return lines.map((line, i) => (i === 0 ? `  ${label.padEnd(width)}${line}` : `${pad}${line}`));
 }
 
 /**

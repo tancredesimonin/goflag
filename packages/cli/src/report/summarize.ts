@@ -80,6 +80,8 @@ export interface GoflagSummary {
   finishedAt: string;
   /** The rule profile the run was judged under. See `GoflagReport.profile`. */
   profile: string;
+  /** What the operator declared about indexing. See `GoflagReport.expectIndexing`. */
+  expectIndexing?: "no" | "yes";
   verdict: Verdict;
   totals: {
     brokenLinks: number;
@@ -123,6 +125,7 @@ export function summarize(report: GoflagReport): GoflagSummary {
     url: report.url,
     finishedAt: report.finishedAt,
     profile: report.profile,
+    ...(report.expectIndexing ? { expectIndexing: report.expectIndexing } : {}),
     verdict: report.summary.verdict,
     totals: {
       brokenLinks: report.summary.brokenLinks,

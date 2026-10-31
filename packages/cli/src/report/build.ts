@@ -45,7 +45,7 @@ import { DEFAULT_PROFILE, rulesForProfile } from "../lib/rules/profiles";
 import { PROSE_RULES } from "../lib/rules/prose";
 import { collectSiteAdvisories } from "../lib/rules/site-prose";
 import { getSiteRule } from "../lib/rules/site-rules";
-import type { SiteContext } from "../lib/rules/site-types";
+import type { ExpectIndexing, SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
 import type { LinkAnswer } from "../lib/core/links/check";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
@@ -165,6 +165,11 @@ export interface AuditOptions {
    * an unknown name rather than auditing under a policy nobody asked for.
    */
   profile?: string;
+  /**
+   * Whether the target is meant to be in a search index (`--expect-indexing`).
+   * Unset leaves the question open, and the report is what it was.
+   */
+  expectIndexing?: ExpectIndexing;
   /**
    * Emit the rule × page conformance matrix (`--conformance`): every rule's
    * status on every page, passing ones included. Off by default because it
@@ -936,6 +941,8 @@ export async function runAudit(
 
   // --- Cross-page rules ---------------------------------------------------
   const siteContext: SiteContext = {
+    entryUrl: entry,
+    ...(options.expectIndexing ? { expectIndexing: options.expectIndexing } : {}),
     origin,
     pages: htmlPages,
     matrix,
@@ -1056,6 +1063,7 @@ export async function runAudit(
     url: entry,
     finishedAt: new Date().toISOString(),
     profile,
+    ...(options.expectIndexing ? { expectIndexing: options.expectIndexing } : {}),
     summary: {
       brokenLinks: brokenCount,
       missingTranslations,

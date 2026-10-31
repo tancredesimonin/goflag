@@ -54,6 +54,13 @@ Options:
                          strict — every spec-backed rule fails the build
                          spec-only — heuristic rules switched off entirely
                          marketing — snippet and unfurl metadata gaps are errors
+  --expect-indexing <no|yes>
+                         Whether this target belongs in a search index, which
+                         only you can know. `no` (staging): a whole-site block
+                         stops being a finding, and a page Google could still
+                         index becomes one. `yes` (production): a block or a
+                         noindex on the home page is an error. Unset, the
+                         question stays open
   --conformance          Report EVERY rule's status on every page (pass /
                          fail / warn / na), not just the violations. Answers
                          "where do we stand against the catalog?"; pairs with

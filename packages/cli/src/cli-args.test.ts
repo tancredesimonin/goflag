@@ -68,6 +68,19 @@ describe("parseArgs", () => {
     expect(a.options.exclude).toEqual(["/x/**", "/admin"]);
   });
 
+  it("parses --expect-indexing, refuses anything else, and defaults to no declaration", () => {
+    expect(parseArgs(["u", "--expect-indexing", "no"]).options.expectIndexing).toBe("no");
+    expect(parseArgs(["u", "--expect-indexing", "yes"]).options.expectIndexing).toBe("yes");
+    expect(parseArgs(["u"]).options.expectIndexing).toBeUndefined();
+    expect(() => parseArgs(["u", "--expect-indexing", "maybe"])).toThrow("expects one of: no, yes");
+  });
+
+  it("refuses --expect-indexing on preview, which judges nothing", () => {
+    expect(() => parseArgs(["preview", "u", "--expect-indexing", "no"])).toThrow(
+      "--expect-indexing would change nothing",
+    );
+  });
+
   it("parses --profile and defaults to none (runAudit applies `default`)", () => {
     expect(parseArgs(["u", "--profile", "strict"]).options.profile).toBe("strict");
     expect(parseArgs(["u", "--profile", "spec-only"]).options.profile).toBe("spec-only");

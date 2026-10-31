@@ -22,9 +22,10 @@ import { isNotFound } from "../core/probes/not-found";
 import { robotsAllows, type RobotsDecision } from "../core/robots/match";
 import type { SitemapDocument } from "../core/sitemap/types";
 import type { Page, RobotsGroup, SitemapEntryProbe } from "../core/types";
+import { INDEXING_RULES } from "./indexing";
 import { LLMS_TXT_RULES } from "./llms-txt";
 import { robotsBlocksAiAnswers } from "./robots-ai-answers";
-import { isDead, sample } from "./site-shared";
+import { isDead, sample, SEARCH_CRAWLER, saysNoindex } from "./site-shared";
 import type { SiteContext, SiteRule } from "./site-types";
 import { sitemapReadInFull } from "./sitemap-inventory";
 
@@ -328,22 +329,6 @@ function metaRobotsTokens(page: Page): Set<string> {
 }
 
 /**
- * The crawler the search-engine robots rules decide for.
- *
- * `User-agent: *` is the group a crawler falls back to, not the one every
- * crawler reads: RFC 9309 §2.2.1 sends a crawler to the group that names it
- * when there is one. So "does robots.txt allow this path?" has no answer until
- * it says *for whom*, and `robots.blocks-site`, `robots.blocks-page` and
- * `sitemap.entry.blocked-by-robots` say Googlebot: the crawler documented by
- * Google's robots.txt introduction, the source behind what they claim about a
- * crawl. On a file that names nobody, Googlebot reads `*` and every answer is
- * the one their `*` reading gave until 2026-10-25. The two differ only where
- * a file treats Googlebot apart, which is exactly where the `*` reading was
- * wrong about Google.
- */
-const SEARCH_CRAWLER = "Googlebot";
-
-/**
  * The group a decision was made in, as a message names it:
  * `` `User-agent: googlebot` (line 1) ``. The token is the one that selected
  * the group, lowercased as the matcher compares it.
@@ -457,6 +442,12 @@ const robotsBlocksSite: SiteRule = {
     const declaring =
       `${asking.length} crawled page${asking.length === 1 ? " declares" : "s declare"} ` +
       '`<meta name="robots" content="index">`';
+
+    // Once the operator has said which it is, a quiet block has nothing left to
+    // ask: under `no` it is what was asked for, and under `yes` it is
+    // `indexing.site-blocked`. A page still declaring `index` is another matter,
+    // a contradiction no declaration explains.
+    if (site.expectIndexing && asking.length === 0) return [];
 
     // Googlebot singled out: what the file does not name is let in, so
     // Googlebot was kept out by a group of its own — which always carries the
@@ -1404,57 +1395,6 @@ function pagesByUrl(site: SiteContext): Map<string, Page> {
   return byUrl;
 }
 
-/** `none` is Google's own shorthand for `noindex, nofollow`. */
-const NOINDEX = new Set(["noindex", "none"]);
-
-/** The directives that take a value after a colon, so that colon names no crawler. */
-const VALUED_DIRECTIVES = new Set([
-  "max-snippet",
-  "max-image-preview",
-  "max-video-preview",
-  "unavailable_after",
-]);
-
-/**
- * The name of the directive each `X-Robots-Tag` token carries. A token may
- * address one crawler (`googlebot: noindex`) and a directive may carry a value
- * (`max-image-preview: none`), and the two look alike: what comes before the
- * colon is a directive when it is one of those that take a value, and the
- * crawler the rest is addressed to otherwise. Reading the last word instead
- * takes that `none` — no image preview — for `noindex, nofollow`, which is the
- * mistake this list exists to prevent. Two headers arrive joined by a comma, so
- * tokens are read one by one.
- */
-function headerDirectiveNames(value: string | undefined): string[] {
-  if (!value) return [];
-  return value.split(",").map((token) => {
-    let directive = token.trim().toLowerCase();
-    const colon = directive.indexOf(":");
-    if (colon !== -1 && !VALUED_DIRECTIVES.has(directive.slice(0, colon).trim())) {
-      directive = directive.slice(colon + 1);
-    }
-    return directive.split(":")[0]!.trim();
-  });
-}
-
-/**
- * Whether a page asks not to be indexed — by `<meta name="robots">`, by
- * `<meta name="googlebot">`, or by `X-Robots-Tag`, to every crawler or to one.
- *
- * A page that tells any crawler reading the sitemap not to index it does not
- * ask to be indexed, and a sitemap that lists it contradicts it for that
- * crawler. `none` counts: it is `noindex` said in one word.
- */
-function saysNoindex(page: Page): boolean {
-  const metas = [page.meta.robots?.value, page.meta.googlebot?.value];
-  if (metas.some((content) => (content ?? "").split(",").some(isNoindex))) return true;
-  return headerDirectiveNames(page.fetch.headers["x-robots-tag"]).some(isNoindex);
-}
-
-function isNoindex(directive: string): boolean {
-  return NOINDEX.has(directive.trim().toLowerCase());
-}
-
 /**
  * Whether a page's canonical names a different page than the one served —
  * "index that one instead of me". A difference `sameUrlKey` folds away, such as
@@ -1539,7 +1479,11 @@ const sitemapEntryNoindex: SiteRule = {
   // Only the crawled pages can be judged: a sitemap entry goflag never fetched
   // has no `noindex` to have seen, and assuming one either way would invent a
   // finding or hide one.
-  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0,
+  //
+  // Not under `--expect-indexing no`: every page there says `noindex` by design,
+  // and an empty sitemap to satisfy this would blind the audit, which discovers
+  // pages through it.
+  appliesTo: (site) => (site.discovery?.urls.length ?? 0) > 0 && site.expectIndexing !== "no",
   check: ({ site, issue }) => {
     const byUrl = pagesByUrl(site);
     const conflicting: string[] = [];
@@ -1825,6 +1769,7 @@ export const SITE_RULES: ReadonlyArray<SiteRule> = [
   iconsIcoMissing,
   ...LLMS_TXT_RULES,
   robotsBlocksAiAnswers,
+  ...INDEXING_RULES,
   robotsBlocksPage,
   robotsBlocksSite,
   robotstxtCrossOrigin,

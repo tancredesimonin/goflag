@@ -1,0 +1,10 @@
+
+[1mgoflag[0m [2mhttps://staging.example.com/[0m
+[33mYELLOW FLAG[0m  [2m2 pages crawled, 2 scanned, expecting indexing: no[0m
+
+[2m0 broken links[0m   [2m0 missing translations[0m   [2m0 SEO issues[0m   [1m[33m1 site issue[0m[0m   [2m0 unreachable pages[0m
+
+[1mSite-wide issues[0m
+  [2mlocales: en, fr (via sitemap)[0m
+  [36mhttps://staging.example.com/robots.txt[0m
+    [33mwarn [0m [2mindexing.blocked-url-indexable[0m  robots.txt keeps Googlebot out of 2 pages on a target declared out of the index: https://staging.example.com/en, https://staging.example.com/fr. All of them say noindex, which Googlebot never reads because it never fetches them. A blocked URL can still appear in Google's results, from links alone.
