@@ -20,7 +20,10 @@ export default defineConfig({
   platform: "node",
   target: "node22",
   outDir: "dist",
-  dts: true,
+  // tsup injects `baseUrl` into the declaration build, which TypeScript 6
+  // deprecates. The option is tsup's, not ours — silence it there rather than
+  // in a tsconfig that never set it.
+  dts: { compilerOptions: { ignoreDeprecations: "6.0" } },
   clean: true,
   sourcemap: true,
   // Peers, never bundled. `next/og` is the whole reason the second entry exists;
