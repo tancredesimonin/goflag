@@ -219,6 +219,9 @@ documentation site came to quote a message the engine had stopped printing.
 --no-sitemap           Do not discover the sitemap; crawl from <url> only.
 --profile <name>       Policy overlay on the rule set: default, strict,
                        spec-only, marketing.
+--expect-indexing <no|yes>
+                       Whether this target belongs in a search index, which
+                       only you can know. See "Staging and production".
 --conformance          Report every rule's status on every page, not just
                        the violations.
 --advisories           Attach the prose rules — the judgment calls goflag
@@ -292,6 +295,27 @@ note: baseline was captured under profile `strict`, this run used `spec-only` �
 
 It is a warning, never a gate — a `--profile spec-only` investigation against a
 `strict` baseline is a legitimate thing to do.
+
+### Staging and production
+
+`Disallow: /` is a staging host doing its job or a production outage, and goflag
+cannot tell which from the outside. `--expect-indexing` is you telling it. The
+answer is always an argument and never read from the target: a production site
+shipped with its staging settings must not be able to excuse itself.
+
+```sh
+goflag https://staging.example.com --expect-indexing no
+goflag https://example.com --expect-indexing yes
+```
+
+| Declared | No longer reported                               | Now reported                                                                                                                          |
+| -------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `no`     | `robots.blocks-site`, `sitemap.entry.noindex`    | `indexing.not-excluded` for a page Google may index, `indexing.blocked-url-indexable` for a blocked page, whose `noindex` goes unread |
+| `yes`    | nothing: `robots.blocks-site` becomes an `error` | `indexing.site-excluded` for a `noindex` on the home page, or on every page                                                           |
+
+A page declaring `index` on a blocked host still fails under either: no declaration
+explains that one. A baseline records its declaration, and the gate prints a note
+when a run made another one, since what moved may not be the site.
 
 ### Where do we stand? (`--conformance`)
 

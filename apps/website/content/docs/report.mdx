@@ -26,6 +26,8 @@ goflag https://example.com --report report.json   # also prints the terminal vie
   // Which rule profile judged this run. It changes what "clean" means, so it
   // travels with the report rather than being remembered by whoever ran it.
   "profile": "default",
+  // What --expect-indexing declared, "no" or "yes". Absent when nothing was.
+  "expectIndexing": "no",
   "summary": {
     "brokenLinks": 3,
     "missingTranslations": 2,
@@ -294,6 +296,8 @@ against a schema.
   // Present only when this run was judged under a different profile than the
   // baseline was captured under: reported loudly, gates nothing.
   "profileMismatch": { "baseline": "default", "current": "strict" },
+  // The same, for --expect-indexing. `null` stands for no declaration.
+  "indexingMismatch": { "baseline": null, "current": "no" },
   "added": [/* findings absent from the baseline — what fails CI */],
   "resolved": [/* baseline findings now gone */],
   "unchanged": 41

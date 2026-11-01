@@ -52,7 +52,8 @@ export function renderSummaryTerminal(summary: GoflagSummary, options: RenderOpt
         `${summary.totals.pagesCrawled} pages crawled, ${summary.totals.pagesScanned} scanned` +
           // Same reasoning as `renderTerminal`: a narrowed run must say so,
           // or its low finding count reads as a clean site.
-          (summary.profile === DEFAULT_PROFILE ? "" : `, profile ${summary.profile}`),
+          (summary.profile === DEFAULT_PROFILE ? "" : `, profile ${summary.profile}`) +
+          (summary.expectIndexing ? `, expecting indexing: ${summary.expectIndexing}` : ""),
       ),
   );
   lines.push("");

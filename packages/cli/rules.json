@@ -1,7 +1,7 @@
 {
   "counts": {
     "page": 25,
-    "site": 35,
+    "site": 39,
     "prose": 5
   },
   "sources": {
@@ -25,6 +25,13 @@
       "title": "Bing Webmaster Guidelines",
       "rigor": "guideline",
       "url": "https://www.bing.com/webmasters/help/webmasters-guidelines-30fba23a"
+    },
+    "google-block-indexing": {
+      "id": "google-block-indexing",
+      "publisher": "Google",
+      "title": "Block Search indexing with noindex",
+      "rigor": "vendor-spec",
+      "url": "https://developers.google.com/search/docs/crawling-indexing/block-indexing"
     },
     "google-canonicalization": {
       "id": "google-canonicalization",
@@ -550,6 +557,54 @@
         "icons.ico.missing"
       ],
       "expected": "a 2xx image at every declared icon URL"
+    },
+    {
+      "id": "indexing.blocked-url-indexable",
+      "scope": "site",
+      "severity": "warning",
+      "kind": "boolean",
+      "summary": "On a target declared out of the index, robots.txt must not hide the `noindex`",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-block-indexing",
+        "google-robots-intro"
+      ]
+    },
+    {
+      "id": "indexing.not-excluded",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A target declared out of the index must not serve a page Google may index",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-block-indexing",
+        "google-robots-meta"
+      ]
+    },
+    {
+      "id": "indexing.site-blocked",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "`robots.txt` must not keep Googlebot out of a target declared in the index",
+      "rigor": "vendor-spec",
+      "sources": [
+        "ietf-rfc9309",
+        "google-robots-intro"
+      ]
+    },
+    {
+      "id": "indexing.site-excluded",
+      "scope": "site",
+      "severity": "error",
+      "kind": "boolean",
+      "summary": "A target declared in the index must not say `noindex` on its home or on every page",
+      "rigor": "vendor-spec",
+      "sources": [
+        "google-block-indexing",
+        "google-robots-meta"
+      ]
     },
     {
       "id": "lang.matches-content",

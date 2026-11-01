@@ -32,8 +32,9 @@ describe("source catalog", () => {
   it("seeds every reference from the plan (§4.1–§4.3)", () => {
     // 41 seeded on 2026-08-06, six added to the plan's tables on 2026-10-05
     // for `http.not-found` and the `llmstxt.*` rules, and OpenAI's and
-    // Perplexity's crawler pages on 2026-10-25 for `robots.blocks-ai-answers`.
-    expect(SOURCES.length).toBe(49);
+    // Perplexity's crawler pages on 2026-10-25 for `robots.blocks-ai-answers`,
+    // and Google's `noindex` page on 2026-10-31 for the `indexing.*` rules.
+    expect(SOURCES.length).toBe(50);
   });
 
   it("covers all four rigor levels", () => {
