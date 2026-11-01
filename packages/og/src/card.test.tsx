@@ -1,7 +1,9 @@
-import type { ReactElement, ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { runInNewContext } from "node:vm";
 
-import { defineOg, OG_SIZE, type OgDefinition } from "./card.js";
+import type { ReactElement, ReactNode } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+import { defineOg, OG_SIZE, type OgDefinition, type OgFontFace, type OgFonts } from "./card.js";
 
 /**
  * The whole argument for a core that renders nothing (`docs/og-plan.md` D1):
@@ -181,5 +183,210 @@ describe("icon", () => {
     const fixed = defineOg({ ...DEFINITION, mark: <svg width={48} height={48} /> });
 
     expect(walk(fixed.icon(180).element).find((node) => node.type === "svg")?.props.width).toBe(48);
+  });
+});
+
+/** Enough of a file for its signature to be read: nothing here reaches a renderer. */
+const bytes = (signature: string) =>
+  Uint8Array.from([...signature, "x", "x"].map((char) => char.charCodeAt(0)));
+
+const face = (name: string, data: OgFontFace["data"] = bytes("OTTO")): OgFontFace => ({
+  name,
+  data,
+  weight: 400,
+});
+
+const withFonts = (fonts: Partial<OgFonts> = {}) =>
+  defineOg({ ...DEFINITION, fonts: { body: "Body", load: () => [face("Body")], ...fonts } });
+
+describe("fonts on the tree", () => {
+  const titleStyle = (element: ReactElement) =>
+    walk(element).find((node) => node.props.children === "Changelog")?.props.style as
+      Record<string, unknown> | undefined;
+  const wordmarkStyle = (element: ReactElement) =>
+    walk(element).find((node) => node.props.children === "goflag")?.props.style as
+      Record<string, unknown> | undefined;
+
+  it("names no family at all on a site that declared none", () => {
+    // The ambient face has to stay what it was: satori treats a family it cannot
+    // find differently from no family, and a card today carries none.
+    const card = og.card({ title: "Changelog", label: "docs", subtitle: "s" });
+
+    expect(styles(card.element).some((style) => "fontFamily" in style)).toBe(false);
+    expect(styles(og.icon(180).element).some((style) => "fontFamily" in style)).toBe(false);
+  });
+
+  it("sets the root in `body`, and the title and wordmark in it when nothing else is said", () => {
+    const { element } = withFonts().card({ title: "Changelog" });
+
+    expect(styles(element)[0]?.fontFamily).toBe("Body");
+    expect(titleStyle(element)?.fontFamily).toBe("Body");
+    expect(wordmarkStyle(element)?.fontFamily).toBe("Body");
+  });
+
+  it("sets the title and wordmark in `display`, and only those", () => {
+    const { element } = withFonts({
+      display: "Display",
+      load: () => [face("Body"), face("Display")],
+    }).card({ title: "Changelog" });
+
+    expect(styles(element)[0]?.fontFamily).toBe("Body");
+    expect(titleStyle(element)?.fontFamily).toBe("Display");
+    expect(wordmarkStyle(element)?.fontFamily).toBe("Display");
+    expect(styles(element).filter((style) => style.fontFamily === "Display")).toHaveLength(2);
+  });
+
+  it("sets an icon in `body`, for a mark with text in it", () => {
+    expect(styles(withFonts().icon(180).element)[0]?.fontFamily).toBe("Body");
+  });
+});
+
+describe("loadFonts", () => {
+  it("answers undefined for a site that declared none", async () => {
+    await expect(og.loadFonts()).resolves.toBeUndefined();
+  });
+
+  it("reads nothing until a card is drawn", () => {
+    // Why `load` is a function: `og.tsx` is imported by every page that wants
+    // the alt sentence, and those draw no card.
+    const load = vi.fn(() => [face("Body")]);
+    const lazy = withFonts({ load });
+
+    lazy.card({ title: "Changelog" });
+    lazy.icon(180);
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("reads once, however many routes ask at the same moment", async () => {
+    const load = vi.fn(async () => [face("Body")]);
+    const lazy = withFonts({ load });
+
+    const [first, second] = await Promise.all([lazy.loadFonts(), lazy.loadFonts()]);
+    await lazy.loadFonts();
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(first).toBe(second);
+  });
+
+  it("keeps a failure from being remembered, for a dev server that outlives it", async () => {
+    const load = vi
+      .fn<OgFonts["load"]>()
+      .mockRejectedValueOnce(new Error("ENOENT"))
+      .mockResolvedValueOnce([face("Body")]);
+    const lazy = withFonts({ load });
+
+    await expect(lazy.loadFonts()).rejects.toThrow("ENOENT");
+    await expect(lazy.loadFonts()).resolves.toHaveLength(1);
+  });
+
+  it("turns a loader that throws synchronously into a rejection", async () => {
+    const lazy = withFonts({
+      load: () => {
+        throw new Error("ENOENT");
+      },
+    });
+
+    await expect(lazy.loadFonts()).rejects.toThrow("ENOENT");
+  });
+
+  it.each([
+    ["TrueType", "\0\x01\0\0"],
+    ["OpenType", "OTTO"],
+    ["Apple TrueType", "true"],
+    ["WOFF", "wOFF"],
+  ])("takes %s", async (_kind, signature) => {
+    const lazy = withFonts({ load: () => [face("Body", bytes(signature))] });
+
+    await expect(lazy.loadFonts()).resolves.toHaveLength(1);
+  });
+
+  it("reads the signature of a bare ArrayBuffer and of a view into a larger one", async () => {
+    // A small `Buffer` is a window on a shared pool, so its signature is not at
+    // offset zero of `.buffer`.
+    const pool = new Uint8Array(16);
+    pool.set(bytes("OTTO"), 8);
+
+    for (const data of [bytes("OTTO").buffer as ArrayBuffer, pool.subarray(8, 14)]) {
+      await expect(
+        withFonts({ load: () => [face("Body", data)] }).loadFonts(),
+      ).resolves.toHaveLength(1);
+    }
+  });
+
+  it("takes an ArrayBuffer from another realm, where `instanceof` says no", async () => {
+    const foreign = runInNewContext("new ArrayBuffer(6)") as ArrayBuffer;
+    new Uint8Array(foreign).set(bytes("OTTO"));
+
+    await expect(
+      withFonts({ load: () => [face("Body", foreign)] }).loadFonts(),
+    ).resolves.toHaveLength(1);
+  });
+
+  it("refuses WOFF2 and says what to do instead", async () => {
+    const lazy = withFonts({ load: () => [face("Body", bytes("wOF2"))] });
+
+    await expect(lazy.loadFonts()).rejects.toThrow(/"Body" is WOFF2.*Commit a TTF/);
+  });
+
+  it.each([
+    ["an HTML error page", "<!do"],
+    ["a Git LFS pointer", "vers"],
+    ["an empty file", ""],
+  ])("refuses %s, naming the face", async (_kind, signature) => {
+    const data = signature === "" ? new Uint8Array(0) : bytes(signature);
+    const lazy = withFonts({ load: () => [face("Body", data)] });
+
+    await expect(lazy.loadFonts()).rejects.toThrow('"Body" is not a font file');
+  });
+
+  it("refuses an empty list", async () => {
+    await expect(withFonts({ load: () => [] }).loadFonts()).rejects.toThrow("no face");
+  });
+
+  it("refuses a family no loaded face carries, which satori would swallow", async () => {
+    await expect(withFonts({ body: "Bdoy" }).loadFonts()).rejects.toThrow(
+      'no loaded face is named "Bdoy" (loaded: Body)',
+    );
+    await expect(withFonts({ display: "Display" }).loadFonts()).rejects.toThrow(
+      'no loaded face is named "Display"',
+    );
+  });
+
+  it("refuses at definition what can be known at definition", () => {
+    expect(() => withFonts({ body: "" })).toThrow("names no family");
+    expect(() => withFonts({ load: "fonts/a.ttf" as unknown as OgFonts["load"] })).toThrow(
+      "must be a function",
+    );
+  });
+});
+
+describe("accentBar", () => {
+  const barred = defineOg({ ...DEFINITION, accentBar: true });
+
+  it("draws nothing unless asked", () => {
+    expect(
+      styles(og.card({ title: "Changelog" }).element).some(
+        (style) => style.position === "absolute",
+      ),
+    ).toBe(false);
+  });
+
+  it("draws the accent, first, so the content stacks over it", () => {
+    // Satori has no z-index: the order on the tree is the order on the card.
+    const [, first] = styles(barred.card({ title: "Changelog" }).element);
+
+    expect(first).toMatchObject({ position: "absolute", top: 0, height: 8 });
+    expect(first?.background).toBe(TOKENS.accent);
+  });
+});
+
+describe("content.footer", () => {
+  it("replaces the definition's line on that card only", () => {
+    const footer = "goflag.tech · Audit i18n";
+
+    expect(texts(og.card({ title: "Changelog", footer }).element)).toContain(footer);
+    expect(texts(og.card({ title: "Changelog", footer }).element)).not.toContain("goflag.tech");
+    expect(texts(og.card({ title: "Changelog" }).element)).toContain("goflag.tech");
   });
 });

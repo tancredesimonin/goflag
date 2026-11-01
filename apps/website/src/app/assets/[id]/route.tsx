@@ -1,12 +1,7 @@
 import { ImageResponse } from "next/og";
 
-import {
-  MONO_BOLD,
-  MONO_REGULAR,
-  TerminalImage,
-  terminalImageSize,
-  type TerminalImageSpec,
-} from "@/lib/seo/terminal-image";
+import { MONO_FACES } from "@/lib/seo/mono-fonts";
+import { TerminalImage, terminalImageSize, type TerminalImageSpec } from "@/lib/seo/terminal-image";
 
 /**
  * Images for the surfaces that cannot render HTML — the README, which `prepack`
@@ -75,9 +70,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   return new ImageResponse(<TerminalImage spec={spec} />, {
     ...terminalImageSize(spec),
-    fonts: [
-      { name: "JetBrains Mono", data: MONO_REGULAR, weight: 400, style: "normal" },
-      { name: "JetBrains Mono", data: MONO_BOLD, weight: 700, style: "normal" },
-    ],
+    fonts: [...MONO_FACES],
   });
 }

@@ -63,6 +63,11 @@ export const OG_VERDICTS = ["#00d492", "#ffb900", "#ff6467"] as const;
  * longer, which is a worse defect than the one the degression exists to fix.
  * `og.test.ts` holds where they are.
  *
+ * **The first boundary is the face's, not the copy's.** JetBrains Mono at 72px with
+ * the template's tracking fits 25 glyphs in the card's 1056px, and a rule id has
+ * nowhere to break but its hyphens: at 32, `robotstxt.sitemap.relative` ran 24px
+ * past the margin. `og.test.ts` measures every id.
+ *
  * **No per-locale factor.** §4.2 predicts one, and German is the case it names —
  * but this site serves en, fr, es and pt, and once the boundaries are placed
  * properly all four land on the same step anyway. It goes in when a locale
@@ -70,7 +75,7 @@ export const OG_VERDICTS = ["#00d492", "#ffb900", "#ff6467"] as const;
  */
 export const OG_FIT = {
   steps: [
-    { upTo: 32, fontSize: 72 },
+    { upTo: 25, fontSize: 72 },
     { upTo: 56, fontSize: 60 },
     { upTo: 80, fontSize: 52 },
   ],
@@ -82,13 +87,17 @@ export const OG_FIT = {
  *
  * Deliberately a terminal, not a screenshot: the terminal *is* the product, and
  * a preview promising a dashboard would be the first thing this site says and
- * also the first thing it got wrong. Built with the ambient font rather than a
- * fetched one — a preview image is not worth a network call in the build that
- * can fail it.
+ * also the first thing it got wrong. So it is set in the terminal's own face, the
+ * two files already committed for `/assets` (I7), which also gives the title a
+ * bold the ambient font does not have: `next/og`'s one bundled weight drew
+ * `fontWeight: 600` as regular, and a card with no hierarchy reads as a caption.
+ *
+ * The import stays dynamic because `/docs` takes `ogAlt` from this module: a
+ * static one would read 550 KB of fonts on pages that draw no card.
  *
  * The layout, the degression and the catch-all workaround now live in
  * `@goflag/og`; what stays here is what is actually this site's — its palette,
- * its mark, its measured steps, and the sentence it puts in `og:image:alt`.
+ * its mark, its face, its measured steps, and the sentence it puts in `og:image:alt`.
  */
 export const og = defineOg({
   name: SITE.name,
@@ -96,6 +105,11 @@ export const og = defineOg({
   tokens: OG_TOKENS,
   dots: OG_VERDICTS,
   fit: OG_FIT,
+  fonts: {
+    body: "JetBrains Mono",
+    load: async () => (await import("./mono-fonts")).MONO_FACES,
+  },
+  accentBar: true,
   /**
    * One drawing for the card and for `apple-icon.tsx`, which is the point of
    * taking a function: the two used to be separate copies, and the icon's were

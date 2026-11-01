@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { defineOg } from "../card.js";
-import { ogCatchAllRoute, ogIcon, ogImage } from "./index.js";
+import { ogCardResponse, ogCatchAllRoute, ogIcon, ogImage } from "./index.js";
 
 /**
  * The binding, and the one thing only the binding can prove.
@@ -89,7 +92,7 @@ describe("ogIcon", () => {
 
     expect(icon.size).toEqual({ width: 180, height: 180 });
     expect(icon.contentType).toBe("image/png");
-    expect(icon.render().headers.get("content-type")).toBe("image/png");
+    expect((await icon.render()).headers.get("content-type")).toBe("image/png");
   });
 });
 
@@ -116,5 +119,79 @@ describe("ogCatchAllRoute", () => {
     });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("a site's fonts", () => {
+  // The face goflag.tech commits, by relative path: this package ships none, and
+  // that a real file reaches the renderer is the one claim a tree cannot make.
+  const FONT = readFileSync(
+    join(__dirname, "../../../../apps/website/src/lib/seo/fonts/JetBrainsMono-Regular.ttf"),
+  );
+  const load = vi.fn(() => [{ name: "JetBrains Mono", data: FONT, weight: 400 as const }]);
+  const withFonts = defineOg({ ...og, fonts: { body: "JetBrains Mono", load } });
+  const CARD = { title: "Votre page est parfaite." };
+
+  const png = async (response: Response) => {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect([...bytes.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+
+    return Buffer.from(bytes);
+  };
+
+  it("loads nothing to answer a metadata request", async () => {
+    load.mockClear();
+    const image = ogImage(withFonts, () => ({ ...CARD, alt: "…" }));
+
+    await image.generateImageMetadata({ params: Promise.resolve({}) });
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("reach the renderer from every route, in the face they named", async () => {
+    // Different pixels are the proof: `next/og` falls back to its own face without
+    // a word, so a PNG signature alone would pass with the fonts dropped.
+    const ambient = await png(await ogCardResponse(og, CARD));
+    const direct = await png(await ogCardResponse(withFonts, CARD));
+
+    expect(direct.equals(ambient)).toBe(false);
+
+    const image = ogImage(withFonts, () => CARD);
+    const viaImage = await png(await image.render({ params: Promise.resolve({}) }));
+    const route = ogCatchAllRoute(withFonts, {
+      entries: [{ slug: "quickstart" }],
+      slugOf: (entry) => entry.slug,
+      card: () => CARD,
+    });
+    const viaCatchAll = await png(
+      await route.GET(new Request("https://goflag.tech/og/docs/quickstart"), {
+        params: Promise.resolve({ slug: ["quickstart"] }),
+      }),
+    );
+
+    expect(viaImage.equals(direct)).toBe(true);
+    expect(viaCatchAll.equals(direct)).toBe(true);
+  }, 30_000);
+
+  it("reach an icon too", async () => {
+    load.mockClear();
+    const icon = ogIcon(withFonts, 32);
+
+    expect(load).not.toHaveBeenCalled();
+    await png(await icon.render());
+  }, 30_000);
+
+  it("surface a bad file as an error rather than a card in the wrong face", async () => {
+    const broken = defineOg({
+      ...og,
+      fonts: {
+        body: "Broken",
+        load: () => [{ name: "Broken", data: new TextEncoder().encode("<!doctype"), weight: 400 }],
+      },
+    });
+
+    await expect(ogCardResponse(broken, CARD)).rejects.toThrow('"Broken" is not a font file');
   });
 });
