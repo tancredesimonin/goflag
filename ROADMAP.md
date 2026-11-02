@@ -1,14 +1,14 @@
 ---
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-11-01: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
+> State observed on 2026-11-02: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
 > `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`, production
-> on `main`. Since the release merge (!265), `develop` is ahead by the roadmap update (!266),
-> TypeScript 6, Renovate's merges, `--expect-indexing` (!271), and the share cards' fonts, which
-> earn `og-v0.3.0` at the next release.
+> on `main`. The release merge request (!273) carries `v0.2.17` (`--expect-indexing`, !271),
+> `next-v0.4.1` (`canonicalHostRedirect`, !272) and `og-v0.3.0` (the share cards' fonts, !270);
+> the `tag` job creates the three when `develop` is merged into `main` (!274).
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
 > 2026-10-25.
 
@@ -55,7 +55,15 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **Share cards take the site's fonts and can draw its accent** (on `develop`, not yet tagged)
+- **next-v0.4.1: the other host redirects to the canonical origin** (!272, release !273) —
+  `canonicalHostRedirect(baseUrl)` returns the object `redirects()` takes in `next.config`: a
+  308 from `www.<host>` to the apex, or from the apex to `www` when `baseUrl` is on `www`, with
+  the path and the query string kept. A function of its own, because `next.config` cannot import
+  a `site.ts` that imports `content-collections`. Its tests run it through Next 16.4.3's own
+  matcher, and a throwaway Next app answered the 308s; nothing was deployed. The model is
+  openfinanceguide's `WWW_TO_APEX`, written there because Kamal 2.11 passes no `canonical_host`
+  to kamal-proxy. No site uses the library's version yet.
+- **og-v0.3.0: share cards take the site's fonts and can draw its accent** (!270, release !273)
   — `@goflag/og` gains `fonts` (a lazy loader, read once per process, refusing WOFF2 and
   anything that is not a font), `accentBar`, `content.footer` and `ogCardResponse`.
   tancrede, openfinanceguide and tancredo hand-write a satori route of 202, 216 and 253 lines,
@@ -65,7 +73,7 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
   Neither site has migrated, and that is each site's call: a scratch port removes 116 and 114
   lines, and costs the rule above the footer, the line on its right and the coloured host,
   which the card cannot draw.
-- **An operator can say whether a target belongs in an index** (on `develop`, not yet tagged)
+- **0.2.17: an operator can say whether a target belongs in an index** (!271, release !273)
   — `--expect-indexing no|yes`, a gate flag that is only ever an argument. Under `no`,
   `robots.blocks-site` and `sitemap.entry.noindex` stop firing, and `indexing.not-excluded` and
   `indexing.blocked-url-indexable` ask whether the host is really out of the index. Under `yes`,
