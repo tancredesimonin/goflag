@@ -55,7 +55,7 @@ export const LIB = {
 
 export const CARDS = {
   name: "@goflag/og",
-  version: "0.2.0",
+  version: "0.3.0",
   npm: "https://www.npmjs.com/package/@goflag/og",
   docs: "/docs/og",
 } as const;
