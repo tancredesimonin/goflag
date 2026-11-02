@@ -21,6 +21,7 @@ export {
   type SitemapOptions,
 } from "./routes";
 export { buildMetadata, type RouteContent, type RouteImage } from "./metadata";
+export { canonicalHostRedirect, type CanonicalHostRedirect } from "./canonical-host";
 export { clusterOf, locate } from "./locate";
 export {
   isLanguage,
