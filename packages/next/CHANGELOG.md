@@ -2,6 +2,27 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.1](https://github.com/tancredesimonin/goflag/compare/next-v0.4.0...next-v0.4.1) (2026-11-02)
+
+
+### Features
+
+* **next:** canonicalHostRedirect sends the other host variant to the canonical origin ([e35018d](https://github.com/tancredesimonin/goflag/commit/e35018db9b4a16f0414af4f70ae82d8386554331))
+
+
+### Bug Fixes
+
+* **deps:** next moves to 16.3.8, past GHSA-cjq9-62q9-8jv4 ([5ddcd4b](https://github.com/tancredesimonin/goflag/commit/5ddcd4bcb6ccc44c5627c8ba0def5f54e76318a3))
+* **deps:** next moves to 16.4.2, past two critical RCEs ([00bdd4f](https://github.com/tancredesimonin/goflag/commit/00bdd4f4046c3af4d2f8f50d67a6f72befc7dd6c))
+* **deps:** update dependencies ([9f3ba6f](https://github.com/tancredesimonin/goflag/commit/9f3ba6fc599bedb54258cf57f88aa35ff97a1e31))
+* **deps:** update dependencies ([9f1c9ca](https://github.com/tancredesimonin/goflag/commit/9f1c9cab9bc97e1d5b05fed8e97b44d425a9549a))
+* **deps:** update dependencies ([14d6167](https://github.com/tancredesimonin/goflag/commit/14d6167801fa24116214c40fbdbb8811a80cdc19))
+* **deps:** update dependencies ([6d967f4](https://github.com/tancredesimonin/goflag/commit/6d967f446095c92606132496d9d2ac01776df442))
+* **deps:** update dependencies ([a34b7da](https://github.com/tancredesimonin/goflag/commit/a34b7dad2b8f0767e3abe5f93496bdd179513455))
+* **deps:** update dependencies ([4a2acea](https://github.com/tancredesimonin/goflag/commit/4a2acea31af197832c1a2896172156cfe6f79560))
+* **deps:** update dependencies ([823b6e5](https://github.com/tancredesimonin/goflag/commit/823b6e5a2988d3f3b78896c2b222cbbb20d5a891))
+* **deps:** update dependencies ([8121674](https://github.com/tancredesimonin/goflag/commit/8121674f87f0621be5850d6cfe5717109f781350))
+
 ## [0.4.0](https://github.com/tancredesimonin/goflag/compare/next-v0.3.3...next-v0.4.0) (2026-08-16)
 
 
