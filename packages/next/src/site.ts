@@ -95,7 +95,12 @@ export interface Site<L extends string> {
   ): Routes<L, Extract<keyof F, string>>;
 }
 
-function normalizeBaseUrl(input: string): string {
+/**
+ * `baseUrl`, parsed. The scheme is checked because `new URL` alone accepts
+ * `example.com:3000`, reading `example.com:` as the scheme: an origin of `null`
+ * and an empty hostname, which nothing downstream would notice.
+ */
+export function parseBaseUrl(input: string): URL {
   let parsed: URL;
   try {
     parsed = new URL(input);
@@ -106,6 +111,13 @@ function normalizeBaseUrl(input: string): string {
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new Error(`baseUrl must be http or https, received ${JSON.stringify(input)}`);
   }
+
+  return parsed;
+}
+
+function normalizeBaseUrl(input: string): string {
+  const parsed = parseBaseUrl(input);
+
   if (parsed.pathname !== "/" || parsed.search !== "" || parsed.hash !== "") {
     // A base URL with a path silently doubles into every canonical the site
     // emits, and a canonical is the one tag whose mistakes are invisible until
