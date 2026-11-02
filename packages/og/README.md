@@ -210,6 +210,13 @@ rewrites a file cannot fail a build; a check that writes nothing can.
 `writeIcons` is the same guard over a whole set, for the sites that ship
 `apple-touch-icon.png` and the PWA sizes alongside.
 
+## Upgrading
+
+**`ogIcon().render` returns a promise since 0.3.0.** A mark with text in it needs
+the card's `fonts` too, and they are read late. `export default icon.render` is
+unaffected, because Next awaits a default export; code that calls `render()`
+itself has to `await` it.
+
 ## What this is not
 
 - **Not a gallery of templates.** One card, driven by tokens.
