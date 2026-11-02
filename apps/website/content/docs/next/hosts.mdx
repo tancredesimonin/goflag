@@ -1,0 +1,81 @@
+---
+title: Redirecting the other host
+description: canonicalHostRedirect sends www to the apex, or the apex to www, with a permanent redirect next.config serves, so the variant a site does not canonicalise on stops serving a copy of it.
+navTitle: The other host
+group: library
+order: 4
+---
+
+`www` and the apex usually point at one server, so the variant a site does not
+canonicalise on serves a full copy of it. Every page of the copy names the right
+host in its canonical, and that is not always enough: a canonical is a hint, and
+Google sometimes keeps the copy. A redirect is the answer it cannot overrule.
+
+## `canonicalHostRedirect`
+
+```js
+// next.config.mjs
+import { canonicalHostRedirect } from "@goflag/next";
+
+export default {
+  redirects: async () => [canonicalHostRedirect(process.env.NEXT_PUBLIC_SITE_URL)],
+};
+```
+
+| `baseUrl`                   | Redirected   | To                   |
+| --------------------------- | ------------ | -------------------- |
+| on the apex                 | `www.<host>` | the apex, with a 308 |
+| on `www`                    | the apex     | `www`, with a 308    |
+| not an absolute http(s) URL | —            | the build fails      |
+
+The path and the query string are kept. The port plays no part in the match and
+stays in the destination, and a path in `baseUrl` is ignored, since only its
+origin is named. What it hands back is a plain object, the shape `redirects()`
+takes:
+
+```js
+{
+  source: "/:path*",
+  has: [{ type: "host", value: "www\\.example\\.com" }],
+  destination: "https://example.com/:path*",
+  permanent: true,
+}
+```
+
+`has` is a regex to Next, anchored at both ends, so the dots are escaped:
+`wwwxexample.com` is not redirected.
+
+### Not a method of `site`
+
+`next.config` runs before any bundler does, and cannot import a `site.ts` that
+imports `content-collections`. So this is a function of its own, and it takes the
+origin as a value, [as `defineSite` does](/docs/next/routes#it-reads-no-environment-variable).
+Pass it the same variable your `site.ts` reads.
+
+Give it no fallback. A default origin builds a redirect that never fires, and
+nothing says so; an unset variable stops the build with
+`baseUrl must be an absolute URL, received undefined`.
+
+### Fixed at build
+
+Next writes redirects into its routes manifest at `next build`. The origin has to
+be known then, and changing it when the server starts changes nothing.
+
+Put it first among your redirects, so that a retired URL on the other host
+reaches the canonical one before its new path.
+
+## Two limits
+
+**It runs before your locale middleware.** Next applies `redirects()` before
+middleware (`proxy.ts`), so a request on the other host is answered without
+reaching it. `www.example.com/` goes to `example.com/`, and only there does the
+middleware send it on to `/en`: two hops, and the first one negotiates nothing.
+
+**The other host has to stay routed by your proxy.** Next answers this redirect,
+so the request still has to reach Next over TLS. Remove `www` from the hosts your
+proxy routes (`proxy.hosts` in Kamal's `config/deploy.yml`) and it loses its
+certificate and stops answering, rather than redirecting.
+
+Two smaller things Next does on its own: it keeps `/_next` out of every
+redirect, and it removes a trailing slash before it looks at this one, so
+`www.example.com/docs/` first goes to `www.example.com/docs`.
