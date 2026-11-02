@@ -22,16 +22,16 @@ export default {
 };
 ```
 
-| `baseUrl`                   | Redirected   | To                   |
-| --------------------------- | ------------ | -------------------- |
-| on the apex                 | `www.<host>` | the apex, with a 308 |
-| on `www`                    | the apex     | `www`, with a 308    |
-| not an absolute http(s) URL | —            | the build fails      |
+| `baseUrl`                   | What it does                       |
+| --------------------------- | ---------------------------------- |
+| on the apex                 | `www.<host>` redirects to the apex |
+| on `www`                    | the apex redirects to `www`        |
+| not an absolute http(s) URL | the build fails                    |
 
-The path and the query string are kept. The port plays no part in the match and
-stays in the destination, and a path in `baseUrl` is ignored, since only its
-origin is named. What it hands back is a plain object, the shape `redirects()`
-takes:
+The redirect is a 308, and the path and the query string are kept. The port
+plays no part in the match and stays in the destination, and a path in `baseUrl`
+is ignored, since only its origin is named. What it hands back is a plain
+object, the shape `redirects()` takes:
 
 ```js
 {
