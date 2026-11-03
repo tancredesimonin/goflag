@@ -1,18 +1,27 @@
 ---
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-11-02: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
-> `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`, production
-> on `main`. The release merge request (!273) carries `v0.2.17` (`--expect-indexing`, !271),
-> `next-v0.4.1` (`canonicalHostRedirect`, !272) and `og-v0.3.0` (the share cards' fonts, !270);
-> the `tag` job creates the three when `develop` is merged into `main` (!274).
+> State observed on 2026-11-03: latest tags `v0.2.17`, `next-v0.4.1` and `og-v0.3.0`
+> (2026-11-03) — the three versions npm serves. Integration on `develop`, production on `main`.
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-10-25.
+> 2026-11-03.
 
 ## Now
+
+### An agent can audit the site it is editing, and a pipeline keeps a report anyone can read
+
+**Why**: goal 1 — an agent editing a site's metadata can only reach the audit through a shell
+and a JSON of several hundred lines, and a pipeline that keeps that JSON shows nothing to whoever
+does not run the CLI (`docs/integrations-plan.md` §1).
+**Done when**: `@goflag/mcp` (P-1) — a local stdio server over `runAudit`, four read-only
+tools — is published and listed in the official MCP registry, and `--html <file>` (P-2) writes
+a self-contained report that openfinanceguide's `seo:mr` job attaches as an artefact. Alongside,
+`--header` (T-1), so a protected preview can be audited without its secret reaching any output.
+**State**: not started; plan written 2026-11-03. The author publishes the first `@goflag/mcp`
+by hand and protects `mcp-v*` before it (`docs/publishing.md`).
 
 ### 3.5 — translation holes move into the rule registry
 
@@ -30,6 +39,16 @@ reciprocity is intentionally not a rule there.
 
 ## Next
 
+- `--junit <file>` (T-2), sitemaps read as a stream instead of whole in cheerio (T-3), and
+  structural coverage measured on a public sitemap far past openfinanceguide's 4,451 pages
+  (T-4) — `docs/integrations-plan.md` §3.
+- CI recipes (P-3): a GitHub Action, a GitLab CI template and a Vercel Deployment Checks
+  recipe, each with the debt ratchet and the HTML report (done when: each is documented on
+  goflag.tech and green on a public example repository).
+- Four hosted checks on goflag.tech (P-4): soft 404, staging leak, site-wide hreflang cluster,
+  sitemap index — served by `apps/checks`, which runs the pinned published CLI and imports
+  nothing from `packages/cli` (I3). Done when: the four pages are live and ten concurrent
+  requests do not starve the site.
 - The `.goflag/routes.json` manifest emitted by the library at build time, then consumed by
   the CLI (done when: removing every `hreflang` from the render of a site with a manifest
   produces an **error**, not silence) — `docs/coverage-plan.md` V-4.
@@ -40,6 +59,10 @@ reciprocity is intentionally not a rule there.
 
 ## Someday
 
+- SARIF and GitLab Code Quality output, once `.goflag/routes.json` maps a finding to a source
+  file: both formats place a problem in a file, and a finding is placed on a URL.
+- A remote MCP over `apps/checks`, for public URLs only — the local server comes first because
+  it sees `localhost` and a preview behind a VPN.
 - An "audit these URLs, do not crawl" mode — only if real usage shows that the manual
   `pnpm seo` is never run.
 - Extract `@goflag/spec` from the CLI, if a second consumer appears (I4).
@@ -172,6 +195,10 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 
 ## Dropped
 
+- Telemetry in the CLI or the MCP: nothing leaves the CI that runs goflag
+  (`docs/integrations-plan.md` D3).
+- A hosted check per rule on goflag.tech: the rule pages exist, and four checks cover the site
+  rules a reader cannot try on their own URL from a rule page (`docs/integrations-plan.md` §2.4).
 - The advisory `sitemap.unlisted-indexable` (`docs/sitemap-scope-plan.md` X-4): a duplicate.
   `sitemap.orphans` has reported the same pages since 0.2.10 — crawled, not `noindex`, absent
   from every sitemap — as a `guideline` warning. X-4 would only have changed its form, a question
