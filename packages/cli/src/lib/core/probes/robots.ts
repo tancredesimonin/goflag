@@ -1,10 +1,13 @@
 import { parseRobots } from "../robots/parse";
 import type { RobotsProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface RobotsProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 /**
@@ -31,7 +34,7 @@ export async function probeRobots(
   const noRedirect = { count: 0, finalUrl: url, crossOrigin: false };
 
   try {
-    const res = await fetch(url, { signal, redirect: "follow" });
+    const res = await fetchScoped(url, { signal, redirect: "follow" }, options.scopedHeaders);
 
     // `fetch` does not report the hop count, but it does report where it
     // landed — which is the part a rule can act on. A different origin is the

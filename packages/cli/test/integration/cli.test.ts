@@ -214,6 +214,41 @@ describe("goflag CLI (spawned process)", () => {
     expect(written.summary.verdict).toBe("green");
   }, 30_000);
 
+  it("sends --header and prints its value nowhere, verbose log and report included", async () => {
+    // The value is a credential. The report keeps the header's name, which is
+    // what a reader needs to know the run was authenticated; the value would
+    // land in a CI log, an artefact and every issue the report is pasted into.
+    const secret = "tok_never_in_any_output_8d1f";
+    const out = join(tmp, "with-header.json");
+    const r = await runCli([
+      `${server.url}/good`,
+      "--header",
+      `X-Preview-Token: ${secret}`,
+      "--verbose",
+      "--report",
+      out,
+      "--static",
+      "--depth",
+      "0",
+      "--no-sitemap",
+    ]);
+    expect(r.status).toBe(0);
+    expect(r.stdout + r.stderr).not.toContain(secret);
+
+    const raw = readFileSync(out, "utf8");
+    expect(raw).not.toContain(secret);
+    const written = JSON.parse(raw) as GoflagReport;
+    expect(written.diagnostics.requestHeaders).toEqual(["X-Preview-Token"]);
+  }, 30_000);
+
+  it("refuses a --header goflag owns, exit 2, without echoing it", async () => {
+    const secret = "tok_never_echoed_31aa";
+    const r = await runCli([`${server.url}/good`, "--header", `User-Agent: ${secret}`]);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain("set by goflag itself");
+    expect(r.stdout + r.stderr).not.toContain(secret);
+  }, 30_000);
+
   it("delivers a --json report larger than a pipe buffer without truncating it", async () => {
     // `process.exit` discards whatever is still queued, and a write to a pipe
     // is asynchronous where a write to a TTY or a file is not. So the report

@@ -16,6 +16,7 @@ import {
 } from "./extract/headless";
 import { looksClientRendered } from "./extract/heuristics";
 import { computeHydrationDelta } from "./extract/hydration";
+import type { ScopedHeaders } from "./net/scoped-headers";
 import { probeManifest } from "./probes/manifest";
 import { probeRobots } from "./probes/robots";
 import { probeSitemap } from "./probes/sitemap";
@@ -98,6 +99,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -118,6 +120,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -139,13 +142,22 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
   let renderedBody: string | undefined;
   let renderedFetch: FetchMeta | undefined;
   try {
-    const result = await extractHeadless(url, {
+    // With `--header`, render the page the static fetch ended at: Chromium
+    // follows a same-origin redirect without the operator's headers
+    // (`extract/headless.ts`), and the static loop already followed it with
+    // them. The meta still names the URL that was asked for.
+    const renderUrl = fetchOptions.scopedHeaders ? staticMeta.finalUrl : url;
+    const result = await extractHeadless(renderUrl, {
       ...headlessOpts,
       allowInsecureTls: fetchOptions.allowInsecureTls,
+      scopedHeaders: fetchOptions.scopedHeaders,
       signal: fetchOptions.signal,
     });
     renderedBody = result.renderedHtml;
-    renderedFetch = result.fetch;
+    renderedFetch =
+      renderUrl === url
+        ? result.fetch
+        : { ...result.fetch, requestedUrl: url, redirectCount: staticMeta.redirectCount };
   } catch (err) {
     if (!(err instanceof HeadlessUnavailableError)) throw err;
     const probes = await runProbes({
@@ -153,6 +165,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -177,6 +190,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
     origin: new URL(renderedFetch.finalUrl).origin,
     manifestHref: renderedParsed.links.manifest?.href,
     signal: fetchOptions.signal,
+    scopedHeaders: fetchOptions.scopedHeaders,
   });
 
   return {
@@ -224,6 +238,7 @@ async function inspectHeadlessOnly(args: {
   const result = await extractHeadless(url, {
     ...headlessOpts,
     allowInsecureTls: fetchOptions.allowInsecureTls,
+    scopedHeaders: fetchOptions.scopedHeaders,
     signal: fetchOptions.signal,
   });
   const parsed = extractStatic(result.renderedHtml, { baseUrl: result.fetch.finalUrl });
@@ -232,6 +247,7 @@ async function inspectHeadlessOnly(args: {
     origin: new URL(result.fetch.finalUrl).origin,
     manifestHref: parsed.links.manifest?.href,
     signal: fetchOptions.signal,
+    scopedHeaders: fetchOptions.scopedHeaders,
   });
   return {
     ...parsed,
@@ -248,14 +264,14 @@ async function runProbes(args: {
   origin: string;
   manifestHref: string | undefined;
   signal: AbortSignal | undefined;
+  scopedHeaders?: ScopedHeaders;
 }): Promise<Page["probes"]> {
   if (!args.enabled) return {};
+  const opts = { signal: args.signal, scopedHeaders: args.scopedHeaders };
   const [robots, sitemap, manifest] = await Promise.all([
-    probeRobots(args.origin, { signal: args.signal }),
-    probeSitemap(args.origin, { signal: args.signal }),
-    args.manifestHref
-      ? probeManifest(args.manifestHref, { signal: args.signal })
-      : Promise.resolve(undefined),
+    probeRobots(args.origin, opts),
+    probeSitemap(args.origin, opts),
+    args.manifestHref ? probeManifest(args.manifestHref, opts) : Promise.resolve(undefined),
   ]);
   const probes: Page["probes"] = { robots, sitemap };
   if (manifest) probes.manifest = manifest;

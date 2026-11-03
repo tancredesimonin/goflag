@@ -1,4 +1,5 @@
 import type { FetchMeta } from "../types";
+import { headersFor, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface FetchStaticOptions {
   /** Per-request timeout in ms. Defaults to 15_000. */
@@ -9,6 +10,8 @@ export interface FetchStaticOptions {
   userAgent?: string;
   /** Allow self-signed certificates (for `*.local` and tunnels). */
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   /** Optional AbortSignal for caller-driven cancellation. */
   signal?: AbortSignal;
 }
@@ -84,9 +87,12 @@ export async function fetchStatic(
         response = await fetch(currentUrl, {
           method: "GET",
           redirect: "manual",
+          // Per hop, not once: this loop follows redirects itself, and a hop
+          // off the audited origin must not carry the operator's headers.
           headers: {
             "user-agent": userAgent,
             accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+            ...headersFor(currentUrl, options.scopedHeaders),
           },
           signal: abort.signal,
         });

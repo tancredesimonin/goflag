@@ -225,3 +225,70 @@ describe("inspect — mode plumbing with injected headless launcher", () => {
     ).rejects.toThrow(/page navigation crashed/);
   });
 });
+
+describe("inspect — escalation under --header", () => {
+  // A shell that only answers with the token, and redirects its entry the way a
+  // locale or trailing-slash middleware does.
+  let server: import("node:http").Server;
+  let origin = "";
+
+  beforeAll(async () => {
+    const { createServer } = await import("node:http");
+    server = createServer((req, res) => {
+      if (req.headers["x-token"] !== "t") return void res.writeHead(401).end();
+      if (req.url === "/start") return void res.writeHead(307, { location: "/app/" }).end();
+      res
+        .writeHead(200, { "content-type": "text/html" })
+        .end(
+          `<!doctype html><html><head><title></title></head><body><div id="root"></div></body></html>`,
+        );
+    });
+    await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+    const address = server.address();
+    origin = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+  });
+
+  afterAll(async () => {
+    await new Promise((done) => server.close(done));
+  });
+
+  it("renders the URL the static fetch ended at, routes the headers, and keeps the asked URL", async () => {
+    const seen: { launch?: unknown; newPage?: unknown; goto?: string } = {};
+    const launcher: HeadlessLauncher = {
+      async launch(opts) {
+        seen.launch = opts;
+        return {
+          async newPage(opts) {
+            seen.newPage = opts;
+            return {
+              async goto(url) {
+                seen.goto = url;
+                return { status: 200, statusText: "OK", finalUrl: url, headers: {} };
+              },
+              async content() {
+                return `<!doctype html><html><head><title>Rendered app</title></head><body>app</body></html>`;
+              },
+              async close() {},
+            };
+          },
+          async close() {},
+        };
+      },
+    };
+    const scopedHeaders = { origin, headers: { "x-token": "t" } };
+
+    const page = await inspect(`${origin}/start`, {
+      probes: false,
+      scopedHeaders,
+      headless: { launcher },
+    });
+
+    expect(page.extractor.escalated).toBe(true);
+    // Chromium would follow the 307 without the token (`extract/headless.ts`).
+    expect(seen.goto).toBe(`${origin}/app/`);
+    expect(seen.launch).toMatchObject({ fulfillsRequests: true });
+    expect(seen.newPage).toMatchObject({ scopedHeaders });
+    expect(page.fetch.requestedUrl).toBe(`${origin}/start`);
+    expect(page.fetch.redirectCount).toBe(1);
+  });
+});

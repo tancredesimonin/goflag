@@ -1,9 +1,12 @@
 import type { SitemapProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface SitemapProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 export async function probeSitemap(
@@ -14,7 +17,7 @@ export async function probeSitemap(
   const { signal, cleanup } = combineSignals(options.signal, options.timeoutMs ?? 5_000);
 
   try {
-    const res = await fetch(url, { signal, redirect: "follow" });
+    const res = await fetchScoped(url, { signal, redirect: "follow" }, options.scopedHeaders);
     if (!res.ok) return { url, status: res.status, found: false, isIndex: false, entryCount: 0 };
     const body = await res.text();
     return {

@@ -236,6 +236,12 @@ export interface GoflagReport {
     pagesFailed: number;
     truncated: boolean;
     warnings: string[];
+    /**
+     * The names of the `--header`s sent to the audited origin, when any. Names
+     * only: the values are credentials, and a report is a file that gets
+     * attached to pipelines and pasted into issues.
+     */
+    requestHeaders?: string[];
     /** Translation gaps suppressed by `--ignore-holes`, when any. */
     ignoredHoles?: number;
     /**

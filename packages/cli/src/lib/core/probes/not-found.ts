@@ -2,10 +2,13 @@ import { randomBytes } from "node:crypto";
 
 import type { NotFoundProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface NotFoundProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   /**
    * The random part of the invented paths. Tests pin it; a run never should —
    * a fixed nonce is a route someone can add, and then the probe passes on a
@@ -57,9 +60,13 @@ async function ask(
   const { signal, cleanup } = combineSignals(options.signal, options.timeoutMs ?? 5_000);
 
   try {
-    let res = await fetch(url, { method: "HEAD", signal, redirect: "follow" });
+    let res = await fetchScoped(
+      url,
+      { method: "HEAD", signal, redirect: "follow" },
+      options.scopedHeaders,
+    );
     if (!isNotFound(res.status)) {
-      res = await fetch(url, { signal, redirect: "follow" });
+      res = await fetchScoped(url, { signal, redirect: "follow" }, options.scopedHeaders);
       // Nothing reads the body; releasing it frees the socket now rather
       // than whenever the collector gets to it.
       await res.body?.cancel().catch(() => undefined);

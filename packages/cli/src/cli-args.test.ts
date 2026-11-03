@@ -227,3 +227,39 @@ describe("parseArgs — subcommands", () => {
     expect(HELP).toContain("goflag preview <url>");
   });
 });
+
+describe("--header", () => {
+  const SECRET = "tok_live_never_printed";
+
+  it("collects repeated headers into the audit options", () => {
+    const a = parseArgs([
+      "u",
+      "--header",
+      `x-vercel-protection-bypass: ${SECRET}`,
+      "--header",
+      "Cookie: session=1",
+    ]);
+    expect(a.options.headers).toEqual({
+      "x-vercel-protection-bypass": SECRET,
+      Cookie: "session=1",
+    });
+  });
+
+  it("leaves the option unset when no header is given", () => {
+    expect(parseArgs(["u"]).options.headers).toBeUndefined();
+  });
+
+  it.each([
+    ["the same name twice, whatever its case", ["X-Token: a", `x-token: ${SECRET}`], /twice/],
+    ["a name goflag sets itself", [`User-Agent: ${SECRET}`], /set by goflag itself/],
+    ["no colon", [SECRET], /<name>: <value>/],
+  ])("refuses %s, and the error never quotes the value", (_, values, pattern) => {
+    const argv = ["u", ...values.flatMap((v) => ["--header", v])];
+    expect(() => parseArgs(argv)).toThrow(pattern);
+    try {
+      parseArgs(argv);
+    } catch (err) {
+      expect((err as Error).message).not.toContain(SECRET);
+    }
+  });
+});

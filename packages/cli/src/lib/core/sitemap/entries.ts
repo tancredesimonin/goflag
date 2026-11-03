@@ -18,6 +18,7 @@
  */
 
 import { checkLink } from "../links/check";
+import type { ScopedHeaders } from "../net/scoped-headers";
 import type { LinkCheck } from "../links/types";
 import type { SitemapEntryProbe } from "../types";
 
@@ -32,6 +33,8 @@ export interface ProbeEntriesOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 export interface ProbeEntriesResult {
@@ -85,6 +88,7 @@ export async function probeSitemapEntries(
           signal: options.signal,
           timeoutMs: options.timeoutMs,
           allowInsecureTls: options.allowInsecureTls,
+          scopedHeaders: options.scopedHeaders,
         }).catch(() => undefined);
         if (check) byUrl.set(url, fromCheck(url, check, "probe"));
       }
