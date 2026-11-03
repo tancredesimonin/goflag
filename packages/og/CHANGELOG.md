@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.0](https://github.com/tancredesimonin/goflag/compare/og-v0.2.0...og-v0.3.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **og:** `ogIcon().render` returns a promise, so a direct caller has to
+await it. Next awaits a default export, so `export default icon.render` is
+unaffected.
+
+### Features
+
+* **og:** a card takes the site's fonts and can draw its accent ([ffc0e6c](https://github.com/tancredesimonin/goflag/commit/ffc0e6ccd96088ad0da097eebb253d10adf83a58))
+
+
 ## [0.2.0](https://github.com/tancredesimonin/goflag/compare/og-v0.1.0...og-v0.2.0) (2026-08-16)
 
 

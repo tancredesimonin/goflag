@@ -1,6 +1,6 @@
 {
   "name": "@goflag/og",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Share cards and favicons for a multilingual site: a token-driven card template with no renderer in it, and the ICO container Next has no convention for.",
   "keywords": [
