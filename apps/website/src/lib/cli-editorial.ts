@@ -106,6 +106,8 @@ export const FLAG_EDITORIAL: Record<string, string> = {
   "--timeout":
     "Per-request timeout, applied to page fetches and link probes alike. The two defaults differ when the flag is left off; headless navigation has its own and this flag does not reach it.",
   "--allow-insecure-tls": "Accept self-signed or otherwise invalid TLS. For localhost and tunnels.",
+  "--header":
+    "Send a request header to the audited origin: the token, basic-auth credentials or cookie a protected preview asks for. Repeat it for several. It goes to that origin only — never to an external link, an image on a CDN, or across a redirect to another host — and the report names the header without its value, so pass the value from the job's environment rather than writing it into the pipeline.",
   "--verbose": "Log every page as it is analyzed, and stream the --start child's output.",
   "--quiet": "Suppress the live progress output.",
   "--no-color": "Disable coloured output.",
