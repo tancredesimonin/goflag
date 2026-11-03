@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.17](https://github.com/tancredesimonin/goflag/compare/v0.2.16...v0.2.17) (2026-11-02)
+
+
+### Features
+
+* **cli:** an operator can say whether a target belongs in an index ([1bd292c](https://github.com/tancredesimonin/goflag/commit/1bd292c4b41c2cdc5088185ecfc46633282133f0))
+
 ## [0.2.16](https://github.com/tancredesimonin/goflag/compare/v0.2.15...v0.2.16) (2026-10-25)
 
 

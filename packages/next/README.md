@@ -105,6 +105,47 @@ linked page is indexed whether or not it appears in one. Use it for pages that
 should not be entry points — search results, faceted variants, print views. To
 keep something out of an index, the instruments are `noindex` and `canonical`.
 
+### Redirecting the other host
+
+`www` and the apex often point at one server, so the variant you do not
+canonicalise on serves a full copy of the site. Its canonical names the right
+host, but a canonical is a hint, and Google sometimes keeps the copy.
+`canonicalHostRedirect` answers that host with a permanent redirect instead:
+
+```js
+// next.config.mjs
+import { canonicalHostRedirect } from "@goflag/next";
+
+export default {
+  redirects: async () => [canonicalHostRedirect(process.env.NEXT_PUBLIC_SITE_URL)],
+};
+```
+
+On the apex it redirects `www.<host>`; on `www` it redirects the apex. The path
+and the query string are kept. A path in `baseUrl` is ignored, and anything but an
+absolute http(s) URL throws, which fails the build. So give it no fallback: a
+default origin builds a redirect that never fires, and nothing says so.
+
+Next keeps `/_next` out of every redirect, and removes a trailing slash before it
+looks at this one, so `www.example.com/docs/` first goes to `www.example.com/docs`.
+
+It is a function and not a method of `site` because `next.config` cannot import a
+`site.ts` that imports `content-collections`. Put it first among your redirects,
+so that a retired URL on the other host reaches the canonical one before its new
+path. Next writes redirects into its routes manifest at `next build`, so `baseUrl`
+has to be set then: changing it at `next start` changes nothing.
+
+Two limits:
+
+- **It runs before your locale middleware.** Next applies `redirects()` before
+  middleware (`proxy.ts`), so a request on the other host is answered without
+  reaching it. `www.example.com/` goes to `example.com/`, and only there does the
+  middleware send it on to `/en`: two hops, and the first one negotiates nothing.
+- **The other host has to stay routed by your proxy.** Next answers this redirect,
+  so the request still has to reach Next over TLS. Remove `www` from the hosts your
+  proxy routes (`proxy.hosts` in Kamal's `config/deploy.yml`) and it loses its
+  certificate and stops answering, rather than redirecting.
+
 ## What it refuses to do
 
 Every one of these is a defect that ships silently and is expensive to find

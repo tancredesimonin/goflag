@@ -260,6 +260,15 @@ const VENDOR: readonly Source[] = [
     note: "The robots meta / X-Robots-Tag directives (noindex, nofollow, …), how meta and header directives combine, and that the most restrictive directive wins on conflict.",
   },
   {
+    id: "google-block-indexing",
+    publisher: "Google",
+    rigor: "vendor-spec",
+    title: "Block Search indexing with noindex",
+    url: "https://developers.google.com/search/docs/crawling-indexing/block-indexing",
+    retrievedAt: "2026-10-31",
+    note: "noindex removes a page from Google Search once it is crawled, and only then: a page blocked by robots.txt never has the rule read, and can still appear in results.",
+  },
+  {
     id: "google-robots-intro",
     publisher: "Google",
     rigor: "vendor-spec",

@@ -34,7 +34,7 @@ export interface FittedTitle {
  * A constant and not an option: it is a property of the template's geometry,
  * both sites arrived at three independently, and neither ever wanted a fourth.
  * An optional field with a default and no caller is the surface I4 exists to
- * refuse — the same argument that kept `background`, `font` and `fallback` out.
+ * refuse — the same argument that kept `background` and `fallback` out.
  */
 const TITLE_LINES = 3;
 

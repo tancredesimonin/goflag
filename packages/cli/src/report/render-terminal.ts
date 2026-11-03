@@ -52,7 +52,8 @@ export function renderTerminal(report: GoflagReport, options: RenderOptions = {}
           // Named only when it is not the default. A run under `spec-only`
           // that prints "0 SEO issues" without saying so reads as a clean
           // site rather than a narrowed one.
-          (report.profile === DEFAULT_PROFILE ? "" : `, profile ${report.profile}`),
+          (report.profile === DEFAULT_PROFILE ? "" : `, profile ${report.profile}`) +
+          (report.expectIndexing ? `, expecting indexing: ${report.expectIndexing}` : ""),
       ),
   );
   // --- Coverage ----------------------------------------------------------

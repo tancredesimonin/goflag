@@ -35,6 +35,11 @@ const css = readFileSync(join(__dirname, "../../app/globals.css"), "utf8");
  */
 const theme = oklchPalette(css, { scope: ":root" });
 
+/** JetBrains Mono's advance, the template's title tracking, and 1200 less its padding. */
+const MONO_ADVANCE = 0.6;
+const TITLE_TRACKING = -1.5;
+const CARD_MEASURE = 1056;
+
 /** Two hexes within `tolerance` on every channel. */
 function closeEnough(actual: string, expected: string, tolerance = 0): boolean {
   const bytes = (hex: string) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
@@ -109,9 +114,23 @@ describe("OG_FIT", () => {
     expect(new Set(heroes.map((title) => fit(title).fontSize)).size).toBe(1);
   });
 
-  it("keeps every rule id on a step that leaves room for its summary", () => {
-    // The longest thing a card here can carry, and the reason these boundaries
-    // are not the ones stereo-house measured for itself.
-    expect(fit("hreflang.sitemap-mismatch").fontSize).toBe(72);
+  it("keeps every rule id inside the margin, on a step that leaves room for its summary", () => {
+    // The longest thing a card here can carry, read from the catalogue so a new
+    // rule reddens here before its card degrades. An id breaks at its hyphens and
+    // nowhere else, so its longest run has to fit one line of the mono face.
+    const catalogue = readFileSync(
+      join(__dirname, "../../../../../packages/cli/rules.json"),
+      "utf8",
+    );
+    const ids = (JSON.parse(catalogue) as { rules: { id: string }[] }).rules.map((rule) => rule.id);
+
+    for (const id of ids) {
+      const { fontSize } = fit(id);
+      const glyph = fontSize * MONO_ADVANCE + TITLE_TRACKING;
+      const longestRun = Math.max(...id.match(/[^-]+-?/g)!.map((run) => run.length));
+
+      expect(longestRun * glyph, id).toBeLessThanOrEqual(CARD_MEASURE);
+      expect(Math.ceil((id.length * glyph) / CARD_MEASURE), id).toBeLessThanOrEqual(2);
+    }
   });
 });

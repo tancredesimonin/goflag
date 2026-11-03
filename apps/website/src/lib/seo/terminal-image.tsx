@@ -76,11 +76,6 @@ const TONE_COLOUR: Record<Tone, string> = {
   cyan: TERMINAL_IMAGE.cyan,
 };
 
-/** The two OFL faces, read once at module load — so at build time. */
-const FONT_DIR = join(process.cwd(), "src", "lib", "seo", "fonts");
-export const MONO_REGULAR = readFileSync(join(FONT_DIR, "JetBrainsMono-Regular.ttf"));
-export const MONO_BOLD = readFileSync(join(FONT_DIR, "JetBrainsMono-Bold.ttf"));
-
 const FONT_SIZE = 22;
 const LINE_HEIGHT = 1.45;
 const PADDING = 40;

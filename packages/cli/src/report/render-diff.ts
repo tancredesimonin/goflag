@@ -118,6 +118,21 @@ export function renderDiffTerminal(diff: ReportDiff, options: RenderOptions = {}
       ),
     );
   }
+  if (diff.indexingMismatch) {
+    const said = (value: string | null) =>
+      value ? `\`--expect-indexing ${value}\`` : "no `--expect-indexing`";
+    // A fact, with no instruction in it: a merge-request job building
+    // production-shaped pages and a deployed develop job read one baseline and
+    // rightly declare two things, so "capture it again" would turn the other red.
+    lines.push(
+      c(
+        ANSI.yellow,
+        `note: baseline was captured with ${said(diff.indexingMismatch.baseline)}, this run ` +
+          `used ${said(diff.indexingMismatch.current)} — what moved may be the declaration, ` +
+          "not the site.",
+      ),
+    );
+  }
   lines.push("");
 
   if (diff.added.length > 0) {

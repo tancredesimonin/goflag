@@ -44,6 +44,11 @@ describe("renderSummaryTerminal", () => {
     expect(out).not.toContain("profile");
   });
 
+  it("names an indexing declaration", () => {
+    const out = renderSummaryTerminal(baseSummary({ expectIndexing: "yes" }), { color: false });
+    expect(out).toContain("expecting indexing: yes");
+  });
+
   it("names a non-default profile, so a narrowed run cannot read as a clean one", () => {
     const out = renderSummaryTerminal(baseSummary({ profile: "spec-only" }), { color: false });
     expect(out).toContain("profile spec-only");

@@ -3,7 +3,7 @@ title: Moving a hand-written card onto it
 description: Two sites did this migration, and both removed net code. What they kept, what they measured, and the three things the package deliberately does not do for you.
 navTitle: Adopting it
 group: library
-order: 6
+order: 7
 ---
 
 `@goflag/og` was extracted after two sites had written the same card by hand, and
@@ -15,16 +15,18 @@ is what that looked like, in the order it is worth doing.
 
 ## What you already have that the package wants
 
-If you have a hand-written card, you have four things it takes and one it
+If you have a hand-written card, you have most of what it takes and one thing it
 refuses.
 
-| You have                                 | It becomes                                          |
-| ---------------------------------------- | --------------------------------------------------- |
-| A palette restated as hexes              | `tokens` — five of them, and a test that holds them |
-| A logo drawn in the card                 | `mark`, as a function of its side                   |
-| A title-size table                       | `fit` — **yours**, measured, never a default        |
-| A `card(params)` helper both exports use | the `loader` of `ogImage(og, loader)`               |
-| The JSX layout itself                    | gone — that is the part being shared                |
+| You have                                 | It becomes                                           |
+| ---------------------------------------- | ---------------------------------------------------- |
+| A palette restated as hexes              | `tokens` — five of them, and a test that holds them  |
+| A logo drawn in the card                 | `mark`, as a function of its side                    |
+| A title-size table                       | `fit` — **yours**, measured, never a default         |
+| A `card(params)` helper both exports use | the `loader` of `ogImage(og, loader)`                |
+| Fonts read from disk in the route        | `fonts.load`, read once, when the first card renders |
+| A coloured strip along the top           | `accentBar: true`, in `tokens.accent`                |
+| The JSX layout itself                    | gone — that is the part being shared                 |
 
 The layout is the only thing you delete outright. Everything else moves.
 
@@ -48,8 +50,8 @@ That site's boundaries are 32 and 64: one separates two clusters with nothing
 near it, the other sits eight characters above the longest real string rather
 than on top of it.
 
-The other site's are 32, 56 and 80, because its longest titles are rule ids with
-sentence-long summaries. **Reusing the first table on the second would have put a
+The other site's are 25, 56 and 80, because its longest titles are rule ids with
+sentence-long summaries, in a mono face that holds 25 glyphs at its largest size. **Reusing the first table on the second would have put a
 boundary at 56 — exactly on its longest real title.** Two locales would then
 render a size apart over one character of difference, which is a worse defect
 than the one the degression exists to fix.
@@ -107,6 +109,32 @@ export default image.render;
 
 Both sites had arrived at that `card(params)` shape independently, word for word,
 which is why it is the API rather than an invention.
+
+## A route that reads its title from the URL
+
+Some sites draw every card from one handler, `/og?title=…`. `ogCardResponse`
+keeps that handler and drops the layout inside it:
+
+```tsx
+// app/[locale]/og/route.tsx
+import { ogCardResponse } from "@goflag/og/next";
+
+export async function GET(request: Request) {
+  const title = new URL(request.url).searchParams.get("title") ?? SITE.name;
+
+  return ogCardResponse(og, { title: title.slice(0, 120) });
+}
+```
+
+**That handler renders any text at all on your card**, under your name, at a URL
+on your domain. It is what `ogCatchAllRoute` refuses by looking its slug up in a
+collection, and moving to `ogImage` closes the same hole. If you keep the handler,
+the decision is yours, so cap the length and consider signing the URL.
+
+Measure the result before you delete the old route. The card has one footer line
+in `dim` and fixed padding, so a rule above the footer, a line on its right or a
+coloured host do not carry over. Two sites sized this up at about 115 lines
+removed each, for a card that visibly changes.
 
 ## Three things it will not do for you
 

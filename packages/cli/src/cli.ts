@@ -242,7 +242,9 @@ async function main(): Promise<number> {
           `${total} findings now grandfathered in ${args.baseline}\n`,
       );
       if (added.length > 0) {
-        process.stdout.write(`${renderDiffTerminal(report.diff, { color: args.color })}\n`);
+        // Without the mismatch note: this run has just made the two agree.
+        const settled = { ...report.diff, indexingMismatch: undefined };
+        process.stdout.write(`${renderDiffTerminal(settled, { color: args.color })}\n`);
       }
     } else {
       process.stdout.write(

@@ -57,6 +57,12 @@ describe("renderTerminal — header + verdict", () => {
     expect(out).not.toContain("profile");
   });
 
+  it("names an indexing declaration, which changes what a clean run means", () => {
+    const out = renderTerminal(baseReport({ expectIndexing: "no" }), { color: false });
+    expect(out).toContain("1 pages crawled, 1 scanned, expecting indexing: no");
+    expect(renderTerminal(baseReport(), { color: false })).not.toContain("expecting indexing");
+  });
+
   it("names a non-default profile next to the crawl counts", () => {
     const out = renderTerminal(baseReport({ profile: "marketing" }), { color: false });
     expect(out).toContain("1 pages crawled, 1 scanned, profile marketing");

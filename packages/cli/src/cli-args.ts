@@ -104,6 +104,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       parsed.updateBaseline && "--update-baseline",
       parsed.regressionsOnly && "--regressions-only",
       parsed.maxDebt !== undefined && "--max-debt",
+      parsed.options.expectIndexing && "--expect-indexing",
     ].filter((flag): flag is string => typeof flag === "string");
     if (inert.length > 0) {
       throw new Error(

@@ -1,6 +1,6 @@
 {
   "name": "@goflag/og",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Share cards and favicons for a multilingual site: a token-driven card template with no renderer in it, and the ICO container Next has no convention for.",
   "keywords": [
@@ -73,10 +73,10 @@
     "@types/react": "^19.2.14",
     "@vitest/coverage-v8": "^5.0.5",
     "commit-and-tag-version": "^12.5.0",
-    "next": "16.4.2",
+    "next": "16.4.3",
     "react": "19.3.1",
     "tsup": "^8.5.1",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.0",
     "vitest": "^5.0.5"
   }
 }

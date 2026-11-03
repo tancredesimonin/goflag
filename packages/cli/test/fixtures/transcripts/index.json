@@ -8,6 +8,10 @@
     "command": "npx @goflag/cli https://example.com --summary"
   },
   {
+    "id": "staging",
+    "command": "npx @goflag/cli https://staging.example.com --expect-indexing no"
+  },
+  {
     "id": "gate",
     "command": "npx @goflag/cli https://example.com --baseline .goflag/baseline.json --regressions-only --max-debt 14"
   },

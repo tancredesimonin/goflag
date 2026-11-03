@@ -2,6 +2,14 @@
 
 All notable changes to this package will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.1](https://github.com/tancredesimonin/goflag/compare/next-v0.4.0...next-v0.4.1) (2026-11-02)
+
+
+### Features
+
+* **next:** canonicalHostRedirect sends the other host variant to the canonical origin ([e35018d](https://github.com/tancredesimonin/goflag/commit/e35018db9b4a16f0414af4f70ae82d8386554331))
+
+
 ## [0.4.0](https://github.com/tancredesimonin/goflag/compare/next-v0.3.3...next-v0.4.0) (2026-08-16)
 
 
@@ -13,8 +21,6 @@ without it the tag is omitted, which is what `og.image.alt` is there to
 report. The title was never a valid value — the protocol asks for what is in
 the image and excludes a caption — and because it satisfied the presence
 check, no audit could ever say so.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 * **next:** the library declares only what it was told about an image
 
 ### Features

@@ -164,6 +164,12 @@ export interface GoflagReport {
    * switched off.
    */
   profile: string;
+  /**
+   * What the operator declared about indexing (`--expect-indexing`), absent when
+   * nothing was. Recorded for the reason `profile` is: it changes what "clean"
+   * means, since under `no` a whole-site block is no longer a finding.
+   */
+  expectIndexing?: "no" | "yes";
   summary: {
     brokenLinks: number;
     missingTranslations: number;

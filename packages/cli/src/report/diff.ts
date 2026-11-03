@@ -52,6 +52,13 @@ export interface ReportDiff {
    * mode worth preventing.
    */
   profileMismatch?: { baseline: string; current: string };
+  /**
+   * Set when this run and the baseline declared different things about indexing
+   * (`--expect-indexing`), `null` standing for no declaration. Same standing as
+   * `profileMismatch`: declaring `no` makes a pair of findings resolved and can
+   * add others, and none of that is the site having changed.
+   */
+  indexingMismatch?: { baseline: string | null; current: string | null };
   /** Findings present now and absent from the baseline — what should fail CI. */
   added: DiffEntry[];
   /** Findings in the baseline that are gone. Worth showing: progress is data too. */
@@ -173,6 +180,14 @@ export function diffReports(baseline: GoflagReport, current: GoflagReport): Repo
     ...(baselineProfile === currentProfile
       ? {}
       : { profileMismatch: { baseline: baselineProfile, current: currentProfile } }),
+    ...(baseline.expectIndexing === current.expectIndexing
+      ? {}
+      : {
+          indexingMismatch: {
+            baseline: baseline.expectIndexing ?? null,
+            current: current.expectIndexing ?? null,
+          },
+        }),
   };
 }
 

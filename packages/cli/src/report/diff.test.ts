@@ -152,6 +152,25 @@ describe("diffReports", () => {
     });
   });
 
+  it("flags a baseline captured under a different indexing declaration", () => {
+    // Declaring `no` resolves a pair of findings and can add others, none of it
+    // the site having changed.
+    const declared = report({ expectIndexing: "no" });
+
+    expect(diffReports(report(), declared).indexingMismatch).toEqual({
+      baseline: null,
+      current: "no",
+    });
+    expect(diffReports(declared, report()).indexingMismatch).toEqual({
+      baseline: "no",
+      current: null,
+    });
+    expect(
+      diffReports(declared, report({ expectIndexing: "no" })).indexingMismatch,
+    ).toBeUndefined();
+    expect(diffReports(report(), report()).indexingMismatch).toBeUndefined();
+  });
+
   it("never lets a profile mismatch change the gate", () => {
     // It is a warning about interpretation, not a finding. Failing the build
     // on it would punish a legitimate `--profile spec-only` investigation.

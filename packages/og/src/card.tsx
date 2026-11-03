@@ -19,6 +19,13 @@ import type { OgTokens } from "./tokens.js";
  * wordmark, the palette, the footer's line, and the dots — and every one of
  * them is an input below. The geometry they shared to the pixel is what stays
  * fixed here.
+ *
+ * Fonts and the accent bar are the two inputs that came later, and for the
+ * reason the plan left them out: `font` was refused for want of a consumer
+ * (§6). tancrede and openfinanceguide are that consumer. Each hand-writes a
+ * satori route of 200 lines, because this card could carry no face and draw no
+ * 8px bar. Their footers still differ from this one: a rule, a line on the right.
+ * Those stay out until one of them would rather have them than the 110 lines.
  */
 
 /** The 1.91:1 every unfurl expects, and the margin §8 sets. */
@@ -34,6 +41,9 @@ const SUBTITLE = 30;
 const FOOTER = 24;
 const DOT = 14;
 
+/** The strip `accentBar` draws along the top edge, on the three sites that draw one. */
+const ACCENT_BAR = 8;
+
 /**
  * Longest subtitle the footer leaves room for before it has to be cut.
  *
@@ -45,6 +55,41 @@ const SUBTITLE_MAX = 160;
 
 /** The mark's side beside the wordmark, when `mark` is a function. */
 const MARK_SIZE = 40;
+
+/**
+ * One font file. The bytes are the site's: this package ships none (I1).
+ *
+ * No `style`, because the template never sets `fontStyle` and an italic face can
+ * only do harm. Satori ranks weight above style, so a family with a bold only in
+ * italic slants the title, and an italic listed before a face with no `style`
+ * takes the whole card. Both render without a word.
+ */
+export interface OgFontFace {
+  readonly name: string;
+  readonly data: ArrayBuffer | Uint8Array;
+  readonly weight: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+}
+
+/**
+ * The faces a card is set in.
+ *
+ * **`load` is a function, and that is the whole design.** A site's `og.tsx` is
+ * imported by every page that needs `ogAlt` or the tokens, so bytes read at
+ * definition would be a font in memory on routes that never draw a card, and a
+ * `readFileSync` in every test that touches the palette. `load` runs when the
+ * first card renders and once per process after that.
+ *
+ * The names are CSS family names, and each must be one a loaded face carries:
+ * satori falls back without a word when it is not, which is a card in the wrong
+ * face that every test of the tree still passes.
+ */
+export interface OgFonts {
+  /** The family of everything on the card, unless `display` says otherwise. */
+  readonly body: string;
+  /** The title and the wordmark, for a site that sets them apart. Defaults to `body`. */
+  readonly display?: string;
+  readonly load: () => readonly OgFontFace[] | Promise<readonly OgFontFace[]>;
+}
 
 export interface OgDefinition {
   readonly tokens: OgTokens;
@@ -75,6 +120,14 @@ export interface OgDefinition {
   readonly dots?: readonly string[];
   /** Required, and supplied by no default. See `fit.ts`. */
   readonly fit: Fit;
+  /**
+   * Left out, `next/og` sets the card in its one bundled weight, so the
+   * template's `fontWeight` does nothing. That is a legitimate choice: no bytes
+   * to commit and nothing to trace.
+   */
+  readonly fonts?: OgFonts;
+  /** Draws `tokens.accent` along the top edge. */
+  readonly accentBar?: boolean;
 }
 
 export interface OgCardContent {
@@ -82,6 +135,8 @@ export interface OgCardContent {
   readonly subtitle?: string;
   /** The pill beside the wordmark: a section, a severity, a kind. */
   readonly label?: string;
+  /** Bottom left, for this card: a line that has to be translated cannot be the definition's. */
+  readonly footer?: string;
   /**
    * The sentence a screen reader announces, translated and derived from the
    * same data as the title.
@@ -113,17 +168,26 @@ export interface Og extends OgDefinition {
   card(content: OgCardContent): OgCard;
   /** The mark on the surface, square. §6.3: `icon.tsx` and `apple-icon.tsx`. */
   icon(side: number): OgIcon;
+  /**
+   * The faces to hand the renderer, read on the first call and validated once.
+   * `undefined` for a site that declared none.
+   *
+   * Not called `fonts`: an `Og` carries its definition, and that name is taken.
+   */
+  loadFonts(): Promise<readonly OgFontFace[] | undefined>;
 }
 
 /**
  * Freeze a site's card into something both its routes and its tests can call.
  *
- * When `@goflag/next` is present, `defineSite({ og })` takes this same object
- * and wires the image's URL into the metadata. When it is absent this stands on
- * its own, which is the whole of D1: a site may want good cards without letting
- * a library decide its routes.
+ * This stands on its own, with or without `@goflag/next`, which is the whole of
+ * D1: a site may want good cards without letting a library decide its routes.
+ * What ties a card to the metadata is the route: `@goflag/next` is told about
+ * the image a page has, and takes its size from `OG_SIZE`.
  */
 export function defineOg(definition: OgDefinition): Og {
+  assertFontsDeclaration(definition.fonts);
+
   return {
     ...definition,
     size: OG_SIZE,
@@ -139,7 +203,97 @@ export function defineOg(definition: OgDefinition): Og {
       size: { width: side, height: side },
       contentType: OG_CONTENT_TYPE,
     }),
+    loadFonts: fontLoader(definition.fonts),
   };
+}
+
+function assertFontsDeclaration(fonts: OgFonts | undefined): void {
+  if (!fonts) return;
+
+  if (!fonts.body) {
+    throw new Error("@goflag/og: `fonts.body` names no family");
+  }
+  if (typeof fonts.load !== "function") {
+    throw new Error("@goflag/og: `fonts.load` must be a function, so a card's bytes are read late");
+  }
+}
+
+function fontLoader(fonts: OgFonts | undefined): Og["loadFonts"] {
+  if (!fonts) return () => Promise.resolve(undefined);
+
+  let loading: Promise<readonly OgFontFace[]> | undefined;
+
+  return () => {
+    // The promise rather than its result, so the routes of one build that render
+    // at once share a read instead of racing to make one each.
+    loading ??= Promise.resolve()
+      .then(() => fonts.load())
+      .then((faces) => {
+        assertFaces(fonts, faces);
+
+        return faces;
+      })
+      .catch((error: unknown) => {
+        // A dev server outlives a file that was missing for a moment.
+        loading = undefined;
+        throw error;
+      });
+
+    return loading;
+  };
+}
+
+function assertFaces(fonts: OgFonts, faces: readonly OgFontFace[]): void {
+  if (faces.length === 0) {
+    throw new Error("@goflag/og: `fonts.load` returned no face");
+  }
+
+  const loaded = new Set(faces.map((face) => face.name));
+
+  for (const family of [fonts.body, fonts.display]) {
+    if (family !== undefined && !loaded.has(family)) {
+      throw new Error(
+        `@goflag/og: no loaded face is named "${family}" (loaded: ${[...loaded].join(", ")})`,
+      );
+    }
+  }
+
+  for (const face of faces) {
+    assertFontBytes(face);
+  }
+}
+
+/**
+ * Satori takes TrueType, OpenType and WOFF, and answers anything else with an
+ * error about `Unsupported OpenType signature` that names neither the file nor
+ * the card. The usual culprits are the two below: the WOFF2 every font CDN and
+ * `next/font` serve, and a text file where the font was meant to be, which is
+ * what a failed download or an unfetched Git LFS pointer leaves on disk.
+ *
+ * The signature and no more: a font cut short passes here and fails in satori.
+ * Telling those apart means reading the table directory, a parser in a package
+ * that has none, for a file that was committed and rendered once already.
+ */
+const FONT_SIGNATURES = ["\0\x01\0\0", "OTTO", "true", "wOFF"];
+
+function assertFontBytes(face: OgFontFace): void {
+  // `isView`, since `instanceof ArrayBuffer` is false across realms, and a font is
+  // not refused for having been read inside a sandbox.
+  const { data } = face;
+  const length = Math.min(data.byteLength, 4);
+  const bytes = ArrayBuffer.isView(data)
+    ? new Uint8Array(data.buffer, data.byteOffset, length)
+    : new Uint8Array(data, 0, length);
+  const signature = String.fromCharCode(...bytes);
+
+  if (signature === "wOF2") {
+    throw new Error(
+      `@goflag/og: "${face.name}" is WOFF2, which satori cannot read. Commit a TTF, an OTF or a WOFF`,
+    );
+  }
+  if (!FONT_SIGNATURES.includes(signature)) {
+    throw new Error(`@goflag/og: "${face.name}" is not a font file`);
+  }
 }
 
 /** The mark's share of an icon's side: §8's margin, at icon scale. */
@@ -155,6 +309,7 @@ function renderIcon(definition: OgDefinition, side: number): ReactElement {
         alignItems: "center",
         justifyContent: "center",
         background: definition.tokens.bg,
+        ...family(definition.fonts?.body),
       }}
     >
       {markOf(definition, Math.round(side * ICON_MARK_RATIO))}
@@ -162,14 +317,20 @@ function renderIcon(definition: OgDefinition, side: number): ReactElement {
   );
 }
 
+/** Spread rather than assigned, so a card with no fonts carries no `fontFamily` key at all. */
+function family(name: string | undefined): { fontFamily?: string } {
+  return name ? { fontFamily: name } : {};
+}
+
 function markOf(definition: OgDefinition, side: number): ReactNode {
   return typeof definition.mark === "function" ? definition.mark(side) : definition.mark;
 }
 
 function render(definition: OgDefinition, content: OgCardContent): ReactElement {
-  const { tokens, fit } = definition;
+  const { tokens, fit, fonts } = definition;
   const { fontSize, lineClamp } = fitTitle(content.title, fit);
   const subtitleColour = tokens.subtitle ?? tokens.dim;
+  const display = family(fonts?.display ?? fonts?.body);
 
   return (
     <div
@@ -181,11 +342,25 @@ function render(definition: OgDefinition, content: OgCardContent): ReactElement 
         background: tokens.bg,
         padding: PADDING,
         color: tokens.fg,
+        ...family(fonts?.body),
       }}
     >
+      {definition.accentBar ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: ACCENT_BAR,
+            background: tokens.accent,
+          }}
+        />
+      ) : null}
+
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         {markOf(definition, MARK_SIZE)}
-        <span style={{ fontSize: WORDMARK, fontWeight: 600 }}>{definition.name}</span>
+        <span style={{ fontSize: WORDMARK, fontWeight: 600, ...display }}>{definition.name}</span>
         {content.label ? (
           <span
             style={{
@@ -214,6 +389,7 @@ function render(definition: OgDefinition, content: OgCardContent): ReactElement 
           style={{
             fontSize,
             fontWeight: 600,
+            ...display,
             lineHeight: 1.1,
             letterSpacing: -1.5,
             // The two nets that need no measurement, since satori offers none:
@@ -242,7 +418,7 @@ function render(definition: OgDefinition, content: OgCardContent): ReactElement 
           fontSize: FOOTER,
         }}
       >
-        <span style={{ color: tokens.dim }}>{definition.footer}</span>
+        <span style={{ color: tokens.dim }}>{content.footer ?? definition.footer}</span>
         <div style={{ display: "flex", gap: 12 }}>
           {(definition.dots ?? []).map((colour) => (
             <span

@@ -3,7 +3,7 @@ title: The picture goflag asks for
 description: "@goflag/og draws the share card a multilingual site puts in front of every link, and packs the favicon.ico no Next convention emits. The core renders nothing."
 navTitle: Share cards
 group: library
-order: 4
+order: 5
 ---
 
 Two of this catalogue's rules had no remedy to point at.
@@ -42,14 +42,16 @@ export const og = defineOg({
 });
 ```
 
-| Field    | What it is                                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------------ |
-| `tokens` | Five colours, and an optional sixth. Not eight — one accent and never three is a constraint, not taste |
-| `name`   | The wordmark beside the mark                                                                           |
-| `mark`   | Your logo, as a function of its side in pixels                                                         |
-| `footer` | Bottom left. The host, on both sites this came from                                                    |
-| `dots`   | Bottom right, for a site whose taxonomy is a colour rather than decoration                             |
-| `fit`    | The title degression. **Required, and it has no default** — see below                                  |
+| Field       | What it is                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| `tokens`    | Five colours, and an optional sixth. Not eight — one accent and never three is a constraint, not taste |
+| `name`      | The wordmark beside the mark                                                                           |
+| `mark`      | Your logo, as a function of its side in pixels                                                         |
+| `footer`    | Bottom left. The host, on both sites this came from                                                    |
+| `dots`      | Bottom right, for a site whose taxonomy is a colour rather than decoration                             |
+| `fit`       | The title degression. **Required, and it has no default** — see below                                  |
+| `fonts`     | Your faces, read late. Optional — [see below](#your-fonts-if-you-want-them)                            |
+| `accentBar` | `true` draws `tokens.accent` in a strip along the top edge                                             |
 
 The five are `bg`, `fg`, `dim`, `border` and `accent`. The sixth, `subtitle`, is
 there for a site whose subtitle has to stay distinguishable from its footer at
@@ -78,6 +80,60 @@ exactly on its longest real title — so two locales would have rendered a size
 apart over one character of difference, which is worse than not degrading at all.
 A default here would be that defect, shipped to everyone.
 
+## Your fonts, if you want them
+
+Leave `fonts` out and `next/og` sets the card in the face it bundles. There is
+nothing to commit and nothing to trace, but that face has one weight, so the
+wordmark and the title draw regular whatever the template asks for.
+
+To set the card in your own face, hand over a function that returns the bytes:
+
+```tsx
+export const og = defineOg({
+  // …
+  fonts: {
+    body: "Inter",
+    display: "Fraunces", // the title and the wordmark; defaults to `body`
+    load: async () => (await import("./og-fonts")).FACES,
+  },
+});
+```
+
+```ts
+// lib/og-fonts.ts
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const read = (file: string) => readFileSync(join(process.cwd(), "src/fonts", file));
+
+export const FACES = [
+  { name: "Inter", data: read("Inter-Regular.ttf"), weight: 400 },
+  { name: "Fraunces", data: read("Fraunces-SemiBold.ttf"), weight: 600 },
+] as const;
+```
+
+**`load` is a function, and the import inside it is dynamic, for the same
+reason.** Your `og.tsx` is imported by every page that wants the alt sentence or
+the tokens. Bytes read at the top of that module sit in memory on routes that
+never draw a card. `load` runs when the first card renders, then never again in
+that process, and a load that failed is retried rather than remembered.
+
+**Commit TTF, OTF or WOFF, not WOFF2.** Satori cannot read WOFF2, which is what
+`next/font` emits and most font CDNs serve. The first card refuses it, along with
+any file without a font's signature, an empty list and a family no loaded face
+carries, and the error names the face. Without that check, a misspelt family draws
+a card in the wrong font with no error at all. There is no `style` to set: the card
+is upright, so leave italic files out.
+
+**Cover every locale you serve.** When a supplied face lacks a glyph, `next/og`
+fetches one from Google Fonts as the card renders: at build for a prerendered route,
+on the request for a route handler. The card comes out with a glyph from another
+typeface, or, if the fetch fails, with an empty box and a line in your logs.
+
+A mono face is wider than most, and the steps in `fit` were measured against the
+font you had when you wrote them. Render your longest title again after changing
+face.
+
 ## The routes
 
 ```tsx
@@ -105,6 +161,7 @@ copy is read in one place and the picture and its description cannot disagree.
 | `title`    | The one large body. Its size comes from `fit`                          |
 | `subtitle` | Under it, cut at 160 glyphs — measured in glyphs, like the title       |
 | `label`    | The pill beside the wordmark: a section, a severity, a kind. Optional  |
+| `footer`   | Replaces the definition's line, for one that has to be translated      |
 | `alt`      | The sentence `og:image:alt` carries. Yours, translated, from your data |
 
 **`generateImageMetadata`, never the `alt` export.** Next's static `alt` is one
@@ -156,21 +213,23 @@ whose card is dark.
 
 ## What the package gives back
 
-| Call                                             | Returns                                                       |
-| ------------------------------------------------ | ------------------------------------------------------------- |
-| `defineOg(definition)`                           | an `Og` — `card()`, `icon()`, and the definition it was given |
-| `og.card({ title, subtitle, label, alt })`       | `{ element, size, contentType, alt }` — renders nothing       |
-| `og.icon(side)`                                  | `{ element, size, contentType }`, the mark on the surface     |
-| `ogImage(og, loader)`                            | `{ generateImageMetadata, render }` for one route file        |
-| `ogIcon(og, side)`                               | `{ size, contentType, render }` for `icon.tsx`                |
-| `ogCatchAllRoute(og, { entries, slugOf, card })` | `{ generateStaticParams, GET }`                               |
-| `fitTitle(title, fit)`                           | `{ fontSize, lineClamp }` — the degression, on its own        |
-| `countGraphemes(value)`                          | length in glyphs rather than UTF-16 units                     |
-| `truncateGraphemes(value, max)`                  | cut to `max` glyphs, ellipsis included in the count           |
-| `oklchPalette(css, { scope })`                   | every `--name: oklch(…)` in scope, as sRGB hex                |
-| `readOklch(css, property, { scope })`            | one declaration, or a throw naming what is absent             |
-| `oklchToHex([l, c, h])` / `oklchToRgb`           | the conversion on its own, for a value not in a stylesheet    |
-| `OG_SIZE` / `OG_CONTENT_TYPE`                    | `1200 × 630` and `image/png`, the two constants the card uses |
+| Call                                             | Returns                                                                       |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `defineOg(definition)`                           | an `Og` — `card()`, `icon()`, `loadFonts()`, and the definition it was given  |
+| `og.card({ title, subtitle, label, alt })`       | `{ element, size, contentType, alt }` — renders nothing                       |
+| `og.icon(side)`                                  | `{ element, size, contentType }`, the mark on the surface                     |
+| `og.loadFonts()`                                 | the validated faces, read once, or `undefined` for a site that declared none  |
+| `ogImage(og, loader)`                            | `{ generateImageMetadata, render }` for one route file                        |
+| `ogIcon(og, side)`                               | `{ size, contentType, render }` for `icon.tsx`; `render` returns a promise    |
+| `ogCatchAllRoute(og, { entries, slugOf, card })` | `{ generateStaticParams, GET }`                                               |
+| `ogCardResponse(og, content)`                    | from `@goflag/og/next`: one card's `ImageResponse`, for a handler of your own |
+| `fitTitle(title, fit)`                           | `{ fontSize, lineClamp }` — the degression, on its own                        |
+| `countGraphemes(value)`                          | length in glyphs rather than UTF-16 units                                     |
+| `truncateGraphemes(value, max)`                  | cut to `max` glyphs, ellipsis included in the count                           |
+| `oklchPalette(css, { scope })`                   | every `--name: oklch(…)` in scope, as sRGB hex                                |
+| `readOklch(css, property, { scope })`            | one declaration, or a throw naming what is absent                             |
+| `oklchToHex([l, c, h])` / `oklchToRgb`           | the conversion on its own, for a value not in a stylesheet                    |
+| `OG_SIZE` / `OG_CONTENT_TYPE`                    | `1200 × 630` and `image/png`, the two constants the card uses                 |
 
 `OG_SIZE` and `OG_CONTENT_TYPE` are worth taking rather than restating. A route
 that names its own card — the catch-all, which cannot use the file convention —

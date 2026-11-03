@@ -1,14 +1,16 @@
 ---
-updated: 2026-10-25
+updated: 2026-11-02
 ---
 
 # Roadmap — goflag
 
-> State observed on 2026-10-25: latest tags `v0.2.15` (2026-10-24), `next-v0.4.0` and
-> `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`,
-> production on `main`, and the two carry the same code since the release merge (!257).
+> State observed on 2026-11-02: latest tags `v0.2.16` (2026-10-25), `next-v0.4.0` and
+> `og-v0.2.0` (2026-08-16) — the three versions npm serves. Integration on `develop`, production
+> on `main`. The release merge request (!273) carries `v0.2.17` (`--expect-indexing`, !271),
+> `next-v0.4.1` (`canonicalHostRedirect`, !272) and `og-v0.3.0` (the share cards' fonts, !270);
+> the `tag` job creates the three when `develop` is merged into `main` (!274).
 > In production: the three packages on npm, and goflag.tech, redeployed from `main` on
-> 2026-10-24.
+> 2026-10-25.
 
 ## Now
 
@@ -17,8 +19,8 @@ updated: 2026-10-25
 **Why**: goal 2 — no verdict without a rigor or a source.
 **Done when**: `missingTranslations` (holes + reciprocity) is produced by catalogue rules, and
 no published rule emits `rigor: null` any more without explaining why.
-**State**: half done. The second half holds: the catalogue exposes 65 rules — 25 page,
-35 site, 5 prose — and the only one at `rigor: null` is the prose rule
+**State**: half done. The second half holds: the catalogue exposes 69 rules — 25 page,
+39 site, 5 prose — and the only one at `rigor: null` is the prose rule
 `hreflang.sitemap-mismatch`, whose entry says why no specification can settle it;
 `hreflang.missing` and `hreflang.cluster-incomplete` are site rules at `rigor: vendor-spec`,
 with their sources. The first half does not: the report's `missingTranslations` is still
@@ -53,16 +55,61 @@ Full detail in [packages/cli/CHANGELOG.md](packages/cli/CHANGELOG.md),
 [packages/next/CHANGELOG.md](packages/next/CHANGELOG.md) and
 [packages/og/CHANGELOG.md](packages/og/CHANGELOG.md).
 
-- **A robots.txt that keeps AI answer engines out is a finding** (!261, 2026-10-25; published
-  with the next `@goflag/cli`) — `robots.blocks-ai-answers`, a site rule at `warning`, for a
-  file that lets Googlebot fetch `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`,
-  `PerplexityBot` or `Claude-User`, whether through the agent's own group or through
-  `User-agent: *`. Each operator states what follows — left out of ChatGPT search answers, not
-  indexed for Claude's search, not crawled for Perplexity's results, not fetched when someone
-  asks Claude about a page — so it cites the three pages at `vendor-spec` and names, for each
-  agent, the group and the line that kept it out. Training crawlers, and the `-User` fetchers
-  whose operators say robots.txt may not bind them, are left out. The RFC 9309 matcher now
-  names the `User-agent` that selected a group, where it named the group's first line.
+- **next-v0.4.1: the other host redirects to the canonical origin** (!272, release !273) —
+  `canonicalHostRedirect(baseUrl)` returns the object `redirects()` takes in `next.config`: a
+  308 from `www.<host>` to the apex, or from the apex to `www` when `baseUrl` is on `www`, with
+  the path and the query string kept. A function of its own, because `next.config` cannot import
+  a `site.ts` that imports `content-collections`. Its tests run it through Next 16.4.3's own
+  matcher, and a throwaway Next app answered the 308s; nothing was deployed. The model is
+  openfinanceguide's `WWW_TO_APEX`, written there because Kamal 2.11 passes no `canonical_host`
+  to kamal-proxy. No site uses the library's version yet.
+- **og-v0.3.0: share cards take the site's fonts and can draw its accent** (!270, release !273)
+  — `@goflag/og` gains `fonts` (a lazy loader, read once per process, refusing WOFF2 and
+  anything that is not a font), `accentBar`, `content.footer` and `ogCardResponse`.
+  tancrede, openfinanceguide and tancredo hand-write a satori route of 202, 216 and 253 lines,
+  and a card that could carry no font was the first thing stopping them; the first two are
+  near-copies, and all three draw the same 8px bar. goflag.tech is the first consumer: its
+  cards are set in the JetBrains Mono it already commits, with the bold the bundled face lacks.
+  Neither site has migrated, and that is each site's call: a scratch port removes 116 and 114
+  lines, and costs the rule above the footer, the line on its right and the coloured host,
+  which the card cannot draw.
+- **0.2.17: an operator can say whether a target belongs in an index** (!271, release !273)
+  — `--expect-indexing no|yes`, a gate flag that is only ever an argument. Under `no`,
+  `robots.blocks-site` and `sitemap.entry.noindex` stop firing, and `indexing.not-excluded` and
+  `indexing.blocked-url-indexable` ask whether the host is really out of the index. Under `yes`,
+  `indexing.site-blocked` makes a whole-site block an error, and `indexing.site-excluded` names a
+  `noindex` on the home or on every page. On `develop.tancrede.eu`, the 2 findings all four sites
+  pay for with `--max-debt 2` become 1 that says what they hid: 24 pages whose `noindex` Googlebot
+  cannot read. The sites have not moved, and they cannot before `seo-goflag.yml` gives its two jobs
+  a declaration each: `seo` and `seo:mr` share `GOFLAG_ARGS`, and `no` on a production-shaped build
+  is an error.
+- **0.2.16: a robots.txt that keeps AI answer engines out is a finding, and the robots rules
+  read the group of the agent they speak for** (!261 to !263, tag 2026-10-25) —
+  `robots.blocks-ai-answers`, a site rule at `warning`, for a file that lets Googlebot fetch
+  `/` and disallows it to `OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot` or
+  `Claude-User`, whether through the agent's own group or through `User-agent: *`. Each
+  operator states what follows — left out of ChatGPT search answers, not indexed for Claude's
+  search, not crawled for Perplexity's results, not fetched when someone asks Claude about a
+  page — so it cites the three pages at `vendor-spec` and names, for each agent, the group and
+  the line that kept it out. Training crawlers, and the `-User` fetchers whose operators say
+  robots.txt may not bind them, are left out. The RFC 9309 matcher now names the `User-agent`
+  that selected a group, where it named the group's first line. The two fixes that followed:
+  `robots.blocks-site`, `robots.blocks-page` and `sitemap.entry.blocked-by-robots` decide for
+  Googlebot, the crawler their sources document, and `llmstxt.link.blocked-by-robots` for
+  `Claude-User` — none of them for `*`, which per RFC 9309 §2.2.1 answers for nobody once the
+  file names the agent. So a Googlebot allowlist over a `*` disallow no longer reads as a site
+  kept out of every search engine, a `Disallow` in Googlebot's own group is reported where it
+  was silent, and a file that keeps Googlebot out while naming other agents says which ones it
+  lets in. On a file that names nobody, every message is what it was.
+- **The site's footer and locale switcher** (!258 and !259, 2026-10-25) — the footer lays its
+  links out in titled Product, Project and Legal columns; the locale switcher follows a
+  client-side locale change, where after `/fr` to `/en` it still ticked Français and sent a
+  reader asking for French to `/fr/en`, a 404 — and `<html lang>` follows it too. In
+  production since 2026-10-25.
+- **vitest 5** (!260, 2026-10-25) — three majors at once, in the four packages that test. The
+  vitest chain leaves `pnpm audit` over every dependency: 60 advisories (6 critical) before, 41
+  (3 critical) after, all of what remains in dev tooling. Production dependencies were clean
+  before and still are.
 - **0.2.15: the audit fetches and parses each page once** (!252 and !255, tag 2026-10-24) —
   the crawl starts a page as soon as a request finishes, not when its batch of four does; the
   link scan reads the links the crawl already parsed for the `<head>` instead of fetching and

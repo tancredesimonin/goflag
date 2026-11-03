@@ -37,6 +37,9 @@ import type {
 } from "../core/types";
 import type { Rigor } from "./types";
 
+/** What an operator declared about the target (`--expect-indexing`). */
+export type ExpectIndexing = "no" | "yes";
+
 /**
  * Everything a cross-page rule is allowed to see. Deliberately a plain,
  * JSON-shaped snapshot: no fetching, no lazy loading, nothing a rule could
@@ -45,6 +48,18 @@ import type { Rigor } from "./types";
 export interface SiteContext {
   /** Origin under audit, e.g. `https://example.com`. */
   origin: string;
+  /**
+   * Whether this origin is meant to be in a search index, when the operator
+   * said (`--expect-indexing`). Absent is the question left open, and the rules
+   * judge as they always have.
+   *
+   * Only ever an argument, never read from what the target serves. A production
+   * site shipped with `indexable: false` is the failure these rules exist to
+   * catch, and a site that could excuse itself would pass.
+   */
+  expectIndexing?: ExpectIndexing;
+  /** The URL the audit started from, which is where a site's front door answers. */
+  entryUrl?: string;
   /** Healthy (2xx) pages the crawl inspected. */
   pages: readonly Page[];
   /**

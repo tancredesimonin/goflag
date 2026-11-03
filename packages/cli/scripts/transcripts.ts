@@ -225,6 +225,56 @@ export const DEMO_REPORT: GoflagReport = {
  * known findings. `unchanged` is the debt the build is being let through
  * with, and it is the headline `renderDiffTerminal` prints in bold.
  */
+/**
+ * A staging host, audited with the question answered, in the shape a real run on
+ * `develop.tancrede.eu` took: blocked, every page saying `noindex`, and one finding
+ * left where the undeclared run reports two others.
+ */
+export const STAGING_REPORT: GoflagReport = {
+  url: "https://staging.example.com/",
+  finishedAt: FINISHED_AT,
+  profile: "default",
+  expectIndexing: "no",
+  summary: {
+    brokenLinks: 0,
+    missingTranslations: 0,
+    seoIssues: 0,
+    siteIssues: 1,
+    unreachablePages: 0,
+    verdict: "yellow",
+  },
+  localeAxis: { locales: ["en", "fr"], source: "sitemap", multilingual: true },
+  pages: [
+    { url: "https://staging.example.com/en", status: 200, locale: "en" },
+    { url: "https://staging.example.com/fr", status: 200, locale: "fr" },
+  ],
+  unreachablePages: [],
+  brokenLinks: [],
+  missingTranslations: { holes: [], reciprocity: [] },
+  seoIssues: [],
+  siteIssues: [
+    {
+      id: fingerprint(
+        "site",
+        "indexing.blocked-url-indexable",
+        routeKey("https://staging.example.com/robots.txt"),
+        String(0),
+      ),
+      pageUrl: "https://staging.example.com/robots.txt",
+      ruleId: "indexing.blocked-url-indexable",
+      severity: "warning",
+      message:
+        "robots.txt keeps Googlebot out of 2 pages on a target declared out of the index: " +
+        "`https://staging.example.com/en`, `https://staging.example.com/fr`. All of them say " +
+        "`noindex`, which Googlebot never reads because it never fetches them. A blocked URL " +
+        "can still appear in Google's results, from links alone.",
+      why: "On a target declared out of the index, robots.txt must not hide the `noindex`",
+      rigor: "vendor-spec",
+    },
+  ],
+  diagnostics: { pagesCrawled: 2, pagesScanned: 2, pagesFailed: 0, truncated: false, warnings: [] },
+};
+
 export const DEMO_DIFF: ReportDiff = {
   baseline: { url: `${SITE}/`, finishedAt: BASELINE_TAKEN, profile: "default" },
   added: [
@@ -291,6 +341,11 @@ export const TRANSCRIPTS: readonly TranscriptSpec[] = [
     // is the only view that prints the `[rigor]` tag, which is what the
     // hand-written copy on the site had been missing since the tag shipped.
     render: (color) => renderSummaryTerminal(summarize(DEMO_REPORT), { color }),
+  },
+  {
+    id: "staging",
+    command: "npx @goflag/cli https://staging.example.com --expect-indexing no",
+    render: (color) => renderTerminal(STAGING_REPORT, { color }),
   },
   {
     id: "gate",

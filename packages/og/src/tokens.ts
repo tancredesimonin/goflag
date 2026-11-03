@@ -25,7 +25,7 @@ export interface OgTokens {
   readonly dim: string;
   /** The label pill's outline. */
   readonly border: string;
-  /** The single accent. */
+  /** The single accent. `accentBar` draws it; otherwise it is the site's, for its mark. */
   readonly accent: string;
   /**
    * Optional second level of secondary text, for a site whose subtitle needs to

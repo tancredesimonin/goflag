@@ -98,6 +98,44 @@ describe("robots.txt blocks a site that claims nothing", () => {
   });
 });
 
+describe("the same blocked site, with the question answered", () => {
+  let server: FixtureServer;
+
+  beforeAll(async () => {
+    server = await startFixtureServer({ root: "fixtures/sites/blocked-staging" });
+  }, 60_000);
+
+  afterAll(async () => {
+    await server.stop();
+  });
+
+  it("under `no`, trades the block for what it leaves open, and records why", async () => {
+    const report = await runAudit(server.url, { depth: 2, static: true, expectIndexing: "no" });
+    const ids = report.siteIssues.map((issue) => issue.ruleId);
+
+    expect(report.expectIndexing).toBe("no");
+    expect(ids).not.toContain("robots.blocks-site");
+    expect(ids).toContain("indexing.blocked-url-indexable");
+    expect(ids).not.toContain("indexing.not-excluded");
+  }, 60_000);
+
+  it("under `yes`, gives it the rule production needs", async () => {
+    const report = await runAudit(server.url, { depth: 2, static: true, expectIndexing: "yes" });
+
+    const ids = report.siteIssues.map((issue) => issue.ruleId);
+
+    expect(ids).toContain("indexing.site-blocked");
+    expect(ids).not.toContain("robots.blocks-site");
+    expect(report.summary.verdict).toBe("red");
+  }, 60_000);
+
+  it("left unanswered, records nothing at all", async () => {
+    const report = await runAudit(server.url, { depth: 2, static: true });
+
+    expect("expectIndexing" in report).toBe(false);
+  }, 60_000);
+});
+
 describe("a site that allows crawling", () => {
   let server: FixtureServer;
 
