@@ -84,6 +84,29 @@ export function headersFor(url: string, scope: ScopedHeaders | undefined): Recor
   return { ...scope.headers };
 }
 
+/**
+ * Lay `extra` over `base`, matching names without regard to case. A name both
+ * carry takes `extra`'s value, except `Cookie`, whose values join: the request
+ * already holds the cookies the site set, and replacing them with the
+ * operator's would log the browser out of everything else.
+ */
+export function mergeHeaders(
+  base: Readonly<Record<string, string>>,
+  extra: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const merged: Record<string, string> = { ...base };
+  for (const [name, value] of Object.entries(extra)) {
+    const existing = Object.keys(merged).find((key) => key.toLowerCase() === name.toLowerCase());
+    if (existing === undefined) merged[name] = value;
+    else if (name.toLowerCase() === "cookie") merged[existing] = `${merged[existing]}; ${value}`;
+    else {
+      delete merged[existing];
+      merged[name] = value;
+    }
+  }
+  return merged;
+}
+
 /** Whether `url` is on `origin`. A URL that does not parse is on no origin. */
 export function sameOrigin(url: string, origin: string): boolean {
   try {
@@ -124,10 +147,10 @@ export async function fetchScoped(
   const withHeaders = (target: string): RequestInit => ({
     ...init,
     redirect: "manual",
-    headers: {
-      ...(init.headers as Record<string, string> | undefined),
-      ...headersFor(target, scope),
-    },
+    headers: mergeHeaders(
+      (init.headers as Record<string, string> | undefined) ?? {},
+      headersFor(target, scope),
+    ),
   });
 
   if (init.redirect === "manual") return fetch(url, withHeaders(url));

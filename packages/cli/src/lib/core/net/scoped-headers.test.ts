@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   fetchScoped,
   headersFor,
+  mergeHeaders,
   parseHeaderArg,
   RESERVED_HEADER_NAMES,
   sameOrigin,
@@ -87,6 +88,25 @@ describe("headersFor", () => {
     const given = headersFor("https://preview.example.com/a", scope);
     given["X-Token"] = "changed";
     expect(scope.headers["X-Token"]).toBe(SECRET);
+  });
+});
+
+describe("mergeHeaders", () => {
+  it("replaces a header of the same name, whatever its case", () => {
+    expect(mergeHeaders({ Authorization: "old", accept: "x" }, { authorization: "new" })).toEqual({
+      accept: "x",
+      authorization: "new",
+    });
+  });
+
+  it("joins cookies instead of replacing the site's own", () => {
+    expect(mergeHeaders({ cookie: "site_locale=fr" }, { Cookie: "preview_session=1" })).toEqual({
+      cookie: "site_locale=fr; preview_session=1",
+    });
+  });
+
+  it("adds what the request did not carry", () => {
+    expect(mergeHeaders({}, { "X-Token": "t" })).toEqual({ "X-Token": "t" });
   });
 });
 

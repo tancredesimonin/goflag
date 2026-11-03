@@ -142,22 +142,14 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
   let renderedBody: string | undefined;
   let renderedFetch: FetchMeta | undefined;
   try {
-    // With `--header`, render the page the static fetch ended at: Chromium
-    // follows a same-origin redirect without the operator's headers
-    // (`extract/headless.ts`), and the static loop already followed it with
-    // them. The meta still names the URL that was asked for.
-    const renderUrl = fetchOptions.scopedHeaders ? staticMeta.finalUrl : url;
-    const result = await extractHeadless(renderUrl, {
+    const result = await extractHeadless(url, {
       ...headlessOpts,
       allowInsecureTls: fetchOptions.allowInsecureTls,
       scopedHeaders: fetchOptions.scopedHeaders,
       signal: fetchOptions.signal,
     });
     renderedBody = result.renderedHtml;
-    renderedFetch =
-      renderUrl === url
-        ? result.fetch
-        : { ...result.fetch, requestedUrl: url, redirectCount: staticMeta.redirectCount };
+    renderedFetch = result.fetch;
   } catch (err) {
     if (!(err instanceof HeadlessUnavailableError)) throw err;
     const probes = await runProbes({

@@ -1,4 +1,4 @@
-import { sameOrigin, type ScopedHeaders } from "../net/scoped-headers";
+import { headersFor, mergeHeaders, type ScopedHeaders } from "../net/scoped-headers";
 import type { FetchMeta } from "../types";
 
 export interface HeadlessExtractOptions {
@@ -36,14 +36,7 @@ export interface HeadlessExtractResult {
  * implementation lives behind `defaultLauncher()` and is lazy-loaded.
  */
 export interface HeadlessLauncher {
-  /**
-   * `fulfillsRequests` is set when the page's same-origin requests will be
-   * answered by `route.fulfill` (`--header`, see `routeScopedHeaders`).
-   */
-  launch(opts: {
-    allowInsecureTls?: boolean;
-    fulfillsRequests?: boolean;
-  }): Promise<HeadlessBrowser>;
+  launch(opts: { allowInsecureTls?: boolean }): Promise<HeadlessBrowser>;
 }
 
 export interface HeadlessBrowser {
@@ -110,10 +103,7 @@ export async function extractHeadless(
   }
 
   const start = performance.now();
-  const browser = await launcher.launch({
-    allowInsecureTls: options.allowInsecureTls,
-    fulfillsRequests: Boolean(options.scopedHeaders),
-  });
+  const browser = await launcher.launch({ allowInsecureTls: options.allowInsecureTls });
   let page: HeadlessPage | undefined;
   try {
     page = await browser.newPage({ userAgent, scopedHeaders: options.scopedHeaders });
@@ -155,7 +145,7 @@ export function defaultLauncher(
   loader: PlaywrightLoader = () => import("playwright"),
 ): HeadlessLauncher {
   return {
-    async launch({ allowInsecureTls, fulfillsRequests }) {
+    async launch({ allowInsecureTls }) {
       let mod: typeof import("playwright");
       try {
         mod = await loader();
@@ -168,17 +158,10 @@ export function defaultLauncher(
 
       let pw: import("playwright").Browser;
       try {
-        const args = allowInsecureTls ? ["--ignore-certificate-errors"] : [];
-        // A document answered by `route.fulfill` has no remote address, and
-        // Chromium's Local Network Access checks treat that as public: every
-        // request it then makes to a loopback or private address fails with
-        // ERR_FAILED. A preview on `localhost:3000` would lose its other local
-        // services, and the page rendered would not be the page served.
-        // Measured with Chromium 156 (Playwright 1.64) on 2026-11-03. The
-        // checks protect a person's network from a public page; here the
-        // audited origin is the operator's own.
-        if (fulfillsRequests) args.push("--disable-features=LocalNetworkAccessChecks");
-        pw = await mod.chromium.launch({ headless: true, args });
+        pw = await mod.chromium.launch({
+          headless: true,
+          args: allowInsecureTls ? ["--ignore-certificate-errors"] : [],
+        });
       } catch (err) {
         throw new HeadlessUnavailableError(
           "Could not launch Chromium. Install the browser binary with `pnpm exec playwright install chromium`.",
@@ -192,8 +175,8 @@ export function defaultLauncher(
             userAgent,
             ignoreHTTPSErrors: !!allowInsecureTls,
           });
-          if (scopedHeaders) await routeScopedHeaders(ctx, scopedHeaders);
           const p = await ctx.newPage();
+          if (scopedHeaders) await interceptScopedHeaders(ctx, p, scopedHeaders);
           return {
             async goto(url, opts) {
               const response = await p.goto(url, {
@@ -228,42 +211,56 @@ export function defaultLauncher(
 
 /**
  * Attach the operator's headers to the requests Chromium makes to their origin,
- * and to no other.
+ * and to no other — redirect hops included.
  *
- * Neither of Playwright's direct ways is safe. `extraHTTPHeaders` goes to every
- * request the page makes, third-party scripts and pixels included. And
- * `route.continue({ headers })` — or `route.fetch({ headers })` with redirects
- * on — carries the headers "to the routed request and any redirects it
- * initiates" (Playwright's own words), so a preview that redirects to another
- * host hands that host the credential.
+ * None of Playwright's own ways is safe or complete, measured with Playwright
+ * 1.64 and Chromium 156 on 2026-11-03:
  *
- * So each same-origin request is fetched here with redirects off, and the
- * response handed to the page as it came: Chromium follows a 3xx itself, as a
- * request Playwright does not route again. That last part is the cost,
- * measured with Playwright 1.64 on 2026-11-03: a redirect *within* the origin
- * reaches its target without the headers. `inspect` navigates to the URL the
- * static fetch ended at, which takes the page's own redirects out of the way;
- * a redirecting sub-resource on a protected origin still answers without them.
- * A credential that stays home is worth a sub-resource that 401s.
+ *   - `extraHTTPHeaders` goes to every request the page makes, third-party
+ *     scripts and pixels included.
+ *   - `route.continue({ headers })`, and `route.fetch({ headers })` with
+ *     redirects on, carry the headers "to the routed request and any redirects
+ *     it initiates" (Playwright's own words): a preview that redirects to
+ *     another host hands that host the credential.
+ *   - `route.fetch` with redirects off, then `route.fulfill`, keeps them home
+ *     but loses them on a redirect *within* the origin, since Playwright does
+ *     not route a redirect hop again; and a fulfilled document has no address,
+ *     so Chromium's Local Network Access checks fail its loopback requests.
+ *
+ * The DevTools protocol's `Fetch` domain has neither problem. Every request
+ * pauses at the request stage, and every redirect hop pauses again as a request
+ * of its own (`redirectedRequestId`); headers set on one hop do not carry to the
+ * next. So each hop is judged on its own URL: the headers join it on the origin,
+ * and it continues untouched anywhere else. Nothing is fulfilled, so the
+ * response comes from the network with its real address.
+ *
+ * `Cookie` is merged, not replaced: the paused request already carries the
+ * cookies the site set (`mergeHeaders`).
+ *
+ * Not covered: requests made by a dedicated or service worker run in their own
+ * target and pause nowhere here, so they leave without the headers — a
+ * protected API fetched from a worker answers 401. They never leak.
  */
-async function routeScopedHeaders(
+async function interceptScopedHeaders(
   ctx: import("playwright").BrowserContext,
+  page: import("playwright").Page,
   scope: ScopedHeaders,
 ): Promise<void> {
-  await ctx.route("**/*", async (route) => {
-    const request = route.request();
-    if (!sameOrigin(request.url(), scope.origin)) return route.continue();
-    try {
-      const response = await route.fetch({
-        headers: { ...request.headers(), ...scope.headers },
-        maxRedirects: 0,
-      });
-      return await route.fulfill({ response });
-    } catch {
-      // What an unrouted request would have met: a network failure, which the
-      // navigation reports as such. A handler that throws would leave the
-      // request hanging until the navigation timeout.
-      return route.abort("failed").catch(() => undefined);
-    }
+  const cdp = await ctx.newCDPSession(page);
+  cdp.on("Fetch.requestPaused", (event) => {
+    const extra = headersFor(event.request.url, scope);
+    const params =
+      Object.keys(extra).length === 0
+        ? { requestId: event.requestId }
+        : {
+            requestId: event.requestId,
+            headers: Object.entries(mergeHeaders(event.request.headers, extra)).map(
+              ([name, value]) => ({ name, value }),
+            ),
+          };
+    // A request the page abandoned while paused (a navigation away, a closed
+    // context) cannot be continued; that is not an error of the audit.
+    cdp.send("Fetch.continueRequest", params).catch(() => undefined);
   });
+  await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
 }

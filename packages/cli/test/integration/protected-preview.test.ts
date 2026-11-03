@@ -28,7 +28,7 @@ const TOKEN_HEADER = "x-preview-token";
 
 interface Recorder {
   url: string;
-  seen: { path: string; token: string | undefined }[];
+  seen: { path: string; token: string | undefined; cookie?: string }[];
   stop: () => Promise<void>;
 }
 
@@ -36,7 +36,11 @@ async function start(build: (app: Hono, recorder: Recorder) => void): Promise<Re
   const app = new Hono();
   const recorder: Recorder = { url: "", seen: [], stop: async () => undefined };
   app.use("*", async (c, next) => {
-    recorder.seen.push({ path: new URL(c.req.url).pathname, token: c.req.header(TOKEN_HEADER) });
+    recorder.seen.push({
+      path: new URL(c.req.url).pathname,
+      token: c.req.header(TOKEN_HEADER),
+      cookie: c.req.header("cookie"),
+    });
     await next();
   });
   build(app, recorder);
@@ -69,8 +73,13 @@ beforeAll(async () => {
   });
 
   preview = await start((app, self) => {
+    // The token as a header, or — the other shape a preview protects itself
+    // with — as a session cookie.
     app.use("*", async (c, next) => {
-      if (c.req.header(TOKEN_HEADER) !== SECRET) return c.text("protected", 401);
+      const cookie = c.req.header("cookie") ?? "";
+      const allowed =
+        c.req.header(TOKEN_HEADER) === SECRET || cookie.includes(`preview_session=${SECRET}`);
+      if (!allowed) return c.text("protected", 401);
       await next();
     });
     app.get("/robots.txt", () => new Response(`User-agent: *\nAllow: /\n`));
@@ -97,13 +106,31 @@ beforeAll(async () => {
     app.get("/about", () => html("About", `<link rel="canonical" href="${self.url}/about">`, ""));
     app.get("/old", (c) => c.redirect("/about", 301));
     app.get("/cross", (c) => c.redirect(`${elsewhere.url}/landing`, 302));
+    // Every way a rendered page reaches the network: a third-party pixel and
+    // script call, a local image, a local API behind a redirect (`/api-moved`,
+    // the trailing-slash or versioning 307 a real API answers), and a local image
+    // that redirects off the origin (a CDN rewrite).
     app.get("/rendered", () =>
       html(
         "Rendered",
         "",
-        `<img src="${elsewhere.url}/pixel.png"><img src="/local.png">` +
-          `<script>fetch("${elsewhere.url}/api").catch(() => {}); fetch("/api").catch(() => {});</script>`,
+        `<img src="${elsewhere.url}/pixel.png"><img src="/local.png"><img src="/img-to-cdn">` +
+          `<script>fetch("${elsewhere.url}/api").catch(() => {});` +
+          ` fetch("/api-moved").then((r) => r.text()).then((t) => { document.title += " " + t; });</script>`,
       ),
+    );
+    app.get("/api-moved", (c) => c.redirect("/api", 307));
+    app.get("/api", (c) => c.text("api-ok"));
+    app.get("/img-to-cdn", (c) => c.redirect(`${elsewhere.url}/cdn.png`, 302));
+    // Sets a cookie of the site's own, the way a locale or consent cookie does,
+    // then calls an API: both cookies must arrive together.
+    app.get(
+      "/cookie-page",
+      () =>
+        new Response(
+          `<!doctype html><title>Cookies</title><script>fetch("/api").catch(() => {});</script>`,
+          { headers: { "content-type": "text/html", "set-cookie": "site_locale=fr; Path=/" } },
+        ),
     );
     app.get("*", (c) => c.text("not found", 404));
   });
@@ -175,50 +202,67 @@ if (!chromiumAvailable && process.env.CI) {
 const itIfChromium = chromiumAvailable ? it : it.skip;
 
 describe("the same preview rendered in Chromium", () => {
-  const scope = () => ({
+  const scope = (headers: Record<string, string> = { [TOKEN_HEADER]: SECRET }) => ({
     origin: new URL(preview.url).origin,
-    headers: { [TOKEN_HEADER]: SECRET },
+    headers,
   });
+  const render = (path: string, headers?: Record<string, string>) =>
+    extractHeadless(`${preview.url}${path}`, {
+      launcher: defaultLauncher(),
+      scopedHeaders: scope(headers),
+      waitUntil: "networkidle",
+    });
 
   itIfChromium(
-    "sends the token to the page and its same-origin requests, and none to a third party",
+    "sends the token on every same-origin request, redirect hops included, and none to a third party",
     async () => {
       preview.seen.length = 0;
       elsewhere.seen.length = 0;
-      const result = await extractHeadless(`${preview.url}/rendered`, {
-        launcher: defaultLauncher(),
-        scopedHeaders: scope(),
-        waitUntil: "networkidle",
-      });
+      const result = await render("/rendered");
 
       expect(result.fetch.status).toBe(200);
-      expect(result.renderedHtml).toContain("<title>Rendered</title>");
+      // The title only gains "api-ok" if the redirected API call got through.
+      expect(result.renderedHtml).toContain("<title>Rendered api-ok</title>");
       const local = new Set(preview.seen.map((s) => s.path));
-      expect(local).toContain("/local.png");
-      expect(local).toContain("/api");
+      for (const path of ["/rendered", "/local.png", "/api-moved", "/api", "/img-to-cdn"]) {
+        expect(local).toContain(path);
+      }
       expect(preview.seen.filter((s) => s.token !== SECRET)).toEqual([]);
 
       const third = new Set(elsewhere.seen.map((s) => s.path));
-      expect(third).toContain("/pixel.png");
-      expect(third).toContain("/api");
+      for (const path of ["/pixel.png", "/api", "/cdn.png"]) expect(third).toContain(path);
       expect(elsewhere.seen.filter((s) => s.token !== undefined)).toEqual([]);
     },
     60_000,
   );
 
   itIfChromium(
-    "does not carry the token across a redirect to another origin",
+    "follows a redirect within the origin with the token, and leaves it behind at the origin's edge",
     async () => {
       elsewhere.seen.length = 0;
-      const result = await extractHeadless(`${preview.url}/cross`, {
-        launcher: defaultLauncher(),
-        scopedHeaders: scope(),
-        waitUntil: "load",
-      });
+      const within = await render("/old");
+      expect(within.fetch.status).toBe(200);
+      expect(within.fetch.finalUrl).toBe(`${preview.url}/about`);
 
-      expect(result.fetch.finalUrl).toBe(`${elsewhere.url}/landing`);
+      const across = await render("/cross");
+      expect(across.fetch.finalUrl).toBe(`${elsewhere.url}/landing`);
       expect(elsewhere.seen.map((s) => s.path)).toContain("/landing");
       expect(elsewhere.seen.filter((s) => s.token !== undefined)).toEqual([]);
+    },
+    60_000,
+  );
+
+  itIfChromium(
+    "adds a session cookie to the site's own cookies instead of replacing them",
+    async () => {
+      preview.seen.length = 0;
+      const session = `preview_session=${SECRET}`;
+      const result = await render("/cookie-page", { Cookie: session });
+
+      expect(result.fetch.status).toBe(200);
+      const api = preview.seen.find((s) => s.path === "/api");
+      expect(api?.cookie).toContain("site_locale=fr");
+      expect(api?.cookie).toContain(session);
     },
     60_000,
   );
