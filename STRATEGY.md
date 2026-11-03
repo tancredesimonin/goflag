@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-22
+updated: 2026-11-03
 ---
 
 # Strategy — goflag
@@ -68,8 +68,9 @@ unstable.
 
 ## What this repo will not do
 
-- No dashboard, no config system, no social-preview gallery. The JSON report is the product;
-  the terminal is only a render of it.
+- No hosted dashboard, no config system, no social-preview gallery, no telemetry. The JSON
+  report is the product; the terminal and the self-contained HTML report are renders of it, and
+  keeping reports across runs belongs to whoever runs the CLI.
 - No verdict on what a linter cannot decide. A title that "describes" the page stays a
   question asked with its evidence (`--advisories`), never a finding.
 - No merging of the site repositories, and no wrapper around `next-intl`.
@@ -79,6 +80,8 @@ unstable.
 
 ## What is still open
 
+- Whether `apps/checks` keeps running the published CLI as a subprocess, or a shared package is
+  extracted for it (`docs/integrations-plan.md` D5, I3).
 - Extract the spec into `@goflag/spec`, or leave it in the CLI: settled when the library's
   tests import it.
 - The shape of a multilingual `llms.txt` is not settled anywhere public, and the space is
