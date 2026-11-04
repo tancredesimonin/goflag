@@ -14,15 +14,17 @@
  */
 
 import { runAudit, exitCode } from "./report/build";
+import type { GoflagReport } from "./report/types";
 import { diffReports, diffExitCode, totalFindings } from "./report/diff";
 import { renderDiffTerminal } from "./report/render-diff";
 import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
 import { renderSummaryTerminal } from "./report/render-summary";
 import { renderPreview } from "./report/render-preview";
+import { renderHtmlReport } from "./report/render-html";
 import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
-import { HELP, parseArgs, type ParsedArgs } from "./cli-args";
+import { HELP, parseArgs, redactCommand, type ParsedArgs } from "./cli-args";
 import { buildRuleCatalog, serialiseCatalog } from "./lib/rules/catalog";
 import { buildFlagCatalog, serialiseFlags } from "./lib/flags/catalog";
 
@@ -59,6 +61,21 @@ async function writeText(path: string, contents: string): Promise<void> {
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeText(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/**
+ * The exit code an audit ends with, for the returns at the end of `main` and for
+ * the HTML report, which prints it: one function, so the file a reviewer reads
+ * cannot say "passed" about a run that failed.
+ *
+ * The order is the gate's: the debt budget, then the baseline, then the
+ * findings. `diffExitCode` checks the budget itself.
+ */
+function gateExitCode(report: GoflagReport, args: ParsedArgs): number {
+  const total = totalFindings(report);
+  if (report.diff) return diffExitCode(report.diff, args.failOn, { total, max: args.maxDebt });
+  if (args.maxDebt !== undefined && total > args.maxDebt) return 1;
+  return exitCode(report, args.failOn);
 }
 
 /** Where `goflag preview` writes, beside the baseline the gate already keeps. */
@@ -229,6 +246,26 @@ async function main(): Promise<number> {
     process.stderr.write(`goflag: report written to ${args.report}\n`);
   }
 
+  // Same place and same reason as `--report`: written on every path that has a
+  // report, the run that captures the baseline included. The command line in
+  // its footer is redacted — `--header` values and URL passwords — because the
+  // file is made to be passed around.
+  if (args.html) {
+    const gate = args.updateBaseline
+      ? { exitCode: 0, failOn: args.failOn, capturedBaseline: true }
+      : { exitCode: gateExitCode(report, args), failOn: args.failOn, maxDebt: args.maxDebt };
+    await writeText(
+      args.html,
+      renderHtmlReport(report, {
+        now: Date.now(),
+        version: await readVersion(),
+        command: redactCommand(process.argv.slice(2)),
+        gate,
+      }),
+    );
+    process.stderr.write(`goflag: HTML report written to ${args.html}\n`);
+  }
+
   // Writing the baseline is accepting everything in it. The one thing this
   // must not do is accept it quietly: a counter that drops without explanation
   // reads as "the problem went away".
@@ -269,7 +306,7 @@ async function main(): Promise<number> {
         `goflag: ${total} findings exceeds the --max-debt budget of ${args.maxDebt}.\n`,
       );
     }
-    return diffExitCode(report.diff, args.failOn, { total, max: args.maxDebt });
+    return gateExitCode(report, args);
   }
 
   if (args.summary) {
@@ -292,14 +329,8 @@ async function main(): Promise<number> {
     process.stderr.write(
       `goflag: ${total} findings exceeds the --max-debt budget of ${args.maxDebt}.\n`,
     );
-    return 1;
   }
-
-  if (report.diff) {
-    return diffExitCode(report.diff, args.failOn, { total, max: args.maxDebt });
-  }
-
-  return exitCode(report, args.failOn);
+  return gateExitCode(report, args);
 }
 
 /**

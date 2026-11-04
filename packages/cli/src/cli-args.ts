@@ -100,6 +100,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     const inert = [
       parsed.json && "--json",
       parsed.summary && "--summary",
+      parsed.html && "--html",
       parsed.baseline && "--baseline",
       parsed.updateBaseline && "--update-baseline",
       parsed.regressionsOnly && "--regressions-only",
@@ -148,4 +149,33 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
 
   return parsed;
+}
+
+/**
+ * The command line as the HTML report prints it, minus what must not be
+ * printed: every `--header` value, kept as its name and `***`, and the password
+ * of a URL that carries one. The report travels further than the pipeline that
+ * wrote it, and a credential in its footer would travel with it.
+ */
+export function redactCommand(argv: readonly string[]): string {
+  const words = ["goflag"];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i] ?? "";
+    if (arg === "--header" && i + 1 < argv.length) {
+      const value = argv[++i] ?? "";
+      const colon = value.indexOf(":");
+      words.push(
+        "--header",
+        shellWord(colon === -1 ? "***" : `${value.slice(0, colon).trim()}: ***`),
+      );
+      continue;
+    }
+    words.push(shellWord(arg.replace(/^(https?:\/\/[^/@:\s]*):[^@/\s]*@/i, "$1:***@")));
+  }
+  return words.join(" ");
+}
+
+/** Quoted only when a shell would split or expand it. */
+function shellWord(word: string): string {
+  return /^[\w@%+=:,./-]+$/.test(word) ? word : `"${word.replace(/(["\\$`])/g, "\\$1")}"`;
 }

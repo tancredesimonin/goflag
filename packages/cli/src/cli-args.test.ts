@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseArgs, HELP } from "./cli-args";
+import { parseArgs, HELP, redactCommand } from "./cli-args";
 import { PROFILE_NAMES } from "./lib/rules/profiles";
 
 describe("parseArgs", () => {
@@ -261,5 +261,39 @@ describe("--header", () => {
     } catch (err) {
       expect((err as Error).message).not.toContain(SECRET);
     }
+  });
+});
+
+describe("--html", () => {
+  it("takes the path to write", () => {
+    expect(parseArgs(["u", "--html", "out/report.html"]).html).toBe("out/report.html");
+    expect(() => parseArgs(["u", "--html"])).toThrow(/requires a value/);
+  });
+
+  it("is refused by preview, which writes its own HTML", () => {
+    expect(() => parseArgs(["preview", "u", "--html", "r.html"])).toThrow(/--html/);
+  });
+});
+
+describe("redactCommand", () => {
+  it("keeps a header's name and hides its value", () => {
+    expect(
+      redactCommand(["https://x.test", "--header", "Authorization: Bearer abc", "--static"]),
+    ).toBe('goflag https://x.test --header "Authorization: ***" --static');
+  });
+
+  it("hides a value given without a name", () => {
+    expect(redactCommand(["u", "--header", "abc"])).toBe('goflag u --header "***"');
+  });
+
+  it("hides the password of a URL, and keeps the user", () => {
+    // A dummy credential is exactly what this has to redact, and exactly what
+    // the pre-commit `betterleaks` scan refuses: its own allow marker says so.
+    const url = "https://bob:dummy-password@staging.x.test/fr"; // betterleaks:allow
+    expect(redactCommand([url])).toBe('goflag "https://bob:***@staging.x.test/fr"');
+  });
+
+  it("quotes what a shell would split", () => {
+    expect(redactCommand(["u", "--start", "pnpm start"])).toBe('goflag u --start "pnpm start"');
   });
 });

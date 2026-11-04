@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import { buildFingerprintFixture } from "./fingerprint-fixture";
 import { renderPreviewFixture } from "./preview-fixture";
+import { renderReportFixture } from "./report-fixture";
 import { TRANSCRIPTS } from "./transcripts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,10 @@ writeFileSync(
 // folder would cost two more edits and a paragraph in `.gitlab-ci.yml` to buy
 // a more accurate directory name.
 writeFileSync(join(outDir, "preview.html"), renderPreviewFixture(), "utf8");
+
+// The HTML report, beside the preview and for the same reasons: the folder the
+// deploy and the hook already watch, and prettier-ignored.
+writeFileSync(join(outDir, "report.html"), renderReportFixture(), "utf8");
 
 // The manifest is what the site iterates: it carries the order the tabs appear
 // in and the command printed above each panel, so neither is retyped there.
@@ -91,6 +96,9 @@ for (const spec of TRANSCRIPTS) {
   const widest = Math.max(...lines.map((line) => line.length));
   process.stdout.write(`${spec.id}: ${lines.length} lines, ${widest} columns\n`);
 }
+
+const htmlReport = renderReportFixture();
+process.stdout.write(`report.html: ${Buffer.byteLength(htmlReport, "utf8")} bytes\n`);
 
 const preview = renderPreviewFixture();
 process.stdout.write(
