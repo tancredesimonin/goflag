@@ -151,6 +151,8 @@ variables:
 # had moved.
 .mr_only: &mr_only
   rules:
+    - if: $DOCS_ONLY == "true"
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 # No `cache:`, and no `store-dir`. The cache keyed on `pnpm-lock.yaml` that
@@ -246,6 +248,8 @@ build:
   # fail on a broken tree, but later and less clearly. Confirmed with the
   # maintainer that hotfixes onto `main` do not happen.
   rules:
+    - if: $DOCS_ONLY == "true"
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"
   variables:
@@ -1044,6 +1048,26 @@ tag:
     - tag_one "@goflag/next" "packages/next/package.json" "next-v"
     - tag_one "@goflag/og" "packages/og/package.json" "og-v"
 
+# A change to documentation only — Markdown at the root or under `docs/` — is
+# read by nothing the packages or the website build. The last three paid `check`
+# and `build` on the merge request, then `build` again on develop.
+#
+# The regexp matches a changed path that is *not* documentation, so the first
+# rule holds as soon as one such path is in the diff. Ruby's engine, hence the
+# lookahead and `\A`/`\z` rather than `^`/`$`, which a path with a newline in it
+# would get past. On a schedule, the web button or a tag there is no diff, and
+# GitLab counts `changes` as true: those pipelines are left as they were.
+#
+# A merge request with no such path keeps `trivy-deps` and `audit` — Trivy reads
+# secrets in Markdown as well as anywhere else — and `DOCS_ONLY` drops the rest.
+# A push to `main` or `develop` with none gets no pipeline at all, and that is
+# deliberate: a pipeline with no job but a manual one would still be created,
+# and creating it auto-cancels the `build` of a code merge landed minutes
+# earlier, and with it the `deploy-develop` that follows.
+#
+# The root README is not documentation here: it is the npm page of @goflag/cli,
+# `test:unit` reads it, and the pre-commit hook writes transcripts into it. The
+# inner lookahead keeps it on the code side.
 workflow:
   rules:
     # First, and deliberately so. A tag pipeline shares the commit message of
@@ -1060,6 +1084,13 @@ workflow:
     # skipping that pipeline is skipping the only job that creates the tag.
 
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: &not_docs
+        regexp: '\A(?!(?!README\.md\z)[^/\n]*\.md\z|docs/[^\n]*\.md\z)'
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      variables:
+        DOCS_ONLY: "true"
     - if: $CI_COMMIT_BRANCH == "develop"
+      changes: *not_docs
     - if: $CI_COMMIT_BRANCH == "main"
+      changes: *not_docs
     - if: $CI_PIPELINE_SOURCE == "schedule"
