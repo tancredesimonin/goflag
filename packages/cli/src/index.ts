@@ -28,6 +28,24 @@ export {
   type RollupReciprocity,
 } from "./report/summarize";
 export { fingerprint, routeKey, targetKey } from "./report/fingerprint";
+// What `@goflag/mcp` needs and nothing it does not: the comparison the gate makes
+// against a baseline, and the catalogue `goflag rules` prints. A consumer that
+// re-derived either would be the hand-written mirror this package keeps refusing.
+export {
+  diffReports,
+  diffExitCode,
+  totalFindings,
+  type DiffEntry,
+  type FindingKind,
+  type ReportDiff,
+} from "./report/diff";
+export {
+  buildRuleCatalog,
+  type CatalogRule,
+  type RuleCatalog,
+  type RuleScope,
+  type SourceDoc,
+} from "./lib/rules/catalog";
 export { Logger, type LogMode, type LoggerOptions } from "./report/logger";
 export type {
   GoflagReport,
@@ -37,5 +55,6 @@ export type {
   TranslationHole,
   ReportReciprocityIssue,
   SeoIssue,
+  SiteIssue,
   UnreachablePage,
 } from "./report/types";

@@ -20,11 +20,13 @@ does not run the CLI (`docs/integrations-plan.md` §1).
 tools — is published and listed in the official MCP registry, and `--html <file>` (P-2) writes
 a self-contained report that openfinanceguide's `seo:mr` job attaches as an artefact. Alongside,
 `--header` (T-1), so a protected preview can be audited without its secret reaching any output.
-**State**: two of three on `develop`, unpublished. `--header` merged on 2026-11-04 (!277):
+**State**: all three on `develop`, none published. `--header` merged on 2026-11-04 (!277):
 every request of the audit, Chromium included, attaches it on the audited origin only, redirect
-hops included. `--html` follows it. `@goflag/mcp` is not started, and waits for a release that
-publishes both; the author publishes its first version by hand and protects `mcp-v*` before it
-(`docs/publishing.md`).
+hops included. `--html` followed (!278). `@goflag/mcp` follows them, with the CLI exports it needs
+(`diffReports`, `buildRuleCatalog`). What remains is publishing: a CLI release carrying the three,
+then `@goflag/mcp@0.1.0` by hand — the author protects `mcp-v*` first (`docs/publishing.md`) —
+and the `publish:mcp` job and `mcp-v` tag that `scripts/release.mjs` and the `tag` job do not
+know yet.
 
 ### 3.5 — translation holes move into the rule registry
 

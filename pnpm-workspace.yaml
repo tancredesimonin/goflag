@@ -50,7 +50,7 @@ allowBuilds:
 
 # Security floors. `undici` and `fast-uri` were moved verbatim from the package.json
 # `pnpm.overrides` block — pnpm 11 no longer reads that field, so leaving them there would
-# have dropped both silently; the other three were written here. Floors, not pins: each is
+# have dropped both silently; the others were written here. Floors, not pins: each is
 # a caret range, so the lockfile is what holds the exact version, and `pnpm update` moves
 # it to the newest release in range that has cleared the window above.
 overrides:
@@ -77,7 +77,19 @@ overrides:
   # only fixes what builds `dist` here; a consumer's install resolves undici
   # from cheerio's own range, see the minimumReleaseAge note above.
   undici: ^7.30.1
-  fast-uri: ^3.1.2
+  # 3.1.9 patches the fast-uri advisories `pnpm audit --prod` raised when
+  # `@goflag/mcp` arrived — five high among them (GHSA-fph4-wmhf-6fwf,
+  # GHSA-jqff-g426-hqxp, GHSA-qw65-cvwx-89v3: host confusion, SSRF and authority
+  # injection in URI normalisation). The path is a runtime one:
+  # `@goflag/mcp` → `@modelcontextprotocol/sdk` → `ajv` → `fast-uri`, which ajv
+  # uses for the URI references inside JSON schemas. The floor had been ^3.1.2
+  # since the move out of package.json. As for undici, it fixes this workspace;
+  # a consumer resolves from ajv's own range, which 3.1.9 satisfies.
+  fast-uri: ^3.1.9
+  # 10.7.4 patches five moderate `ip-address` advisories, reached through
+  # `@modelcontextprotocol/sdk` → `express-rate-limit`: the SDK's HTTP server,
+  # which `@goflag/mcp` never starts, since it speaks stdio.
+  ip-address: ^10.7.4
 
   # Both arrived with `apps/website`, and both were Next's own pins rather than
   # anything we asked for: 16.2.12 depended on `postcss` at exactly 8.4.31 and
