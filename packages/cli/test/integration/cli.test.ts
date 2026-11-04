@@ -220,6 +220,7 @@ describe("goflag CLI (spawned process)", () => {
     // land in a CI log, an artefact and every issue the report is pasted into.
     const secret = "tok_never_in_any_output_8d1f";
     const out = join(tmp, "with-header.json");
+    const html = join(tmp, "with-header.html");
     const r = await runCli([
       `${server.url}/good`,
       "--header",
@@ -227,6 +228,8 @@ describe("goflag CLI (spawned process)", () => {
       "--verbose",
       "--report",
       out,
+      "--html",
+      html,
       "--static",
       "--depth",
       "0",
@@ -239,7 +242,46 @@ describe("goflag CLI (spawned process)", () => {
     expect(raw).not.toContain(secret);
     const written = JSON.parse(raw) as GoflagReport;
     expect(written.diagnostics.requestHeaders).toEqual(["X-Preview-Token"]);
+
+    // The HTML footer prints the command line: the name stays, the value goes.
+    const page = readFileSync(html, "utf8");
+    expect(page).not.toContain(secret);
+    expect(page).toContain("X-Preview-Token: ***");
   }, 30_000);
+
+  it("writes --html, and the verdict it prints is the exit code the run returns", async () => {
+    const clean = join(tmp, "clean.html");
+    const passed = await runCli([
+      `${server.url}/good`,
+      "--html",
+      clean,
+      "--static",
+      "--depth",
+      "0",
+      "--no-sitemap",
+    ]);
+    expect(passed.status).toBe(0);
+    expect(passed.stderr).toContain(`HTML report written to ${clean}`);
+    expect(readFileSync(clean, "utf8")).toContain("Passed · exit code 0");
+
+    // Over a debt budget of zero, the same page fails, and so does the run.
+    const dirty = join(tmp, "nested", "dirty.html");
+    const failed = await runCli([
+      `${server.url}/`,
+      "--html",
+      dirty,
+      "--max-debt",
+      "0",
+      "--static",
+      "--depth",
+      "1",
+      "--no-sitemap",
+    ]);
+    expect(failed.status).toBe(1);
+    const page = readFileSync(dirty, "utf8");
+    expect(page).toContain("Failed · exit code 1");
+    expect(page).toContain("exceed the --max-debt budget of 0");
+  }, 60_000);
 
   it("refuses a --header goflag owns, exit 2, without echoing it", async () => {
     const secret = "tok_never_echoed_31aa";

@@ -100,6 +100,15 @@
       "description": "Show this help."
     },
     {
+      "name": "--html",
+      "short": null,
+      "arg": "<file>",
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Write the report as one self-contained HTML file to <file>: the verdict and why, findings by rule with their sources, and the diff against --baseline. For a pipeline artefact read by someone who does not run goflag. No asset, no script, no request."
+    },
+    {
       "name": "--ignore-holes",
       "short": null,
       "arg": "<glob>",
@@ -313,8 +322,8 @@
     }
   ],
   "counts": {
-    "flags": 33,
+    "flags": 34,
     "withShortForm": 5,
-    "takingValue": 18
+    "takingValue": 19
   }
 }

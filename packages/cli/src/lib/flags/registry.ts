@@ -35,6 +35,7 @@ export interface FlagTarget {
   json: boolean;
   summary: boolean;
   report?: string;
+  html?: string;
   color: boolean;
   help: boolean;
   version: boolean;
@@ -124,6 +125,23 @@ export const FLAGS: readonly FlagSpec[] = [
     takesValue: true,
     apply: ({ parsed, value }) => {
       parsed.report = value;
+    },
+  },
+  {
+    name: "--html",
+    arg: "<file>",
+    label: "--html <file>",
+    group: "output",
+    help: [
+      "Write the report as one self-contained HTML file to",
+      "<file>: the verdict and why, findings by rule with",
+      "their sources, and the diff against --baseline. For",
+      "a pipeline artefact read by someone who does not run",
+      "goflag. No asset, no script, no request.",
+    ],
+    takesValue: true,
+    apply: ({ parsed, value }) => {
+      parsed.html = value;
     },
   },
   {

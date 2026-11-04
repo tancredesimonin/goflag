@@ -192,6 +192,10 @@ documentation site came to quote a message the engine had stopped printing.
                        the full report regardless. Not available with
                        --baseline: there the diff is the answer.
 --report <file>        Write the JSON report to <file>.
+--html <file>          Write the report as one self-contained HTML file: the
+                       verdict and why, findings by rule with their sources,
+                       and the diff against --baseline. For a pipeline artefact
+                       read by someone who does not run goflag.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0
                        alone is not "entry page only" — add --no-sitemap.

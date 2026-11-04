@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>goflag report — example.com</title>
+<style>
+:root{--paper:#fff;--paper2:#f7f8f7;--ink:#09090b;--ink2:#4c534f;--ink3:#6d7671;--line:#e5e6e5;--brand:#009966;--amber:#bb4d00;--red:#e7000b;--wash:#f2f6f4;--redwash:#fdecec;
+--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;--ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--paper:#0a0a0c;--paper2:#121316;--ink:#fafafa;--ink2:#b6bcb9;--ink3:#878e8a;--line:#23252a;--brand:#00d492;--amber:#ffb900;--red:#ff6467;--wash:#101614;--redwash:#1f1012}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 64px;background:var(--paper);color:var(--ink);font:15px/1.55 var(--ui);-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin-inline:auto;display:flex;flex-direction:column;gap:28px}
+a{color:inherit;text-underline-offset:2px}
+code,pre,.rid,.path,.tag,.count,.meta,.num,.href{font-family:var(--mono)}
+code{font-size:.9em}
+h1{font:600 22px/1.25 var(--mono);margin:0;overflow-wrap:anywhere}
+h2{font:600 16px/1.3 var(--mono);margin:0 0 10px}
+h3{font:600 13px/1.3 var(--mono);margin:16px 0 8px;color:var(--ink2)}
+.meta{margin:6px 0 0;font-size:12px;color:var(--ink3)}
+.verdict{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:6px;padding:14px 16px;background:var(--wash)}
+.verdict.failed{border-left-color:var(--red);background:var(--redwash)}
+.verdict b{display:block;font:600 17px/1.3 var(--mono)}
+.verdict.failed b{color:var(--red)}
+.verdict p{margin:4px 0 0;color:var(--ink2)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tiles div{background:var(--paper);padding:12px 14px}
+.tiles b{display:block;font:600 24px/1.1 var(--ui);font-variant-numeric:tabular-nums}
+.tiles span{font-size:12px;color:var(--ink3)}
+.lede{margin:0 0 12px;color:var(--ink2)}
+.note,.warn{margin:0 0 8px;font-size:13px;color:var(--amber)}
+.coverage{margin:0;font-size:13px;color:var(--ink2)}
+details.rule{border:1px solid var(--line);border-radius:6px;margin-bottom:8px;background:var(--paper)}
+details.rule.has-new{border-color:var(--red)}
+details.rule summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 12px;cursor:pointer;list-style-position:inside}
+.rid{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.count{margin-left:auto;font-size:12px;color:var(--ink3)}
+.tag{font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink2)}
+.sev-error{color:var(--red);border-color:var(--red)}
+.sev-warning{color:var(--amber);border-color:var(--amber)}
+.tag.new{color:var(--paper);background:var(--red);border-color:var(--red)}
+.why{margin:0;padding:0 12px 8px;font-size:13px;color:var(--ink2)}
+ul.pages,ul.entries{list-style:none;margin:0;padding:0 12px 10px;display:flex;flex-direction:column;gap:6px}
+ul.pages li,ul.entries li{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:13px;border-top:1px solid var(--line);padding-top:6px;min-width:0}
+ul.pages li.is-new{box-shadow:inset 3px 0 0 var(--red);padding-left:8px}
+.path{color:var(--ink);overflow-wrap:anywhere}
+.msg{color:var(--ink2);flex:1 1 20rem;min-width:0;overflow-wrap:anywhere}
+.dim{color:var(--ink3)}
+.more{color:var(--ink3);font-size:12px}
+pre.fix{margin:0 12px 12px;padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:4px;overflow-x:auto;font-size:12px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font:600 11px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+tbody th{font-family:var(--mono);font-weight:500}
+td.missing{color:var(--red);font-family:var(--mono)}
+.href{overflow-wrap:anywhere}
+.num{font-variant-numeric:tabular-nums}
+footer{border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--ink3)}
+footer pre{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:var(--ink2)}
+@media print{details.rule{break-inside:avoid}body{padding:0}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header>
+<h1>example.com</h1>
+<p class="meta">2026-08-04 09:14 UTC · goflag 0.0.0 · profile default · indexing: no · sent with <code>x-vercel-protection-bypass</code></p>
+</header>
+<div class="verdict failed"><b>Failed · exit code 1</b><p>1 new finding at warning or error since the baseline.</p></div>
+<div class="tiles"><div><b>128</b><span>pages audited</span></div><div><b>10</b><span>findings</span></div><div><b>1</b><span>new since the baseline</span></div><div><b>1</b><span>resolved</span></div></div>
+<section>
+<p class="coverage">Structural coverage: 128 of 412 sitemap URLs audited, 2 template families sampled. Template rules are conclusive on a sampled family; copy rules, links and translations only on the pages drawn.</p>
+<p class="warn">1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.</p>
+</section>
+<section class="block">
+<h2>Against the baseline</h2>
+<p class="lede">Baseline of 2026-07-21 09:14 UTC, 14 days old: <b>1 new finding</b>, 1 resolved, 13 unchanged.</p>
+
+<h3>New</h3><ul class="entries new"><li><span class="tag sev-error">error</span><span>canonical.absolute on https://example.com/pricing</span></li></ul>
+<h3>Resolved</h3><ul class="entries fixed"><li><span class="tag sev-warning">warning</span><span>og.image.missing on https://example.com/about</span></li></ul>
+</section>
+<section class="block">
+<h2>Findings by rule</h2>
+<p class="lede">Each rule links to its page: what it checks, how authoritative it is, and who requires it.</p>
+<details class="rule has-new">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/canonical.absolute">canonical.absolute</a></span><span class="tag sev-error">error</span><span class="tag rigor">vendor-spec</span><span class="tag new">new</span><span class="count">1 page</span></summary>
+<p class="why"><code>rel=&quot;canonical&quot;</code> must be an absolute, fully-qualified URL</p>
+<ul class="pages"><li class="is-new"><span class="path">/pricing</span><span class="msg"><code>rel=&quot;canonical&quot;</code> is <code>/pricing</code>, a relative URL.</span></li></ul>
+
+</details>
+<details class="rule">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/hreflang.missing">hreflang.missing</a></span><span class="tag sev-error">error</span><span class="tag rigor">vendor-spec</span><span class="count">1 page</span></summary>
+<p class="why">Pages on a multilingual site must advertise their locale alternates</p>
+<ul class="pages"><li><span class="path">/</span><span class="msg">Site serves 3 locales but declares no hreflang alternates.</span></li></ul>
+
+</details>
+<details class="rule">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/robots.conflict">robots.conflict</a></span><span class="tag sev-error">error</span><span class="tag rigor">vendor-spec</span><span class="count">1 page</span></summary>
+<p class="why">Two directives that disagree leave indexing to the crawler&#39;s tie-break</p>
+<ul class="pages"><li><span class="path">/pricing</span><span class="msg">Conflicting robots directives: meta robots say noindex, meta googlebot say index.</span></li></ul>
+
+</details>
+<details class="rule">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/canonical.missing">canonical.missing</a></span><span class="tag sev-warning">warning</span><span class="tag rigor">vendor-spec</span><span class="count">1 page</span></summary>
+<p class="why">Declare a &lt;link rel=&quot;canonical&quot;&gt; so search engines pick the right URL</p>
+<ul class="pages"><li><span class="path">/blog/hreflang-basics</span><span class="msg">Page is missing &lt;link rel=&quot;canonical&quot;&gt;.</span></li></ul>
+
+</details>
+<details class="rule">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/description.length">description.length</a></span><span class="tag sev-warning">warning</span><span class="tag rigor">heuristic</span><span class="count">1 page</span></summary>
+<p class="why">A description outside the window is rewritten or truncated</p>
+<ul class="pages"><li><span class="path">/blog/hreflang-basics</span><span class="msg">Description is 31 characters — short of the recommended 50–160 window.</span></li></ul>
+
+</details>
+<details class="rule">
+<summary><span class="rid"><a href="https://goflag.tech/docs/rules/og.image.missing">og.image.missing</a></span><span class="tag sev-warning">warning</span><span class="tag rigor">guideline</span><span class="count">1 page</span></summary>
+<p class="why">Provide at least one og:image so links unfurl with a preview</p>
+<ul class="pages"><li><span class="path">/pricing</span><span class="msg">Page has no og:image.</span></li></ul>
+<pre class="fix"><code>// app/…/page.tsx
+export const metadata = {
+  openGraph: { images: [{ url: &quot;/og.png&quot;, width: 1200, height: 630 }] },
+};</code></pre>
+</details>
+</section>
+<section class="block">
+<h2>Translations</h2>
+<p class="lede">Locales <code>en</code> <code>fr</code> <code>de</code>, from sitemap.</p>
+<div class="scroll"><table><thead><tr><th>Route</th><th>Present</th><th>Missing</th></tr></thead><tbody><tr><th scope="row">/blog/hreflang-basics</th><td>en, fr</td><td class="missing">de</td></tr></tbody></table></div>
+<h3>hreflang reciprocity</h3><ul class="pages"><li><span class="path">/fr/blog/hreflang-basics</span><span class="msg">/fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.</span></li></ul>
+</section>
+<section class="block">
+<h2>Links</h2>
+<div class="scroll"><table><thead><tr><th>On</th><th>Target</th><th>Status</th><th>Verdict</th></tr></thead><tbody><tr><td>/blog/hreflang-basics</td><td class="href">/guides/canonical-tags</td><td class="num">404</td><td>broken</td></tr><tr><td>/blog/hreflang-basics</td><td class="href">https://api.partner.example/status</td><td class="num">403</td><td>blocked · 403 forbidden</td></tr></tbody></table></div>
+
+</section>
+
+
+<footer>
+<p>Rendered by goflag 0.0.0 from the JSON report, which carries every finding in full. <a href="https://goflag.tech">goflag.tech</a></p>
+<pre>goflag https://example.com/ --expect-indexing no --header &quot;x-vercel-protection-bypass: ***&quot; --baseline .goflag/baseline.json --max-debt 14 --html report.html</pre>
+</footer>
+</main>
+</body>
+</html>

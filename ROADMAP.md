@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 # Roadmap — goflag
@@ -20,8 +20,11 @@ does not run the CLI (`docs/integrations-plan.md` §1).
 tools — is published and listed in the official MCP registry, and `--html <file>` (P-2) writes
 a self-contained report that openfinanceguide's `seo:mr` job attaches as an artefact. Alongside,
 `--header` (T-1), so a protected preview can be audited without its secret reaching any output.
-**State**: not started; plan written 2026-11-03. The author publishes the first `@goflag/mcp`
-by hand and protects `mcp-v*` before it (`docs/publishing.md`).
+**State**: two of three on `develop`, unpublished. `--header` merged on 2026-11-04 (!277):
+every request of the audit, Chromium included, attaches it on the audited origin only, redirect
+hops included. `--html` follows it. `@goflag/mcp` is not started, and waits for a release that
+publishes both; the author publishes its first version by hand and protects `mcp-v*` before it
+(`docs/publishing.md`).
 
 ### 3.5 — translation holes move into the rule registry
 
