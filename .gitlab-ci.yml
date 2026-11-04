@@ -262,7 +262,7 @@ build:
 test:unit:
   stage: test
   <<: *pnpm
-  # `pnpm test:unit` is `pnpm -r test:unit`: four suites, the three packages
+  # `pnpm test:unit` is `pnpm -r test:unit`: five suites, the four packages
   # and the website. The first two lines are the workspace they live in, the
   # last four are what decides how they are installed and run, and `README.md`
   # is the one file outside all of that which a test opens. The next file a
