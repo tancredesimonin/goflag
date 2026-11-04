@@ -142,17 +142,32 @@ node --input-type=module -e "
 Sur npmjs.com, page du paquet `@goflag/next` → **Settings** → la section des
 publications de confiance (« Trusted Publisher »).
 
-| Champ                | Valeur                         |
-| -------------------- | ------------------------------ |
-| Provider             | **GitLab** (`gitlab.com`)      |
-| Namespace / projet   | `tancredesimonin-indie/goflag` |
-| Chemin du fichier CI | `.gitlab-ci.yml`               |
-| Environnement        | laisser vide                   |
+| Champ                | Valeur                                            |
+| -------------------- | ------------------------------------------------- |
+| Provider             | **GitLab** (`gitlab.com`)                         |
+| Namespace / projet   | `tancredesimonin-indie/goflag`                    |
+| Chemin du fichier CI | `.gitlab-ci.yml`                                  |
+| Environnement        | laisser vide                                      |
+| Allowed actions      | **publish directly** coché, **dist-tags** décoché |
 
 Ce sont **les mêmes valeurs que pour `@goflag/cli`** : même projet, même
 fichier CI. Seul le paquet change. Si l'interface a bougé, le repère est
 toujours le même : elle demande _quel dépôt_ et _quel fichier de CI_ a le droit
 de publier, parce que c'est ce couple que GitLab signe dans le jeton.
+
+**Les actions autorisées sont la seule case qui ne se devine pas.** `npm stage
+publish` l'est toujours ; publier directement et gérer les dist-tags sont deux
+permissions à part. Depuis le 2026-09-03, une configuration neuve n'autorise que
+le stage, et les jobs `publish:*` lancent `npm publish` : sans **publish
+directly**, la première release automatique est refusée. Aucun job ne lance
+`npm dist-tag`, donc cette case reste décochée. Les trois paquets plus anciens
+publient déjà en direct depuis la CI — `@goflag/cli` `0.2.18`, le 2026-11-04.
+
+Le stage seul ajouterait une approbation en 2FA à chaque release
+(`npm stage approve`, ou le bouton sur npmjs.com) : un pipeline compromis ne
+pourrait plus rien mettre en ligne. Il demanderait `npm stage publish` dans les
+quatre jobs à la fois, pas dans un seul, et doublerait la décision que prend
+déjà la fusion de `develop` dans `main`.
 
 Le chemin est `.gitlab-ci.yml` et pas autre chose parce que c'est là que vit le
 job `publish:next` — pas dans un template inclus.
@@ -300,7 +315,7 @@ la release, il déclare la version qui les porte.
 ```
 ①'   release du CLI (0.2.18)              ← sans la MR CI de @goflag/mcp
 ①    publier @goflag/mcp 0.1.0 à la main  ← depuis develop, CLI à 0.2.18
-②    trusted publisher (npm)              ← mêmes valeurs qu'au §3
+②    trusted publisher (npm)              ← mêmes valeurs qu'au §3, publish directly compris
 ②bis protéger mcp-v* (GitLab)
 ③    fusionner la MR CI                   ← release.mjs, tag, publish:mcp
 ④    la release suivante                  ← première release automatique
@@ -321,7 +336,14 @@ pnpm --filter @goflag/cli build && pnpm --filter @goflag/mcp build
 cd packages/mcp && pnpm pack
 tar -xzOf goflag-mcp-0.1.0.tgz package/package.json | grep '"@goflag/cli"'   # ^0.2.18
 npm publish goflag-mcp-0.1.0.tgz --access public
+npm logout
 ```
+
+`npm whoami` d'abord, parce qu'un jeton mort dans `~/.npmrc` fait répondre `404`
+au `PUT` d'un paquet scopé, pas `401` — vu le 2026-11-04 avec un jeton du
+2026-08-16. `npm login` le remplace ; `npm logout` le retire une fois `0.1.0`
+partie, puisque tout passe ensuite par l'OIDC, et le prochain `whoami` dira
+alors qu'il manque une session au lieu de laisser croire qu'elle existe.
 
 ### ②bis — la commande
 
