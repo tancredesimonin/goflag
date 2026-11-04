@@ -138,3 +138,40 @@ green. The full table is in the [CLI reference](/docs/cli#exit-codes).
 `--report <file>` writes the full report next to the pipeline logs. When a gate
 fires three weeks later, the artefact is the difference between "something about
 hreflang" and the exact finding, page and rule.
+
+## Keep a page for whoever reads the pipeline
+
+The person who decides about a red merge request is not always the one who ran
+goflag. `--html <file>` writes the same report as one HTML file: the verdict and
+the reason the gate gave it, the findings grouped by rule with a link to each
+rule's page, the translation holes, and the diff against the baseline. Nothing
+loads beside it — no script, no stylesheet, no request — so it opens from an
+artefact download, offline.
+
+```yaml title=".gitlab-ci.yml"
+      --report goflag-report.json --html goflag-report.html
+  artifacts:
+    when: always
+    paths:
+      - goflag-report.json
+      - goflag-report.html
+```
+
+Like `--report`, it is written on every run that got as far as a report, the one
+that captures a baseline included.
+
+## A preview behind authentication
+
+A protected preview answers a login page, and goflag would judge that.
+`--header` sends what the preview asks for — a bypass token, basic-auth
+credentials, a session cookie — from the job's environment:
+
+```bash
+pnpm dlx @goflag/cli@__CLI_VERSION__ "$PREVIEW_URL" --expect-indexing no \
+  --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"
+```
+
+The header goes to the audited origin and nowhere else: not to an external link,
+not to an image on a CDN, not across a redirect to another host, in the static
+crawl and in Chromium alike. Reports name it and never carry its value, and the
+HTML report's footer prints `***` in its place.

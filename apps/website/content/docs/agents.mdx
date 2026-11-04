@@ -1,0 +1,61 @@
+---
+title: Coding agents
+description: The block to put in AGENTS.md so an agent checks its own SEO changes, and what goflag gives an agent to read.
+navTitle: Coding agents
+group: use
+order: 6
+---
+
+An agent that edits a site's metadata, sitemap, `robots.txt` or hreflang cannot
+see what it broke: the page renders, nothing fails, and the damage shows weeks
+later in a search console. goflag can see it before the commit. The agent only
+has to be told to look.
+
+## The block to paste
+
+Put this in the instructions your agent reads — `AGENTS.md`, `CLAUDE.md`, or
+your editor's rules file:
+
+```markdown title="AGENTS.md"
+## SEO checks
+
+Before committing a change to metadata, the
+sitemap, robots.txt or hreflang, audit the dev
+server with goflag: the `audit_site` tool of the
+goflag MCP server, or
+`npx @goflag/cli http://localhost:3000 --json --summary`.
+Fix every finding that is new. `explain_rule <id>`,
+or the rule's page on goflag.tech, says what the
+rule requires and who requires it.
+```
+
+Instructions the agent reads every time do more than a skill it has to decide to
+load: the check runs because the file says so, not because the agent remembered
+it exists.
+
+## Two ways in
+
+- **[The MCP server](/docs/mcp)**, when the agent's client speaks MCP: typed
+  tools, progress while it crawls, and each rule a call away.
+- **`goflag <url> --json --summary`**, for anything that runs a shell: one
+  compact payload, findings rolled up by rule.
+
+Both run the same engine and return the same findings.
+
+## What an agent gets to read
+
+goflag is written to be read by something that has to act on it.
+
+- **Every finding carries its rigor.** `spec-required` and `vendor-spec` are
+  requirements; `guideline` and `heuristic` are advice. An agent can fix the
+  first kind without asking and propose the second.
+- **Every rule cites its sources.** `explain_rule`, or `goflag rules` for the
+  whole catalogue as JSON, gives the documents behind a rule rather than an
+  opinion about it.
+- **Questions stay questions.** Five rules ask something a linter cannot decide
+  — does the title describe the page, is it in the declared language. With
+  `--advisories` (or `advisories` in `audit_site`) they come back with the
+  evidence the agent needs to judge, and they never count toward the exit code.
+- **A baseline separates new from known.** On a site with a backlog, "fix every
+  finding" is a week of work; "fix what this change introduced" is the task.
+  [Baseline gating](/docs/ci/baseline) and `compare_to_baseline` both answer it.
