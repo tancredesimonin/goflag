@@ -8,7 +8,8 @@
 > qu'un tag » (§4), et l'étape ②bis ci-dessous en est le corollaire.
 > `@goflag/og` a refait ce chemin le 2026-08-16 : `0.1.0` puis `0.2.0` dans la
 > journée (tags `og-v0.1.0` et `og-v0.2.0`). Le document reste écrit au présent
-> pour le prochain paquet.
+> pour le prochain paquet. `@goflag/mcp` est le premier à dépendre d'un autre
+> paquet du workspace, et le §7 dit ce que ça change à l'ordre.
 > **Portée** — la première publication de `@goflag/next` sur npm, la
 > configuration du trusted publisher OIDC, et l'ordre des opérations autour de
 > la fusion. Tout ce qui suit est **manuel** : le reste est déjà automatisé.
@@ -275,3 +276,76 @@ mais ils indiquent où regarder quand quelque chose ne va pas.
 seulement qu'elle n'a pas été exercée. Quatre des cinq défauts vivaient depuis
 des jours dans une CI verte — le dernier depuis que la chaîne à deux paquets
 avait été écrite, sans qu'un seul tag `next-v*` ne soit jamais passé dedans.
+
+---
+
+## 7. `@goflag/mcp` — un paquet qui dépend d'un autre du workspace
+
+Le chemin est le même, avec deux différences, et toutes deux viennent de la
+ligne `"@goflag/cli": "workspace:^"` de son manifeste.
+
+**On publie un tarball fait par pnpm, jamais le dossier.** `workspace:^` ne veut
+rien dire hors de pnpm : `npm publish` depuis `packages/mcp` le mettrait tel quel
+sur le registre, et personne ne pourrait installer le paquet. `pnpm pack` le
+réécrit en version réelle — vérifié le 2026-11-04 : `"@goflag/cli": "^0.2.17"` —
+et `npm publish <tarball>` garde l'échange OIDC des autres jobs. `publish:mcp` et
+`test:package:mcp` font la même chose et refusent un manifeste où `workspace:`
+survit.
+
+**① ne peut pas précéder la release du CLI.** Le serveur importe des exports que
+`0.2.17` n'a pas (`diffReports`, `buildRuleCatalog`). Emballé avant, il déclare
+`^0.2.17`, npm installe `0.2.17`, et le serveur plante au démarrage. Emballé après
+la release, il déclare la version qui les porte.
+
+```
+①'   release du CLI (0.2.18)              ← sans la MR CI de @goflag/mcp
+①    publier @goflag/mcp 0.1.0 à la main  ← depuis develop, CLI à 0.2.18
+②    trusted publisher (npm)              ← mêmes valeurs qu'au §3
+②bis protéger mcp-v* (GitLab)
+③    fusionner la MR CI                   ← release.mjs, tag, publish:mcp
+④    la release suivante                  ← première release automatique
+```
+
+**③ après ②bis, pas avant.** Dès que `@goflag/mcp` est dans `PACKAGES`,
+`scripts/release.mjs --dry-run` répond « first release » pour lui (vérifié le
+2026-11-04), et la release suivante tenterait une publication OIDC sur un paquet
+que npm ne connaît pas.
+
+### ① — les commandes
+
+Sur un poste sans npm, chaque `npm` ci-dessous s'écrit `pnpm --silent dlx npm@11`.
+
+```sh
+npm whoami
+pnpm --filter @goflag/cli build && pnpm --filter @goflag/mcp build
+cd packages/mcp && pnpm pack
+tar -xzOf goflag-mcp-0.1.0.tgz package/package.json | grep '"@goflag/cli"'   # ^0.2.18
+npm publish goflag-mcp-0.1.0.tgz --access public
+```
+
+### ②bis — la commande
+
+```sh
+glab api --method POST projects/81884394/protected_tags \
+  -f name='mcp-v*' -f create_access_level=40
+```
+
+### Vérifier
+
+```sh
+npm view @goflag/mcp version dependencies bin
+```
+
+`dependencies` doit nommer `@goflag/cli` en `^0.2.18` et `bin` doit garder
+`goflag-mcp`. Puis, dans un dossier vierge, le contrôle de `test:package:mcp` :
+le binaire installé depuis npm, lancé en stdio par un client MCP, doit répondre
+avec ses quatre outils.
+
+### ④ — ce que la première release automatique fera
+
+Aucun tag `mcp-v*` n'existe, puisque ① n'en pose pas : `release.mjs` traite le
+paquet en première release, lit toute son histoire et monte depuis `0.1.0`.
+Aucun commit de cette histoire ne porte de `!`, donc le saut attendu est un
+correctif, pas un mineur — à relire dans le changelog avant de fusionner.
+`publish:mcp` publie alors en OIDC, et le tag posé devient la référence des
+releases suivantes.

@@ -70,6 +70,21 @@ const PACKAGES = [
       "packages/og/LICENSE",
     ],
   },
+  {
+    // No `quotedAs`: the site quotes no version of it, and `npx -y @goflag/mcp`
+    // in its docs takes the latest. Its manifest is in the surface for the
+    // usual reason, and for one more: `@goflag/cli` is declared there as
+    // `workspace:^`, so a CLI export it starts needing moves this file.
+    name: "@goflag/mcp",
+    tagPrefix: "mcp-v",
+    manifest: "packages/mcp/package.json",
+    surface: [
+      "packages/mcp/src",
+      "packages/mcp/package.json",
+      "packages/mcp/README.md",
+      "packages/mcp/LICENSE",
+    ],
+  },
 ];
 
 /** A commit that earns a version number: a feature, a fix, or a break. */

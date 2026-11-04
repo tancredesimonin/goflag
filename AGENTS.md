@@ -110,9 +110,9 @@ The pnpm version is written once, in `packageManager`. Never add a
   two valid tags down with it. One ref per push.
 - Pushing to `main` or `develop`. Both refuse a push from everyone, CI included; the version
   bump and the changelog land through a merge request like any other commit.
-- Creating a `v*`, `next-v*` or `og-v*` tag by hand, or running `npm publish`. The `tag` job
-  creates the tag; `publish:npm`, `publish:next` and `publish:og` trade a short-lived OIDC
-  token for the right to publish. There is no npm credential in this repository to reuse.
+- Creating a `v*`, `next-v*`, `og-v*` or `mcp-v*` tag by hand, or running `npm publish`. The
+  `tag` job creates the tag; `publish:npm`, `publish:next`, `publish:og` and `publish:mcp`
+  trade a short-lived OIDC token for the right to publish. There is no npm credential in this repository to reuse.
   The one exception is a package's **first** version, which npm forces out by hand because a
   trusted publisher attaches to a package that already exists — `docs/publishing.md`.
 - `kamal deploy` to production from a workstation, and `kamal proxy reboot` as part of a
@@ -125,8 +125,8 @@ The pnpm version is written once, in `packageManager`. Never add a
   in this repository are declarative sentences, not imperatives.
 - Branches are `feat/` · `fix/` · `chore/` · `ci/` · `docs/` plus a sentence-shaped slug.
   Everything merges into `develop`; merging `develop` into `main` is the decision to publish.
-- Three tag namespaces, all protected: `v*` for `@goflag/cli`, `next-v*` for `@goflag/next`,
-  `og-v*` for `@goflag/og`. A namespace has to be protected before its first release: until
+- Four tag namespaces, all protected: `v*` for `@goflag/cli`, `next-v*` for `@goflag/next`,
+  `og-v*` for `@goflag/og`, `mcp-v*` for `@goflag/mcp`. A namespace has to be protected before its first release: until
   it is, any Developer can push the tag that triggers a publication (`docs/publishing.md`
   §3bis).
 - `pnpm release` decides whether a version is spent: only a `feat`/`fix`/`perf`/breaking
