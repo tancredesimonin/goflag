@@ -1,3 +1,4 @@
+import { headersFor, mergeHeaders, type ScopedHeaders } from "../net/scoped-headers";
 import type { FetchMeta } from "../types";
 
 export interface HeadlessExtractOptions {
@@ -7,6 +8,8 @@ export interface HeadlessExtractOptions {
   timeoutMs?: number;
   /** Allow self-signed TLS certs (mirrors `fetchStatic`'s flag). */
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   /** Wait condition after navigation. Defaults to `"networkidle"`. */
   waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
   /** Optional AbortSignal for caller-driven cancellation. */
@@ -37,7 +40,7 @@ export interface HeadlessLauncher {
 }
 
 export interface HeadlessBrowser {
-  newPage(opts: { userAgent?: string }): Promise<HeadlessPage>;
+  newPage(opts: { userAgent?: string; scopedHeaders?: ScopedHeaders }): Promise<HeadlessPage>;
   close(): Promise<void>;
 }
 
@@ -103,7 +106,7 @@ export async function extractHeadless(
   const browser = await launcher.launch({ allowInsecureTls: options.allowInsecureTls });
   let page: HeadlessPage | undefined;
   try {
-    page = await browser.newPage({ userAgent });
+    page = await browser.newPage({ userAgent, scopedHeaders: options.scopedHeaders });
     const nav = await page.goto(url, { waitUntil, timeoutMs });
     const body = await page.content();
     const meta: FetchMeta = {
@@ -167,12 +170,13 @@ export function defaultLauncher(
       }
 
       return {
-        async newPage({ userAgent }) {
+        async newPage({ userAgent, scopedHeaders }) {
           const ctx = await pw.newContext({
             userAgent,
             ignoreHTTPSErrors: !!allowInsecureTls,
           });
           const p = await ctx.newPage();
+          if (scopedHeaders) await interceptScopedHeaders(ctx, p, scopedHeaders);
           return {
             async goto(url, opts) {
               const response = await p.goto(url, {
@@ -203,4 +207,60 @@ export function defaultLauncher(
       };
     },
   };
+}
+
+/**
+ * Attach the operator's headers to the requests Chromium makes to their origin,
+ * and to no other — redirect hops included.
+ *
+ * None of Playwright's own ways is safe or complete, measured with Playwright
+ * 1.64 and Chromium 156 on 2026-11-03:
+ *
+ *   - `extraHTTPHeaders` goes to every request the page makes, third-party
+ *     scripts and pixels included.
+ *   - `route.continue({ headers })`, and `route.fetch({ headers })` with
+ *     redirects on, carry the headers "to the routed request and any redirects
+ *     it initiates" (Playwright's own words): a preview that redirects to
+ *     another host hands that host the credential.
+ *   - `route.fetch` with redirects off, then `route.fulfill`, keeps them home
+ *     but loses them on a redirect *within* the origin, since Playwright does
+ *     not route a redirect hop again; and a fulfilled document has no address,
+ *     so Chromium's Local Network Access checks fail its loopback requests.
+ *
+ * The DevTools protocol's `Fetch` domain has neither problem. Every request
+ * pauses at the request stage, and every redirect hop pauses again as a request
+ * of its own (`redirectedRequestId`); headers set on one hop do not carry to the
+ * next. So each hop is judged on its own URL: the headers join it on the origin,
+ * and it continues untouched anywhere else. Nothing is fulfilled, so the
+ * response comes from the network with its real address.
+ *
+ * `Cookie` is merged, not replaced: the paused request already carries the
+ * cookies the site set (`mergeHeaders`).
+ *
+ * Not covered: requests made by a dedicated or service worker run in their own
+ * target and pause nowhere here, so they leave without the headers — a
+ * protected API fetched from a worker answers 401. They never leak.
+ */
+async function interceptScopedHeaders(
+  ctx: import("playwright").BrowserContext,
+  page: import("playwright").Page,
+  scope: ScopedHeaders,
+): Promise<void> {
+  const cdp = await ctx.newCDPSession(page);
+  cdp.on("Fetch.requestPaused", (event) => {
+    const extra = headersFor(event.request.url, scope);
+    const params =
+      Object.keys(extra).length === 0
+        ? { requestId: event.requestId }
+        : {
+            requestId: event.requestId,
+            headers: Object.entries(mergeHeaders(event.request.headers, extra)).map(
+              ([name, value]) => ({ name, value }),
+            ),
+          };
+    // A request the page abandoned while paused (a navigation away, a closed
+    // context) cannot be continued; that is not an error of the audit.
+    cdp.send("Fetch.continueRequest", params).catch(() => undefined);
+  });
+  await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
 }

@@ -3,7 +3,8 @@
 Two products in one pnpm workspace, and they must stay independently useful: `@goflag/cli`
 audits any site, `@goflag/next` produces the HTML for one. `@goflag/og` is the remedy for the
 two rules the auditor could only report — the share card, and the `.ico` container no Next
-convention emits. A rule never reads raw HTML — it judges the `Extraction` model — and a rule
+convention emits. `@goflag/mcp` serves the CLI's engine to a coding agent over MCP, and decides
+nothing of its own. A rule never reads raw HTML — it judges the `Extraction` model — and a rule
 with no citable source states the question (`prose.ts`, `site-prose.ts`) instead of answering
 it.
 
@@ -62,6 +63,11 @@ The pnpm version is written once, in `packageManager`. Never add a
   `next/font` emits only WOFF2. Nothing else is committed as a binary — `.gitattributes` says so.
 
 ## Pitfalls
+
+- `@goflag/mcp` imports `@goflag/cli` by name, so it reads the CLI's built `dist`, not its source:
+  its `typecheck` and `test:unit` build the CLI first, and anything it needs from the CLI has to
+  be exported by `packages/cli/src/index.ts`. Reaching into `packages/cli/src` would type-check
+  locally and break the published package, which only ships `dist`.
 
 - `apps/website` reads `packages/cli/rules.json`, `packages/cli/flags.json` and the three
   `CHANGELOG.md` by relative path at build time — it cannot import them (I3). That is why the

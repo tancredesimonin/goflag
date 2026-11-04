@@ -192,6 +192,10 @@ documentation site came to quote a message the engine had stopped printing.
                        the full report regardless. Not available with
                        --baseline: there the diff is the answer.
 --report <file>        Write the JSON report to <file>.
+--html <file>          Write the report as one self-contained HTML file: the
+                       verdict and why, findings by rule with their sources,
+                       and the diff against --baseline. For a pipeline artefact
+                       read by someone who does not run goflag.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0
                        alone is not "entry page only" — add --no-sitemap.
@@ -245,6 +249,11 @@ documentation site came to quote a message the engine had stopped printing.
 --timeout <ms>         Per-request timeout in ms, for page fetches and link
                        probes alike. Unset, the defaults differ: 8000 for link
                        probes, 15000 for page fetches.
+--header "<name>: <value>"
+                       Request header for the audited origin (repeatable): a
+                       protected preview's token or cookie. Never sent to
+                       another origin, nor across a redirect off it; the report
+                       keeps the name, never the value.
 --verbose, -V          Log every page as it is analyzed.
 --quiet, -q            Suppress the live progress output.
 --no-color             Disable coloured output.
@@ -253,6 +262,8 @@ documentation site came to quote a message the engine had stopped printing.
 ```
 
 Headless mode needs Chromium. `playwright` is an optional peer dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+A protected preview takes its token or cookie as `--header`, from the job's environment — `goflag "$PREVIEW_URL" --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"`. The header goes to that origin only: not to external links, not to an image on a CDN, not across a redirect to another host. The report names it and never carries its value.
 
 ### Profiles: how much each rule matters to you
 
@@ -582,7 +593,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.17"
+  GOFLAG_VERSION: "0.2.18"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -634,7 +645,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.17 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.18 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

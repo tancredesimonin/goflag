@@ -1,0 +1,73 @@
+{
+  "name": "@goflag/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A local MCP server for goflag: an agent audits the site it is editing — localhost or a protected preview — and reads each rule with its source.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "seo",
+    "i18n",
+    "hreflang",
+    "audit",
+    "agent",
+    "claude",
+    "cursor"
+  ],
+  "license": "MIT",
+  "author": "Tancrède Simonin <39413504+tancredesimonin@users.noreply.github.com>",
+  "homepage": "https://github.com/tancredesimonin/goflag#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tancredesimonin/goflag.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/tancredesimonin/goflag/issues"
+  },
+  "mcpName": "io.github.tancredesimonin/goflag",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "goflag-mcp": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "pnpm build",
+    "clean": "rm -rf dist coverage",
+    "typecheck": "pnpm --filter @goflag/cli build && tsc --noEmit",
+    "test": "pnpm --filter @goflag/cli build && vitest run",
+    "test:unit": "pnpm --filter @goflag/cli build && vitest run",
+    "test:watch": "vitest",
+    "release": "commit-and-tag-version --path . --skip.tag --tag-prefix mcp-v"
+  },
+  "dependencies": {
+    "@goflag/cli": "workspace:^",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.0.1",
+    "@types/node": "^22.10.5",
+    "commit-and-tag-version": "^12.5.0",
+    "hono": "^4.12.25",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.0",
+    "vitest": "^5.0.5"
+  }
+}

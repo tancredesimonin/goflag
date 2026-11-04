@@ -21,6 +21,7 @@
  * the output byte for byte.
  */
 
+import { parseHeaderArg } from "../core/net/scoped-headers";
 import { PROFILE_NAMES, PROFILES } from "../rules/profiles";
 import type { AuditOptions, FailOn } from "../../report/build";
 import type { LogMode } from "../../report/logger";
@@ -34,6 +35,7 @@ export interface FlagTarget {
   json: boolean;
   summary: boolean;
   report?: string;
+  html?: string;
   color: boolean;
   help: boolean;
   version: boolean;
@@ -123,6 +125,23 @@ export const FLAGS: readonly FlagSpec[] = [
     takesValue: true,
     apply: ({ parsed, value }) => {
       parsed.report = value;
+    },
+  },
+  {
+    name: "--html",
+    arg: "<file>",
+    label: "--html <file>",
+    group: "output",
+    help: [
+      "Write the report as one self-contained HTML file to",
+      "<file>: the verdict and why, findings by rule with",
+      "their sources, and the diff against --baseline. For",
+      "a pipeline artefact read by someone who does not run",
+      "goflag. No asset, no script, no request.",
+    ],
+    takesValue: true,
+    apply: ({ parsed, value }) => {
+      parsed.html = value;
     },
   },
   {
@@ -488,6 +507,30 @@ export const FLAGS: readonly FlagSpec[] = [
     takesValue: true,
     apply: ({ parsed, value, flag }) => {
       parsed.options.timeoutMs = toInt(value, flag);
+    },
+  },
+  {
+    name: "--header",
+    arg: '"<name>: <value>"',
+    label: '--header "<name>: <value>"',
+    group: "fetch",
+    help: [
+      "Request header for the audited origin (repeatable):",
+      "a protected preview's token or cookie. Never sent to",
+      "another origin, nor across a redirect off it. The",
+      "report keeps the name, never the value: pass it from",
+      'the environment, e.g. "Authorization: Bearer $TOKEN".',
+    ],
+    takesValue: true,
+    apply: ({ parsed, value }) => {
+      const { name, value: headerValue } = parseHeaderArg(value);
+      const headers = (parsed.options.headers ??= {});
+      // Two values for one name would mean picking one silently, and the
+      // operator cannot see which: the value is never printed.
+      if (Object.keys(headers).some((known) => known.toLowerCase() === name.toLowerCase())) {
+        throw new Error(`--header ${name} is given twice`);
+      }
+      headers[name] = headerValue;
     },
   },
   {

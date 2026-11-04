@@ -23,6 +23,7 @@
 
 import type { SiteDiscovery } from "../sitemap/types";
 import { capText, fetchUrl } from "../net/fetch-url";
+import type { ScopedHeaders } from "../net/scoped-headers";
 import { extractLinks } from "./extract";
 import { checkFromAnswer, checkLink, type LinkAnswer } from "./check";
 import {
@@ -54,6 +55,8 @@ export interface LinkAuditOptions {
   checkExternal?: boolean;
   /** Allow self-signed / invalid TLS. */
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   userAgent?: string;
   /** Bytes of page HTML to read during the scan. Defaults to 3 MB. */
   maxScanBytes?: number;
@@ -162,6 +165,7 @@ export async function runLinkAudit(
         method: "GET",
         timeoutMs: options.timeoutMs ?? DEFAULTS.timeoutMs,
         allowInsecureTls: options.allowInsecureTls,
+        scopedHeaders: options.scopedHeaders,
         userAgent: options.userAgent,
         maxBytes,
         signal: options.signal,
@@ -255,6 +259,7 @@ export async function runLinkAudit(
       const check = await checkLink(url, {
         timeoutMs: options.timeoutMs ?? DEFAULTS.timeoutMs,
         allowInsecureTls: options.allowInsecureTls,
+        scopedHeaders: options.scopedHeaders,
         userAgent: options.userAgent,
         signal: options.signal,
         sleep: options.sleep,

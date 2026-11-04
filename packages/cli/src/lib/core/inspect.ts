@@ -16,6 +16,7 @@ import {
 } from "./extract/headless";
 import { looksClientRendered } from "./extract/heuristics";
 import { computeHydrationDelta } from "./extract/hydration";
+import type { ScopedHeaders } from "./net/scoped-headers";
 import { probeManifest } from "./probes/manifest";
 import { probeRobots } from "./probes/robots";
 import { probeSitemap } from "./probes/sitemap";
@@ -98,6 +99,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -118,6 +120,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -142,6 +145,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
     const result = await extractHeadless(url, {
       ...headlessOpts,
       allowInsecureTls: fetchOptions.allowInsecureTls,
+      scopedHeaders: fetchOptions.scopedHeaders,
       signal: fetchOptions.signal,
     });
     renderedBody = result.renderedHtml;
@@ -153,6 +157,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
       origin: new URL(staticMeta.finalUrl).origin,
       manifestHref: staticParsed.links.manifest?.href,
       signal: fetchOptions.signal,
+      scopedHeaders: fetchOptions.scopedHeaders,
     });
     return {
       ...staticParsed,
@@ -177,6 +182,7 @@ export async function inspect(url: string, options: InspectOptions = {}): Promis
     origin: new URL(renderedFetch.finalUrl).origin,
     manifestHref: renderedParsed.links.manifest?.href,
     signal: fetchOptions.signal,
+    scopedHeaders: fetchOptions.scopedHeaders,
   });
 
   return {
@@ -224,6 +230,7 @@ async function inspectHeadlessOnly(args: {
   const result = await extractHeadless(url, {
     ...headlessOpts,
     allowInsecureTls: fetchOptions.allowInsecureTls,
+    scopedHeaders: fetchOptions.scopedHeaders,
     signal: fetchOptions.signal,
   });
   const parsed = extractStatic(result.renderedHtml, { baseUrl: result.fetch.finalUrl });
@@ -232,6 +239,7 @@ async function inspectHeadlessOnly(args: {
     origin: new URL(result.fetch.finalUrl).origin,
     manifestHref: parsed.links.manifest?.href,
     signal: fetchOptions.signal,
+    scopedHeaders: fetchOptions.scopedHeaders,
   });
   return {
     ...parsed,
@@ -248,14 +256,14 @@ async function runProbes(args: {
   origin: string;
   manifestHref: string | undefined;
   signal: AbortSignal | undefined;
+  scopedHeaders?: ScopedHeaders;
 }): Promise<Page["probes"]> {
   if (!args.enabled) return {};
+  const opts = { signal: args.signal, scopedHeaders: args.scopedHeaders };
   const [robots, sitemap, manifest] = await Promise.all([
-    probeRobots(args.origin, { signal: args.signal }),
-    probeSitemap(args.origin, { signal: args.signal }),
-    args.manifestHref
-      ? probeManifest(args.manifestHref, { signal: args.signal })
-      : Promise.resolve(undefined),
+    probeRobots(args.origin, opts),
+    probeSitemap(args.origin, opts),
+    args.manifestHref ? probeManifest(args.manifestHref, opts) : Promise.resolve(undefined),
   ]);
   const probes: Page["probes"] = { robots, sitemap };
   if (manifest) probes.manifest = manifest;

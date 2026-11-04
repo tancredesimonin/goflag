@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.18](https://github.com/tancredesimonin/goflag/compare/v0.2.17...v0.2.18) (2026-11-04)
+
+
+### Features
+
+* **cli:** a protected preview can be audited, its header sent to its origin only ([45fea95](https://github.com/tancredesimonin/goflag/commit/45fea955d2f3df83b0d2e854240645e04d4fb3c1))
+* **cli:** the baseline comparison and the rule catalogue are exported ([0a37136](https://github.com/tancredesimonin/goflag/commit/0a37136dfc5275ca89a95024f52e16c1b1e32400))
+* **cli:** the report renders as a self-contained HTML file ([d383837](https://github.com/tancredesimonin/goflag/commit/d383837d5158a15c484ff2abc9745e336b12b80e))
+
+
+### Bug Fixes
+
+* **cli:** Chromium carries --header on every same-origin hop, through the DevTools protocol ([91800b3](https://github.com/tancredesimonin/goflag/commit/91800b30f6cecca860dd2d7141a586c3f0cd5491))
+
 ## [0.2.17](https://github.com/tancredesimonin/goflag/compare/v0.2.16...v0.2.17) (2026-11-02)
 
 

@@ -1,0 +1,86 @@
+---
+title: The MCP server
+description: "@goflag/mcp lets a coding agent audit the site it is editing — localhost or a preview — and read each rule with its source."
+navTitle: MCP server
+group: use
+order: 5
+---
+
+`@goflag/mcp` is goflag for a coding agent. It runs where the agent runs, over
+stdio, on the same engine as the CLI: an answer here is the answer `goflag` would
+print. Because it runs locally, it sees what the agent sees — a dev server on
+`localhost`, a preview behind a VPN — which a hosted service cannot reach.
+
+## Install it
+
+Claude Code:
+
+```bash
+claude mcp add goflag -- npx -y @goflag/mcp
+```
+
+Cursor, in `.cursor/mcp.json`:
+
+```json title=".cursor/mcp.json"
+{
+  "mcpServers": {
+    "goflag": { "command": "npx", "args": ["-y", "@goflag/mcp"] }
+  }
+}
+```
+
+VS Code, in `.vscode/mcp.json`:
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "goflag": { "type": "stdio", "command": "npx", "args": ["-y", "@goflag/mcp"] }
+  }
+}
+```
+
+Any other client that speaks MCP over stdio takes the same command.
+
+## The four tools
+
+All four are read-only: none writes to disk or to the site.
+
+| Tool                  | Give it                                                                                                | It returns                                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `audit_site`          | `url`, and optionally `maxPages`, `locales`, `expectIndexing`, `static`, `advisories`, `checkExternal` | The findings rolled up by rule with their rigor, translation holes, links, coverage and the exit code the CLI would return |
+| `compare_to_baseline` | The same, plus `baseline`: a JSON report the CLI saved                                                 | What is new, what was resolved, and how many findings are unchanged                                                        |
+| `explain_rule`        | A rule `id`, from a finding                                                                            | What the rule checks, why, its rigor, the documents behind it, and its page here                                           |
+| `list_rules`          | Optionally a `scope`: `page`, `site` or `prose`                                                        | Every rule with its scope, severity and rigor                                                                              |
+
+Two defaults differ from the CLI's, because an agent waits on the answer.
+`maxPages` is 50 rather than 200, and links to other sites are not probed unless
+`checkExternal` is set: on a real site the link check can be most of a run. The
+server reports crawl progress to a client that asks for it, and a cancelled call
+stops the audit.
+
+## Compare against a baseline
+
+`compare_to_baseline` answers the question a change has to answer: did it make
+things worse? It reads a report the CLI saved, so capture one first:
+
+```bash
+goflag http://localhost:3000 --update-baseline --baseline .goflag/baseline.json
+```
+
+Then ask the agent to compare against `.goflag/baseline.json`. The path is read
+relative to where the server runs, usually the project root. A file that is not
+a goflag JSON report is refused, and refused without being quoted.
+
+## What it does not do
+
+- **No headers.** A token passed as a tool argument would sit in the agent's
+  transcript. Audit a protected preview with the CLI and
+  [`--header`](/docs/ci#a-preview-behind-authentication).
+- **No command to run.** The agent starts its own dev server. The server never
+  executes anything it is handed.
+- **No writes.** It captures no baseline and fixes nothing; the agent edits the
+  code, and the server judges the result.
+
+A page that renders in the browser is audited in Chromium through the
+`playwright` package. Without it, or with `static`, the server-rendered HTML is
+judged and the report says so.

@@ -23,10 +23,13 @@
 
 import type { AssetProbe, AssetSize } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface AssetProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 /**
@@ -60,11 +63,15 @@ export async function probeAsset(
   const { signal, cleanup } = combineSignals(options.signal, options.timeoutMs ?? 8_000);
 
   try {
-    const res = await fetch(url, {
-      signal,
-      redirect: "follow",
-      headers: { range: `bytes=0-${HEAD_BYTES - 1}`, accept: "image/*,*/*;q=0.8" },
-    });
+    const res = await fetchScoped(
+      url,
+      {
+        signal,
+        redirect: "follow",
+        headers: { range: `bytes=0-${HEAD_BYTES - 1}`, accept: "image/*,*/*;q=0.8" },
+      },
+      options.scopedHeaders,
+    );
 
     const contentType = res.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
     // 206 is the answer to the Range above; 200 means the server ignored it and

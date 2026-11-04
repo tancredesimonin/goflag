@@ -49,6 +49,7 @@ import type { ExpectIndexing, SiteContext } from "../lib/rules/site-types";
 import { runLinkAudit } from "../lib/core/links/audit";
 import type { LinkAnswer } from "../lib/core/links/check";
 import { normalizeInputUrl } from "../lib/core/net/normalize-url";
+import type { ScopedHeaders } from "../lib/core/net/scoped-headers";
 import type { SiteDiscovery } from "../lib/core/sitemap/types";
 import type { AssetProbe, ManifestProbe, Page } from "../lib/core/types";
 import { buildConformance, type ConformanceRow } from "./conformance";
@@ -135,6 +136,12 @@ export interface AuditOptions {
   static?: boolean;
   /** Allow self-signed / invalid TLS (localhost, tunnels). */
   allowInsecureTls?: boolean;
+  /**
+   * Request headers for the audited origin — a protected preview's token or
+   * cookie. Sent to that origin only, never across a redirect off it, and never
+   * written to the report beyond their names (`lib/core/net/scoped-headers.ts`).
+   */
+  headers?: Record<string, string>;
   /** Per-request timeout in ms. Defaults to 8_000. */
   timeoutMs?: number;
   /** Caller-driven cancellation. */
@@ -346,7 +353,7 @@ export function exitCode(report: GoflagReport, failOn: FailOn = "warning"): numb
  */
 async function attachManifests(
   pages: Page[],
-  options: { signal?: AbortSignal; timeoutMs?: number },
+  options: { signal?: AbortSignal; timeoutMs?: number; scopedHeaders?: ScopedHeaders },
 ): Promise<void> {
   const wanted = new Set(
     pages.map((page) => page.links.manifest?.href).filter((href): href is string => Boolean(href)),
@@ -397,6 +404,7 @@ async function probeAssets(
     signal?: AbortSignal;
     timeoutMs?: number;
     concurrency?: number;
+    scopedHeaders?: ScopedHeaders;
   },
 ): Promise<void> {
   const sameOrigin = (url: string): boolean => {
@@ -430,6 +438,7 @@ async function probeAssets(
         const probe = await probeAsset(url, {
           signal: options.signal,
           timeoutMs: options.timeoutMs,
+          scopedHeaders: options.scopedHeaders,
         }).catch(() => undefined);
         if (probe) probed.set(url, probe);
       }
@@ -486,6 +495,12 @@ export async function runAudit(
   }
   const entry = normalized.url;
   const origin = new URL(entry).origin;
+  // Scoped to the origin the operator named, not to wherever it redirects: a
+  // preview that bounces to a login host must not take the token with it.
+  const scopedHeaders: ScopedHeaders | undefined =
+    options.headers && Object.keys(options.headers).length > 0
+      ? { origin, headers: options.headers }
+      : undefined;
 
   const depth = options.depth ?? 2;
   const maxPages = options.maxPages ?? 200;
@@ -508,6 +523,7 @@ export async function runAudit(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
         allowInsecureTls: options.allowInsecureTls,
+        scopedHeaders,
         crawlFallback: false,
       }).catch(() => undefined);
 
@@ -557,6 +573,7 @@ export async function runAudit(
   const robots = await probeRobots(origin, {
     signal: options.signal,
     timeoutMs: options.timeoutMs,
+    scopedHeaders,
   }).catch(() => undefined);
 
   // `/favicon.ico` is the same shape of fact as robots.txt: one file, one
@@ -565,6 +582,7 @@ export async function runAudit(
   const favicon = await probeFavicon(origin, {
     signal: options.signal,
     timeoutMs: options.timeoutMs,
+    scopedHeaders,
   }).catch(() => undefined);
 
   // Two more facts about the origin rather than about a page: how it answers a
@@ -572,12 +590,16 @@ export async function runAudit(
   // so `--no-external` has nothing to withhold, and both cheap — two HEADs on a
   // site that 404s correctly, one GET for a file that is usually absent.
   const [notFound, llmsTxt] = await Promise.all([
-    probeNotFound(origin, { signal: options.signal, timeoutMs: options.timeoutMs }).catch(
-      () => undefined,
-    ),
-    probeLlmsTxt(origin, { signal: options.signal, timeoutMs: options.timeoutMs }).catch(
-      () => undefined,
-    ),
+    probeNotFound(origin, {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      scopedHeaders,
+    }).catch(() => undefined),
+    probeLlmsTxt(origin, {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      scopedHeaders,
+    }).catch(() => undefined),
   ]);
 
   // --- Crawl (drives SEO lint + i18n) ------------------------------------
@@ -593,6 +615,7 @@ export async function runAudit(
       probes: false,
       linkRefs: true,
       allowInsecureTls: options.allowInsecureTls,
+      scopedHeaders,
       timeoutMs: options.timeoutMs,
       signal: options.signal,
     },
@@ -681,7 +704,11 @@ export async function runAudit(
   //
   // De-duplicated by URL, because in practice every page names the same
   // manifest and a finding is not worth fetching one file five hundred times.
-  await attachManifests(htmlPages, { signal: options.signal, timeoutMs: options.timeoutMs });
+  await attachManifests(htmlPages, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    scopedHeaders,
+  });
 
   // --- Declared assets ----------------------------------------------------
   //
@@ -692,6 +719,7 @@ export async function runAudit(
     checkExternal: options.checkExternal ?? true,
     signal: options.signal,
     timeoutMs: options.timeoutMs,
+    scopedHeaders,
   });
 
   // --- SEO lint (healthy pages only) -------------------------------------
@@ -874,6 +902,7 @@ export async function runAudit(
   // and parsing again is the price of not having to think about it.
   const linkReport = await runLinkAudit(linkDiscovery, {
     allowInsecureTls: options.allowInsecureTls,
+    scopedHeaders,
     checkExternal,
     timeoutMs: options.timeoutMs,
     maxPages: effectiveMaxPages,
@@ -913,6 +942,7 @@ export async function runAudit(
     signal: options.signal,
     timeoutMs: options.timeoutMs,
     allowInsecureTls: options.allowInsecureTls,
+    scopedHeaders,
   };
   const sitemapEntries = discovery
     ? await probeSitemapEntries(
@@ -1101,6 +1131,7 @@ export async function runAudit(
       pagesFailed: linkReport.diagnostics.pagesFailed,
       truncated: crawlResult.truncated || linkReport.truncated,
       warnings,
+      ...(scopedHeaders ? { requestHeaders: Object.keys(scopedHeaders.headers) } : {}),
       // What the run actually looked at. A sampled audit that does not say so
       // is a partial audit wearing the face of a complete one, which is worse
       // than the cap it replaces.

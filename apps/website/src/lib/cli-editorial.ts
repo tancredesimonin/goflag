@@ -64,6 +64,8 @@ export const FLAG_EDITORIAL: Record<string, string> = {
   "--summary":
     "Roll findings up, deduplicated by link, rule or code. Pairs with --json for a compact, agent-friendly payload. Not available with --baseline, which is an error rather than a preference: baseline mode answers with the diff, a rollup has no way to express one, and accepting the flag would print an answer to the other question — the whole backlog, next to an exit code decided by findings it never named. --report writes the full report alongside the diff.",
   "--report": "Write the full JSON report to <file>.",
+  "--html":
+    "Write the report as one HTML file for whoever reads the pipeline without running goflag: the verdict and the reason the gate gave it, findings grouped by rule with their rigor and a link to each rule's page, translation holes, broken links, and the diff against --baseline. Nothing to load beside it — no script, no stylesheet, no request — and the command in its footer prints --header names without their values.",
   "--conformance":
     "Report every rule's status on every page (pass, fail, warn, n/a), not just the violations. A violations list cannot tell a rule that passes everywhere apart from one that never applied; this can. The terminal shows per-rule totals, and the JSON carries the full rule by page grid.",
   "--advisories":
@@ -106,6 +108,8 @@ export const FLAG_EDITORIAL: Record<string, string> = {
   "--timeout":
     "Per-request timeout, applied to page fetches and link probes alike. The two defaults differ when the flag is left off; headless navigation has its own and this flag does not reach it.",
   "--allow-insecure-tls": "Accept self-signed or otherwise invalid TLS. For localhost and tunnels.",
+  "--header":
+    "Send a request header to the audited origin: the token, basic-auth credentials or cookie a protected preview asks for. Repeat it for several. It goes to that origin only — never to an external link, an image on a CDN, or across a redirect to another host — and the report names the header without its value, so pass the value from the job's environment rather than writing it into the pipeline.",
   "--verbose": "Log every page as it is analyzed, and stream the --start child's output.",
   "--quiet": "Suppress the live progress output.",
   "--no-color": "Disable coloured output.",

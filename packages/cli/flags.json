@@ -82,6 +82,15 @@
       "description": "Exit 1 at or above this severity: warning (default), error, or never."
     },
     {
+      "name": "--header",
+      "short": null,
+      "arg": "\"<name>: <value>\"",
+      "default": null,
+      "requires": null,
+      "group": "fetch",
+      "description": "Request header for the audited origin (repeatable): a protected preview's token or cookie. Never sent to another origin, nor across a redirect off it. The report keeps the name, never the value: pass it from the environment, e.g. \"Authorization: Bearer $TOKEN\"."
+    },
+    {
       "name": "--help",
       "short": "-h",
       "arg": null,
@@ -89,6 +98,15 @@
       "requires": null,
       "group": "terminal",
       "description": "Show this help."
+    },
+    {
+      "name": "--html",
+      "short": null,
+      "arg": "<file>",
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Write the report as one self-contained HTML file to <file>: the verdict and why, findings by rule with their sources, and the diff against --baseline. For a pipeline artefact read by someone who does not run goflag. No asset, no script, no request."
     },
     {
       "name": "--ignore-holes",
@@ -304,8 +322,8 @@
     }
   ],
   "counts": {
-    "flags": 32,
+    "flags": 34,
     "withShortForm": 5,
-    "takingValue": 17
+    "takingValue": 19
   }
 }
