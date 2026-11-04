@@ -1,9 +1,12 @@
 import type { FaviconProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface FaviconProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 /**
@@ -27,9 +30,13 @@ export async function probeFavicon(
   const { signal, cleanup } = combineSignals(options.signal, options.timeoutMs ?? 5_000);
 
   try {
-    let res = await fetch(url, { method: "HEAD", signal, redirect: "follow" });
+    let res = await fetchScoped(
+      url,
+      { method: "HEAD", signal, redirect: "follow" },
+      options.scopedHeaders,
+    );
     if (res.status === 405 || res.status === 501) {
-      res = await fetch(url, { signal, redirect: "follow" });
+      res = await fetchScoped(url, { signal, redirect: "follow" }, options.scopedHeaders);
     }
 
     const contentType = res.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();

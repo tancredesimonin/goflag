@@ -21,6 +21,7 @@
  */
 
 import { combineSignals } from "../probes/abort";
+import { fetchScoped, type ScopedHeaders } from "./scoped-headers";
 
 /** Why a fetch produced no usable HTTP response. */
 export type FetchFailureReason = "timeout" | "dns" | "tls" | "abort" | "network";
@@ -51,6 +52,8 @@ export interface FetchUrlOptions {
   maxBytes?: number;
   /** Override the Accept header. */
   accept?: string;
+  /** The operator's `--header`s, sent only to their origin (`scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 export interface FetchUrlResult {
@@ -114,15 +117,19 @@ export async function fetchUrl(
   const restoreTls = relaxTlsIfRequested(options.allowInsecureTls);
 
   try {
-    const res = await fetch(url, {
-      method,
-      signal,
-      redirect,
-      headers: {
-        "user-agent": options.userAgent ?? DEFAULT_USER_AGENT,
-        accept: options.accept ?? DEFAULT_ACCEPT,
+    const res = await fetchScoped(
+      url,
+      {
+        method,
+        signal,
+        redirect,
+        headers: {
+          "user-agent": options.userAgent ?? DEFAULT_USER_AGENT,
+          accept: options.accept ?? DEFAULT_ACCEPT,
+        },
       },
-    });
+      options.scopedHeaders,
+    );
 
     const contentType = normaliseContentType(res.headers.get("content-type"));
     const result: FetchUrlResult = {

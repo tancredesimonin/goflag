@@ -1,9 +1,12 @@
 import type { ManifestProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface ManifestProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 /**
@@ -17,7 +20,7 @@ export async function probeManifest(
 ): Promise<ManifestProbe> {
   const { signal, cleanup } = combineSignals(options.signal, options.timeoutMs ?? 5_000);
   try {
-    const res = await fetch(href, { signal, redirect: "follow" });
+    const res = await fetchScoped(href, { signal, redirect: "follow" }, options.scopedHeaders);
     if (!res.ok) return { url: href, status: res.status, found: false };
     const raw = await res.text();
     let data: unknown;

@@ -96,6 +96,12 @@ Options:
   --timeout <ms>         Per-request timeout in ms, for page fetches and link
                          probes alike. Unset, the defaults differ: 8000 for link
                          probes, 15000 for page fetches.
+  --header "<name>: <value>"
+                         Request header for the audited origin (repeatable):
+                         a protected preview's token or cookie. Never sent to
+                         another origin, nor across a redirect off it. The
+                         report keeps the name, never the value: pass it from
+                         the environment, e.g. "Authorization: Bearer $TOKEN".
   --verbose, -V          Log every page as it is analyzed.
   --quiet, -q            Suppress the live progress output.
   --no-color             Disable coloured output.

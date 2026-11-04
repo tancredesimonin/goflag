@@ -23,6 +23,7 @@
  */
 
 import { capText, fetchUrl, type FetchFailureReason } from "../net/fetch-url";
+import type { ScopedHeaders } from "../net/scoped-headers";
 import { classifyLink } from "./classify";
 import type { LinkCheck } from "./types";
 
@@ -35,6 +36,8 @@ export interface CheckLinkOptions {
   /** Retries on 429/5xx/network. Defaults to 1. */
   retries?: number;
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   userAgent?: string;
   /** Base backoff in ms (jittered). Defaults to 300. */
   backoffBaseMs?: number;
@@ -235,6 +238,7 @@ async function followRedirects(
       redirect: "manual",
       timeoutMs: options.timeoutMs ?? DEFAULTS.timeoutMs,
       allowInsecureTls: options.allowInsecureTls,
+      scopedHeaders: options.scopedHeaders,
       userAgent: options.userAgent,
       maxBytes: method === "GET" ? (options.softBodyBytes ?? DEFAULTS.softBodyBytes) : undefined,
     });

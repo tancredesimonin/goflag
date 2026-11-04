@@ -245,6 +245,11 @@ documentation site came to quote a message the engine had stopped printing.
 --timeout <ms>         Per-request timeout in ms, for page fetches and link
                        probes alike. Unset, the defaults differ: 8000 for link
                        probes, 15000 for page fetches.
+--header "<name>: <value>"
+                       Request header for the audited origin (repeatable): a
+                       protected preview's token or cookie. Never sent to
+                       another origin, nor across a redirect off it; the report
+                       keeps the name, never the value.
 --verbose, -V          Log every page as it is analyzed.
 --quiet, -q            Suppress the live progress output.
 --no-color             Disable coloured output.
@@ -253,6 +258,8 @@ documentation site came to quote a message the engine had stopped printing.
 ```
 
 Headless mode needs Chromium. `playwright` is an optional peer dependency; if it's missing, install it with `npx playwright install chromium` (or just run with `--static`).
+
+A protected preview takes its token or cookie as `--header`, from the job's environment — `goflag "$PREVIEW_URL" --header "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"`. The header goes to that origin only: not to external links, not to an image on a CDN, not across a redirect to another host. The report names it and never carries its value.
 
 ### Profiles: how much each rule matters to you
 

@@ -225,3 +225,45 @@ describe("inspect — mode plumbing with injected headless launcher", () => {
     ).rejects.toThrow(/page navigation crashed/);
   });
 });
+
+describe("inspect — escalation under --header", () => {
+  it("hands the operator's headers to the page Chromium renders, for the URL asked", async () => {
+    const seen: { newPage?: unknown; goto?: string } = {};
+    const launcher: HeadlessLauncher = {
+      async launch() {
+        return {
+          async newPage(opts) {
+            seen.newPage = opts;
+            return {
+              async goto(url) {
+                seen.goto = url;
+                return { status: 200, statusText: "OK", finalUrl: url, headers: {} };
+              },
+              async content() {
+                return `<!doctype html><html><head><title>Rendered app</title></head><body>app</body></html>`;
+              },
+              async close() {},
+            };
+          },
+          async close() {},
+        };
+      },
+    };
+    const server = await startFixtureServer({
+      root: resolve(__dirname, "../../../fixtures/sites/spa"),
+    });
+    try {
+      const scopedHeaders = { origin: server.url, headers: { "x-token": "t" } };
+      const page = await inspect(`${server.url}/`, {
+        probes: false,
+        scopedHeaders,
+        headless: { launcher },
+      });
+      expect(page.extractor.escalated).toBe(true);
+      expect(seen.newPage).toMatchObject({ scopedHeaders });
+      expect(seen.goto).toBe(`${server.url}/`);
+    } finally {
+      await server.stop();
+    }
+  });
+});

@@ -1,10 +1,13 @@
 import { looksLikeHtml, parseLlmsTxt } from "../llmstxt/parse";
 import type { LlmsTxtProbe } from "../types";
 import { combineSignals } from "./abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 
 export interface LlmsTxtProbeOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
 }
 
 /**
@@ -28,7 +31,7 @@ export async function probeLlmsTxt(
   const nothing = { found: false, html: false, links: [] };
 
   try {
-    const res = await fetch(url, { signal, redirect: "follow" });
+    const res = await fetchScoped(url, { signal, redirect: "follow" }, options.scopedHeaders);
     const finalUrl = res.url || url;
     const contentType =
       res.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || undefined;

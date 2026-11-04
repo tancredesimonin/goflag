@@ -1,5 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import { combineSignals } from "../probes/abort";
+import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 import { probeRobots } from "../probes/robots";
 import { crawl } from "../crawl";
 import { parseSitemap } from "./parse";
@@ -22,6 +23,8 @@ export interface DiscoverSitemapOptions {
   maxSitemaps?: number;
   /** Allow self-signed TLS (localhost / tunnels). */
   allowInsecureTls?: boolean;
+  /** The operator's `--header`s, sent only to their origin (`net/scoped-headers.ts`). */
+  scopedHeaders?: ScopedHeaders;
   /** Run the BFS crawler when no sitemap is found. Defaults to true. */
   crawlFallback?: boolean;
   /** Crawl fallback depth. Defaults to 1. */
@@ -102,7 +105,10 @@ export async function discoverSitemap(
   };
 
   // 1. Consult robots.txt for declared sitemaps.
-  const robots = await probeRobots(origin, { signal: options.signal });
+  const robots = await probeRobots(origin, {
+    signal: options.signal,
+    scopedHeaders: options.scopedHeaders,
+  });
   diagnostics.robotsFound = robots.found;
 
   // The parse keeps each declaration's line number; discovery only needs the
@@ -289,6 +295,7 @@ async function crawlSite(
       mode: "static",
       probes: false,
       allowInsecureTls: options.allowInsecureTls,
+      scopedHeaders: options.scopedHeaders,
       signal: options.signal,
     },
   });
@@ -359,13 +366,17 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
   );
   const restoreTls = relaxTlsIfRequested(options.allowInsecureTls);
   try {
-    const res = await fetch(url, {
-      signal,
-      redirect: "follow",
-      headers: {
-        accept: "application/xml,text/xml,application/gzip;q=0.9,*/*;q=0.5",
+    const res = await fetchScoped(
+      url,
+      {
+        signal,
+        redirect: "follow",
+        headers: {
+          accept: "application/xml,text/xml,application/gzip;q=0.9,*/*;q=0.5",
+        },
       },
-    });
+      options.scopedHeaders,
+    );
     if (!res.ok) return { status: res.status, byteLength: 0, gzipped: false };
 
     const encoding = res.headers.get("content-encoding")?.toLowerCase() ?? "";
