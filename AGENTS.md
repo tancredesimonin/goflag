@@ -80,8 +80,9 @@ The pnpm version is written once, in `packageManager`. Never add a
   package. A relative link resolves against the repository on GitHub and against nothing on npm,
   so every link in it is absolute — `catalog.test.ts` fails on any that is not. Same reason the
   images it shows are absolute URLs on `goflag.tech` rather than repository paths.
-- Never hand-edit the version pins in `README.md` or `apps/website/src/lib/constants.ts`:
-  `pnpm release` rewrites both, and `constants.test.ts` fails until it has.
+- Never hand-edit the version pins in `README.md`, `apps/website/src/lib/constants.ts` or
+  `packages/mcp/server.json`: `pnpm release` rewrites them, and `constants.test.ts` and
+  `server-json.test.ts` fail until it has.
 - `packages/cli/README.md` and `packages/cli/LICENSE` are copied from the repository root by
   `prepack` and are gitignored. Authoring them creates a second source of truth.
 - `packages/next/src/locale/generated.ts` is enumerated from Node's ICU data — edit
