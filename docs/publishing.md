@@ -371,3 +371,33 @@ Aucun commit de cette histoire ne porte de `!`, donc le saut attendu est un
 correctif, pas un mineur — à relire dans le changelog avant de fusionner.
 `publish:mcp` publie alors en OIDC, et le tag posé devient la référence des
 releases suivantes.
+
+---
+
+## 8. Le registre MCP
+
+Le registre officiel (`registry.modelcontextprotocol.io`) liste le serveur à
+partir de `packages/mcp/server.json`, et le vérifie contre npm : `name` doit
+être le `mcpName` du paquet publié, et la version que désigne `packages[0]`
+doit exister. `release.mjs` réécrit les deux `version` du fichier à chaque
+release ; `server-json.test.ts` échoue s'ils s'écartent du manifeste.
+
+Le nom `io.github.tancredesimonin/goflag` se prouve par un compte GitHub, pas
+par un dépôt : `mcp-publisher login github` ouvre le flux d'appareil, sur le
+compte `tancredesimonin`. Il est déjà dans `0.1.0` (`mcpName`). En changer pour
+`tech.goflag/…`, prouvé par DNS, coûterait une version npm de plus.
+
+```sh
+brew install mcp-publisher
+cd packages/mcp
+mcp-publisher validate
+mcp-publisher login github
+mcp-publisher publish
+curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.tancredesimonin/goflag"
+```
+
+Une version publiée au registre ne se corrige plus. Après chaque release de
+`@goflag/mcp`, une fois `publish:mcp` vert, `mcp-publisher publish` se relance à
+la main depuis `main` à jour. La CI ne le fait pas : le registre n'accepte
+l'OIDC que de GitHub Actions, et depuis GitLab il faudrait stocker un jeton
+GitHub ou une clé privée DNS — la première credential de ce dépôt.
