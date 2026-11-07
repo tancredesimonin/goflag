@@ -50,7 +50,7 @@ default:
   # Everything that writes opts back out below: the deploy template, the three
   # publish jobs, `release:prepare` and `tag`.
   interruptible: true
-  image: node:24.22.0@sha256:925de64a85319052d6971ae81ef2417da956e8a3a2c4a0fac732327970f017f5
+  image: node:24.22.1@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
 
   # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
   # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
