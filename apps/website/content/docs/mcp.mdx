@@ -71,11 +71,46 @@ Then ask the agent to compare against `.goflag/baseline.json`. The path is read
 relative to where the server runs, usually the project root. A file that is not
 a goflag JSON report is refused, and refused without being quoted.
 
+## A protected preview
+
+A preview behind authentication answers a login page, and the audit would judge
+that. Give the server the header it needs in its own configuration, with the
+origin it is for:
+
+```bash
+claude mcp add goflag \
+  -e GOFLAG_HEADERS="x-vercel-protection-bypass: <secret>" \
+  -e GOFLAG_HEADERS_ORIGIN=https://my-app-git-main-my-team.vercel.app \
+  -- npx -y @goflag/mcp
+```
+
+```json title="Cursor or VS Code"
+"env": {
+  "GOFLAG_HEADERS": "x-vercel-protection-bypass: <secret>",
+  "GOFLAG_HEADERS_ORIGIN": "https://my-app-git-main-my-team.vercel.app"
+}
+```
+
+| Variable                | What it holds                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `GOFLAG_HEADERS`        | One `Name: value` per line, read as [`--header`](/docs/ci#a-preview-behind-authentication) reads one |
+| `GOFLAG_HEADERS_ORIGIN` | The origins they are for, comma-separated: scheme and host only                                      |
+
+The headers go to those origins and nowhere else. The agent picks the URL of
+every audit, and a token sent wherever it pointed would go to any site a
+prompt injection named; bound to the origins you configured, it goes where you
+put it. The agent is told which origins are covered and the header names,
+never a value, and a value never appears in a result. A preview whose host
+changes on every deployment needs a stable one: Vercel's branch alias is.
+
+A configuration the server cannot honour stops it from starting, with a
+message on stderr: headers without an origin, an origin with a path, a header
+goflag sets itself. Keep the value out of any file committed to the repository.
+
 ## What it does not do
 
-- **No headers.** A token passed as a tool argument would sit in the agent's
-  transcript. Audit a protected preview with the CLI and
-  [`--header`](/docs/ci#a-preview-behind-authentication).
+- **No header as a tool argument.** A token passed there would sit in the
+  agent's transcript; headers come from the configuration above.
 - **No command to run.** The agent starts its own dev server. The server never
   executes anything it is handed.
 - **No writes.** It captures no baseline and fixes nothing; the agent edits the
