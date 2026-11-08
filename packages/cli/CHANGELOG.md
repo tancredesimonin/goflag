@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.20](https://github.com/tancredesimonin/goflag/compare/v0.2.19...v0.2.20) (2026-11-08)
+
+
+### Features
+
+* **cli:** parseHeaderArg is exported, so --header's rules have one home ([81f8ce9](https://github.com/tancredesimonin/goflag/commit/81f8ce93273927c499440aff8590c3c5237a0113))
+
 ## [0.2.19](https://github.com/tancredesimonin/goflag/compare/v0.2.18...v0.2.19) (2026-11-08)
 
 
