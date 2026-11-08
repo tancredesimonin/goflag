@@ -401,6 +401,19 @@ absente de npm. Puis il vérifie que le tag, `package.json` et les deux `version
 de `server.json` disent la même chose, installe `mcp-publisher` à la version et
 à la somme SHA-256 épinglées dans le fichier, publie, et relit le registre.
 
+Deux propriétés du miroir, réglées côté GitLab (Settings → Repository →
+Mirroring repositories), dont le workflow dépend :
+
+- **il ne pousse que `main` et les tags** (`mirror_branch_regex: main`). Le
+  `develop` de GitHub est un reste figé au 24/10/2026, sans rapport avec celui de
+  GitLab : c'est pourquoi le secours manuel passe par `main`, pas par `develop`.
+- **son jeton GitHub doit avoir le scope `workflow`** (jeton classique) ou la
+  permission « Workflows : read and write » (jeton fine-grained). Sans elle,
+  GitHub refuse toute poussée qui crée ou modifie un fichier `.github/workflows/`
+  — et la première release après ce fichier pousse `main` et les tags avec lui.
+  Un refus se lit dans `last_error` du miroir
+  (`glab api projects/:id/remote_mirrors`), pas dans un pipeline.
+
 Une version publiée au registre ne se corrige plus.
 
 **À la main, en secours** — un tag antérieur au workflow, ou un run échoué :
