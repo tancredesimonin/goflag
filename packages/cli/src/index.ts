@@ -30,6 +30,13 @@ export {
   type RollupReciprocity,
 } from "./report/summarize";
 export { fingerprint, routeKey, targetKey } from "./report/fingerprint";
+/**
+ * How a `--header` argument is read and judged: the first colon splits name
+ * from value, a reserved or malformed name is refused, and errors name the
+ * header without quoting its value. Exported so that `@goflag/mcp` reads
+ * `GOFLAG_HEADERS` by the same rules rather than a copy of them.
+ */
+export { parseHeaderArg } from "./lib/core/net/scoped-headers";
 // What `@goflag/mcp` needs and nothing it does not: the comparison the gate makes
 // against a baseline, and the catalogue `goflag rules` prints. A consumer that
 // re-derived either would be the hand-written mirror this package keeps refusing.
