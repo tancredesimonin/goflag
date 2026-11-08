@@ -136,6 +136,15 @@
       "description": "Print the JSON report to stdout (nothing else)."
     },
     {
+      "name": "--junit",
+      "short": null,
+      "arg": "<file>",
+      "default": null,
+      "requires": null,
+      "group": "output",
+      "description": "Write the findings as JUnit XML to <file>: one test case per rule and page, failing when the finding fails the run, skipped when it does not. For the test widget of a GitLab merge request, or Jenkins."
+    },
+    {
       "name": "--locales",
       "short": null,
       "arg": "<list>",
@@ -322,8 +331,8 @@
     }
   ],
   "counts": {
-    "flags": 34,
+    "flags": 35,
     "withShortForm": 5,
-    "takingValue": 19
+    "takingValue": 20
   }
 }

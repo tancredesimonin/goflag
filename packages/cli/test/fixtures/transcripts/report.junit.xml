@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="goflag https://example.com/" tests="10" failures="2" errors="0" skipped="8" timestamp="2026-08-04T09:14:02.881Z">
+  <testsuite name="goflag" tests="1" failures="1" errors="0" skipped="0">
+    <testcase classname="goflag" name="gate">
+      <failure message="1 new finding at warning or error since the baseline." type="gate">Failed · exit code 1
+1 new finding at warning or error since the baseline.
+Warning: 1 page(s) failed once and answered on retry: https://example.com/blog/sitemaps.</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="brokenLink" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="brokenLink" name="/blog/hreflang-basics">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>error
+broken link → https://example.com/guides/canonical-tags (HTTP 404)
+Not blocking: Known: in the baseline, not new.
+Finding: link-335171b640
+
+error
+blocked link → https://api.partner.example/status (HTTP 403, 403 forbidden)
+Not blocking: Known: in the baseline, not new.
+Finding: link-adbc2ca801</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="canonical.absolute" tests="1" failures="1" errors="0" skipped="0">
+    <testcase classname="canonical.absolute" name="/pricing">
+      <failure message="`rel=&quot;canonical&quot;` is `/pricing`, a relative URL." type="error">error · vendor-spec · new since the baseline
+`rel=&quot;canonical&quot;` is `/pricing`, a relative URL.
+Why: `rel=&quot;canonical&quot;` must be an absolute, fully-qualified URL
+Rule: https://goflag.tech/docs/rules/canonical.absolute
+Finding: seo-7df27ef989</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="hreflang.missing" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="hreflang.missing" name="/">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>error · vendor-spec
+Site serves 3 locales but declares no hreflang alternates.
+Why: Pages on a multilingual site must advertise their locale alternates
+Rule: https://goflag.tech/docs/rules/hreflang.missing
+Not blocking: Known: in the baseline, not new.
+Finding: site-2de2544948</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="robots.conflict" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="robots.conflict" name="/pricing">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>error · vendor-spec
+Conflicting robots directives: meta robots say noindex, meta googlebot say index.
+Why: Two directives that disagree leave indexing to the crawler&apos;s tie-break
+Rule: https://goflag.tech/docs/rules/robots.conflict
+Not blocking: Known: in the baseline, not new.
+Finding: seo-265f928b2c</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="canonical.missing" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="canonical.missing" name="/blog/hreflang-basics">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>warning · vendor-spec
+Page is missing &lt;link rel=&quot;canonical&quot;&gt;.
+Why: Declare a &lt;link rel=&quot;canonical&quot;&gt; so search engines pick the right URL
+Rule: https://goflag.tech/docs/rules/canonical.missing
+Not blocking: Known: in the baseline, not new.
+Finding: seo-62873f3839</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="description.length" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="description.length" name="/blog/hreflang-basics">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>warning · heuristic
+Description is 31 characters — short of the recommended 50–160 window.
+Why: A description outside the window is rewritten or truncated
+Rule: https://goflag.tech/docs/rules/description.length
+Not blocking: Known: in the baseline, not new.
+Finding: seo-60bae127c0</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="missing-back-link" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="missing-back-link" name="/fr/blog/hreflang-basics">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>warning
+/fr/blog/hreflang-basics declares an alternate to /de/... but the peer does not link back.
+Not blocking: Known: in the baseline, not new.
+Finding: i18n-ed2b4264d7</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="og.image.missing" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="og.image.missing" name="/pricing">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>warning · guideline
+Page has no og:image.
+Why: Provide at least one og:image so links unfurl with a preview
+Fix:
+// app/…/page.tsx
+export const metadata = {
+  openGraph: { images: [{ url: &quot;/og.png&quot;, width: 1200, height: 630 }] },
+};
+Rule: https://goflag.tech/docs/rules/og.image.missing
+Not blocking: Known: in the baseline, not new.
+Finding: seo-05a2edc5d8</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="translationHole" tests="1" failures="0" errors="0" skipped="1">
+    <testcase classname="translationHole" name="/blog/hreflang-basics">
+      <skipped message="Known: in the baseline, not new."/>
+      <system-out>warning
+Missing in de; served in en, fr.
+Not blocking: Known: in the baseline, not new.
+Finding: i18n-a5ad1990c1</system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

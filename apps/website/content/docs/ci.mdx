@@ -160,6 +160,27 @@ artefact download, offline.
 Like `--report`, it is written on every run that got as far as a report, the one
 that captures a baseline included.
 
+## Show the findings in the test widget
+
+`--junit <file>` writes the findings as JUnit XML, the format GitLab's
+merge-request test widget and Jenkins already draw. A test case is one rule on
+one page: the suite is the rule, the case is the page.
+
+```yaml title=".gitlab-ci.yml"
+      --report goflag-report.json --junit goflag-junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: goflag-junit.xml
+```
+
+The widget's colour is the exit code's. A finding that fails the run is a
+failing case; one that does not — known in the baseline, below `--fail-on` — is
+skipped, with the reason, so it stays visible without turning the widget red.
+The first case, `goflag › gate`, fails exactly when the run does and says why,
+so a budget exceeded by known findings alone still shows. Under a baseline, a
+red widget lists what the change introduced and nothing else.
+
 ## A preview behind authentication
 
 A protected preview answers a login page, and goflag would judge that.

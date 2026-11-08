@@ -283,6 +283,40 @@ describe("goflag CLI (spawned process)", () => {
     expect(page).toContain("exceed the --max-debt budget of 0");
   }, 60_000);
 
+  it("writes --junit, and its gate case fails exactly when the run does", async () => {
+    const clean = join(tmp, "clean.xml");
+    const passed = await runCli([
+      `${server.url}/good`,
+      "--junit",
+      clean,
+      "--static",
+      "--depth",
+      "0",
+      "--no-sitemap",
+    ]);
+    expect(passed.status).toBe(0);
+    expect(passed.stderr).toContain(`JUnit report written to ${clean}`);
+    const green = readFileSync(clean, "utf8");
+    expect(green).toContain('<testcase classname="goflag" name="gate">\n    </testcase>');
+    expect(green).toContain('failures="0"');
+
+    const dirty = join(tmp, "nested", "dirty.xml");
+    const failed = await runCli([
+      `${server.url}/`,
+      "--junit",
+      dirty,
+      "--static",
+      "--depth",
+      "1",
+      "--no-sitemap",
+    ]);
+    expect(failed.status).toBe(1);
+    const red = readFileSync(dirty, "utf8");
+    expect(red).toMatch(/<failure message="[^"]+" type="gate">Failed · exit code 1/);
+    // Without a baseline, under the default --fail-on, every finding fails.
+    expect(red).not.toContain("<skipped");
+  }, 60_000);
+
   it("refuses a --header goflag owns, exit 2, without echoing it", async () => {
     const secret = "tok_never_echoed_31aa";
     const r = await runCli([`${server.url}/good`, "--header", `User-Agent: ${secret}`]);

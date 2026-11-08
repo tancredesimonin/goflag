@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import { buildFingerprintFixture } from "./fingerprint-fixture";
 import { renderPreviewFixture } from "./preview-fixture";
-import { renderReportFixture } from "./report-fixture";
+import { renderJunitFixture, renderReportFixture } from "./report-fixture";
 import { TRANSCRIPTS } from "./transcripts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,6 +58,10 @@ writeFileSync(join(outDir, "preview.html"), renderPreviewFixture(), "utf8");
 // The HTML report, beside the preview and for the same reasons: the folder the
 // deploy and the hook already watch, and prettier-ignored.
 writeFileSync(join(outDir, "report.html"), renderReportFixture(), "utf8");
+
+// The same run as JUnit, for the CI page: a test widget is where most readers
+// will meet it, and the file is what the widget is drawn from.
+writeFileSync(join(outDir, "report.junit.xml"), renderJunitFixture(), "utf8");
 
 // The manifest is what the site iterates: it carries the order the tabs appear
 // in and the command printed above each panel, so neither is retyped there.
@@ -99,6 +103,12 @@ for (const spec of TRANSCRIPTS) {
 
 const htmlReport = renderReportFixture();
 process.stdout.write(`report.html: ${Buffer.byteLength(htmlReport, "utf8")} bytes\n`);
+
+const junitReport = renderJunitFixture();
+process.stdout.write(
+  `report.junit.xml: ${(junitReport.match(/<testcase /g) ?? []).length} cases, ` +
+    `${(junitReport.match(/<failure /g) ?? []).length} failing\n`,
+);
 
 const preview = renderPreviewFixture();
 process.stdout.write(

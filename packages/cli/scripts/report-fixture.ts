@@ -13,6 +13,8 @@
 import { redactCommand } from "../src/cli-args";
 import { diffExitCode, totalFindings } from "../src/report/diff";
 import { renderHtmlReport } from "../src/report/render-html";
+import { renderJunitReport } from "../src/report/render-junit";
+import type { GateDecision } from "../src/report/gate-verdict";
 import type { GoflagReport } from "../src/report/types";
 import { DEMO_DIFF, DEMO_REPORT, FROZEN_NOW } from "./transcripts";
 
@@ -63,19 +65,34 @@ export function buildReportFixture(): GoflagReport {
   };
 }
 
+/** The gate the fixture's command decides, for both files that print it. */
+function fixtureGate(report: GoflagReport): GateDecision {
+  return {
+    exitCode: diffExitCode(DEMO_DIFF, "warning", {
+      total: totalFindings(report),
+      max: MAX_DEBT,
+    }),
+    failOn: "warning",
+    maxDebt: MAX_DEBT,
+  };
+}
+
 export function renderReportFixture(): string {
   const report = buildReportFixture();
   return renderHtmlReport(report, {
     now: FROZEN_NOW,
     version: "0.0.0",
     command: redactCommand(FIXTURE_ARGV),
-    gate: {
-      exitCode: diffExitCode(DEMO_DIFF, "warning", {
-        total: totalFindings(report),
-        max: MAX_DEBT,
-      }),
-      failOn: "warning",
-      maxDebt: MAX_DEBT,
-    },
+    gate: fixtureGate(report),
   });
+}
+
+/**
+ * The same run as a JUnit file (`--junit`): one new finding failing, the
+ * known ones skipped, and the gate case failing with the reason the HTML
+ * report gives. Written beside `report.html` and compared the same way.
+ */
+export function renderJunitFixture(): string {
+  const report = buildReportFixture();
+  return renderJunitReport(report, { gate: fixtureGate(report) });
 }
