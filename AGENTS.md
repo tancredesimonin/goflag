@@ -89,6 +89,12 @@ The pnpm version is written once, in `packageManager`. Never add a
   Moving or renaming either breaks every pipeline pinned to a tag that has it; `/docs/ci/recipes`
   quotes both paths. The Marketplace lists only a root `action.yml` in a dedicated repository —
   a copy of the file, made by the author.
+- `.github/workflows/` runs on the public GitHub mirror only; GitLab ignores it. Its one workflow,
+  `mcp-registry.yml`, publishes `@goflag/mcp`'s registry entry when an `mcp-v*` tag reaches the
+  mirror, by OIDC — the registry accepts no other CI. It cannot be tried on a GitLab pipeline, and
+  a workflow added after a tag does not run for it. GitHub dispatches a workflow by hand only once
+  its file is on `main`, so before that the fallback is `mcp-publisher` from a workstation
+  (`docs/publishing.md` §8).
 - `packages/cli/README.md` and `packages/cli/LICENSE` are copied from the repository root by
   `prepack` and are gitignored. Authoring them creates a second source of truth.
 - `packages/next/src/locale/generated.ts` is enumerated from Node's ICU data — edit
