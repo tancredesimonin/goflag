@@ -10,12 +10,12 @@
     "subfolder": "packages/mcp"
   },
   "icons": [{ "src": "https://goflag.tech/icon.svg", "mimeType": "image/svg+xml" }],
-  "version": "0.1.1",
+  "version": "0.1.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@goflag/mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "transport": { "type": "stdio" }
     }
   ]
