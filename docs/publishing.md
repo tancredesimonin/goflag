@@ -387,17 +387,31 @@ par un dépôt : `mcp-publisher login github` ouvre le flux d'appareil, sur le
 compte `tancredesimonin`. Il est déjà dans `0.1.0` (`mcpName`). En changer pour
 `tech.goflag/…`, prouvé par DNS, coûterait une version npm de plus.
 
+**Publié par la CI, depuis GitHub Actions** (`.github/workflows/mcp-registry.yml`).
+Le registre n'accepte l'OIDC que de GitHub Actions ; ce workflow tourne donc sur
+le miroir public `tancredesimonin/goflag`, que GitLab alimente et dont il ignore
+le dossier `.github/`. `login github-oidc` prouve l'espace
+`io.github.tancredesimonin/*` avec le jeton du job : le dépôt ne stocke aucune
+credential pour ça, ni jeton GitHub ni clé DNS.
+
+Il part quand un tag `mcp-v*` arrive sur le miroir, celui que pose le job `tag`.
+La même poussée lance `publish:mcp` sur GitLab, donc le workflow attend d'abord
+que npm serve la version (45 minutes au plus) : le registre refuse une version
+absente de npm. Puis il vérifie que le tag, `package.json` et les deux `version`
+de `server.json` disent la même chose, installe `mcp-publisher` à la version et
+à la somme SHA-256 épinglées dans le fichier, publie, et relit le registre.
+
+Une version publiée au registre ne se corrige plus.
+
+**À la main, en secours** — un tag antérieur au workflow (`mcp-v0.1.1`), ou un
+run échoué : Actions → mcp-registry → Run workflow sur le miroir, sur une branche
+qui contient le fichier, avec le tag. Ou depuis le poste, sur le compte
+`tancredesimonin` :
+
 ```sh
-brew install mcp-publisher
 cd packages/mcp
 mcp-publisher validate
 mcp-publisher login github
 mcp-publisher publish
 curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.tancredesimonin/goflag"
 ```
-
-Une version publiée au registre ne se corrige plus. Après chaque release de
-`@goflag/mcp`, une fois `publish:mcp` vert, `mcp-publisher publish` se relance à
-la main depuis `main` à jour. La CI ne le fait pas : le registre n'accepte
-l'OIDC que de GitHub Actions, et depuis GitLab il faudrait stocker un jeton
-GitHub ou une clé privée DNS — la première credential de ce dépôt.

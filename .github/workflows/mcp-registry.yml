@@ -1,0 +1,121 @@
+# Publishes @goflag/mcp's entry in the official MCP registry
+# (registry.modelcontextprotocol.io) — docs/publishing.md §8.
+#
+# This file runs on the public GitHub mirror, tancredesimonin/goflag, and
+# nowhere else: GitLab ignores `.github/`. It is here because the registry
+# accepts OIDC from GitHub Actions only. `login github-oidc` proves the
+# `io.github.tancredesimonin/*` namespace with this job's own token, so the
+# repository stores nothing for it — no GitHub token, no DNS key.
+#
+# It starts when an `mcp-v*` tag reaches the mirror. The `tag` job on GitLab
+# creates that tag and the same push starts `publish:mcp`, so npm may not serve
+# the version yet; the registry refuses a version npm does not have, so this
+# waits for it first. A registry version cannot be corrected once published.
+#
+# By hand, for a tag that predates this file or a run that failed: Actions →
+# mcp-registry → Run workflow, on any branch that has this file, with the tag.
+name: mcp-registry
+
+on:
+  push:
+    tags: ["mcp-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The mcp-v* tag whose server.json to publish, e.g. mcp-v0.1.1"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+# One publication at a time: two runs racing on one version would have the
+# second refused by the registry, and a red run for nothing.
+concurrency:
+  group: mcp-registry
+  cancel-in-progress: false
+
+env:
+  # Bumped by hand, the checksum with it: the release page lists the digest of
+  # every asset (gh api repos/modelcontextprotocol/registry/releases/tags/v…).
+  MCP_PUBLISHER_VERSION: "1.8.8"
+  MCP_PUBLISHER_SHA256: "09f1fa70ee146b640584274a1a6b2b8a0310b05d4321fa9224e6df6a016d67f4"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      # Read by the scripts below from the environment, never interpolated into
+      # them: a dispatched tag is typed by a person.
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check the tag names the version server.json declares
+        run: |
+          case "$TAG" in
+            mcp-v[0-9]*) ;;
+            *) echo "::error::$TAG is not an mcp-v* tag"; exit 1 ;;
+          esac
+          version="${TAG#mcp-v}"
+          VERSION="$version" node -e '
+            const fs = require("node:fs");
+            const want = process.env.VERSION;
+            const pkg = JSON.parse(fs.readFileSync("packages/mcp/package.json", "utf8"));
+            const server = JSON.parse(fs.readFileSync("packages/mcp/server.json", "utf8"));
+            const found = [pkg.version, server.version, server.packages[0].version];
+            if (found.some((v) => v !== want)) {
+              console.error(`::error::${process.env.TAG} but package.json, server.json and its package say ${found.join(", ")}`);
+              process.exit(1);
+            }
+          '
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Wait for npm to serve the version
+        run: |
+          for attempt in $(seq 1 90); do
+            if [ "$(npm view "@goflag/mcp@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+              echo "@goflag/mcp@$VERSION is on npm."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::@goflag/mcp@$VERSION is still not on npm after 45 minutes: check publish:mcp on GitLab."
+          exit 1
+
+      - name: Install mcp-publisher
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          mkdir mcp-publisher-dist
+          tar -xzf mcp-publisher.tar.gz -C mcp-publisher-dist
+          install -m 0755 "$(find mcp-publisher-dist -type f -name mcp-publisher | head -1)" "$RUNNER_TEMP/mcp-publisher"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Publish
+        working-directory: packages/mcp
+        run: |
+          mcp-publisher validate
+          mcp-publisher login github-oidc
+          mcp-publisher publish
+
+      - name: Check the registry lists the version
+        run: |
+          curl -fsS "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.tancredesimonin/goflag" \
+            | VERSION="$VERSION" node -e '
+              let body = "";
+              process.stdin.on("data", (chunk) => (body += chunk));
+              process.stdin.on("end", () => {
+                const versions = (JSON.parse(body).servers ?? []).map((entry) => (entry.server ?? entry).version);
+                if (!versions.includes(process.env.VERSION)) {
+                  console.error(`::error::the registry lists ${versions.join(", ") || "nothing"}, not ${process.env.VERSION}`);
+                  process.exit(1);
+                }
+                console.log(`The registry lists ${process.env.VERSION}.`);
+              });
+            '
