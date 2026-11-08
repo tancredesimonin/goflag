@@ -19,6 +19,8 @@ export { renderTerminal } from "./report/render-terminal";
 export { renderSummaryTerminal } from "./report/render-summary";
 export { renderPreview, type RenderPreviewOptions } from "./report/render-preview";
 export { renderHtmlReport, type RenderHtmlReportOptions } from "./report/render-html";
+export { renderJunitReport, type RenderJunitOptions } from "./report/render-junit";
+export type { GateDecision } from "./report/gate-verdict";
 export {
   summarize,
   SAMPLE_LIMIT,

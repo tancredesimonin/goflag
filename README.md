@@ -196,6 +196,10 @@ documentation site came to quote a message the engine had stopped printing.
                        verdict and why, findings by rule with their sources,
                        and the diff against --baseline. For a pipeline artefact
                        read by someone who does not run goflag.
+--junit <file>         Write the findings as JUnit XML: one test case per rule
+                       and page, failing when the finding fails the run,
+                       skipped when it does not. For a GitLab merge request's
+                       test widget, or Jenkins.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0
                        alone is not "entry page only" — add --no-sitemap.

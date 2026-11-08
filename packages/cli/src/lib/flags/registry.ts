@@ -36,6 +36,7 @@ export interface FlagTarget {
   summary: boolean;
   report?: string;
   html?: string;
+  junit?: string;
   color: boolean;
   help: boolean;
   version: boolean;
@@ -142,6 +143,22 @@ export const FLAGS: readonly FlagSpec[] = [
     takesValue: true,
     apply: ({ parsed, value }) => {
       parsed.html = value;
+    },
+  },
+  {
+    name: "--junit",
+    arg: "<file>",
+    label: "--junit <file>",
+    group: "output",
+    help: [
+      "Write the findings as JUnit XML to <file>: one test",
+      "case per rule and page, failing when the finding",
+      "fails the run, skipped when it does not. For the test",
+      "widget of a GitLab merge request, or Jenkins.",
+    ],
+    takesValue: true,
+    apply: ({ parsed, value }) => {
+      parsed.junit = value;
     },
   },
   {

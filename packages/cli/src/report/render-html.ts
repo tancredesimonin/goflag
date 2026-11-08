@@ -20,8 +20,8 @@
  */
 
 import type { Rigor, Severity } from "../lib/core/types";
-import type { FailOn } from "./build";
 import { totalFindings, type DiffEntry, type ReportDiff } from "./diff";
+import { gateVerdict, SEVERITY_RANK, type GateDecision } from "./gate-verdict";
 import type { BrokenLink, GoflagReport, SeoIssue, SiteIssue } from "./types";
 
 export interface RenderHtmlReportOptions {
@@ -39,7 +39,7 @@ export interface RenderHtmlReportOptions {
    * `capturedBaseline` is the `--update-baseline` run, which accepts every
    * finding it saw and exits 0 whatever they are.
    */
-  gate?: { exitCode: number; failOn: FailOn; maxDebt?: number; capturedBaseline?: boolean };
+  gate?: GateDecision;
   /** Document `<title>`. Defaults to the audited host. */
   title?: string;
 }
@@ -53,8 +53,6 @@ const RULE_DOCS = "https://goflag.tech/docs/rules/";
 
 /** Pages listed under one rule before the rest are counted. The JSON keeps all. */
 const PAGE_LIMIT = 20;
-
-const SEVERITY_RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
 const ESCAPES: Record<string, string> = {
   "&": "&amp;",
@@ -101,81 +99,6 @@ function severityTag(severity: Severity): string {
 
 function rigorTag(rigor: Rigor | undefined): string {
   return rigor ? `<span class="tag rigor">${esc(rigor)}</span>` : "";
-}
-
-// --- verdict ----------------------------------------------------------------
-
-interface Verdict {
-  passed: boolean;
-  headline: string;
-  reason: string;
-}
-
-function blocking(entries: DiffEntry[], failOn: FailOn): DiffEntry[] {
-  if (failOn === "never") return [];
-  const threshold = failOn === "error" ? 0 : 1;
-  return entries.filter((entry) => SEVERITY_RANK[entry.severity] <= threshold);
-}
-
-/**
- * The reason in words, from the same inputs the CLI weighed — in the order it
- * weighs them: the debt budget first, then the baseline, then the findings.
- */
-function verdictOf(report: GoflagReport, gate: RenderHtmlReportOptions["gate"]): Verdict {
-  const total = totalFindings(report);
-  if (!gate) {
-    const verdict = report.summary.verdict;
-    return {
-      passed: verdict === "green",
-      headline: `${verdict} flag`,
-      reason: `${plural(total, "finding")}. The gate's decision depends on --fail-on, --max-debt and the baseline, which this render was not given.`,
-    };
-  }
-
-  const passed = gate.exitCode === 0;
-  const headline = `${passed ? "Passed" : "Failed"} · exit code ${gate.exitCode}`;
-  if (gate.capturedBaseline) {
-    return {
-      passed,
-      headline: `Baseline captured · exit code ${gate.exitCode}`,
-      reason: `${plural(total, "finding")} accepted as known. Later runs against this baseline fail only on what is new.`,
-    };
-  }
-  if (gate.maxDebt !== undefined && total > gate.maxDebt) {
-    return {
-      passed,
-      headline,
-      reason: `${plural(total, "finding")} exceed the --max-debt budget of ${gate.maxDebt}.`,
-    };
-  }
-  if (gate.failOn === "never") {
-    return {
-      passed,
-      headline,
-      reason: `--fail-on never: ${plural(total, "finding")} reported, none blocking.`,
-    };
-  }
-  const threshold = gate.failOn === "error" ? "error" : "warning or error";
-  if (report.diff) {
-    const blockers = blocking(report.diff.added, gate.failOn).length;
-    return {
-      passed,
-      headline,
-      reason:
-        blockers > 0
-          ? `${plural(blockers, "new finding")} at ${threshold} since the baseline.`
-          : `Nothing new at ${threshold} since the baseline; ${plural(report.diff.unchanged, "known finding")} carried.`,
-    };
-  }
-  return {
-    passed,
-    headline,
-    reason: passed
-      ? total === 0
-        ? "No findings."
-        : `No finding at ${threshold}; ${plural(total, "finding")} below it.`
-      : `${plural(total, "finding")}, at least one at ${threshold}.`,
-  };
 }
 
 // --- sections ---------------------------------------------------------------
@@ -462,7 +385,7 @@ export function renderHtmlReport(report: GoflagReport, options: RenderHtmlReport
     }
   })();
   const title = options.title ?? `goflag report — ${host}`;
-  const verdict = verdictOf(report, options.gate);
+  const verdict = gateVerdict(report, options.gate);
   const total = totalFindings(report);
   const added = new Set(report.diff?.added.map((entry) => entry.id) ?? []);
   const errors = [...report.seoIssues, ...report.siteIssues].filter(
