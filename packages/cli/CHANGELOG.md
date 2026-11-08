@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.19](https://github.com/tancredesimonin/goflag/compare/v0.2.18...v0.2.19) (2026-11-08)
+
+
+### Features
+
+* **cli:** sitemaps are read as a stream, and the caps follow the protocol ([b38ddb0](https://github.com/tancredesimonin/goflag/commit/b38ddb0337a5f9d4aeb6cb170faae2864b6bb512))
+* **cli:** the findings render as JUnit XML for a CI's test widget ([1d2608e](https://github.com/tancredesimonin/goflag/commit/1d2608ebca8ee0c32db3e4f095ab5a6eb8035bf5))
+
+
+### Documentation
+
+* **plan:** structural coverage measured past 4,451 pages ([53298a8](https://github.com/tancredesimonin/goflag/commit/53298a809f25b592648920eeca750ac36dfd3c29))
+
 ## [0.2.18](https://github.com/tancredesimonin/goflag/compare/v0.2.17...v0.2.18) (2026-11-04)
 
 
