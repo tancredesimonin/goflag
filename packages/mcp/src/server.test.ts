@@ -10,7 +10,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createGoflagServer } from "./server";
+import { createGoflagServer, readConfiguredHeaders } from "./server";
 
 /**
  * The server, driven the way an agent drives it: a real MCP client over an
@@ -86,9 +86,9 @@ afterAll(async () => {
   await site?.stop();
 });
 
-async function connect(): Promise<Client> {
+async function connect(options?: Parameters<typeof createGoflagServer>[0]): Promise<Client> {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  await createGoflagServer().connect(serverSide);
+  await createGoflagServer(options).connect(serverSide);
   const client = new Client({ name: "test-agent", version: "0.0.0" });
   await client.connect(clientSide);
   return client;
@@ -238,5 +238,144 @@ describe("the goflag MCP server", () => {
     const result = await client.callTool({ name: "audit_site", arguments: { url: "not a url" } });
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("not a valid http(s) URL");
+  });
+});
+
+/**
+ * A protected preview, and a second origin that records what it was sent: the
+ * configured header has to open the first and never reach the second, whatever
+ * URL the agent asks for.
+ */
+describe("headers from the server's configuration", () => {
+  const secret = "preview-secret-never-printed";
+  let preview: { url: string; stop: () => Promise<void> };
+  let elsewhere: { url: string; seen: (string | undefined)[]; stop: () => Promise<void> };
+
+  async function listen(app: Hono): Promise<{ url: string; stop: () => Promise<void> }> {
+    const server: ServerType = await new Promise((resolve) => {
+      const s = serve({ fetch: app.fetch, port: 0 }, () => resolve(s));
+    });
+    const address = server.address();
+    return {
+      url: `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`,
+      stop: () => new Promise((resolve) => server.close(() => resolve())),
+    };
+  }
+
+  const html = (title: string) =>
+    `<!doctype html><html lang="en"><head><title>${title}, a page long enough to pass</title><meta name="description" content="A page behind a preview token, written long enough to pass the length rule."></head><body>ok</body></html>`;
+
+  beforeAll(async () => {
+    const guarded = new Hono();
+    guarded.use("*", async (c, next) => {
+      if (c.req.header("x-preview-token") !== secret) return c.text("unauthorised", 401);
+      await next();
+    });
+    guarded.get("/", (c) => c.html(html("Preview home")));
+    guarded.get("*", (c) => c.text("not found", 404));
+    preview = await listen(guarded);
+
+    const seen: (string | undefined)[] = [];
+    const recorder = new Hono();
+    recorder.use("*", async (c, next) => {
+      seen.push(c.req.header("x-preview-token"));
+      await next();
+    });
+    recorder.get("/", (c) => c.html(html("Elsewhere")));
+    recorder.get("*", (c) => c.text("not found", 404));
+    elsewhere = { ...(await listen(recorder)), seen };
+  });
+
+  afterAll(async () => {
+    await preview?.stop();
+    await elsewhere?.stop();
+  });
+
+  const env = () => ({
+    GOFLAG_HEADERS: `X-Preview-Token: ${secret}`,
+    GOFLAG_HEADERS_ORIGIN: preview.url,
+  });
+
+  it("opens the configured origin, and says so in its instructions without the value", async () => {
+    const client = await connect({ env: env() });
+    expect(client.getInstructions()).toContain(`(X-Preview-Token) for ${preview.url}`);
+    expect(client.getInstructions()).not.toContain(secret);
+
+    const result = await client.callTool({
+      name: "audit_site",
+      arguments: { url: `${preview.url}/`, static: true, maxPages: 3 },
+    });
+    expect((result as CallToolResult).isError).toBeFalsy();
+    expect(JSON.stringify(result)).not.toContain(secret);
+    expect(JSON.stringify(result)).not.toContain("unauthorised");
+    expect(text(result)).toMatch(/[1-9]\d* pages? audited/);
+  });
+
+  it("sends nothing to another origin, whatever the agent asks", async () => {
+    const client = await connect({ env: env() });
+    await client.callTool({
+      name: "audit_site",
+      arguments: { url: `${elsewhere.url}/`, static: true, maxPages: 3 },
+    });
+    expect(elsewhere.seen.length).toBeGreaterThan(0);
+    expect(elsewhere.seen.every((value) => value === undefined)).toBe(true);
+  });
+
+  it("without configuration, a protected preview stays closed", async () => {
+    const client = await connect({ env: {} });
+    const result = await client.callTool({
+      name: "audit_site",
+      arguments: { url: `${preview.url}/`, static: true, maxPages: 3 },
+    });
+    expect(JSON.stringify(result)).toContain("401");
+  });
+});
+
+describe("readConfiguredHeaders", () => {
+  it("reads one header per line, for the origins named", () => {
+    const configured = readConfiguredHeaders({
+      GOFLAG_HEADERS: "X-A: one\r\n\nCookie: session=two; theme=dark",
+      GOFLAG_HEADERS_ORIGIN: "https://Preview.Example.com/, http://localhost:3000",
+    });
+    expect(configured?.headers).toEqual({ "X-A": "one", Cookie: "session=two; theme=dark" });
+    expect([...(configured?.origins ?? [])]).toEqual([
+      "https://preview.example.com",
+      "http://localhost:3000",
+    ]);
+  });
+
+  it("is absent when nothing is configured", () => {
+    expect(readConfiguredHeaders({})).toBeUndefined();
+    expect(readConfiguredHeaders({ GOFLAG_HEADERS: "  " })).toBeUndefined();
+  });
+
+  it.each([
+    [{ GOFLAG_HEADERS: "X-A: s3cr3t" }, /GOFLAG_HEADERS_ORIGIN/],
+    [
+      { GOFLAG_HEADERS: "X-A: s3cr3t", GOFLAG_HEADERS_ORIGIN: "preview.example.com" },
+      /not an origin/,
+    ],
+    [
+      { GOFLAG_HEADERS: "X-A: s3cr3t", GOFLAG_HEADERS_ORIGIN: "https://preview.example.com/path" },
+      /not an origin/,
+    ],
+    [
+      { GOFLAG_HEADERS: "User-Agent: s3cr3t", GOFLAG_HEADERS_ORIGIN: "https://a.test" },
+      /line 1: User-Agent is set by goflag/,
+    ],
+    [{ GOFLAG_HEADERS: "X-A s3cr3t", GOFLAG_HEADERS_ORIGIN: "https://a.test" }, /line 1/],
+  ])("refuses %o, and never quotes the value", (env, message) => {
+    expect(() => readConfiguredHeaders(env)).toThrow(message);
+    try {
+      readConfiguredHeaders(env);
+    } catch (err) {
+      expect((err as Error).message).not.toContain("s3cr3t");
+    }
+  });
+
+  it("stops the server from starting rather than running without them", () => {
+    expect(() => createGoflagServer({ env: { GOFLAG_HEADERS: "X-A: b" } })).toThrow(
+      /GOFLAG_HEADERS_ORIGIN/,
+    );
   });
 });

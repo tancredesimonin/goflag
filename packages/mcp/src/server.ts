@@ -12,8 +12,10 @@
  *
  *   - No `start`. Letting an agent pass a command for this process to run is an
  *     arbitrary-execution door; the agent starts its own dev server.
- *   - No headers. A `--header` value passed as a tool argument would sit in the
- *     agent's transcript. A protected preview is audited with the CLI.
+ *   - No header as a tool argument. A value passed there would sit in the
+ *     agent's transcript. Headers come from the server's own configuration —
+ *     `GOFLAG_HEADERS`, bound to the origins in `GOFLAG_HEADERS_ORIGIN` — and
+ *     go to those origins only (`readConfiguredHeaders`).
  *   - No write. A baseline is captured with `goflag --update-baseline`; this
  *     server only reads one.
  */
@@ -26,6 +28,7 @@ import {
   diffExitCode,
   diffReports,
   exitCode,
+  parseHeaderArg,
   runAudit,
   summarize,
   totalFindings,
@@ -64,6 +67,102 @@ const INSTRUCTIONS = `goflag audits a website's SEO and i18n plumbing: hreflang 
 Use it on the site you are editing, before committing a change to metadata, the sitemap, robots.txt or hreflang: start the dev server, call audit_site on its URL, fix what is new, and call it again. explain_rule gives a rule's requirement, how authoritative it is, and the documents behind it. compare_to_baseline answers "did my change make it worse?" against a report saved with the goflag CLI.
 
 Findings carry a rigor: spec-required and vendor-spec are requirements, guideline and heuristic are advice.`;
+
+/** What the server reads at start, beside the protocol. */
+export interface GoflagServerOptions {
+  /** Where `GOFLAG_HEADERS` and `GOFLAG_HEADERS_ORIGIN` are read. Defaults to `process.env`. */
+  env?: Readonly<Record<string, string | undefined>>;
+}
+
+/** Request headers from the server's configuration, and the origins they are for. */
+export interface ConfiguredHeaders {
+  origins: ReadonlySet<string>;
+  headers: Readonly<Record<string, string>>;
+}
+
+/**
+ * The headers a protected preview needs, read from the server's environment.
+ *
+ *   GOFLAG_HEADERS          one `Name: value` per line, as `--header` takes it
+ *   GOFLAG_HEADERS_ORIGIN   the origins they are for, comma-separated
+ *
+ * Bound to origins because here, unlike on a command line, the URL is chosen
+ * by the agent, call by call. Sent wherever it pointed, a preview's token would
+ * go to any site a prompt injection named; bound, it goes to the origins the
+ * person configured and nowhere else, which is the CLI's own rule — the header
+ * goes to the origin the operator named — kept when the operator is not the one
+ * typing the URL.
+ *
+ * A configuration that cannot be honoured stops the server rather than
+ * running without it: headers with no origin, an origin that is not one, a line
+ * `parseHeaderArg` refuses. Errors name the header and never quote its value.
+ */
+export function readConfiguredHeaders(
+  env: Readonly<Record<string, string | undefined>>,
+): ConfiguredHeaders | undefined {
+  const raw = env.GOFLAG_HEADERS?.trim();
+  if (!raw) return undefined;
+
+  const declared = (env.GOFLAG_HEADERS_ORIGIN ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (declared.length === 0) {
+    throw new Error(
+      "GOFLAG_HEADERS is set without GOFLAG_HEADERS_ORIGIN: name the origin the headers are for, e.g. https://preview.example.com.",
+    );
+  }
+  const origins = new Set<string>();
+  for (const entry of declared) {
+    let url: URL;
+    try {
+      url = new URL(entry);
+    } catch {
+      throw new Error(`GOFLAG_HEADERS_ORIGIN: ${entry} is not an origin.`);
+    }
+    const bare = url.pathname === "/" && !url.search && !url.hash && !url.username && !url.password;
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || !bare) {
+      throw new Error(
+        `GOFLAG_HEADERS_ORIGIN: ${entry} is not an origin — scheme and host only, e.g. https://preview.example.com.`,
+      );
+    }
+    origins.add(url.origin);
+  }
+
+  const headers: Record<string, string> = {};
+  raw.split(/\r?\n/).forEach((line, index) => {
+    if (!line.trim()) return;
+    try {
+      const { name, value } = parseHeaderArg(line);
+      headers[name] = value;
+    } catch (err) {
+      throw new Error(
+        `GOFLAG_HEADERS line ${index + 1}: ${(err as Error).message.replace(/^--header /, "")}`,
+      );
+    }
+  });
+  return { origins, headers };
+}
+
+/** The headers for one audit: the configured ones, if `url` is on a configured origin. */
+function headersFor(url: string, configured: ConfiguredHeaders | undefined) {
+  if (!configured) return undefined;
+  try {
+    return configured.origins.has(new URL(url).origin) ? { ...configured.headers } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The instructions, plus the origins audited with configured headers, when there are any. */
+function instructionsFor(configured: ConfiguredHeaders | undefined): string {
+  if (!configured) return INSTRUCTIONS;
+  const origins = [...configured.origins].join(", ");
+  const names = Object.keys(configured.headers).join(", ");
+  return `${INSTRUCTIONS}
+
+This server was configured with request headers (${names}) for ${origins}: an audit of that origin sends them, so a protected preview there can be audited. You cannot set headers yourself, and they are never sent to another origin.`;
+}
 
 const auditShape = {
   url: z
@@ -112,8 +211,13 @@ type AuditArgs = {
 
 type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
-function auditOptions(args: AuditArgs, extra: ToolExtra): AuditOptions {
+function auditOptions(
+  args: AuditArgs,
+  extra: ToolExtra,
+  configured: ConfiguredHeaders | undefined,
+): AuditOptions {
   return {
+    headers: headersFor(args.url, configured),
     maxPages: args.maxPages ?? DEFAULT_MAX_PAGES,
     locales: args.locales,
     expectIndexing: args.expectIndexing,
@@ -215,9 +319,13 @@ function ruleView(rule: CatalogRule, sources: ReturnType<typeof buildRuleCatalog
 }
 
 /** A server with goflag's four tools, not yet connected to a transport. */
-export function createGoflagServer(): McpServer {
+export function createGoflagServer(options: GoflagServerOptions = {}): McpServer {
+  const configured = readConfiguredHeaders(options.env ?? process.env);
   const catalog = buildRuleCatalog();
-  const server = new McpServer({ name: "goflag", version }, { instructions: INSTRUCTIONS });
+  const server = new McpServer(
+    { name: "goflag", version },
+    { instructions: instructionsFor(configured) },
+  );
 
   server.registerTool(
     "audit_site",
@@ -230,7 +338,7 @@ export function createGoflagServer(): McpServer {
     },
     async (args, extra) => {
       try {
-        const report = await runAudit(args.url, auditOptions(args, extra));
+        const report = await runAudit(args.url, auditOptions(args, extra, configured));
         return ok(headline(report), {
           exitCode: exitCode(report),
           coverage: report.diagnostics.coverage ?? null,
@@ -260,7 +368,7 @@ export function createGoflagServer(): McpServer {
       const baseline = await readBaseline(path);
       if (typeof baseline === "string") return failure(baseline);
       try {
-        const report = await runAudit(args.url, auditOptions(args, extra));
+        const report = await runAudit(args.url, auditOptions(args, extra, configured));
         const diff = diffReports(baseline, report);
         return ok(
           `${headline(report)} Against the baseline: ${diff.added.length} new, ${diff.resolved.length} resolved, ${diff.unchanged} unchanged.`,

@@ -39,10 +39,23 @@ All four are read-only: none writes to disk or to the site.
 
 ## What it does not do
 
-- **No headers.** A token passed as a tool argument would sit in the agent's transcript. Audit a protected preview with the CLI: `goflag <url> --header "<name>: <value>"`.
+- **No header as a tool argument.** A token passed there would sit in the agent's transcript. A protected preview is configured instead — see below.
 - **No command to run.** The agent starts its own dev server; this server never executes one.
 - **No baseline written.** Capture one with `goflag <url> --update-baseline --baseline .goflag/baseline.json`; `compare_to_baseline` only reads it, and refuses a file that is not a goflag report without quoting it.
 - **No remote mode.** It runs where the agent runs — which is why it can see `localhost`.
+
+## A protected preview
+
+Give the server the header and the origin it is for, in its environment:
+
+```bash
+claude mcp add goflag \
+  -e GOFLAG_HEADERS="x-vercel-protection-bypass: <secret>" \
+  -e GOFLAG_HEADERS_ORIGIN=https://my-app-git-main-my-team.vercel.app \
+  -- npx -y @goflag/mcp
+```
+
+`GOFLAG_HEADERS` holds one `Name: value` per line; `GOFLAG_HEADERS_ORIGIN` the origins they are for, comma-separated. They are sent to those origins only, whatever URL the agent audits, and a value never appears in a result. A configuration the server cannot honour stops it from starting. [More on goflag.tech](https://goflag.tech/docs/mcp#a-protected-preview).
 
 ## Requirements
 

@@ -7,4 +7,9 @@
  * The `goflag-mcp` binary does exactly that over stdio; this export is for a
  * host that brings its own transport.
  */
-export { createGoflagServer } from "./server";
+export {
+  createGoflagServer,
+  readConfiguredHeaders,
+  type ConfiguredHeaders,
+  type GoflagServerOptions,
+} from "./server";
