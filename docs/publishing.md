@@ -403,9 +403,11 @@ de `server.json` disent la même chose, installe `mcp-publisher` à la version e
 
 Une version publiée au registre ne se corrige plus.
 
-**À la main, en secours** — un tag antérieur au workflow (`mcp-v0.1.1`), ou un
-run échoué : Actions → mcp-registry → Run workflow sur le miroir, sur une branche
-qui contient le fichier, avec le tag. Ou depuis le poste, sur le compte
+**À la main, en secours** — un tag antérieur au workflow, ou un run échoué :
+Actions → mcp-registry → Run workflow sur le miroir, avec le tag. GitHub ne
+lance à la main qu'un workflow présent sur la branche par défaut, `main` sur le
+miroir : ce secours n'existe qu'à partir de la release qui y porte le fichier.
+Avant, ou si GitHub est indisponible, depuis le poste, sur le compte
 `tancredesimonin` :
 
 ```sh

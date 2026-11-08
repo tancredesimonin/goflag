@@ -13,7 +13,10 @@
 # waits for it first. A registry version cannot be corrected once published.
 #
 # By hand, for a tag that predates this file or a run that failed: Actions →
-# mcp-registry → Run workflow, on any branch that has this file, with the tag.
+# mcp-registry → Run workflow, with the tag. GitHub dispatches a workflow only
+# once its file is on the default branch, `main` on the mirror, so this works
+# from the first release that carries the file, not before. The push trigger
+# has no such limit: it runs for any tag whose commit has the file.
 name: mcp-registry
 
 on:
