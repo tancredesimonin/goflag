@@ -1,0 +1,108 @@
+# goflag as a GitHub Action.
+#
+# Served by path from the public mirror, so a workflow pins it to a release
+# tag without a repository of its own:
+#
+#   - uses: tancredesimonin/goflag/integrations/github-action@v0.2.19
+#     with:
+#       version: 0.2.19
+#       url: http://localhost:3000
+#       start: pnpm start
+#
+# Moving or renaming this directory breaks every workflow pinned to a tag that
+# has it. The Marketplace lists only an action.yml at the root of a dedicated
+# repository; that is a copy of this file, made by the author, not a move.
+name: goflag
+description: Audit a site's SEO and i18n, fail on what a change introduced, and keep the report as an HTML page.
+author: goflag
+branding:
+  icon: flag
+  color: green
+
+inputs:
+  version:
+    description: >-
+      The @goflag/cli version to run, e.g. 0.2.19. Required: a floating version
+      turns somebody else's release into a red build on a commit that touched
+      nothing.
+    required: true
+  url:
+    description: The URL to audit. With `start`, the local URL the server answers on.
+    required: true
+  start:
+    description: A command that serves the site, passed to --start; goflag boots it, audits, then stops it.
+    required: false
+    default: ""
+  baseline:
+    description: >-
+      The baseline file. When it exists, the run fails only on findings it does
+      not hold (--regressions-only); when it does not, every finding counts.
+    required: false
+    default: .goflag/baseline.json
+  max-debt:
+    description: Fail when the site carries more than this many findings, new or known (--max-debt).
+    required: false
+    default: ""
+  expect-indexing:
+    description: "`no` for a preview or staging host, `yes` for production (--expect-indexing)."
+    required: false
+    default: ""
+  headers:
+    description: >-
+      Request headers for the audited origin only, one `Name: value` per line
+      (--header): a preview's protection bypass, from a secret. goflag prints
+      their names, never their values.
+    required: false
+    default: ""
+  args:
+    description: Any other goflag flags, split on spaces, e.g. `--locales en,fr --static`.
+    required: false
+    default: ""
+  report:
+    description: The base name of the reports kept as an artifact, `<report>.json` and `<report>.html`.
+    required: false
+    default: goflag-report
+  node-version:
+    description: The Node.js version set up for goflag (22 or newer). Empty to use the runner's own.
+    required: false
+    default: "24"
+
+outputs:
+  exit-code:
+    description: goflag's exit code — 0 passed, 1 failed the gate, 2 could not run.
+    value: ${{ steps.audit.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.node-version != ''
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    # Every input reaches the script through the environment and is quoted
+    # there. Interpolated into `run:` instead, a value with a `"` or a `$(` in
+    # it would be shell code.
+    - id: audit
+      shell: bash
+      env:
+        GOFLAG_VERSION: ${{ inputs.version }}
+        GOFLAG_URL: ${{ inputs.url }}
+        GOFLAG_START: ${{ inputs.start }}
+        GOFLAG_BASELINE: ${{ inputs.baseline }}
+        GOFLAG_MAX_DEBT: ${{ inputs.max-debt }}
+        GOFLAG_EXPECT_INDEXING: ${{ inputs.expect-indexing }}
+        GOFLAG_HEADERS: ${{ inputs.headers }}
+        GOFLAG_ARGS: ${{ inputs.args }}
+        GOFLAG_REPORT: ${{ inputs.report }}
+      run: bash "$GITHUB_ACTION_PATH/run.sh"
+
+    # Kept when the gate fails: that is when somebody needs to read it.
+    - if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.report }}
+        path: |
+          ${{ inputs.report }}.json
+          ${{ inputs.report }}.html
+        if-no-files-found: ignore
