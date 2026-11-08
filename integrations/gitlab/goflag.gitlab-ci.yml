@@ -1,0 +1,66 @@
+# goflag for GitLab CI.
+#
+# Served by path from the public mirror and pinned to a release tag, since a
+# CI/CD component needs a public GitLab project and this one is private:
+#
+#   include:
+#     - remote: https://raw.githubusercontent.com/tancredesimonin/goflag/v0.2.19/integrations/gitlab/goflag.gitlab-ci.yml
+#
+#   seo:
+#     extends: .goflag
+#     variables:
+#       GOFLAG_VERSION: "0.2.19"
+#       GOFLAG_URL: http://localhost:3000
+#       GOFLAG_START: pnpm start
+#     before_script:
+#       - corepack enable && pnpm install --frozen-lockfile && pnpm build
+#
+# `.goflag` is hidden: it runs nothing until a job extends it, and the job
+# decides when (merge requests, a deploy) and against what. Moving or renaming
+# this file breaks every pipeline pinned to a tag that has it.
+.goflag:
+  image: node:24-alpine
+  variables:
+    # Required. A floating version turns somebody else's release into a red
+    # pipeline on a commit that touched nothing.
+    GOFLAG_VERSION: ""
+    # Required: the URL to audit — with GOFLAG_START, the local one.
+    GOFLAG_URL: ""
+    # A command that serves the site; goflag boots it, audits, then stops it.
+    GOFLAG_START: ""
+    # When this file exists the job fails only on findings it does not hold.
+    GOFLAG_BASELINE: ".goflag/baseline.json"
+    # Fail when the site carries more findings than this, new or known.
+    GOFLAG_MAX_DEBT: ""
+    # `no` for a preview or staging host, `yes` for production.
+    GOFLAG_EXPECT_INDEXING: ""
+    # Any other flags, split on spaces: `--locales en,fr --static`. A
+    # `--header` whose value has a space does not survive the split; set it in
+    # the job's own script instead.
+    GOFLAG_ARGS: ""
+  script:
+    - |
+      if [ -z "$GOFLAG_VERSION" ] || [ -z "$GOFLAG_URL" ]; then
+        echo "Set GOFLAG_VERSION (pin the version you gate on) and GOFLAG_URL." >&2
+        exit 2
+      fi
+      set -- "$GOFLAG_URL" --no-external --report goflag-report.json --html goflag-report.html
+      if [ -n "$GOFLAG_START" ]; then set -- "$@" --start "$GOFLAG_START"; fi
+      if [ -n "$GOFLAG_BASELINE" ] && [ -f "$GOFLAG_BASELINE" ]; then
+        set -- "$@" --baseline "$GOFLAG_BASELINE" --regressions-only
+      elif [ -n "$GOFLAG_BASELINE" ]; then
+        echo "No baseline at $GOFLAG_BASELINE: every finding counts. Capture one with --update-baseline and commit it."
+      fi
+      if [ -n "$GOFLAG_MAX_DEBT" ]; then set -- "$@" --max-debt "$GOFLAG_MAX_DEBT"; fi
+      if [ -n "$GOFLAG_EXPECT_INDEXING" ]; then set -- "$@" --expect-indexing "$GOFLAG_EXPECT_INDEXING"; fi
+      # Unquoted on purpose: split on spaces, as the comment above says.
+      npx --yes "@goflag/cli@$GOFLAG_VERSION" "$@" $GOFLAG_ARGS
+  artifacts:
+    when: always
+    expire_in: 30 days
+    # A link on the merge request itself: whoever decides about a red job is
+    # reading the merge request, not the job log.
+    expose_as: "goflag report"
+    paths:
+      - goflag-report.json
+      - goflag-report.html

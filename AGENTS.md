@@ -83,6 +83,12 @@ The pnpm version is written once, in `packageManager`. Never add a
 - Never hand-edit the version pins in `README.md`, `apps/website/src/lib/constants.ts` or
   `packages/mcp/server.json`: `pnpm release` rewrites them, and `constants.test.ts` and
   `server-json.test.ts` fail until it has.
+- `integrations/github-action/` and `integrations/gitlab/goflag.gitlab-ci.yml` are consumed **by
+  path** from the public GitHub mirror, pinned to a release tag
+  (`tancredesimonin/goflag/integrations/github-action@v…`, `include: remote` of the raw file).
+  Moving or renaming either breaks every pipeline pinned to a tag that has it; `/docs/ci/recipes`
+  quotes both paths. The Marketplace lists only a root `action.yml` in a dedicated repository —
+  a copy of the file, made by the author.
 - `packages/cli/README.md` and `packages/cli/LICENSE` are copied from the repository root by
   `prepack` and are gitignored. Authoring them creates a second source of truth.
 - `packages/next/src/locale/generated.ts` is enumerated from Node's ICU data — edit

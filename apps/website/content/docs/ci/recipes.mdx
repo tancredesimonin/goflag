@@ -1,0 +1,157 @@
+---
+title: CI recipes
+description: A GitHub Action, a GitLab CI template and a Vercel Deployment Check, each gating on the baseline and keeping the HTML report.
+navTitle: CI recipes
+group: use
+order: 1.5
+---
+
+Three ready-made jobs. Each one pins the CLI, fails only on what a change
+introduced once `.goflag/baseline.json` exists, takes a `--max-debt` budget, and
+keeps the report — `goflag-report.json`, and `goflag-report.html` for whoever
+reads the pipeline without running goflag. They need goflag 0.2.18 or newer.
+[CI](/docs/ci) explains the flags they set; this page is the copy-paste.
+
+## GitHub Action
+
+```yaml title=".github/workflows/seo.yml"
+name: seo
+on: pull_request
+
+jobs:
+  goflag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable && pnpm install --frozen-lockfile && pnpm build
+      - uses: tancredesimonin/goflag/integrations/github-action@v__CLI_VERSION__
+        with:
+          version: __CLI_VERSION__
+          url: http://localhost:3000
+          start: pnpm start
+          max-debt: 13
+```
+
+The action lives in the goflag repository and is pinned to a release tag, so the
+tag and `version` move together. It sets up Node, runs the CLI, writes a line to
+the job summary, and uploads the two reports as the `goflag-report` artifact,
+also when the gate fails — that is when somebody needs to read them.
+
+| Input             | Default                 | What it does                                                                        |
+| ----------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| `version`         | required                | The `@goflag/cli` version. A floating one turns another release into your red build |
+| `url`             | required                | What to audit; with `start`, the local URL                                          |
+| `start`           |                         | A command that serves the site, passed to `--start`                                 |
+| `baseline`        | `.goflag/baseline.json` | When the file exists, only new findings fail (`--regressions-only`)                 |
+| `max-debt`        |                         | Fail above this many findings, new or known                                         |
+| `expect-indexing` |                         | `no` for a preview, `yes` for production                                            |
+| `headers`         |                         | `Name: value` lines for the audited origin only; values are never printed           |
+| `args`            |                         | Any other flags, split on spaces                                                    |
+| `report`          | `goflag-report`         | Base name of the reports and of the artifact                                        |
+| `node-version`    | `24`                    | Empty to keep the runner's own Node                                                 |
+
+Its output `exit-code` is goflag's: `0` passed, `1` failed the gate, `2` could
+not run.
+
+## GitLab CI template
+
+```yaml title=".gitlab-ci.yml"
+include:
+  - remote: https://raw.githubusercontent.com/tancredesimonin/goflag/v__CLI_VERSION__/integrations/gitlab/goflag.gitlab-ci.yml
+
+seo:
+  extends: .goflag
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+  variables:
+    GOFLAG_VERSION: "__CLI_VERSION__"
+    GOFLAG_URL: http://localhost:3000
+    GOFLAG_START: pnpm start
+    GOFLAG_MAX_DEBT: "13"
+  before_script:
+    - corepack enable && pnpm install --frozen-lockfile && pnpm build
+```
+
+`.goflag` is a hidden job: it runs nothing until a job extends it, and your job
+decides when and against what. The report is linked from the merge request as
+"goflag report". It is served from goflag's public mirror rather than as a
+CI/CD component, which needs a public GitLab project.
+
+| Variable                 | Default                 | What it does                                      |
+| ------------------------ | ----------------------- | ------------------------------------------------- |
+| `GOFLAG_VERSION`         | required                | The `@goflag/cli` version                         |
+| `GOFLAG_URL`             | required                | What to audit; with `GOFLAG_START`, the local URL |
+| `GOFLAG_START`           |                         | A command that serves the site                    |
+| `GOFLAG_BASELINE`        | `.goflag/baseline.json` | When the file exists, only new findings fail      |
+| `GOFLAG_MAX_DEBT`        |                         | Fail above this many findings, new or known       |
+| `GOFLAG_EXPECT_INDEXING` |                         | `no` for a preview, `yes` for production          |
+| `GOFLAG_ARGS`            |                         | Any other flags, split on spaces                  |
+
+The template's image is `node:24-alpine`, which has no Chromium: goflag reads
+the static HTML and says so. A client-rendered site sets `image:` to a
+Playwright image in its own job — see [what about `--static`](/docs/ci#what-about---static).
+
+## Vercel Deployment Check
+
+Vercel can hold a production deployment off your production domains until the
+checks you require have passed. goflag can be one of them: it audits the
+deployment at its own URL, before a visitor reaches it.
+
+```yaml title=".github/workflows/goflag-vercel.yml"
+name: goflag
+on:
+  repository_dispatch:
+    types: [vercel.deployment.ready]
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  goflag:
+    if: github.event.client_payload.environment == 'production'
+    runs-on: ubuntu-latest
+    steps:
+      # Pending now, passed or failed when the job ends: the commit status
+      # Vercel reads. Select this name in Deployment Checks.
+      - uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: "Vercel - my-project: goflag"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.git.sha }}
+      - uses: tancredesimonin/goflag/integrations/github-action@v__CLI_VERSION__
+        with:
+          version: __CLI_VERSION__
+          url: ${{ github.event.client_payload.url }}
+          headers: |
+            x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+```
+
+Then, once:
+
+1. **Require the check.** In the Vercel project, Settings › Build and Deployment
+   › Deployment Checks › Add Checks, choose GitHub and select
+   `Vercel - my-project: goflag`. The project has to be linked through Vercel for
+   GitHub, with automatic aliasing for production on.
+2. **Let goflag through the protection.** Create a Protection Bypass for
+   Automation secret in Vercel and store it as the repository secret
+   `VERCEL_AUTOMATION_BYPASS_SECRET`. goflag sends it to the deployment's origin
+   only and prints its name, never its value.
+
+Three things the setup does not do for you:
+
+- **The checkout names the deployed commit.** A `repository_dispatch` run starts
+  from the default branch's last commit; `client_payload.git.sha` is the one
+  Vercel built, and the baseline has to be read from it.
+- **Every deployment has its own host.** A broken internal link is identified by
+  its absolute target, so one that already existed reads as new on each
+  deployment: fix them before requiring the check.
+- **Previews are not gated here.** Deployment Checks hold production only; this
+  workflow skips the others.
+
+When the check blocks a release you have decided to ship anyway, Vercel's
+**Force Promote**, on the deployment's page, goes past it.
