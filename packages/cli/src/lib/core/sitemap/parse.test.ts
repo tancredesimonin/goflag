@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSitemap } from "./parse";
+import { createSitemapParser, parseSitemap } from "./parse";
 
 describe("parseSitemap", () => {
   it("parses a flat urlset with metadata", () => {
@@ -113,5 +113,67 @@ describe("parseSitemap", () => {
   it("returns unknown for unrelated XML", () => {
     const result = parseSitemap(`<html><body>nope</body></html>`);
     expect(result.kind).toBe("unknown");
+  });
+
+  it("reads a field from its first element, even an empty one, as find().first() did", () => {
+    const result = parseSitemap(
+      `<urlset><url><loc></loc><loc>https://example.com/late</loc></url>` +
+        `<url><wrap><loc>https://example.com/nested</loc></wrap><lastmod> 2026-01-02 </lastmod></url></urlset>`,
+    );
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls).toEqual([{ loc: "https://example.com/nested", lastmod: "2026-01-02" }]);
+  });
+
+  it("reads CDATA and decodes entities, as cheerio's xmlMode did", () => {
+    const result = parseSitemap(
+      `<urlset><url><loc><![CDATA[https://example.com/?a=1&b=2]]></loc></url>` +
+        `<url><loc>https://example.com/?c=3&amp;d=4</loc></url></urlset>`,
+    );
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls.map((u) => u.loc)).toEqual([
+      "https://example.com/?a=1&b=2",
+      "https://example.com/?c=3&d=4",
+    ]);
+  });
+
+  it("keeps entries in the order their <url> opened, so the first duplicate wins", () => {
+    const result = parseSitemap(
+      `<urlset><url><loc>https://example.com/outer</loc>` +
+        `<url><loc>https://example.com/inner</loc><lastmod>first</lastmod></url></url>` +
+        `<url><loc>https://example.com/inner</loc><lastmod>second</lastmod></url></urlset>`,
+    );
+    if (result.kind !== "urlset") throw new Error("expected urlset");
+    expect(result.urls).toEqual([
+      { loc: "https://example.com/outer", lastmod: "first" },
+      { loc: "https://example.com/inner", lastmod: "first" },
+    ]);
+  });
+});
+
+describe("createSitemapParser", () => {
+  const body = `<?xml version="1.0"?>
+    <urlset xmlns:xhtml="http://www.w3.org/1999/xhtml">
+      <url><loc>https://example.com/en/caf\u00e9?a=1&amp;b=2</loc><lastmod>2026-01-02</lastmod>
+        <xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/caf\u00e9"/></url>
+      <url><loc><![CDATA[https://example.com/en/x]]></loc></url>
+    </urlset>`;
+
+  it.each([1, 3, 64])(
+    "reads a document fed %i characters at a time as it reads it whole",
+    (size) => {
+      const parser = createSitemapParser();
+      for (let i = 0; i < body.length; i += size) parser.write(body.slice(i, i + size));
+      expect(parser.end()).toEqual(parseSitemap(body));
+    },
+  );
+
+  it("closes an entry the file cut off, as the tree builder did", () => {
+    const parser = createSitemapParser();
+    parser.write("<urlset><url><loc>https://example.com/cut");
+    expect(parser.end()).toEqual({
+      kind: "urlset",
+      wellFormed: true,
+      urls: [{ loc: "https://example.com/cut" }],
+    });
   });
 });

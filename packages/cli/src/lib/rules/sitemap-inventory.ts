@@ -10,8 +10,9 @@
  *
  * The read falls short three ways, and discovery records each one:
  *
- *   - a cap stopped it (`truncated`). The caps are 5,000 URLs and 50 children,
- *     far below the protocol's own limits, so a search engine reads past them;
+ *   - a cap stopped it (`truncated`). The caps are 1,000,000 URLs and 50,000
+ *     children — the second is the protocol's own, the first is below what an
+ *     index may reach, so a search engine can read past it;
  *   - an index named a child that yielded no urlset (`childSitemapErrors`):
  *     unreachable, unparsable, or an index itself, which discovery does not
  *     follow;
