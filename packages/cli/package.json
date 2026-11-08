@@ -61,6 +61,7 @@
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
     "validate:sources": "tsx scripts/validate-sources.ts",
+    "measure:coverage": "tsx scripts/measure-coverage.ts",
     "generate:catalog": "tsx scripts/generate-catalog.ts",
     "generate:flags": "tsx scripts/generate-flags.ts",
     "generate:help-fixture": "tsx scripts/generate-help-fixture.ts",
