@@ -101,6 +101,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       parsed.json && "--json",
       parsed.summary && "--summary",
       parsed.html && "--html",
+      parsed.junit && "--junit",
       parsed.baseline && "--baseline",
       parsed.updateBaseline && "--update-baseline",
       parsed.regressionsOnly && "--regressions-only",

@@ -1,6 +1,6 @@
 {
   "name": "@goflag/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "A local MCP server for goflag: an agent audits the site it is editing — localhost or a protected preview — and reads each rule with its source.",
   "keywords": [

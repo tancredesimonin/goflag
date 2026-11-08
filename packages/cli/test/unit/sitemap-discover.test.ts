@@ -15,6 +15,14 @@ interface RouteHandler {
    * assertion for a reason that has nothing to do with the code under test.
    */
   hang?: boolean;
+  /** Extra response headers, e.g. `content-encoding`. */
+  headers?: Record<string, string>;
+  /**
+   * The body as separate writes, a few milliseconds apart, so the client reads
+   * it in pieces rather than in one buffer — the case streaming has to get
+   * right, a character split across two of them included.
+   */
+  pieces?: Buffer[];
 }
 
 let server: Server;
@@ -30,7 +38,21 @@ beforeAll(async () => {
       return;
     }
     if (route.hang) return;
-    res.writeHead(route.status, route.contentType ? { "content-type": route.contentType } : {});
+    res.writeHead(route.status, {
+      ...(route.contentType ? { "content-type": route.contentType } : {}),
+      ...route.headers,
+    });
+    if (route.pieces) {
+      const pieces = [...route.pieces];
+      const next = () => {
+        const piece = pieces.shift();
+        if (!piece) return void res.end();
+        res.write(piece);
+        setTimeout(next, 5);
+      };
+      next();
+      return;
+    }
     res.end(route.body);
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
@@ -267,6 +289,56 @@ describe("discoverSitemap", () => {
     // ceiling this feeds is measured on the parsed text either way.
     expect(result.documents[0]!.gzipped).toBe(true);
     expect(result.documents[0]!.byteLength).toBe(Buffer.byteLength(urlset("/plain"), "utf8"));
+  });
+
+  it("does not call a sitemap cut short when it fills the cap exactly", async () => {
+    routes.set("/sitemap.xml", { status: 200, body: urlset("/1", "/2", "/2") });
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false, maxUrls: 2 });
+    expect(result.urls).toHaveLength(2);
+    expect(result.truncated).toBe(false);
+  });
+
+  it("reads a sitemap that arrives in pieces, a character split across two of them", async () => {
+    const body = Buffer.from(urlset("/caf\u00e9", "/na\u00efve"), "utf8");
+    const split = body.indexOf(Buffer.from("\u00e9", "utf8")) + 1; // inside the two bytes of é
+    routes.set("/sitemap.xml", {
+      status: 200,
+      body: "",
+      pieces: [body.subarray(0, split), body.subarray(split, split + 7), body.subarray(split + 7)],
+    });
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.urls.map((u) => u.loc)).toEqual([
+      `${baseUrl}/caf\u00e9`,
+      `${baseUrl}/na\u00efve`,
+    ]);
+    expect(result.documents[0]!.byteLength).toBe(body.length);
+  });
+
+  it("reads a gzipped .gz that arrives in pieces", async () => {
+    const zipped = gzipSync(Buffer.from(urlset("/z1", "/z2")));
+    routes.set("/robots.txt", { status: 200, body: `Sitemap: ${baseUrl}/sitemap.xml.gz\n` });
+    routes.set("/sitemap.xml.gz", {
+      status: 200,
+      contentType: "application/gzip",
+      body: "",
+      pieces: [zipped.subarray(0, 1), zipped.subarray(1, 12), zipped.subarray(12)],
+    });
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.urls.map((u) => u.loc)).toEqual([`${baseUrl}/z1`, `${baseUrl}/z2`]);
+    expect(result.documents[0]!.gzipped).toBe(true);
+    // Measured inflated, as before: the ceiling is on what a consumer parses.
+    expect(result.documents[0]!.byteLength).toBe(Buffer.byteLength(urlset("/z1", "/z2"), "utf8"));
+  });
+
+  it("reads a body sent with content-encoding: gzip, which fetch inflates itself", async () => {
+    routes.set("/sitemap.xml", {
+      status: 200,
+      headers: { "content-encoding": "gzip" },
+      body: gzipSync(Buffer.from(urlset("/e1"))),
+    });
+    const result = await discoverSitemap(baseUrl, { crawlFallback: false });
+    expect(result.urls.map((u) => u.loc)).toEqual([`${baseUrl}/e1`]);
+    expect(result.documents[0]!.gzipped).toBe(true);
   });
 
   it("honours allowInsecureTls without affecting plain http", async () => {

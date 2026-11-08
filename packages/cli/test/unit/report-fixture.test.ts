@@ -3,10 +3,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { FIXTURE_SECRET, renderReportFixture } from "../../scripts/report-fixture";
+import {
+  FIXTURE_SECRET,
+  renderJunitFixture,
+  renderReportFixture,
+} from "../../scripts/report-fixture";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const committed = readFileSync(join(here, "..", "fixtures", "transcripts", "report.html"), "utf8");
+const committedJunit = readFileSync(
+  join(here, "..", "fixtures", "transcripts", "report.junit.xml"),
+  "utf8",
+);
 
 describe("the committed HTML report", () => {
   it("matches the renderer, byte for byte", () => {
@@ -33,5 +41,22 @@ describe("the committed HTML report", () => {
     expect(committed).toContain("Failed · exit code 1");
     expect(committed).toContain("1 new finding at warning or error since the baseline.");
     expect(committed).toContain("14 days old");
+  });
+});
+
+describe("the committed JUnit report", () => {
+  it("matches the renderer, byte for byte", () => {
+    expect(committedJunit).toBe(renderJunitFixture());
+  });
+
+  it("fails the gate case with the reason the HTML report gives", () => {
+    expect(committedJunit).toContain('<testcase classname="goflag" name="gate">');
+    expect(committedJunit).toContain(
+      'message="1 new finding at warning or error since the baseline."',
+    );
+  });
+
+  it("carries no header value either", () => {
+    expect(committedJunit).not.toContain(FIXTURE_SECRET);
   });
 });

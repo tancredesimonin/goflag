@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.tancredesimonin/goflag",
+  "title": "goflag",
+  "description": "SEO and i18n audit of the site an agent is editing: localhost or protected preview, with sources.",
+  "websiteUrl": "https://goflag.tech/docs/mcp",
+  "repository": {
+    "url": "https://github.com/tancredesimonin/goflag",
+    "source": "github",
+    "subfolder": "packages/mcp"
+  },
+  "icons": [{ "src": "https://goflag.tech/icon.svg", "mimeType": "image/svg+xml" }],
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@goflag/mcp",
+      "version": "0.1.1",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}

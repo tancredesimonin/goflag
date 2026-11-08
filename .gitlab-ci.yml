@@ -50,7 +50,7 @@ default:
   # Everything that writes opts back out below: the deploy template, the three
   # publish jobs, `release:prepare` and `tag`.
   interruptible: true
-  image: node:24.22.0@sha256:925de64a85319052d6971ae81ef2417da956e8a3a2c4a0fac732327970f017f5
+  image: node:24.22.1@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
 
   # Sends this project's jobs to the group's self-hosted runner, a VPS-3 in
   # GRA. goflag is 56 % of the group's compute minutes — 11 003 of the 19 616
@@ -514,6 +514,64 @@ test:package:og:
       CHECK
     - node check.mjs
 
+# The same check for the MCP server, plus the one thing that decides how it is
+# published: it depends on `@goflag/cli` as `workspace:^`. `pnpm pack` rewrites
+# that to the CLI's version, and this asserts the packed manifest no longer says
+# `workspace:` — the registry would otherwise hold a package nobody can install.
+#
+# The CLI is installed from its own tarball beside it. The range the MCP package
+# asks for can name a CLI version npm does not have yet, since both are cut by
+# the same release, and what matters is the pair a release will publish, not
+# the pair npm happens to hold.
+test:package:mcp:
+  stage: test
+  <<: [*pnpm, *pkg_changes]
+  script:
+    - pnpm --filter @goflag/cli build
+    - pnpm --filter @goflag/mcp build
+    - CLI_TARBALL="$(cd packages/cli && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - TARBALL="$(cd packages/mcp && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    - echo "packed $TARBALL beside $CLI_TARBALL"
+
+    - tar -tzf "$TARBALL" > mcp-tarball-contents.txt
+    - grep -qx 'package/README.md' mcp-tarball-contents.txt
+    - grep -qx 'package/LICENSE' mcp-tarball-contents.txt
+    - tar -xzOf "$TARBALL" package/package.json > mcp-manifest.json
+    - |
+      if grep -q 'workspace:' mcp-manifest.json; then
+        echo "the packed manifest still says workspace:" >&2
+        exit 1
+      fi
+
+    - mkdir -p /tmp/goflag-mcp-install && cd /tmp/goflag-mcp-install
+    - npm init -y > /dev/null
+    - npm install "$CLI_TARBALL" "$TARBALL"
+
+    # The binary npm linked, spawned over stdio the way an MCP client spawns
+    # it, with the SDK the package itself depends on.
+    - |
+      cat > check.mjs <<'CHECK'
+      import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+      import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+      const client = new Client({ name: "test-package", version: "0" });
+      await client.connect(
+        new StdioClientTransport({ command: "./node_modules/.bin/goflag-mcp" }),
+      );
+      const { tools } = await client.listTools();
+      const names = tools.map((tool) => tool.name).sort().join(",");
+      if (names !== "audit_site,compare_to_baseline,explain_rule,list_rules") {
+        throw new Error(`unexpected tools: ${names}`);
+      }
+      const listed = await client.callTool({ name: "list_rules", arguments: {} });
+      const count = listed.structuredContent.rules.length;
+      if (count < 60) throw new Error(`list_rules returned ${count} rules`);
+      await client.close();
+
+      console.log(`goflag-mcp answered over stdio: ${tools.length} tools, ${count} rules`);
+      CHECK
+    - node check.mjs
+
 # ---------------------------------------------------------------------------
 # apps/website — goflag.tech
 # ---------------------------------------------------------------------------
@@ -721,7 +779,7 @@ kamal-proxy-reboot:
 # is nothing left in CI worth stealing: no NPM_TOKEN, nothing to rotate, and
 # nothing that keeps working if it leaks.
 # One job per package, keyed on the tag namespace. `if: $CI_COMMIT_TAG` alone
-# would fire all three on any tag, and each would then fail its own version
+# would fire all four on any tag, and each would then fail its own version
 # check — a red pipeline on a release that actually succeeded.
 publish:npm:
   # Publishing to npm is not reversible. A version yanked is still a version
@@ -823,6 +881,52 @@ publish:og:
         exit 0
       fi
     - cd packages/og && npm publish --access public
+
+# The fourth namespace, and the first package that depends on another one of
+# this workspace. Same handshake as the three above, a fourth trusted-publisher
+# entry on npmjs.com, and the same first version by hand (`docs/publishing.md`
+# §7). What differs is the command. `@goflag/mcp` declares `"@goflag/cli":
+# "workspace:^"`, which pnpm understands and nobody else does: `npm publish`
+# from the directory would put it on the registry verbatim, and no consumer
+# could install the result. So pnpm packs — and rewrites the range to the CLI's
+# version — and npm publishes the tarball, which keeps the OIDC exchange the
+# other jobs rely on.
+publish:mcp:
+  # Same: not reversible.
+  interruptible: false
+  stage: release
+  <<: *pnpm
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^mcp-v[0-9]/
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+  script:
+    - PKG_VERSION="$(node -p "require('./packages/mcp/package.json').version")"
+    - |
+      if [ "$CI_COMMIT_TAG" != "mcp-v$PKG_VERSION" ]; then
+        echo "tag $CI_COMMIT_TAG does not match package version $PKG_VERSION" >&2
+        exit 1
+      fi
+    - |
+      if [ -n "$(npm view "@goflag/mcp@$PKG_VERSION" version 2>/dev/null)" ]; then
+        echo "@goflag/mcp@$PKG_VERSION is already on npm — nothing to publish."
+        exit 0
+      fi
+    # The CLI's `dist` carries the types the MCP build reads; `prepublishOnly`
+    # does not run when a tarball is published, so both builds happen here.
+    - pnpm --filter @goflag/cli build
+    - pnpm --filter @goflag/mcp build
+    - TARBALL="$(cd packages/mcp && pnpm pack --pack-destination "$CI_PROJECT_DIR" | tail -1)"
+    # The assertion `test:package:mcp` makes, made again on what is about to
+    # become permanent. To a file, not a pipe: see `test:package`.
+    - tar -xzOf "$TARBALL" package/package.json > mcp-manifest.json
+    - |
+      if grep -q 'workspace:' mcp-manifest.json; then
+        echo "the packed manifest still says workspace: — refusing to publish" >&2
+        exit 1
+      fi
+    - npm publish "$TARBALL" --access public
 
 # The bump and the changelog, authored by the pipeline instead of by hand.
 #
@@ -1047,6 +1151,7 @@ tag:
     - tag_one "@goflag/cli" "packages/cli/package.json" "v"
     - tag_one "@goflag/next" "packages/next/package.json" "next-v"
     - tag_one "@goflag/og" "packages/og/package.json" "og-v"
+    - tag_one "@goflag/mcp" "packages/mcp/package.json" "mcp-v"
 
 # A change to documentation only — Markdown at the root or under `docs/` — is
 # read by nothing the packages or the website build. The last three paid `check`

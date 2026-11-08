@@ -66,6 +66,8 @@ export const FLAG_EDITORIAL: Record<string, string> = {
   "--report": "Write the full JSON report to <file>.",
   "--html":
     "Write the report as one HTML file for whoever reads the pipeline without running goflag: the verdict and the reason the gate gave it, findings grouped by rule with their rigor and a link to each rule's page, translation holes, broken links, and the diff against --baseline. Nothing to load beside it — no script, no stylesheet, no request — and the command in its footer prints --header names without their values.",
+  "--junit":
+    "Write the findings as JUnit XML, the format GitLab's merge-request test widget and Jenkins already draw: one test case per rule and page. A finding that fails the run is a failing case; one that does not — known in the baseline, below --fail-on — is skipped with the reason, so the widget's colour is the exit code's. The first case, goflag › gate, fails exactly when the run does and says why. No file or line attribute: a finding sits on a URL, not in a source file.",
   "--conformance":
     "Report every rule's status on every page (pass, fail, warn, n/a), not just the violations. A violations list cannot tell a rule that passes everywhere apart from one that never applied; this can. The terminal shows per-rule totals, and the JSON carries the full rule by page grid.",
   "--advisories":

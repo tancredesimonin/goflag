@@ -275,6 +275,17 @@ describe("--html", () => {
   });
 });
 
+describe("--junit", () => {
+  it("takes the path to write", () => {
+    expect(parseArgs(["u", "--junit", "out/goflag.xml"]).junit).toBe("out/goflag.xml");
+    expect(() => parseArgs(["u", "--junit"])).toThrow(/requires a value/);
+  });
+
+  it("is refused by preview, which gates nothing", () => {
+    expect(() => parseArgs(["preview", "u", "--junit", "r.xml"])).toThrow(/--junit/);
+  });
+});
+
 describe("redactCommand", () => {
   it("keeps a header's name and hides its value", () => {
     expect(

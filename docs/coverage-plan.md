@@ -208,6 +208,57 @@ premières pages de chaque famille.
 là où le plafond en couvre 4 sur 30 en 1 minute.** C'est l'argument, et il ne
 repose pas sur la vitesse.
 
+### 6.1 Au-delà de 4 451 pages (T-4, mesuré le 2026-11-08)
+
+`docs/integrations-plan.md` T-4 demandait la même mesure sur un très gros site
+multilingue. Elle a été prise sur le sitemap public d'un site de documentation
+— 67 491 URL en 10 langues, un index de 10 sitemaps gzippés, 8,7 Mo une fois
+décompressés — avec la lecture en flux de T-3, et **sans auditer une seule
+page** : la commande ne lit que les sitemaps.
+
+```bash
+pnpm --filter @goflag/cli measure:coverage <url> --locales <les 10 locales> --out sel.txt
+```
+
+| Passe | URL lues | Lecture | Sélection | Tas au pic |    RSS | Familles | Pages retenues |
+| ----- | -------: | ------: | --------: | ---------: | -----: | -------: | -------------: |
+| 1     |   67 491 |   3,1 s |    0,26 s |      60 Mo | 226 Mo |      126 |         13 866 |
+| 2     |   67 491 |   3,6 s |    0,26 s |      68 Mo | 226 Mo |      126 |         13 866 |
+
+**L'échantillon est identique d'une passe à l'autre**, URL pour URL : la
+sélection est déterministe, et rien ne la fait dépendre de l'ordre d'arrivée
+des documents. La lecture tient : l'arbre est lu en entier, sans plafond
+atteint, en quelques secondes et quelques dizaines de mégaoctets.
+
+**La sélection, elle, ne borne plus rien.** Elle retient 13 866 pages, 20,5 %
+du site, là où `openfinanceguide` en retenait 19 % pour 30 gabarits. La
+décomposition dit pourquoi :
+
+| Part de la sélection    |  Pages | D'où elles viennent                                          |
+| ----------------------- | -----: | ------------------------------------------------------------ |
+| Tirées dans une famille |  1 848 | 126 familles, qui groupent 55 473 URL                        |
+| Gardées entières (§3.1) | 12 018 | des groupes sous le seuil de 8, qui ne sont pas des familles |
+
+Sur un site bâti sur des gabarits, ce qui reste sous le seuil, ce sont des
+pages qui tiennent seules — l'accueil, les pages légales, un menu écrit à la
+main — et les garder toutes est juste. Sur un arbre de documentation profond
+écrit à la main, c'est l'inverse : chaque interface documentée a une poignée de
+sous-pages, chaque poignée tombe sous le seuil, et la longue traîne pèse 87 %
+de la sélection. Sans `--locales`, c'est pire : 15 112 pages en 618 familles,
+chaque langue formant les siennes.
+
+L'audit complet n'a donc pas été lancé : il aurait demandé près de 14 000 pages
+à un site tiers, et le gate qu'il mesurerait ne tiendrait pas dans une CI. Le
+chiffre utile est celui-ci : **la promesse « un site de milliers de pages est
+couvert par ses gabarits » tient pour un site de gabarits, pas pour un arbre
+profond.** Borner la traîne — un groupe sous le seuil qui partage un parent
+avec beaucoup d'autres est peut-être une famille que l'inférence ne voit pas —
+est une décision à prendre, ouverte au §8.
+
+La lecture elle-même passe l'échelle d'un cran au-dessus : un million d'URL en
+20 enfants, générés et servis en flux, se lisent en 2 s avec 352 Mo de tas au
+pic, contre 11,1 s et 1 289 Mo avant T-3 (`test/integration/sitemap-scale.test.ts`).
+
 ---
 
 ## 7. Phasage
@@ -239,9 +290,10 @@ de mentir.
 
 ## 8. Risques
 
-| Risque                                                              | Traitement                                                                           |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| L'échantillon cache une régression sur une page non tirée           | C6 : le rapport le dit. Un audit qui ment sur sa couverture est pire que pas d'audit |
-| L'inférence groupe deux familles distinctes sous un motif           | `threshold` élevé, et le manifeste (C4) tranche quand il est là                      |
-| Le tirage bouge quand le contenu bouge, et déplace la dette         | Voulu : une famille dont le contenu change mérite d'être rejugée                     |
-| `--max-debt` devient incomparable entre l'ancien et le nouveau mode | V-3 recapture les quatre baselines dans la même MR que le changement de défaut       |
+| Risque                                                                           | Traitement                                                                           |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| L'échantillon cache une régression sur une page non tirée                        | C6 : le rapport le dit. Un audit qui ment sur sa couverture est pire que pas d'audit |
+| L'inférence groupe deux familles distinctes sous un motif                        | `threshold` élevé, et le manifeste (C4) tranche quand il est là                      |
+| Le tirage bouge quand le contenu bouge, et déplace la dette                      | Voulu : une famille dont le contenu change mérite d'être rejugée                     |
+| `--max-debt` devient incomparable entre l'ancien et le nouveau mode              | V-3 recapture les quatre baselines dans la même MR que le changement de défaut       |
+| Sur un arbre profond écrit à la main, la traîne sous le seuil est gardée entière | **Ouvert** (§6.1) : 12 018 des 13 866 pages retenues sur un site de 67 491 URL       |

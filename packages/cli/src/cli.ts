@@ -21,7 +21,9 @@ import { startServer, type StartedServer } from "./lib/runner/dev-server";
 import { renderTerminal } from "./report/render-terminal";
 import { renderSummaryTerminal } from "./report/render-summary";
 import { renderPreview } from "./report/render-preview";
+import type { GateDecision } from "./report/gate-verdict";
 import { renderHtmlReport } from "./report/render-html";
+import { renderJunitReport } from "./report/render-junit";
 import { summarize } from "./report/summarize";
 import { Logger } from "./report/logger";
 import { HELP, parseArgs, redactCommand, type ParsedArgs } from "./cli-args";
@@ -246,14 +248,17 @@ async function main(): Promise<number> {
     process.stderr.write(`goflag: report written to ${args.report}\n`);
   }
 
+  // The gate as this run decides it, for the two files that print it. The run
+  // that captures a baseline accepts everything it saw and exits 0.
+  const gate: GateDecision = args.updateBaseline
+    ? { exitCode: 0, failOn: args.failOn, capturedBaseline: true }
+    : { exitCode: gateExitCode(report, args), failOn: args.failOn, maxDebt: args.maxDebt };
+
   // Same place and same reason as `--report`: written on every path that has a
   // report, the run that captures the baseline included. The command line in
   // its footer is redacted — `--header` values and URL passwords — because the
   // file is made to be passed around.
   if (args.html) {
-    const gate = args.updateBaseline
-      ? { exitCode: 0, failOn: args.failOn, capturedBaseline: true }
-      : { exitCode: gateExitCode(report, args), failOn: args.failOn, maxDebt: args.maxDebt };
     await writeText(
       args.html,
       renderHtmlReport(report, {
@@ -264,6 +269,14 @@ async function main(): Promise<number> {
       }),
     );
     process.stderr.write(`goflag: HTML report written to ${args.html}\n`);
+  }
+
+  // The same, for a CI's test widget. Its cases fail exactly where the gate
+  // does, and its first case is the gate itself, so the widget's colour is the
+  // exit code's.
+  if (args.junit) {
+    await writeText(args.junit, renderJunitReport(report, { gate }));
+    process.stderr.write(`goflag: JUnit report written to ${args.junit}\n`);
   }
 
   // Writing the baseline is accepting everything in it. The one thing this

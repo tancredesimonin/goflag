@@ -70,6 +70,21 @@ const PACKAGES = [
       "packages/og/LICENSE",
     ],
   },
+  {
+    // No `quotedAs`: the site quotes no version of it, and `npx -y @goflag/mcp`
+    // in its docs takes the latest. Its manifest is in the surface for the
+    // usual reason, and for one more: `@goflag/cli` is declared there as
+    // `workspace:^`, so a CLI export it starts needing moves this file.
+    name: "@goflag/mcp",
+    tagPrefix: "mcp-v",
+    manifest: "packages/mcp/package.json",
+    surface: [
+      "packages/mcp/src",
+      "packages/mcp/package.json",
+      "packages/mcp/README.md",
+      "packages/mcp/LICENSE",
+    ],
+  },
 ];
 
 /** A commit that earns a version number: a feature, a fix, or a break. */
@@ -124,6 +139,26 @@ function quoteVersionInReadme(version) {
   }
 
   writeFileSync(file, updated, "utf8");
+}
+
+/**
+ * `packages/mcp/server.json` is what the MCP registry lists, and it names the
+ * version twice: its own, and the npm package's it points at. The registry
+ * takes neither a range nor `latest`, and a version it has published is
+ * immutable, so the file has to say exactly what npm is about to carry.
+ * Rewritten in place rather than re-serialized: the release commit is amended
+ * with `--no-verify`, so nothing would put prettier's layout back.
+ */
+function quoteVersionInServerJson(version) {
+  const file = "packages/mcp/server.json";
+  const source = readFileSync(file, "utf8");
+  const pins = source.match(/"version": "[^"]+"/g) ?? [];
+
+  if (pins.length !== 2) {
+    throw new Error(`Expected two version pins in ${file}, found ${pins.length}`);
+  }
+
+  writeFileSync(file, source.replace(/("version": ")[^"]+(")/g, `$1${version}$2`), "utf8");
 }
 
 function git(...args) {
@@ -302,6 +337,10 @@ for (const pkg of PACKAGES) {
   if (pkg.name === "@goflag/cli") {
     quoteVersionInReadme(version);
     run("git", "add", "README.md");
+  }
+  if (pkg.name === "@goflag/mcp") {
+    quoteVersionInServerJson(version);
+    run("git", "add", "packages/mcp/server.json");
   }
   run("git", "commit", "--amend", "--no-edit", "--no-verify");
 

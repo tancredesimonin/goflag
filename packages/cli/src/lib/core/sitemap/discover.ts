@@ -1,9 +1,11 @@
-import { gunzipSync } from "node:zlib";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { createGunzip } from "node:zlib";
 import { combineSignals } from "../probes/abort";
 import { fetchScoped, type ScopedHeaders } from "../net/scoped-headers";
 import { probeRobots } from "../probes/robots";
 import { crawl } from "../crawl";
-import { parseSitemap } from "./parse";
+import { createSitemapParser, type ParsedSitemap, type SitemapParser } from "./parse";
 import type {
   SiteDiscovery,
   SiteDiscoverySource,
@@ -17,9 +19,9 @@ export interface DiscoverSitemapOptions {
   signal?: AbortSignal;
   /** Per-request timeout in ms. Defaults to 8_000. */
   timeoutMs?: number;
-  /** Hard cap on collected page URLs. Defaults to 5_000. */
+  /** Hard cap on collected page URLs. Defaults to 1_000_000. */
   maxUrls?: number;
-  /** Hard cap on child sitemaps followed from an index. Defaults to 50. */
+  /** Hard cap on child sitemaps followed from an index. Defaults to 50_000. */
   maxSitemaps?: number;
   /** Allow self-signed TLS (localhost / tunnels). */
   allowInsecureTls?: boolean;
@@ -40,8 +42,16 @@ const DEFAULTS = {
   // intermittently, and every failure silently dropped the crawl to link
   // following. Twenty is generous for a document fetched once per run.
   timeoutMs: 20_000,
-  maxUrls: 5_000,
-  maxSitemaps: 50,
+  // The caps were 5,000 URLs and 50 children, far below what the protocol
+  // allows (50,000 URLs a file, 50,000 files an index), so a large site was
+  // read in part and judged as if that part were all of it: `sitemap.orphans`
+  // could render no verdict, and structural coverage sampled the families of
+  // the first 5,000 URLs. They were there because each document was loaded
+  // whole into a DOM. Streamed (`./parse.ts`), a document costs the entries it
+  // yields, so the ceiling is now on what the run keeps: a million URLs, and
+  // as many children as one index may name (docs/integrations-plan.md T-3).
+  maxUrls: 1_000_000,
+  maxSitemaps: 50_000,
   crawlDepth: 1,
   crawlMaxPages: 100,
 };
@@ -54,7 +64,13 @@ interface SitemapCandidate {
 
 interface FetchedDoc {
   status: number;
-  body?: string;
+  /**
+   * The document, parsed as it streamed in. Absent when nothing was read —
+   * an error status, a network failure, or an empty body, which is what the
+   * old `body?: string` reported as falsy and every caller treated as "no
+   * document here".
+   */
+  parsed?: ParsedSitemap;
   /**
    * Why the document could not be read, when the failure was the network
    * rather than the server. A 404 leaves this unset: the site answered, and
@@ -133,7 +149,7 @@ export async function discoverSitemap(
   // 2. Try each candidate until one parses into a urlset or index.
   for (const candidate of candidates) {
     const doc = await fetchDoc(candidate.url, options);
-    if (!doc.body) {
+    if (!doc.parsed) {
       // Remember the first observed status so the UI can show a 404 etc.
       if (diagnostics.status === 0) diagnostics.status = doc.status;
       if (doc.error) {
@@ -142,7 +158,7 @@ export async function discoverSitemap(
       }
       continue;
     }
-    const parsed = parseSitemap(doc.body);
+    const parsed = doc.parsed;
     if (parsed.kind === "unknown") {
       if (diagnostics.status === 0) diagnostics.status = doc.status;
       diagnostics.warnings.push(`Malformed or unrecognised sitemap at ${candidate.url}`);
@@ -194,7 +210,7 @@ export async function discoverSitemap(
           break;
         }
         const childDoc = await fetchDoc(childUrl, options);
-        if (!childDoc.body) {
+        if (!childDoc.parsed) {
           // Recorded before the `continue`, so a child that could not be read
           // is still a node of the tree. Dropping it here is what made the
           // count in `childSitemapErrors` the only surviving trace of it.
@@ -213,7 +229,7 @@ export async function discoverSitemap(
           diagnostics.warnings.push(`Child sitemap unreachable: ${childUrl}`);
           continue;
         }
-        const childParsed = parseSitemap(childDoc.body);
+        const childParsed = childDoc.parsed;
         documents.push({
           url: childUrl,
           status: childDoc.status,
@@ -329,15 +345,18 @@ function pushEntries(
   documentUrl: string,
 ): boolean {
   for (const entry of entries) {
-    if (out.length >= cap) return true;
     if (seen.has(entry.loc)) continue;
+    // True only when an entry is actually left out. Reaching the cap exactly
+    // used to count, so a sitemap of exactly a million URLs read as cut short
+    // with nothing missing — and a duplicate after the cap counted too.
+    if (out.length >= cap) return true;
     seen.add(entry.loc);
     // Stamped here rather than in the parser: the parser reads a body and has
     // no idea which URL it came from, and the first document to claim a `<loc>`
     // is the one whose scope that entry is judged against.
     out.push({ ...entry, documentUrl });
   }
-  return out.length >= cap;
+  return false;
 }
 
 function dedupe(urls: string[]): string[] {
@@ -354,10 +373,14 @@ function isWellKnownPath(url: string): boolean {
 }
 
 /**
- * Fetch one sitemap document, inflating gzip when the URL ends in `.gz`
- * or the server flags `content-encoding: gzip`. Returns `{ status }`
- * with no body on any failure so the caller can fall through to the
- * next candidate without exception handling at every call site.
+ * Fetch one sitemap document and parse it as it arrives, inflating gzip when
+ * the URL ends in `.gz` or the server flags `content-encoding: gzip`. Returns
+ * `{ status }` with nothing parsed on any failure, so the caller can fall
+ * through to the next candidate without exception handling at every call site.
+ *
+ * Nothing holds the whole document: the body is read chunk by chunk, inflated
+ * on the way, decoded as UTF-8 across chunk boundaries and handed to the
+ * parser. A 50 MB file costs its entries, not 50 MB plus a tree of it.
  */
 async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<FetchedDoc> {
   const { signal, cleanup } = combineSignals(
@@ -377,25 +400,18 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
       },
       options.scopedHeaders,
     );
-    if (!res.ok) return { status: res.status, byteLength: 0, gzipped: false };
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
+      return { status: res.status, byteLength: 0, gzipped: false };
+    }
 
     const encoding = res.headers.get("content-encoding")?.toLowerCase() ?? "";
     const looksGzip = url.toLowerCase().endsWith(".gz") || encoding.includes("gzip");
-    if (looksGzip) {
-      // undici transparently decodes a `content-encoding: gzip` response,
-      // so only inflate manually for `.gz` payloads served as raw bytes.
-      const buf = Buffer.from(await res.arrayBuffer());
-      // Measured on the inflated text either way: the protocol's ceiling is
-      // what a consumer must parse, not what crossed the wire, and a gzipped
-      // 50 MB sitemap is over the limit however small the transfer was.
-      try {
-        return withLength(res.status, gunzipSync(buf).toString("utf8"), true);
-      } catch {
-        // Already-decoded (or not really gzip) — fall back to raw text.
-        return withLength(res.status, buf.toString("utf8"), true);
-      }
-    }
-    return withLength(res.status, await res.text(), false);
+    const parser = createSitemapParser();
+    const read = await readInto(res.body, looksGzip, parser);
+    // An empty body is no document, as the empty string it used to be was.
+    if (read.characters === 0) return { status: res.status, byteLength: 0, gzipped: looksGzip };
+    return { status: res.status, parsed: parser.end(), byteLength: read.bytes, gzipped: looksGzip };
   } catch (err) {
     // Timeouts land here, and a timeout is not a 404. Conflating them is what
     // let a 3.5 MB sitemap intermittently read as "this site has no sitemap",
@@ -408,9 +424,79 @@ async function fetchDoc(url: string, options: DiscoverSitemapOptions): Promise<F
   }
 }
 
-/** A read body, measured. `Buffer.byteLength` counts UTF-8 octets, not code units. */
-function withLength(status: number, body: string, gzipped: boolean): FetchedDoc {
-  return { status, body, byteLength: Buffer.byteLength(body, "utf8"), gzipped };
+/** Where a gzip stream starts: RFC 1952's two magic bytes. */
+function isGzip(chunk: Uint8Array): boolean {
+  return chunk.length >= 2 && chunk[0] === 0x1f && chunk[1] === 0x8b;
+}
+
+/**
+ * Stream a response body into the parser; returns how much text it carried.
+ *
+ * `bytes` is the length in UTF-8 of the decoded text, as `Buffer.byteLength`
+ * of the whole body measured it before: the protocol's ceiling is on what a
+ * consumer must parse, not on what crossed the wire, so a gzipped file is
+ * measured inflated. `characters` is only there to tell an empty body apart.
+ *
+ * undici already decodes a `content-encoding: gzip` response, so only a body
+ * that starts with gzip's magic bytes is inflated here — the `.gz` file served
+ * as raw bytes. A gzip-looking URL whose bytes are plain text is read as text,
+ * which is what the old fallback did after `gunzipSync` threw on it. The
+ * leading byte-order mark is kept on that path and dropped on the plain one,
+ * as `Buffer#toString` and `Response#text` did.
+ */
+async function readInto(
+  body: ReadableStream<Uint8Array> | null,
+  looksGzip: boolean,
+  parser: SitemapParser,
+): Promise<{ bytes: number; characters: number }> {
+  let bytes = 0;
+  let characters = 0;
+  if (!body) return { bytes, characters };
+
+  const decoder = new TextDecoder("utf-8", { ignoreBOM: looksGzip });
+  const take = (text: string) => {
+    if (text.length === 0) return;
+    bytes += Buffer.byteLength(text, "utf8");
+    characters += text.length;
+    parser.write(text);
+  };
+
+  // Enough of the body to see the magic bytes: a server may well send the
+  // first byte alone, and a one-byte head read as "not gzip" fed the
+  // compressed stream to the parser as text.
+  const chunks = (body as unknown as AsyncIterable<Uint8Array>)[Symbol.asyncIterator]();
+  const head: Uint8Array[] = [];
+  let headLength = 0;
+  while (headLength < 2) {
+    const next = await chunks.next();
+    if (next.done) break;
+    head.push(next.value);
+    headLength += next.value.length;
+  }
+  if (headLength === 0) return { bytes, characters };
+  const first = Buffer.concat(head);
+
+  // The rest of the body, with what was already read put back in front.
+  async function* rest(): AsyncGenerator<Uint8Array> {
+    yield first;
+    for (;;) {
+      const next = await chunks.next();
+      if (next.done) return;
+      yield next.value;
+    }
+  }
+
+  const consume = async (source: AsyncIterable<Uint8Array>) => {
+    for await (const chunk of source) take(decoder.decode(chunk, { stream: true }));
+    take(decoder.decode());
+  };
+
+  if (looksGzip && isGzip(first)) {
+    await pipeline(Readable.from(rest()), createGunzip(), consume);
+  } else {
+    await consume(rest());
+  }
+  return { bytes, characters };
 }
 
 function relaxTlsIfRequested(enabled: boolean | undefined): () => void {

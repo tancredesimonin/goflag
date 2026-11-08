@@ -196,6 +196,10 @@ documentation site came to quote a message the engine had stopped printing.
                        verdict and why, findings by rule with their sources,
                        and the diff against --baseline. For a pipeline artefact
                        read by someone who does not run goflag.
+--junit <file>         Write the findings as JUnit XML: one test case per rule
+                       and page, failing when the finding fails the run,
+                       skipped when it does not. For a GitLab merge request's
+                       test widget, or Jenkins.
 --depth <n>            How far to follow links out of each page (0 = follow
                        none). Sitemap URLs are seeded regardless, so --depth 0
                        alone is not "entry page only" — add --no-sitemap.
@@ -593,7 +597,7 @@ Three rules, whichever you use:
 stages: [build, deploy, audit]
 
 variables:
-  GOFLAG_VERSION: "0.2.18"
+  GOFLAG_VERSION: "0.2.19"
 
 # Before the merge: build the branch, let goflag boot it, audit that.
 seo:mr:
@@ -645,7 +649,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
-          npx --yes @goflag/cli@0.2.18 http://localhost:3000 \
+          npx --yes @goflag/cli@0.2.19 http://localhost:3000 \
             --start "pnpm start" --static --no-external \
             --baseline .goflag/baseline.json --regressions-only --max-debt 41 \
             --report goflag-report.json

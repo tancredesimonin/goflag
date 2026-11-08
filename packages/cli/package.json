@@ -1,6 +1,6 @@
 {
   "name": "@goflag/cli",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "type": "module",
   "description": "Audits a site for broken links, missing translation pages, a robots.txt that contradicts your pages, and missing or misconfigured SEO metadata. JSON-first.",
   "keywords": [
@@ -61,6 +61,7 @@
     "test:integration": "vitest run test/integration",
     "test:coverage": "vitest run --coverage",
     "validate:sources": "tsx scripts/validate-sources.ts",
+    "measure:coverage": "tsx scripts/measure-coverage.ts",
     "generate:catalog": "tsx scripts/generate-catalog.ts",
     "generate:flags": "tsx scripts/generate-flags.ts",
     "generate:help-fixture": "tsx scripts/generate-help-fixture.ts",
@@ -70,7 +71,8 @@
     "release": "commit-and-tag-version --path . --skip.tag --tag-prefix v"
   },
   "dependencies": {
-    "cheerio": "^1.2.0"
+    "cheerio": "^1.2.0",
+    "htmlparser2": "^10.1.0"
   },
   "peerDependencies": {
     "playwright": "^1.59.1"
